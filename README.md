@@ -1,5 +1,6 @@
 FROST module DKG
 ```python
+# As described in the Olaf paper
 def simplpedpop(secure_chan, seed, t, n):
   vss_commit, gend_shares = share(seed, t, n)
   pk = pubkey_gen(seed)
@@ -16,6 +17,7 @@ def simplpedpop(secure_chan, seed, t, n):
     return False
   return shares
 
+# Send over an insecure channel and ensure authenticity via Eq
 def secpedpop(insecure_chan, seed, t, n):
   vss_commit, gend_shares = share(seed, t, n)
   pk = pubkey_gen(seed)
@@ -38,7 +40,8 @@ def secpedpop(insecure_chan, seed, t, n):
     return False
   return shares
 
-# WIP:
+# WIP: Current FROST module implementation
+#
 # Advantage: It's more flexible because with the proposed API the VSS can be generated prior to knowing the public keys of any participants
 def jessepedpop(secure_chan, seed, t, n):
   # The pok is a pok for the "first coefficient" of the vss_commitment. The pok
