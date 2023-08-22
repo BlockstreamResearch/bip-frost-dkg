@@ -63,15 +63,16 @@ def secpedpop(insecure_chan, seed, t, n):
 
 # JessePedPop
 #
-# Advantage: "It's more flexible because with the proposed API the VSS can be
-# generated prior to knowing the public keys of any participants"
+# Purported advantages:
+# - "It's more flexible because with the proposed API the VSS can be generated
+#   prior to knowing the public keys of any participants"
+# - uses public key instead of index
 def jessepedpop(secure_chan, seed, t, n):
     # The pok is a signature of the empty message for the constant term of the
     # vss_commitment.
     pok, vss_commit = vss_gen(seed, t)
     for i in n:
         secure_chan.send(i, pok + vss_commit)
-    nu = ()
     for i in n:
         pok, vss_commits[i] = secure_chan.receive(i)
         # runs verify_sig(pok, vss_commits[i][0], "") internally
@@ -91,7 +92,7 @@ def jessepedpop(secure_chan, seed, t, n):
             share_verify(share[i], vss_commitments)
         return False
     agg_share, agg_pk, vss_hash = res
-    # in contrast to SimplPedPop, vss_hash does not contain the signature
+    # in contrast to SimplPedPop, vss_hash does _not_ contain the poks
     if not Eq(vss_hash):
         return False
     # use pubkey instead of index to compute_pk
