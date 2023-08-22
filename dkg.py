@@ -1,7 +1,5 @@
 # Pseudocode for various DKGs in python-like pseudocode
 
-# TODO: DKG should also output aggpk and partial pk
-
 def helper_setup(seed, t, n):
     # vss_commit are the commitments to the coefficients (where vss_commit[0]
     # denotes the commitment to the constant term).
@@ -23,7 +21,9 @@ def helper_compute_pk(vss_commits, t, i):
 def helper_dkg_output(shares, vss_commits, t):
     return sum(shares), sum([vss_commits[i][0] for i in range(n)]), [helper_compute_pk(vss_commits, t, i) for i in range(n)]
 
-# As described in the Olaf paper
+# SimplPedPop
+#
+# As described in the Olaf paper (with the addition of computing the individual's public keys)
 def simplpedpop(secure_chan, seed, t, n):
     vss_commit, gend_shares, sig = helper_setup(seed, t, n)
     for i in n:
@@ -31,13 +31,15 @@ def simplpedpop(secure_chan, seed, t, n):
     nu = ()
     for i in n:
         sig, vss_commits[i], shares[i] = secure_chan.receive(i)
-        if not verify(vss_commits[i], shares[i]) or not verify(sig, vss_commits[i][0], i)
+        if not verify_vss(vss_commits[i], shares[i]) or not verify_sig(sig, vss_commits[i][0], i)
         return False
         nu += (sig, vss_commit[i])
     if not Eq(nu):
         return False
     return helper_dkg_output(shares, vss_commits, t)
 
+# SecPedPop
+#
 # Send over an insecure channel and ensure authenticity via Eq
 def secpedpop(insecure_chan, seed, t, n):
     vss_commit, gend_shares, sig = helper_setup(seed, t, n)
@@ -47,43 +49,52 @@ def secpedpop(insecure_chan, seed, t, n):
     for i in n:
         sig, vss_commits[i] = insecure_chan.receive(i)
         nu += (sig, vss_commits[i])
-        if not not verify(sig, vss_commits[i][0], i)
+        if not not verify_sig(sig, vss_commits[i][0], i)
         return False
     for i in n:
         insecure_chan.send(i, encrypt(gend_shares[i], vss_commits[i][0]))
     for i in n:
         shares[i] = decrypt(insecure_chan.receive(i), seed)
-        if not verify(vss_commits[i], shares[i])
+        if not verify_vss(vss_commits[i], shares[i])
         return False
     if not Eq(nu):
         return False
     return helper_dkg_output(shares, vss_commits, t)
 
-# WIP: Current FROST module implementation
+# JessePedPop
 #
-# Advantage: It's more flexible because with the proposed API the VSS can be generated prior to knowing the public keys of any participants
+# Advantage: "It's more flexible because with the proposed API the VSS can be
+# generated prior to knowing the public keys of any participants"
 def jessepedpop(secure_chan, seed, t, n):
-    # The pok is a pok for the "first coefficient" of the vss_commitment. The pok
-    # is a signature of the empty message.
-    # TODO: neat trick to save the pk, but why is that secure? It doesn't seem so.
+    # The pok is a signature of the empty message for the constant term of the
+    # vss_commitment.
     pok, vss_commit = vss_gen(seed, t)
     for i in n:
         secure_chan.send(i, pok + vss_commit)
     nu = ()
     for i in n:
         pok, vss_commits[i] = secure_chan.receive(i)
-        # verifies pok and vss_commit
-        # TODO: where does recipient_pk come from? Maybe it's used instead of an index?
-        gend_share = share_gen(pok, vss_commits, recipient_pk, t)
+        # runs verify_sig(pok, vss_commits[i][0], "") internally
+        # TODO: where does recipient pk come from? Maybe it's used instead of an index?
+        gend_share = share_gen(pok, vss_commits[i], pk[i], t)
         if gend_share is None:
-        return False
+            return False
         secure_chan.send(i, gend_share)
     for i in n:
         shares[i] = secure_chan.receive(i)
-    # Verifies share against vss_commits
+    # runs verify_vss(vss_commits[i], shares[i]) for all i internally
     res = agg_shares(shares, vss_commits, t, n)
     if res is None:
+        # If agg_shares fails, we can verify the individual shares to find
+        # dishonest signers
+        for i in n:
+            share_verify(share[i], vss_commitments)
         return False
-    agg_share, vss_hash = res
-    for i in n:
-        share_verify(share[i], vss)
+    agg_share, agg_pk, vss_hash = res
+    # in contrast to SimplPedPop, vss_hash does not contain the signature
+    if not Eq(vss_hash):
+        return False
+    # use pubkey instead of index to compute_pk
+    return agg_share, agg_pk, [helper_compute_pk(vss_commits, t, pk[i]) for i in range(n)]
+    # jesse also signs and verifies vss_commitments, but I think that's unnecessary
+
