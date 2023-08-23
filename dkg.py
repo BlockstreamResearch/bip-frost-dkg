@@ -66,8 +66,8 @@ def secpedpop(insecure_chan, seed, t, n):
 # Purported advantages:
 # - "It's more flexible because with the proposed API the VSS can be generated
 #   prior to knowing the public keys of any participants"
-# - uses public key instead of index
-def jessepedpop(secure_chan, seed, t, n):
+# - uses public key instead of index (which requires collecting secp256k1 public keys in addition to the secure channel)
+def jessepedpop(secure_chan, pks, seed, t, n):
     # The pok is a signature of the empty message for the constant term of the
     # vss_commitment.
     pok, vss_commit = vss_gen(seed, t)
@@ -76,8 +76,7 @@ def jessepedpop(secure_chan, seed, t, n):
     for i in n:
         pok, vss_commits[i] = secure_chan.receive(i)
         # runs verify_sig(pok, vss_commits[i][0], "") internally
-        # TODO: where does recipient pk come from? Maybe it's used instead of an index?
-        gend_share = share_gen(pok, vss_commits[i], pk[i], t)
+        gend_share = share_gen(pok, vss_commits[i], pks[i], t)
         if gend_share is None:
             return False
         secure_chan.send(i, gend_share)
@@ -96,6 +95,6 @@ def jessepedpop(secure_chan, seed, t, n):
     if not Eq(vss_hash):
         return False
     # use pubkey instead of index to compute_pk
-    return agg_share, agg_pk, [helper_compute_pk(vss_commits, t, pk[i]) for i in range(n)]
+    return agg_share, agg_pk, [helper_compute_pk(vss_commits, t, pks[i]) for i in range(n)]
     # jesse also signs and verifies vss_commitments, but I think that's unnecessary
 
