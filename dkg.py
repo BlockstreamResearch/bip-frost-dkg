@@ -28,13 +28,13 @@ def simplpedpop(secure_chan, seed, t, n):
     vss_commit, gend_shares, sig = helper_setup(seed, t, n)
     for i in n:
         secure_chan.send(i, sig  + vss_commit + gend_shares[i])
-    nu = ()
+    eta = ()
     for i in n:
         sig, vss_commits[i], shares[i] = secure_chan.receive(i)
         if not verify_vss(vss_commits[i], shares[i]) or not verify_sig(sig, vss_commits[i][0], i)
         return False
-        nu += (sig, vss_commit[i])
-    if not Eq(nu):
+        eta += (sig, vss_commit[i])
+    if not Eq(eta):
         return False
     return helper_dkg_output(shares, vss_commits, t)
 
@@ -45,19 +45,19 @@ def secpedpop(insecure_chan, seed, t, n):
     vss_commit, gend_shares, sig = helper_setup(seed, t, n)
     for i in n:
         insecure_chan.send(i, sig + vss_commit)
-    nu = ()
+    eta = ()
     for i in n:
         sig, vss_commits[i] = insecure_chan.receive(i)
-        nu += (sig, vss_commits[i])
-        if not not verify_sig(sig, vss_commits[i][0], i)
-        return False
+        eta += (sig, vss_commits[i])
+        if not verify_sig(sig, vss_commits[i][0], i)
+            return False
     for i in n:
         insecure_chan.send(i, encrypt(gend_shares[i], vss_commits[i][0]))
     for i in n:
         shares[i] = decrypt(insecure_chan.receive(i), seed)
         if not verify_vss(vss_commits[i], shares[i])
-        return False
-    if not Eq(nu):
+            return False
+    if not Eq(eta):
         return False
     return helper_dkg_output(shares, vss_commits, t)
 
