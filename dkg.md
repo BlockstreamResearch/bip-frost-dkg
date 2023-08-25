@@ -104,3 +104,52 @@ def secpedpop_finalize(pubkeys, my_pubkey, vss_commit, enc_shares):
   eta = pubkeys
   return simplpedpop_finalize(pubkeys, my_pubkey, vss_commit, shares, eta):
 ```
+
+### Ensuring Agreement
+<!-- TODO: The term agreement is overloaded here. -->
+<!-- TODO: Explain a bit more... What could go wrong if participants don't agree: They may use different aggregate keys. Or some may use the resulting  aggregate key while others delete the secrets. -->
+A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
+
+DKG protocols in the cryptographic literature often abstract away from this problem
+by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism which guarantees excludes equivocation.
+However, while this is a meaningful abstraction, it can be hard or even impossible (in theory and in practice) to realize such a mechanism depending on the specific scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
+
+The two DKG protocols described above work with a similar but slightly weaker abstraction instead.
+They assume that participants have access to an equality check "Eq", a mechanism that asserts that the input values provided all participants are equal.
+
+<!-- TODO should the ids be inputs, too? -->
+Every participant can invoke Eq(x) with an input value x of other participants. When Eq returns, it will output SUCCESS, INDETERMINATE, or FAIL to the calling participant.
+ - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but not all of them may have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained. It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
+ - FAIL means that it is guaranteed that no honest participant will output SUCCESS. In that case, the generated secret keys can safely be deleted.
+ - INDETERMINATE means that it is unknown whether the honest participants agree on the value and whether some honest participants have output SUCCESS.
+   In that case, the DKG was potentially successful. Other honest participants may believe that it was successful and may assume that the resulting keys can be used. As a result, the generated keys may not deleted.
+
+More formally, Eq must fulfill the following properties:
+ - Integrity: If some honest participant outputs SUCCESS, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
+ - (Weak) Agreement: If some honest participant outputs SUCCESS, then no other honest participant will output FAIL.
+
+Optionally, the following property is desired but not always achievable:
+ - Termination: All participants will (eventually) output SUCCESS or FAIL.
+
+#### Examples
+<!-- TODO expand these scenarios. Related them to SUCCESS, FAIL, INDETERMINATE -->
+Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
+
+##### Participants are in a single room 
+In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to set up a threshold signing, the devices can simply display x (or a hash of them under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their consistency to all devices by pressing a button or otherwise providing explicit confirmation.
+
+Similarly, if signing devices are controlled by different organizations in different geographic locations, agents of these organizations can meet in a single room and compare the values.
+
+##### Network-based with consensus protocol
+If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on x.
+
+##### Network-based without consensus protocol
+In a network-based scenario without a consensus protocol, the equality check can be instantiated by the following protocol:
+   1. Send x to all other participants
+   2. Upon receiving a value x' from a specific participant for the first time:
+       - If x != x', then return INDETERMINATE.
+       - If a value was received from all other participants, then return SUCCESS.
+
+Proof. (TODO for footnote) If the protocol outputs SUCCESS, then all other participants have send x. For the honest participants, this means by construction that they got x as input. This shows integrity. Agreement holds because the protocol never outputs FAIL.
+
+This protocol does not ensure termination, and participants may end up in an INDETERMINATE state.
