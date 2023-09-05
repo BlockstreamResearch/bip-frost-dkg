@@ -2,31 +2,43 @@
 
 At this moment, the following are merely rough ideas rather than finalized suggestions.
 
-## Distributed Key Generation
+## Distributed Key Generation (DKG)
 
-<!-- FROST requires a DKG -->
-<!-- While there are many ways to instantiate a DKG this BIP specifies a simple DKG in a modular fashion. -->
+Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
+This can be achieved through a trusted dealer who generates the shared public key and verifiably shares the corresponding secret key with the FROST signers.
+If the dealer is dishonest or compromised, or the secret key is not deleted correctly and compromised later, an adversary can forge signatures.
 
-<!-- TODO: We should mention that before sending funds to an address the signers should've created a signature. -->
+To avoid the single point of failure when trusting the dealer, the signers run an interactive distributed key generation (DKG) protocol.
+If the DKG for threshold `t` succeeds from the point of view of a signer and outputs a shared public key, then FROST signatures are unforgeable, i.e., `t` signers are required to cooperate to produce a signature for the shared public key - regardless of how many other participants in the the DKG were dishonest.
 
-<!-- - Do we want to support some sort of share backup scheme (see also [repairable threshold sigs](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf))that sends share encrypted-to-self to other signers? As long as one other signer cooperates we can restore. -->
+To instantiate a DKG there are many possible schemes which differ by the guarantees they provide.
+Since DKGs are difficult to implement correctly in practice, this document describes DKGs that are relatively *simple*, namely SimplPedPop and SecPedPop.
+However, the DKG can be swapped out for another one if desired.
 
-We describe two DKG protocols: SimplPedPop and SecPedPop.
+The DKG outputs the shared public key and a secret share for each signer.
+It is extremely important that both outputs are securely backed up because losing the share will render the signer incapable of producing signatures.
+In order to reduce the chance of losing the backup, it is possible to encrypt the backup and send it to every other signer.
+If a signer loses the local backup, as long as there's at least one other signer that cooperates and sends back the encrypted backup, the signer can restore (see also [repairable threshold signatures](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+
+Once the DKG concludes successfully, it is recommended to rule out basic mistakes in the setup by having all signers create a FROST signature for some test message.
 
 ### SimplPedPop
 
 We specify the SimplPedPop scheme as described in [Practical Schnorr Threshold Signatures
 Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf) with the following minor modifications:
 
-- Using [arbitrary 33-byte arrays][https://github.com/frostsnap/frostsnap/issues/72] to identify signers instead of indices. Note that for correctness they need to be unique, but not for unforgeability. Indices are not ideal because they imply a global order of the participants.
+- Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) to identify participants instead of indices. These IDs must be chosen to be unique by honest participants, otherwise they may not be able to produce a signature despite exceeding the threshold. However, if a malicious participant copies an ID, signatures are still unforgeable. Using indices would not be ideal because they imply a global order of the participants.
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
+- The proof-of-knowledge in the setup does not commit to the prover's id. This is slightly simpler because it doesn't require the setup algorithm to know take the id as input.
 
-SimplPedPop requires SECURE channels between the participants, i.e., ENCRYPTED and AUTHENTICATED.
-Also we require an interactive protocol `Eq` as described in section [Broadcast](TODO).
-Note that with some instantiations of `Eq` SimplPedPop may fail but the signer still cannot delete any secret key material.
+SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
+The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
 
-While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is generally easy for a participant to misbehave such that it will not be identified.
+Also, SimplePedPop requires an interactive protocol `Eq` as described in section [Ensuring Agreement](#ensuring-agreement).
+It is important to note that with some instantiations of `Eq`, SimplPedPop may fail but the signer still cannot delete any secret key material that was created for the DKG session.
+
+While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
 ```python
 def simplpedpop_setup(seed, t, ids):
@@ -40,16 +52,13 @@ def simplpedpop_setup(seed, t, ids):
     """
     f = polynomial_gen(seed)
     # vss_commit[0] denotes the commitment to the constant term
-    vss_commit = commit_coefs(f)
+    vss_commit = commit_to_coefficients(f)
     # sk is the constant term of f and the dlog of vss_commit[0]
     sk = f[0]
     assert(vss_commit[0] == pubkey_gen(sk))
-    # TODO: what should we sign? SimplPedPop signs identifier,
-    # JessePedPop signs a tag. The latter is slightly simpler
-    # because we don't need to know our own id.
     sig = sign(sk, "")
     vss_commit = vss_commit || sig
-    shares = [ f(Hash_sometag(Id)) for Id in ids ]
+    shares = [ f(hash_sometag(id)) for id in ids ]
     return vss_commit, shares
 ```
 
@@ -65,9 +74,9 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
     :param my_id bytes: 33-bytes that identify this participant, must be in ids
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
-    :param List[bytes] shares: shares from all participants (including myself)
+    :param List[bytes] shares: shares from all participants (including this participant)
     :param eta: Optional argument for extra data that goes into `Eq`
-    :return: a final share, the pubkey, the individual participant's pubkeys
+    :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
     for i in n:
         if not verify_vss(my_id, vss_commits[i], shares[i]):
@@ -86,7 +95,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
 ### SecPedPop
 
 SecPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
-Before running `secpedpop_setup` the participants generate a public key as per [IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) and distribute it among each other.
+Before running `secpedpop_setup` the participants generate a public key as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) and distribute it among each other.
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds.
@@ -100,7 +109,7 @@ def secpedpop_setup(seed, t, pubkeys):
     return vss_commit, enc_shares
 ```
 
-For every other participant `id[i]`, the participant sends `vss_commit` and `enc_shares` through the communication channel.
+For every other participant `id[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
 def secpedpop_finalize(pubkeys, my_pubkey, vss_commit, enc_shares):
