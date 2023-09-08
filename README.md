@@ -95,13 +95,20 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
 ### SecPedPop
 
 SecPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
-Before running `secpedpop_setup` the participants generate a public key as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) and distribute it among each other.
+The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
-Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
-However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds.
+TODO: it could actually be any encryption scheme, but e.g. el gamal would be simple to standardize. We also we may want to consider encrypting all traffic.
 
 ```python
-def secpedpop_setup(seed, t, pubkeys):
+def secpedpop_round1(seckey):
+    return individual_pk(seckey)
+```
+
+The public keys are set to each other.
+Every participant stores the received public keys in the `pubkeys` array.
+
+```python
+def secpedpop_round2(seed, t, pubkeys):
     # TODO: optional strengthening of the seed, could also be part of SimplPedPop
     seed = Hash(seed, t, pubkeys)
     vss_commit, shares = simplpedpop_setup(seed, t, pubkeys)
@@ -117,6 +124,9 @@ def secpedpop_finalize(pubkeys, my_pubkey, vss_commit, enc_shares):
   eta = pubkeys
   return simplpedpop_finalize(pubkeys, my_pubkey, vss_commit, shares, eta):
 ```
+
+Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
+However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds.
 
 ### Ensuring Agreement
 TODO: What about replay protection? Should Eq also take the ids as inputs (and if yes, as part of x)?
