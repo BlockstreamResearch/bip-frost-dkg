@@ -169,7 +169,7 @@ If the participants run a BFT-style consensus protocol (e.g., as part of a feder
 TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
 
 ##### Network-based without consensus protocol
-TODO: Inline this into SecPedPop protocol (and remove it here?). Then SecPedPop will not require an explicit Eq.
+TODO: Write this down in proper pseudocode so that it can be used together with SecPedPop protocol. We could specify a variant with certificates (i.e., that one requires verification keys as a setup assumption) and possibly a variant without certificates. These can then be combined with the DKG protocols above in a modular fashion.
 
 In a network-based scenario without a consensus protocol, the equality check can be instantiated by the following protocol:
    1. Send x to all other participants
