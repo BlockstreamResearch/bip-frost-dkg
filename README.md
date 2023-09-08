@@ -149,7 +149,7 @@ More formally, Eq must fulfill the following properties:
  - Agreement: If some honest participant outputs SUCCESS, all other honest participants will (eventually) output SUCCESS.
 
 Optionally, the following property is desired but not always achievable:
- - Termination: All participants will (eventually) output SUCCESS or FAIL.
+ - Termination: All honest participants will (eventually) output SUCCESS or FAIL.
 
 #### Examples
 TODO: Expand these scenarios. Relate them to SUCCESS, FAIL, INDETERMINATE.
