@@ -131,7 +131,7 @@ However, if `Eq(eta)` does fail, then confidentiality of the share may be broken
 ### Ensuring Agreement
 TODO: What about replay protection? Should Eq also take the ids as inputs (and if yes, as part of x)?
 
-TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency?
+TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
 A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
 Indeed, disagreement may lead to catastrophic failure.
@@ -147,6 +147,7 @@ The two DKG protocols described above work with a similar but slightly weaker ab
 They assume that participants have access to an equality check mechanism "Eq", i.e.,
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
+TODO Consider removing INDETERMINATE... If we insist on conditional termination, this cannot be an output, it can be at most the state before the output. Then we're back to booleans as in the paper.
 Eq has the following abstract interface:
 Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS, INDETERMINATE, or FAIL to the calling participant.
  - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained. It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
@@ -156,10 +157,12 @@ Every participant can invoke Eq(x) with an input value x. When Eq returns for a 
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs SUCCESS, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
- - Agreement: If some honest participant outputs SUCCESS, all other honest participants will (eventually) output SUCCESS.
+ - Consistency: If some honest participant outputs SUCCESS, no other honest participant outputs FAIL.
+ - Conditional Termination: If some honest participant outputs SUCCESS, then all other participants will (eventually) output SUCCESS.
+<!-- The latter two properties together are equivalent to Agreement in the paper. -->
 
 Optionally, the following property is desired but not always achievable:
- - Termination: All honest participants will (eventually) output SUCCESS or FAIL.
+ - (Full) Termination: All honest participants will (eventually) output SUCCESS or FAIL.
 
 #### Examples
 TODO: Expand these scenarios. Relate them to SUCCESS, FAIL, INDETERMINATE.
@@ -169,28 +172,50 @@ Depending on the application scenario, Eq can be implemented by different protoc
 ##### Participants are in a single room
 In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their consistency by providing explicit confirmation to every device, e.g., by pressing a button on every device.
 
+TODO add failure case, specify entire protocol
+
 Similarly, if signing devices are controlled by different organizations in different geographic locations, agents of these organizations can meet in a single room and compare the values.
 
 These "out-of-band" methods can achieve termination (assuming the involved humans proceed with their tasks eventually).
 
-##### Network-based with consensus protocol
-If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on x.
+##### Certifying network-based protocol
+TODO: Write this down in proper pseudocode so that it can be used together with SecPedPop protocol.
+<!-- I have omitted the variant without certificates. It's simply not safe, because it does not provide conditional termination.-->
+
+TODO The hpk should be the id here... clean this up and write something about setup assumptions
+
+In a network-based scenario, where host keys are available, the equality check can be instantiated by the following protocol:
+
+ - On initialization:
+   - Send `sig = sign(hsk, x)` to all other participants
+   - Initialize an empty key-value store `cert`, ordered by keys
+ - Upon receiving a signature `sig` from participant `hpk`:
+   - If `sig[hpk]` is not yet defined and `verify(hpk, sig, x) == true`:
+     - Store `sigs[hpk] = sig`
+     - If a valid signature was received from all other participants (i.e., `if sigs.keys() = hpks`):
+       - Return SUCCESS
+       - Send `cert = array(sigs.values())` to all other participants
+ - Upon receiving a value `cert`:
+     - Parse `cert` as a list of signatures; break this "upon" block if parsing fails.
+     - If for all `i=0..n-1`, `verify(hpk[i], sig[i], x) == true`
+       - Return SUCCESS
+       - Send `cert` to all other participants
+
+In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
+
+Proof. (TODO for footnote?)
+Integrity:
+Unless a signature has been forged, if some honest participant with input `x` outputs SUCCESS,
+then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
+Conditional Termination:
+If some honest participant with input `x` returns SUCCESS,
+then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
+Consider any honest participant among these other participants.
+Assuming a reliable network, this honest participant eventually receives `cert`,
+and by integrity, has received `x` as input.
+Thus, this honest participant will accept `cert` and return SUCCESS.
+
+##### Consensus protocol
+If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
 TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
-
-##### Network-based without consensus protocol
-TODO: Write this down in proper pseudocode so that it can be used together with SecPedPop protocol. We could specify a variant with certificates (i.e., that one requires verification keys as a setup assumption) and possibly a variant without certificates. These can then be combined with the DKG protocols above in a modular fashion.
-
-In a network-based scenario without a consensus protocol, the equality check can be instantiated by the following protocol:
-   1. Send x to all other participants
-   2. Upon receiving a value x' from a specific participant for the first time:
-       - If x != x', then return INDETERMINATE.
-       - If a value was received from all other participants, then return SUCCESS.
-
-TODO: Add certificates of success
-
-Proof. (TODO for footnote) If the protocol outputs SUCCESS, then all other participants have send x. For the honest participants, this means by construction that they got x as input. This shows integrity. Agreement holds because the protocol never outputs FAIL.
-
-This protocol does not ensure termination, and participants may end up in an INDETERMINATE state.
-
-
