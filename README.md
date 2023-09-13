@@ -215,6 +215,8 @@ Assuming a reliable network, this honest participant eventually receives `cert`,
 and by integrity, has received `x` as input.
 Thus, this honest participant will accept `cert` and return SUCCESS.
 
+TODO Consider a variant based on MuSig2
+
 ##### Consensus protocol
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
