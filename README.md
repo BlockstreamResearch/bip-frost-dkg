@@ -15,12 +15,18 @@ To instantiate a DKG there are many possible schemes which differ by the guarant
 Since DKGs are difficult to implement correctly in practice, this document describes DKGs that are relatively *simple*, namely SimplPedPop and SecPedPop.
 However, the DKG can be swapped out for another one if desired.
 
+<!-- Can it though? I understood the claim of the "practical" paper was that the keygen and signing must be proved secure together. Is there some way of checking whether a DKG can be replaced with another. Is there some functionality we can simulate or a game we can reduce to? -->
+
 The DKG outputs the shared public key and a secret share for each signer.
 It is extremely important that both outputs are securely backed up because losing the share will render the signer incapable of producing signatures.
 In order to reduce the chance of losing the backup, it is possible to encrypt the backup and send it to every other signer.
 If a signer loses the local backup, as long as there's at least one other signer that cooperates and sends back the encrypted backup, the signer can restore (see also [repairable threshold signatures](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
 
+<!-- But then one must back up the deryption key? I think we should clear this up by explaining what your options are in "backup and recover section". This is an option where you have a long lived secret you can encrypt to. The other solution that is always available to you is to use MPC to recover the share with a threshold of parties. This also allows issuing a new share i.e. enrollment. Not suggesting we should specify that here  but for our project at least this is a more appropriate solution. -->
+
 Once the DKG concludes successfully, it is recommended to rule out basic mistakes in the setup by having all signers create a FROST signature for some test message.
+
+<!-- Nice idea. I'd soften the recommendation to "Applications should consider..".  -->
 
 ### SimplPedPop
 
@@ -31,6 +37,8 @@ Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.p
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's id. This is slightly simpler because it doesn't require the setup algorithm to know take the id as input.
+
+<!-- This is indeed what we do atm but there's a good reason to using small integer indicies: You can ask a user to etch a number onto a 24 seed word backup plate. Also something like BIP93 for when you can backup a short bech32 string. Like bip93 we'd wanna keep the index to ≤ 2⁵ -->
 
 SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
@@ -83,7 +91,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
             throw BadParticipant(ids[i])
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], "")
             throw BadParticipant(ids[i])
-    eta += (sig, vss_commit[i])
+        eta += (sig, vss_commit[i])
     if not Eq(eta):
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given id
@@ -104,7 +112,7 @@ def secpedpop_round1(seckey):
     return individual_pk(seckey)
 ```
 
-The public keys are set to each other.
+The public keys are sent to each other.
 Every participant stores the received public keys in the `pubkeys` array.
 
 ```python
@@ -221,3 +229,23 @@ TODO Consider a variant based on MuSig2
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
 TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
+
+
+<!-- An important question here is how many parties need to give input of polynomial commitments for the key generation? -->
+<!-- It would be prohibitive to require that the number of input parties is the same number as those receiving shares (which would be every consensus node). The spec implicitly implies this invariant atm. -->
+
+
+<!-- If we have n = 3T + 1 (where T is number of corrupted parties) and `n` is the consensus nodes -->
+<!-- I claim you only need T + 1 parties to be involved in keygen for it to be secure (i.e. only one -->
+<!-- honest party). This means if we get consensus on the need to generate key then there will be at -->
+<!-- least T+1 nodes who provide input in the next epoch in an atomic broadcast consensus algo like -->
+<!-- HoneyBadgerBFT (https://eprint.iacr.org/2016/199.pdf) so it can be done in one round. -->
+
+<!-- So I think we have to allow the number of parties receiving shares be different from the number that receive shares. Also these two groups can be totally disjoint. On one extreme you can have a trusted party who generates key shares for a bunch of other parties for example. On the other you can have a group of `N` parties contribute polynomial commitments for a smaller group of `n` nodes where `N ⊃ n`. We are doing this in frostsnap so that we have extra randomness go into the key generation. -->
+
+<!-- On the other hand, I'm not sure we should recommend this protocol for honest majority settings. There are elegant, efficient and information theoretically secure protocols that can do sharings in batch. -->
+<!-- These slides have the closest thing to what I have in mind (but they are not for key specifically but secret sharing sharing): -->
+
+<!-- https://tcc.iacr.org/2020/workshop/tcc-tot-2020.pdf (see "Random Sharings with HIM") -->
+<!-- There's also this more sophisticated schemes like https://eprint.iacr.org/2023/1175 that I still haven't finished understanding yet. -->
+-

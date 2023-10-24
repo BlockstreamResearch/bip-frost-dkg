@@ -10,13 +10,17 @@
 - Need to document that we shouldn't throw away data until we're sure that the DKG either failed or succeeded. Otherwise, the DKG may end up succeeding after throwing away and someone sends funds to the address.
 - How modular do we want to design this? Do we support plugging in other DKGs?
 - Do we want to support some sort of share backup scheme (see also [repairable threshold sigs](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf))that sends share encrypted-to-self to other signers? As long as one other signer cooperates we can restore.
+<!-- I 'd not use the self-encrypted one. The enrollment scheme is nicer because it doesn't store extra data. Just having the shares is enough. If we agree on this we can just specify a bech32 format like BIP93 for shares and leave this stuff for future work. In addition we should specify how to generate the public keys from a threshold number of share images. --> 
 - Are we able to get rid of indices entirely? SimplPedPop uses indices, JessePedPop doesn't. It uses public keys instead.
   - use unique identifier instead of pubkey?
+  <!-- No. Indicies are useful for backups. Otherwise you have to back up the index as well. -->
 - Into how many functions should we split up the DKG. Jesse claims that splitting up has the advantage that "it's more flexible because with the proposed API the VSS can be generated prior to knowing the public keys of any participants"
 - Should it be possible to assign weights for weighted threshold sigs?
+<!-- I wouldn't unless we want to specify how to sign with multiple shares at once in a single signature. Easy to derive a correct protocol for this dunno about security. -->
 - Do we need to include the signature in the vss_hash? Probably not, but depending on how the rest is set up, it may not hurt.
 - Should the scheme support deterministic key derivation?
    - Not sure if that's actually that useful. And it only works as long as the code does not change, which we may not want to guarantee.
+   <!-- After a lot of thought on this: no it shouldn't. Everything can reproduced with a threshold of shares via MPC. Polynomials should use runtime randomness and deleted after share generation. -->
 - Is it impossible to sign if the `Eq` check fails? If not, we may want to tweak the public key by `eta` to make sure that signing fails.
 
 
