@@ -13,14 +13,17 @@ If the DKG for threshold `t` succeeds from the point of view of a signer and out
 
 To instantiate a DKG there are many possible schemes which differ by the guarantees they provide.
 Since DKGs are difficult to implement correctly in practice, this document describes DKGs that are relatively *simple*, namely SimplPedPop and SecPedPop.
-However, the DKG can be swapped out for another one if desired.
+However, the DKG can be swapped out for a different one provided it is proven to be secure when used in FROST.
 
-The DKG outputs the shared public key and a secret share for each signer.
-It is extremely important that both outputs are securely backed up because losing the share will render the signer incapable of producing signatures.
-In order to reduce the chance of losing the backup, it is possible to encrypt the backup and send it to every other signer.
-If a signer loses the local backup, as long as there's at least one other signer that cooperates and sends back the encrypted backup, the signer can restore (see also [repairable threshold signatures](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
+The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
+You can refer to the [Backup and Recover](#backup-and-recover) section for additional details.
 
-Once the DKG concludes successfully, it is recommended to rule out basic mistakes in the setup by having all signers create a FROST signature for some test message.
+While all outputs should have a backup, it is particula in particular
+It is extremely important that the both outputs are securely backed up.
+Losing the share will render the signer incapable of producing signatures.
+
+Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup.
 
 ### SimplPedPop
 
@@ -221,3 +224,18 @@ TODO Consider a variant based on MuSig2
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
 TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
+
+### Backup and Recover
+
+Losing the secret share or the shared public key will render the signer incapable of producing signatures.
+These values are the output of the DKG and, therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
+In many scenarios, it's highly recommended to securely back up the secret share or the shared public key.
+
+If the backup is lost, it's possible, in principle, to request the other signers to recreate and send the signer's secret share.
+This requires the cooperation of at least threshold-many other signers (TODO: specifics?).
+
+To reduce the chance of losing the backup, one can encrypt the backup and send it to every other signer.
+This requires a decryption key which, unlike the DKG output, can be derived from a seed.
+If the signer loses the local backup, it can be restored if there's at least one other signer that cooperates and sends back the encrypted backup.
+
+There's also the concept of [repairable threshold signatures](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf) (TODO).
