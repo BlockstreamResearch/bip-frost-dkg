@@ -228,14 +228,16 @@ TODO: Explain more here. This can also achieve termination but consensus is hard
 ### Backup and Recover
 
 Losing the secret share or the shared public key will render the signer incapable of producing signatures.
-These values are the output of the DKG and, therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
+These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
 In many scenarios, it's highly recommended to securely back up the secret share or the shared public key.
 
-If the backup is lost, it's possible, in principle, to request the other signers to recreate and send the signer's secret share.
-This requires the cooperation of at least threshold-many other signers (TODO: specifics?).
+If the DKG output is lost, it is possible to ask the other signers to assist in recovering the lost data.
+In this case, the signer must be very careful to obtain the correct secret share and shared public key (TODO)!
+1. If all other signers are cooperative and their seed is backed up (TODO: do we want to encourage that?), it's possible that the other signers can recreate the signer's lost secret share, .
+   If the signer who lost the share also has a seed backup, they can re-run the DKG.
+2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+   This scheme requires no additional backup or storage space for the signers.
 
-To reduce the chance of losing the backup, one can encrypt the backup and send it to every other signer.
-This requires a decryption key which, unlike the DKG output, can be derived from a seed.
-If the signer loses the local backup, it can be restored if there's at least one other signer that cooperates and sends back the encrypted backup.
-
-There's also the concept of [repairable threshold signatures](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf) (TODO).
+If a signer has the option of deriving a decryption key from some securely backed-up seed and the other signers agree with storing additional data, the signer can use the following alternative backup strategy:
+The signer encrypts their secret share to themselves and distributes it to every other signer.
+If the signer loses their secret share, it can be restored as long as at least one other signer cooperates and sends the encrypted backup.
