@@ -86,7 +86,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
             throw BadParticipant(ids[i])
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], "")
             throw BadParticipant(ids[i])
-    eta += (sig, vss_commit[i])
+        eta += (sig, vss_commit[i])
     if not Eq(eta):
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given id
@@ -107,7 +107,7 @@ def secpedpop_round1(seckey):
     return individual_pk(seckey)
 ```
 
-The public keys are set to each other.
+The public keys are sent to each other.
 Every participant stores the received public keys in the `pubkeys` array.
 
 ```python
