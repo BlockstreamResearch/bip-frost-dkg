@@ -178,7 +178,7 @@ TODO: Expand these scenarios. Relate them to SUCCESS, FAIL, INDETERMINATE.
 Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
 
 ##### Participants are in a single room
-In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their consistency by providing explicit confirmation to every device, e.g., by pressing a button on every device.
+In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
 
 TODO add failure case, specify entire protocol
 
@@ -187,12 +187,9 @@ Similarly, if signing devices are controlled by different organizations in diffe
 These "out-of-band" methods can achieve termination (assuming the involved humans proceed with their tasks eventually).
 
 ##### Certifying network-based protocol
-TODO: Write this down in proper pseudocode so that it can be used together with SecPedPop protocol.
-<!-- I have omitted the variant without certificates. It's simply not safe, because it does not provide conditional termination.-->
-
 TODO The hpk should be the id here... clean this up and write something about setup assumptions
 
-In a network-based scenario, where host keys are available, the equality check can be instantiated by the following protocol:
+In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
 
  - On initialization:
    - Send `sig = sign(hsk, x)` to all other participants
