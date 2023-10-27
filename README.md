@@ -101,7 +101,8 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
 SecPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
-TODO: it could actually be any encryption scheme, but e.g. el gamal would be simple to standardize. We also we may want to consider encrypting all traffic.
+TODO: it could actually be any encryption scheme, but e.g. el gamal would be simple to standardize. We also we may want to consider encrypting all traffic. 
+TIM: We have to think about desired properties, in particular in combination with signatures (authentication vs signatures -- remember iMessage). https://doc.libsodium.org/public-key_cryptography/authenticated_encryption  -- Does iMessage attack matter here? The received messages are checked but if we use encrypt+sign, then you could just copy the polynomial from another participant... no, the pops should avoid this
 
 ```python
 def secpedpop_round1(seckey):
@@ -133,7 +134,9 @@ Note that if the public keys are not distributed correctly or the messages have 
 However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds.
 
 ### Ensuring Agreement
-TODO: What about replay protection? Should Eq also take the ids as inputs (and if yes, as part of x)?
+TODO: What about replay protection? Ephemeral pubkeys should guarantee this, at least when they are present and hashed everytime
+
+TODO: Should Eq also take the ids as inputs (and if yes, as part of x)?
 
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
@@ -144,7 +147,7 @@ but one participant believes that the DKG has finished successfully and sends fu
 Then those funds will be lost irrevocably, because, assuming t > 1, the single remaining secret share is not sufficient to produce a signature.
 
 DKG protocols in the cryptographic literature often abstract away from this problem
-by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby helps ensure agreement.
+by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
 However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specific scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
 
 The two DKG protocols described above work with a similar but slightly weaker abstraction instead.
@@ -152,6 +155,7 @@ They assume that participants have access to an equality check mechanism "Eq", i
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
 TODO Consider removing INDETERMINATE... If we insist on conditional termination, this cannot be an output, it can be at most the state before the output. Then we're back to booleans as in the paper.
+
 Eq has the following abstract interface:
 Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS, INDETERMINATE, or FAIL to the calling participant.
  - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained. It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
