@@ -19,7 +19,7 @@ For each signer, the DKG has three outputs: a secret share, the shared public ke
 The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
 You can refer to the [Backup and Recover](#backup-and-recover) section for additional details.
 
-While all outputs should have a backup, it is particula in particular
+While all outputs should have a backup, it is particula in particular FIXME
 It is extremely important that the both outputs are securely backed up.
 Losing the share will render the signer incapable of producing signatures.
 
@@ -27,13 +27,14 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 
 ### SimplPedPop
 
-We specify the SimplPedPop scheme as described in [Practical Schnorr Threshold Signatures
-Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf) with the following minor modifications:
+We specify the SimplPedPop scheme as described in
+[Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
+with the following minor modifications:
 
-- Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) to identify participants instead of indices. These IDs must be chosen to be unique by honest participants, otherwise they may not be able to produce a signature despite exceeding the threshold. However, if a malicious participant copies an ID, signatures are still unforgeable. Using indices would not be ideal because they imply a global order of the participants.
+- Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) instead of indices as participant identifiers (IDs). This allows for greater flexibility (e.g., IDs can be long-term public keys on the secp256k1 curve), and avoids the need to agree on a global order of signers upfront. The honest participants must choose their IDs such that no two honest participants have the same ID, because a collision between IDs of honest participants means that some `t` honest signers may not able to produce a signature despite reaching the threshold. (However, if a malicious participant claims to have the same ID as an honest participant, signatures remain unforgeable.) A simple way to exclude ID collisions between honest participants is to let each participant choose a random ID. As long as the IDs are chosen uniformly at random from a large enough space, e.g., random 33-byte arrays or random points on the secp256k1 curve, collisions will happen only with negligible probability.
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
-- The proof-of-knowledge in the setup does not commit to the prover's id. This is slightly simpler because it doesn't require the setup algorithm to know take the id as input.
+- The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to know take the ID as input.
 
 SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
