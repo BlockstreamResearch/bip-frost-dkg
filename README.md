@@ -30,7 +30,7 @@ with the following minor modifications:
 - Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) instead of indices as participant identifiers (IDs). This allows for greater flexibility (e.g., IDs can be long-term public keys on the secp256k1 curve), and avoids the need to agree on a global order of signers upfront. The honest participants must choose their IDs such that no two honest participants have the same ID, because a collision between IDs of honest participants means that some `t` honest signers may not able to produce a signature despite reaching the threshold. (However, if a malicious participant claims to have the same ID as an honest participant, signatures remain unforgeable.) A simple way to exclude ID collisions between honest participants is to let each participant choose a random ID. As long as the IDs are chosen uniformly at random from a large enough space, e.g., random 33-byte arrays or random points on the secp256k1 curve, collisions will happen only with negligible probability.
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
-- The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to know take the ID as input.
+- The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
 
 SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
@@ -196,6 +196,8 @@ In a network-based scenario, where long-term host keys are available, the equali
      - If a valid signature was received from all other participants (i.e., `if sigs.keys() = hpks`):
        - Return SUCCESS
        - Send `cert = array(sigs.values())` to all other participants
+   <!-- - Else if `verify(hpk, sig, x) == false`: -->
+   <!--   - The signer `hpk` is either malicious or an honest signer that has `x' != x`. This signer can still be SUCCESS due to a cert, but make clear (logs?) that something went wrong. -->
  - Upon receiving a value `cert`:
      - Parse `cert` as a list of signatures; break this "upon" block if parsing fails.
      - If for all `i=0..n-1`, `verify(hpk[i], sig[i], x) == true`
