@@ -19,10 +19,6 @@ For each signer, the DKG has three outputs: a secret share, the shared public ke
 The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
 You can refer to the [Backup and Recover](#backup-and-recover) section for additional details.
 
-While all outputs should have a backup, it is particula in particular FIXME
-It is extremely important that the both outputs are securely backed up.
-Losing the share will render the signer incapable of producing signatures.
-
 Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup.
 
 ### SimplPedPop
