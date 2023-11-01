@@ -36,7 +36,7 @@ SimplPedPop requires SECURE point-to-point channels between the participants, i.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
 
 Also, SimplePedPop requires an interactive protocol `Eq` as described in section [Ensuring Agreement](#ensuring-agreement).
-It is important to note that with some instantiations of `Eq`, SimplPedPop may fail but the signer still cannot delete any secret key material that was created for the DKG session.
+<!-- This is unnecessary now since we're about to delete the INDETERMINATE state: It is important to note that with some instantiations of `Eq`, SimplPedPop may fail but the signer still cannot delete any secret key material that was created for the DKG session. -->
 
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
@@ -66,7 +66,7 @@ In SimplPedPop every participant has secure channels to every other participant.
 For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
 
 ```python
-def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
+def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -78,12 +78,14 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
-    for i in n:
+    for i in range(n):
         if not verify_vss(my_id, vss_commits[i], shares[i]):
             throw BadParticipant(ids[i])
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], "")
             throw BadParticipant(ids[i])
-        eta += (sig, vss_commit[i])
+        eta[ids[i]] += (sig, vss_commit[i])
+    # Create list of eta's values lexicographically sorted by the ids
+    eta = [eta[key] for key in sorted(eta.keys())]
     if not Eq(eta):
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given id
@@ -104,12 +106,13 @@ def secpedpop_round1(seckey):
     return individual_pk(seckey)
 ```
 
-The public keys are sent to each other.
+The public keys are distributed among each other and serve as IDs.
+They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
 Every participant stores the received public keys in the `pubkeys` array.
 
 ```python
 def secpedpop_round2(seed, t, pubkeys):
-    # TODO: optional strengthening of the seed, could also be part of SimplPedPop
+    # TODO: Below line implements optional strengthening of the seed, could also be part of SimplPedPop
     seed = Hash(seed, t, pubkeys)
     vss_commit, shares = simplpedpop_setup(seed, t, pubkeys)
     enc_shares = [encrypt(shares[i], pubkeys[i]) for i in range(len(pubkeys))
@@ -121,7 +124,8 @@ For every other participant `id[i]`, the participant sends `vss_commit` and `enc
 ```python
 def secpedpop_finalize(pubkeys, my_pubkey, vss_commit, enc_shares):
   shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
-  eta = pubkeys
+  # eta is a dictionary consisting of (ID, value) key-value pairs.
+  eta = {x: x for x in pubkeys}
   return simplpedpop_finalize(pubkeys, my_pubkey, vss_commit, shares, eta):
 ```
 
