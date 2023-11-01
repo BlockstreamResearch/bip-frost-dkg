@@ -106,27 +106,28 @@ def secpedpop_round1(seckey):
     return individual_pk(seckey)
 ```
 
-The public keys are distributed among each other and serve as IDs.
+The public keys are distributed among each other.
 They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
-Every participant stores the received public keys in the `pubkeys` array.
+The receiver of a public key from participant `ids[i]` stores the public key in an array `pubkeys` at position `i` (TODO: duplicates).
 
 ```python
-def secpedpop_round2(seed, t, pubkeys):
+def secpedpop_round2(seed, t, ids, pubkeys):
     # TODO: Below line implements optional strengthening of the seed, could also be part of SimplPedPop
-    seed = Hash(seed, t, pubkeys)
-    vss_commit, shares = simplpedpop_setup(seed, t, pubkeys)
+    seed = Hash(seed, t, ids, pubkeys)
+    vss_commit, shares = simplpedpop_setup(seed, t, ids)
     enc_shares = [encrypt(shares[i], pubkeys[i]) for i in range(len(pubkeys))
     return vss_commit, enc_shares
 ```
 
-For every other participant `id[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
+For every other participant `ids[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def secpedpop_finalize(pubkeys, my_pubkey, vss_commit, enc_shares):
+def secpedpop_finalize(ids, my_id, pubkeys, vss_commit, enc_shares):
   shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
   # eta is a dictionary consisting of (ID, value) key-value pairs.
-  eta = {x: x for x in pubkeys}
-  return simplpedpop_finalize(pubkeys, my_pubkey, vss_commit, shares, eta):
+  # For key ids[i] we set value to (ids[i], pubkeys[i]).
+  eta = {ids[i]: (ids[i], pubkeys[i]) for i in range(len(ids))}
+  return simplpedpop_finalize(ids, my_id, vss_commit, shares, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
