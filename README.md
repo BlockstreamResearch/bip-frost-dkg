@@ -97,8 +97,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = ()):
 SecPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
-TODO: it could actually be any encryption scheme, but e.g. el gamal would be simple to standardize. We also we may want to consider encrypting all traffic. 
-TIM: We have to think about desired properties, in particular in combination with signatures (authentication vs signatures -- remember iMessage). https://doc.libsodium.org/public-key_cryptography/authenticated_encryption  -- Does iMessage attack matter here? The received messages are checked but if we use encrypt+sign, then you could just copy the polynomial from another participant... no, the pops should avoid this
+TODO: Specify an encryption scheme. Good candidates are ECIES and `crypto_box` from NaCl, which is just ECDH+AEAD (https://doc.libsodium.org/public-key_cryptography/authenticated_encryption). We also we may want to consider encrypting all traffic. Depending on the scheme, we could reuse keys for signatures and encryption but then we need stronger hardness assumptions (https://crypto.stackexchange.com/questions/37896/using-a-single-ed25519-key-for-encryption-and-signature). We have to think about desired properties, in particular in combination with signatures (authentication vs signatures -- remember the iMessage attack).
 
 ```python
 def secpedpop_round1(seckey):
