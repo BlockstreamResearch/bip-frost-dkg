@@ -76,7 +76,7 @@ In SimplPedPop every participant has secure channels to every other participant.
 For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
 
 ```python
-def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
+def simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta = {}):
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -137,12 +137,12 @@ def secpedpop_round2(seed, t, ids, pubkeys):
 For every other participant `ids[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def secpedpop_finalize(ids, my_id, pubkeys, vss_commit, enc_shares):
+def secpedpop_finalize(ids, my_id, pubkeys, vss_commit, enc_shares, Eq):
   shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
   # eta is a dictionary consisting of (ID, value) key-value pairs.
   # For key ids[i] we set value to (ids[i], pubkeys[i]).
   eta = {ids[i]: (ids[i], pubkeys[i]) for i in range(len(ids))}
-  return simplpedpop_finalize(ids, my_id, vss_commit, shares, eta):
+  return simplpedpop_finalize(ids, my_id, vss_commit, shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
