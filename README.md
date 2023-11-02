@@ -41,13 +41,13 @@ Also, SimplePedPop requires an interactive protocol `Eq` as described in section
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
 ```python
-def simplpedpop_setup(seed, t, ids):
+def simplpedpop_setup(seed, t, signer_ids):
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
-    :param List[bytes] ids: 33-bytes that identify the participants, must be unique
+    :param List[bytes] signer_ids: 33-bytes that identify the future signers, must be unique
     :return: a VSS commitment and shares
     """
     f = polynomial_gen(seed)
@@ -58,7 +58,7 @@ def simplpedpop_setup(seed, t, ids):
     assert(vss_commit[0] == pubkey_gen(sk))
     sig = sign(sk, "")
     vss_commit = vss_commit || sig
-    shares = [ f(hash_sometag(id)) for id in ids ]
+    shares = [ f(hash_sometag(id)) for id in signer_ids ]
     return vss_commit, shares
 ```
 
@@ -66,11 +66,13 @@ In SimplPedPop every participant has secure channels to every other participant.
 For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
 
 ```python
-def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
+def simplpedpop_finalize(ids, n, my_id, vss_commits, shares, eta = {}):
     """
     Take the messages received from the participants and finalize the DKG
 
-    :param List[bytes] ids: 33-bytes that identify the participants, must be unique
+    :param List[bytes] ids: 33-bytes that identify the future signers and input contributors
+                            the first n ids are future signers, the rest are contributors, must be unique
+    :param integer n: number of signers
     :param my_id bytes: 33-bytes that identify this participant, must be in ids
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
@@ -78,10 +80,14 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
-    n = len(ids)
-    assert(n == len(share) and n == len(vss_commits))
-    for i in range(n):
-        if not verify_vss(my_id, vss_commits[i], shares[i]):
+    q = len(ids)
+    is_signer = ids.index(my_id) < n # TODO: deal with duplicates
+    assert(q >= n)
+    if is_signer:
+        assert(q == len(shares))
+    assert(q == len(vss_commits))
+    for i in range(q):
+        if is_signer and not verify_vss(my_id, vss_commits[i], shares[i]):
             throw BadParticipant(ids[i])
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], "")
             throw BadParticipant(ids[i])
@@ -92,7 +98,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given id
     signer_pubkeys = [helper_compute_pk(vss_commits, t, ids[i]) for i in range(n)]
-    pubkey = sum([vss_commits[i][0] for i in range(n)])
+    pubkey = sum([vss_commits[i][0] for i in range(q)])
     return sum(shares), pubkey, signer_pubkeys
 ```
 
