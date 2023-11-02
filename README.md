@@ -50,7 +50,7 @@ def simplpedpop_setup(seed, t, ids):
     :param List[bytes] ids: 33-bytes that identify the participants, must be unique
     :return: a VSS commitment and shares
     """
-    f = polynomial_gen(seed)
+    f = polynomial_gen(seed, t)
     # vss_commit[0] denotes the commitment to the constant term
     vss_commit = commit_to_coefficients(f)
     # sk is the constant term of f and the dlog of vss_commit[0]
@@ -74,12 +74,13 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
     :param my_id bytes: 33-bytes that identify this participant, must be in ids
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
+        Each vss_commits[i] must be of length t
     :param List[bytes] shares: shares from all participants (including this participant)
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
     n = len(ids)
-    assert(n == len(share) and n == len(vss_commits))
+    assert(n == len(shares) and n == len(vss_commits))
     for i in range(n):
         if not verify_vss(my_id, vss_commits[i], shares[i]):
             throw BadParticipant(ids[i])
@@ -91,7 +92,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
     if not Eq(eta):
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given id
-    signer_pubkeys = [helper_compute_pk(vss_commits, t, ids[i]) for i in range(n)]
+    signer_pubkeys = [helper_compute_pk(vss_commits, ids[i]) for i in range(n)]
     pubkey = sum([vss_commits[i][0] for i in range(n)])
     return sum(shares), pubkey, signer_pubkeys
 ```
