@@ -138,11 +138,11 @@ For every other participant `ids[i]`, the participant sends `vss_commit` and `en
 
 ```python
 def secpedpop_finalize(ids, my_id, pubkeys, vss_commit, enc_shares, Eq):
-  shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
-  # eta is a dictionary consisting of (ID, value) key-value pairs.
-  # For key ids[i] we set value to (ids[i], pubkeys[i]).
-  eta = {ids[i]: (ids[i], pubkeys[i]) for i in range(len(ids))}
-  return simplpedpop_finalize(ids, my_id, vss_commit, shares, Eq, eta):
+    shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
+    # eta is a dictionary consisting of (ID, value) key-value pairs.
+    # For key ids[i] we set value to (ids[i], pubkeys[i]).
+    eta = {ids[i]: (ids[i], pubkeys[i]) for i in range(len(ids))}
+    return simplpedpop_finalize(ids, my_id, vss_commit, shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
