@@ -97,7 +97,7 @@ def simplpedpop_finalize(t, ids, my_id, vss_commits, shares, Eq, eta = ()):
             throw BadParticipant(ids[i])
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], ""):
             throw BadParticipant(ids[i])
-        eta[ids[i]] += (id[i], vss_commits[i], vss_commit[i].sig)
+        eta[ids[i]] += (ids[i], vss_commits[i], vss_commit[i].sig)
     # Create list of eta's values lexicographically sorted by the ids
     eta = [eta[key] for key in sorted(eta.keys())]
     if not Eq(eta):
@@ -140,9 +140,8 @@ For every other participant `ids[i]`, the participant sends `vss_commit` and `en
 ```python
 def secpedpop_finalize(ids, my_id, pubkeys, vss_commits, enc_shares, Eq):
     shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
-    # eta is a dictionary consisting of (ID, value) key-value pairs.
-    # For key ids[i] we set value to (ids[i], pubkeys[i]).
-    eta = {ids[i]: (ids[i], pubkeys[i]) for i in range(len(ids))}
+    # eta is a dictionary consisting of (ID, pubkey) key-value pairs.
+    eta = {ids[i]: pubkeys[i] for i in range(len(ids))}
     return simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta):
 ```
 
