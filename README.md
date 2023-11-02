@@ -78,6 +78,8 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, eta = {}):
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
+    n = len(ids)
+    assert(n == len(share) and n == len(vss_commits))
     for i in range(n):
         if not verify_vss(my_id, vss_commits[i], shares[i]):
             throw BadParticipant(ids[i])
