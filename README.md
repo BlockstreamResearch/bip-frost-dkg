@@ -50,6 +50,8 @@ Also, SimplePedPop requires an interactive protocol `Eq` as described in section
 
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
+TODO: We need to make sure that there are no two honest participants who believe they have the same id. (Note that just checking that my_id is in ids is not enough.) It should suffice that everyone announces their id (or their index in ids) and aborts if there's another participant claiming the same id. 
+
 ```python
 def simplpedpop_setup(seed, t, ids):
     """
