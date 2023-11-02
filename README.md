@@ -148,6 +148,76 @@ def secpedpop_finalize(ids, my_id, pubkeys, vss_commits, enc_shares, Eq):
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds.
 
+### DetPedPop
+
+DetPedPop is a wrapper around SecPedPop.
+Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
+Since the transcript is public, every signer (and the coordinator) can store it to help recover any other signer.
+
+Generate long-term host keys.
+
+```python
+def detpedpop_hostpubkey(seed):
+    my_hostsigkey = kdf(seed, "hostsigkey")
+    my_hostverkey = individual_pk(hostsigkey)
+    return my_hostverkey
+```
+
+Send host pubkey to every other participant.
+After receiving a host pubkey from every other participant, compute a setup identifier.
+
+```python
+def detpedpop_setup_id(setup_params):
+    (hostverkeys, t, context) = setup_params
+    setup_id = Hash(setup_params)
+    return setup_id
+```
+
+Compare the setup identifier with every other participant out-of-band.
+If some other participant presents a different setup identifier, abort.
+
+```python
+def detpedpop_round1(seed, params):
+    # TODO Rederive setup_id and my_hostsigkey. Or make this a class with state.
+
+    my_deckey = kdf(seed, setup_id, "deckey")
+    my_enckey = secpedpop_round1(my_deckey)
+
+    sig = sign(my_hostsigkey, my_enckey)
+    round1 = (my_enckey, sig)
+    return round1
+```
+
+```python
+def detpedpop_round2(seed, params, round1s):
+    # TODO Rederive stuff.
+
+    ids = hostverkeys
+
+    # Verify signatures on encryption keys
+    for i in n:
+        enckeys[i] = round1s[i].enckey
+        if not verify_sig(round1s[i].sig, hostverkeys[i], enckeys[i]):
+            throw BadParticipant(hostverkeys[i])
+
+    # Derive setup-dependent seed
+    seed_ = kdf(seed, setup_id)
+
+    # TODO Should this be signed? It shouldn't be necessary; Eq will cover it anyway.
+    # TODO This is not optimal. SecPedPop will use the enckeys as IDs but we'd prefer the hostverkeys.
+    return secpedpop_round2(seed_, t, ids, enckeys)
+```
+
+```python
+def detpedpop_finalize(seed, hostverkeys, vss_commits, enc_shares):
+    # TODO Rederive stuff.
+
+    my_id = my_hostverkey
+
+    # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
+    return secpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
+```
+
 ### Ensuring Agreement
 TODO: What about replay protection? Ephemeral pubkeys should guarantee this, at least when they are present and hashed everytime
 
