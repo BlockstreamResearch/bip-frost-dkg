@@ -67,7 +67,8 @@ def simplpedpop_setup(seed, t, ids):
     sk = f[0]
     assert(vss_commit[0] == pubkey_gen(sk))
     sig = sign(sk, "")
-    vss_commit = vss_commit || sig
+    # FIXME make sig a separate thig
+    vss_commit = vss_commit + sig
     shares = [ f(hash_sometag(id)) for id in ids ]
     return vss_commit, shares
 ```
@@ -76,7 +77,7 @@ In SimplPedPop every participant has secure channels to every other participant.
 For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
 
 ```python
-def simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta = {}):
+def simplpedpop_finalize(t, ids, my_id, vss_commits, shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -96,7 +97,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta = {}):
             throw BadParticipant(ids[i])
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], ""):
             throw BadParticipant(ids[i])
-        eta[ids[i]] += (sig, vss_commit[i])
+        eta[ids[i]] += (id[i], vss_commits[i], vss_commit[i].sig)
     # Create list of eta's values lexicographically sorted by the ids
     eta = [eta[key] for key in sorted(eta.keys())]
     if not Eq(eta):
