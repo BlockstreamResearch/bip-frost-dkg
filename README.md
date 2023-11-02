@@ -82,7 +82,7 @@ def simplpedpop_finalize(t, ids, my_id, vss_commits, shares, Eq, eta = ()):
     Take the messages received from the participants and finalize the DKG
 
     :param List[bytes] ids: 33-bytes that identify the participants, must be unique
-    :param my_id bytes: 33-bytes that identify this participant, must be in ids
+    :param my_id bytes: 33-bytes that identify this participant, must be in ids TODO: assert this
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
         Each vss_commits[i] must be of length t
