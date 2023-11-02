@@ -21,13 +21,23 @@ You can refer to the [Backup and Recover](#backup-and-recover) section for addit
 
 Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup.
 
+### Design
+
+- **Large Number of Applications**: This DKG supports a wide range of scenarios. It can handle situations from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. The DKG can support situations where backup information is required to be written down manually , as well as those with ample backup space. To support this flexiblity, the document proposes several methods to [ensure agreement](#ensuring-agreement), including a potentially novel (?) network-based certification protocol.
+- **Arbitrary 33-byte arrays instead of indices as participant identifiers (IDs)**: This allows for greater flexibility (e.g., IDs can be long-term public keys on the secp256k1 curve), and avoids the need to agree on a global order of signers upfront. The honest participants must choose their IDs such that no two honest participants have the same ID, because a collision between IDs of honest participants means that some `t` honest signers may not able to produce a signature despite reaching the threshold. (However, if a malicious participant claims to have the same ID as an honest participant, signatures remain unforgeable.) A simple way to exclude ID collisions between honest participants is to let each participant choose a random ID. As long as the IDs are chosen uniformly at random from a large enough space, e.g., random 33-byte arrays or random points on the secp256k1 curve, collisions will happen only with negligible probability.
+- **DKG outputs per-participant public keys**: When DKG used in FROST allowing partial signature verification.
+- **Optional instantiation of secure channels for share transfer** (TODO: may not remain optional)
+- **Support for backups**
+- **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
+- **Little optimized for communication overhead or number of rounds**
+
 ### SimplPedPop
 
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 with the following minor modifications:
 
-- Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) instead of indices as participant identifiers (IDs). This allows for greater flexibility (e.g., IDs can be long-term public keys on the secp256k1 curve), and avoids the need to agree on a global order of signers upfront. The honest participants must choose their IDs such that no two honest participants have the same ID, because a collision between IDs of honest participants means that some `t` honest signers may not able to produce a signature despite reaching the threshold. (However, if a malicious participant claims to have the same ID as an honest participant, signatures remain unforgeable.) A simple way to exclude ID collisions between honest participants is to let each participant choose a random ID. As long as the IDs are chosen uniformly at random from a large enough space, e.g., random 33-byte arrays or random points on the secp256k1 curve, collisions will happen only with negligible probability.
+- Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) instead of indices as participant identifiers (IDs).
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
@@ -112,6 +122,8 @@ def secpedpop_round1(seckey):
 The public keys are distributed among each other.
 They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
 The receiver of a public key from participant `ids[i]` stores the public key in an array `pubkeys` at position `i` (TODO: duplicates).
+
+TODO: this is slightly awkward for users who could use the pubkeys as ids
 
 ```python
 def secpedpop_round2(seed, t, ids, pubkeys):
