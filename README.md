@@ -69,7 +69,7 @@ def simplpedpop_setup(seed, t, ids):
     sk = f[0]
     assert(vss_commit[0] == pubkey_gen(sk))
     sig = sign(sk, "")
-    # FIXME make sig a separate thig
+    # FIXME make sig a separate thing
     vss_commit = vss_commit + sig
     shares = [ f(hash_sometag(id)) for id in ids ]
     return vss_commit, shares
@@ -130,9 +130,10 @@ TODO: this is slightly awkward for users who could use the pubkeys as ids
 
 ```python
 def secpedpop_round2(seed, t, ids, pubkeys):
-    # TODO: Below line implements optional strengthening of the seed, could also be part of SimplPedPop
-    seed = Hash(seed, t, ids, pubkeys)
-    vss_commit, shares = simplpedpop_setup(seed, t, ids)
+    # Protect against reuse of seed in case we previously exported shares
+    # for wrong ids or encrypted under wrong pubkeys.
+    seed_ = Hash(seed, t, ids, pubkeys)
+    vss_commit, shares = simplpedpop_setup(seed_, t, ids)
     enc_shares = [encrypt(shares[i], pubkeys[i]) for i in range(len(pubkeys))
     return vss_commit, enc_shares
 ```
@@ -197,13 +198,15 @@ def detpedpop_round2(seed, params, round1s):
     ids = hostverkeys
 
     # Verify signatures on encryption keys
-    for i in n:
+    # TODO We could drop the signature entirely because enckeys is used in the derivation of seed_ (even inside SecPedPop).
+    # Then the wrapper would be become rather minimal.
+    for i in range(n):
         enckeys[i] = round1s[i].enckey
         if not verify_sig(round1s[i].sig, hostverkeys[i], enckeys[i]):
             throw BadParticipant(hostverkeys[i])
 
     # Derive setup-dependent seed
-    seed_ = kdf(seed, setup_id)
+    seed_ = kdf(seed, setup_id, enckeys)
 
     # TODO Should this be signed? It shouldn't be necessary; Eq will cover it anyway.
     # TODO This is not optimal. SecPedPop will use the enckeys as IDs but we'd prefer the hostverkeys.
