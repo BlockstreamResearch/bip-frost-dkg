@@ -94,7 +94,7 @@ def simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta = {}):
     for i in range(n):
         if not verify_vss(my_id, vss_commits[i], shares[i]):
             throw BadParticipant(ids[i])
-        if not verify_sig(vss_commits[i].sig, vss_commits[i][0], "")
+        if not verify_sig(vss_commits[i].sig, vss_commits[i][0], ""):
             throw BadParticipant(ids[i])
         eta[ids[i]] += (sig, vss_commit[i])
     # Create list of eta's values lexicographically sorted by the ids
@@ -137,12 +137,12 @@ def secpedpop_round2(seed, t, ids, pubkeys):
 For every other participant `ids[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def secpedpop_finalize(ids, my_id, pubkeys, vss_commit, enc_shares, Eq):
+def secpedpop_finalize(ids, my_id, pubkeys, vss_commits, enc_shares, Eq):
     shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
     # eta is a dictionary consisting of (ID, value) key-value pairs.
     # For key ids[i] we set value to (ids[i], pubkeys[i]).
     eta = {ids[i]: (ids[i], pubkeys[i]) for i in range(len(ids))}
-    return simplpedpop_finalize(ids, my_id, vss_commit, shares, Eq, eta):
+    return simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
