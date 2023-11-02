@@ -134,6 +134,7 @@ def secpedpop_round2(seed, t, ids, pubkeys):
     # for wrong ids or encrypted under wrong pubkeys.
     seed_ = Hash(seed, t, ids, pubkeys)
     vss_commit, shares = simplpedpop_setup(seed_, t, ids)
+    # TODO The encrypt function should have a randomness argument. Derive this also from seed_?
     enc_shares = [encrypt(shares[i], pubkeys[i]) for i in range(len(pubkeys))
     return vss_commit, enc_shares
 ```
@@ -149,7 +150,7 @@ def secpedpop_finalize(ids, my_id, pubkeys, vss_commits, enc_shares, Eq):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
-However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds.
+However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds. (TODO This should be solved now?)
 
 ### DetPedPop
 
