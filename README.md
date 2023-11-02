@@ -209,7 +209,6 @@ def detpedpop_round2(seed, params, round1s):
     seed_ = kdf(seed, setup_id, enckeys)
 
     # TODO Should this be signed? It shouldn't be necessary; Eq will cover it anyway.
-    # TODO This is not optimal. SecPedPop will use the enckeys as IDs but we'd prefer the hostverkeys.
     return secpedpop_round2(seed_, t, ids, enckeys)
 ```
 
