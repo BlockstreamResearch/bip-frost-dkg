@@ -245,6 +245,7 @@ They assume that participants have access to an equality check mechanism "Eq", i
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
 TODO Consider removing INDETERMINATE... If we insist on conditional termination, this cannot be an output, it can be at most the state before the output. Then we're back to booleans as in the paper.
+TODO (Jonas): In the real world, the certifying network-based protocol might be aborted/interrupted. In that case, the signers are effectively in an INDETERMINATE state (and are not supposed to delete their secrets).
 
 Eq has the following abstract interface:
 Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS, INDETERMINATE, or FAIL to the calling participant.
