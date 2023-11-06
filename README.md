@@ -217,10 +217,12 @@ def recpedpop_round2(seed, state3, enckeys):
 
 ```python
 def recpedpop_finalize(seed, state4, vss_commits, enc_shares):
+    # TODO: explain broadcast of enc_shares
+    assert(len(enc_shares) == len(hostverkeys)**2)
     (my_hostsigkey, hostverkeys, setup_id, enc_state2) = state4
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
-    return encpedpop_finalize(enc_state2, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
+    return encpedpop_finalize(enc_state2, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id + enc_shares)
 ```
 
 ### Ensuring Agreement
