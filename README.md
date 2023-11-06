@@ -226,10 +226,6 @@ def recpedpop_finalize(seed, state4, vss_commits, enc_shares):
 ```
 
 ### Ensuring Agreement
-TODO: What about replay protection? Ephemeral pubkeys should guarantee this, at least when they are present and hashed everytime
-
-TODO: Should Eq also take the ids as inputs (and if yes, as part of x)?
-
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
 A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
@@ -242,7 +238,7 @@ DKG protocols in the cryptographic literature often abstract away from this prob
 by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
 However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specific scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
 
-The two DKG protocols described above work with a similar but slightly weaker abstraction instead.
+The DKG protocols described above work with a similar but slightly weaker abstraction instead.
 They assume that participants have access to an equality check mechanism "Eq", i.e.,
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
