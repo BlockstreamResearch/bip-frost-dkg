@@ -118,34 +118,36 @@ The participants start by generating an ephemeral key pair as per [BIP 327's Ind
 TODO: Specify an encryption scheme. Good candidates are ECIES and `crypto_box` from NaCl, which is just ECDH+AEAD (https://doc.libsodium.org/public-key_cryptography/authenticated_encryption). We also we may want to consider encrypting all traffic. Depending on the scheme, we could reuse keys for signatures and encryption but then we need stronger hardness assumptions (https://crypto.stackexchange.com/questions/37896/using-a-single-ed25519-key-for-encryption-and-signature). We have to think about desired properties, in particular in combination with signatures (authentication vs signatures -- remember the iMessage attack).
 
 ```python
-def secpedpop_round1(seckey):
-    return individual_pk(seckey)
+def secpedpop_round1(seed):
+    my_deckey = kdf(seed, "deckey")
+    my_enckey = individual_pk(my_deckey)
+    return my_enckey
 ```
 
-The public keys are distributed among each other.
+The (public) encryption keys are distributed among each other.
 They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
-The receiver of a public key from participant `ids[i]` stores the public key in an array `pubkeys` at position `i` (TODO: duplicates).
+The receiver of an encryption key from participant `ids[i]` stores the encryption key in an array `enckeys` at position `i` (TODO: duplicates).
 
 TODO: this is slightly awkward for users who could use the pubkeys as ids
 
 ```python
-def secpedpop_round2(seed, t, ids, pubkeys):
+def secpedpop_round2(seed, t, ids, enckeys):
     # Protect against reuse of seed in case we previously exported shares
-    # for wrong ids or encrypted under wrong pubkeys.
-    seed_ = Hash(seed, t, ids, pubkeys)
+    # for wrong ids or encrypted under wrong enckeys.
+    seed_ = Hash(seed, t, ids, enckeys)
     vss_commit, shares = simplpedpop_setup(seed_, t, ids)
     # TODO The encrypt function should have a randomness argument. Derive this also from seed_?
-    enc_shares = [encrypt(shares[i], pubkeys[i]) for i in range(len(pubkeys))
+    enc_shares = [encrypt(shares[i], enckeys[i]) for i in range(len(enckeys))
     return vss_commit, enc_shares
 ```
 
 For every other participant `ids[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def secpedpop_finalize(ids, my_id, pubkeys, vss_commits, enc_shares, Eq):
+def secpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, Eq):
     shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
-    # eta is a dictionary consisting of (ID, pubkey) key-value pairs.
-    eta = {ids[i]: pubkeys[i] for i in range(len(ids))}
+    # eta is a dictionary consisting of (ID, enckey) key-value pairs.
+    eta = {ids[i]: enckeys[i] for i in range(len(ids))}
     return simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta):
 ```
 
