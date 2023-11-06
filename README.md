@@ -32,6 +32,8 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 
 ### SimplPedPop
 
+TODO For each DKG, add a function that implements an entire protocol run (for one party) by calling the existing functions. This will involve adding a network abstraction (i.e., "send()" and "receive()" functions). Once we have a network abstraction, we can cleanly "implement" (in pseudocode) Eq protocols as functions and call them from DKGs.
+
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 with the following minor modifications:
@@ -221,6 +223,11 @@ def recpedpop_finalize(seed, state4, vss_commits, enc_shares):
     (my_hostsigkey, hostverkeys, setup_id, enc_state2) = state4
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
+    # Include the enc_shares in eta to ensure that participants agree on all
+    # shares, which in turn ensures that they have the right transcript.
+    # TODO This means all parties who hold the "transcript" in the end should
+    # participate in Eq?
+    eta = setup_id + enc_shares
     return encpedpop_finalize(enc_state2, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id + enc_shares)
 ```
 
@@ -279,6 +286,7 @@ TODO The hpk should be the id here... clean this up and write something about se
 
 In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
 
+TODO Make this two or three algorithms Pythonic
  - On initialization:
    - Send `sig = sign(hsk, x)` to all other participants
    - Initialize an empty key-value store `cert`, ordered by keys
