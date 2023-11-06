@@ -12,7 +12,7 @@ To avoid the single point of failure when trusting the dealer, the signers run a
 If the DKG for threshold `t` succeeds from the point of view of a signer and outputs a shared public key, then FROST signatures are unforgeable, i.e., `t` signers are required to cooperate to produce a signature for the shared public key - regardless of how many other participants in the the DKG were dishonest.
 
 To instantiate a DKG there are many possible schemes which differ by the guarantees they provide.
-Since DKGs are difficult to implement correctly in practice, this document describes DKGs that are relatively *simple*, namely SimplPedPop and SecPedPop.
+Since DKGs are difficult to implement correctly in practice, the aim of this document is to describe pragmatic DKGs that are *simple*, namely SimplPedPop and EncPedPop. TODO
 However, the DKG can be swapped out for a different one provided it is proven to be secure when used in FROST.
 
 For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
@@ -110,15 +110,15 @@ def simplpedpop_finalize(t, ids, my_id, vss_commits, shares, Eq, eta = ()):
     return sum(shares), pubkey, signer_pubkeys
 ```
 
-### SecPedPop
+### EncPedPop
 
-SecPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
+EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
 TODO: Specify an encryption scheme. Good candidates are ECIES and `crypto_box` from NaCl, which is just ECDH+AEAD (https://doc.libsodium.org/public-key_cryptography/authenticated_encryption). We also we may want to consider encrypting all traffic. Depending on the scheme, we could reuse keys for signatures and encryption but then we need stronger hardness assumptions (https://crypto.stackexchange.com/questions/37896/using-a-single-ed25519-key-for-encryption-and-signature). We have to think about desired properties, in particular in combination with signatures (authentication vs signatures -- remember the iMessage attack).
 
 ```python
-def secpedpop_round1(seed):
+def encpedpop_round1(seed):
     my_deckey = kdf(seed, "deckey")
     my_enckey = individual_pk(my_deckey)
     return my_enckey
@@ -131,7 +131,7 @@ The receiver of an encryption key from participant `ids[i]` stores the encryptio
 TODO: this is slightly awkward for users who could use the pubkeys as ids
 
 ```python
-def secpedpop_round2(seed, t, ids, enckeys):
+def encpedpop_round2(seed, t, ids, enckeys):
     # Protect against reuse of seed in case we previously exported shares
     # for wrong ids or encrypted under wrong enckeys.
     seed_ = Hash(seed, t, ids, enckeys)
@@ -144,7 +144,7 @@ def secpedpop_round2(seed, t, ids, enckeys):
 For every other participant `ids[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def secpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, Eq):
+def encpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, Eq):
     shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
     # eta is a dictionary consisting of (ID, enckey) key-value pairs.
     eta = {ids[i]: enckeys[i] for i in range(len(ids))}
@@ -154,16 +154,16 @@ def secpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, Eq):
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds. (TODO This should be solved now?)
 
-### DetPedPop
+### RecPedPop
 
-DetPedPop is a wrapper around SecPedPop.
+RecPedPop is a wrapper around EncPedPop.
 Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
 Since the transcript is public, every signer (and the coordinator) can store it to help recover any other signer.
 
 Generate long-term host keys.
 
 ```python
-def detpedpop_hostpubkey(seed):
+def recpedpop_hostpubkey(seed):
     my_hostsigkey = kdf(seed, "hostsigkey")
     my_hostverkey = individual_pk(hostsigkey)
     return my_hostverkey
@@ -173,7 +173,7 @@ Send host pubkey to every other participant.
 After receiving a host pubkey from every other participant, compute a setup identifier.
 
 ```python
-def detpedpop_setup_id(setup_params):
+def recpedpop_setup_id(setup_params):
     (hostverkeys, t, context) = setup_params
     setup_id = Hash(setup_params)
     return setup_id
@@ -183,30 +183,30 @@ Compare the setup identifier with every other participant out-of-band.
 If some other participant presents a different setup identifier, abort.
 
 ```python
-def detpedpop_round1(seed, params):
+def recpedpop_round1(seed, params):
     # TODO Rederive setup_id. Or make this a class with state.
 
     # Derive setup-dependent seed
     seed_ = kdf(seed, setup_id)
 
-    return secpedpop_round1(seed_)
+    return encpedpop_round1(seed_)
 ```
 
 ```python
-def detpedpop_round2(seed, params, round1s):
+def recpedpop_round2(seed, params, round1s):
     # TODO Rederive hostverkeys, seed_ and t.
 
     ids = hostverkeys
-    return secpedpop_round2(seed_, t, ids, enckeys)
+    return encpedpop_round2(seed_, t, ids, enckeys)
 ```
 
 ```python
-def detpedpop_finalize(seed, hostverkeys, vss_commits, enc_shares):
+def recpedpop_finalize(seed, hostverkeys, vss_commits, enc_shares):
     # TODO Rederive stuff.
 
     my_id = my_hostverkey
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
-    return secpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
+    return encpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
 ```
 
 ### Ensuring Agreement
