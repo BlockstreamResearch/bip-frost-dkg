@@ -184,34 +184,19 @@ If some other participant presents a different setup identifier, abort.
 
 ```python
 def detpedpop_round1(seed, params):
-    # TODO Rederive setup_id and my_hostsigkey. Or make this a class with state.
+    # TODO Rederive setup_id. Or make this a class with state.
 
-    my_deckey = kdf(seed, setup_id, "deckey")
-    my_enckey = secpedpop_round1(my_deckey)
+    # Derive setup-dependent seed
+    seed_ = kdf(seed, setup_id)
 
-    sig = sign(my_hostsigkey, my_enckey)
-    round1 = (my_enckey, sig)
-    return round1
+    return secpedpop_round1(seed_)
 ```
 
 ```python
 def detpedpop_round2(seed, params, round1s):
-    # TODO Rederive stuff.
+    # TODO Rederive hostverkeys, seed_ and t.
 
     ids = hostverkeys
-
-    # Verify signatures on encryption keys
-    # TODO We could drop the signature entirely because enckeys is used in the derivation of seed_ (even inside SecPedPop).
-    # Then the wrapper would be become rather minimal.
-    for i in range(n):
-        enckeys[i] = round1s[i].enckey
-        if not verify_sig(round1s[i].sig, hostverkeys[i], enckeys[i]):
-            throw BadParticipant(hostverkeys[i])
-
-    # Derive setup-dependent seed
-    seed_ = kdf(seed, setup_id, enckeys)
-
-    # TODO Should this be signed? It shouldn't be necessary; Eq will cover it anyway.
     return secpedpop_round2(seed_, t, ids, enckeys)
 ```
 
@@ -220,7 +205,6 @@ def detpedpop_finalize(seed, hostverkeys, vss_commits, enc_shares):
     # TODO Rederive stuff.
 
     my_id = my_hostverkey
-
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
     return secpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
 ```
