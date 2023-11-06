@@ -243,7 +243,7 @@ a mechanism that asserts that the input values provided to it by all participant
 
 Eq has the following abstract interface:
 Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS or FAIL to the calling participant.
- - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained. It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
+ - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
  - FAIL means that it is guaranteed that no honest participant will output SUCCESS. In that case, the generated secret keys can safely be deleted.
 
 As long as Eq(x) has not returned for some participant, this participant does not know whether all honest participants agree on the value or whether some honest participants have output SUCCESS or will output SUCCESS.
@@ -288,8 +288,8 @@ In a network-based scenario, where long-term host keys are available, the equali
      - If a valid signature was received from all other participants (i.e., `if sigs.keys() = hpks`):
        - Return SUCCESS
        - Send `cert = array(sigs.values())` to all other participants
-   <!-- - Else if `verify(hpk, sig, x) == false`: -->
-   <!--   - The signer `hpk` is either malicious or an honest signer that has `x' != x`. This signer can still be SUCCESS due to a cert, but make clear (logs?) that something went wrong. -->
+   - Else if `verify(hpk, sig, x) == false`:
+     - (The signer `hpk` is either malicious or an honest signer whose input is not equal to `x`. This means that there is some malicious signer or that some messages have been tampered with on the wire. We must not abort, and we could still output SUCCESS when receiving a cert later, but we should indicate to the user (logs?) that something went wrong.)
  - Upon receiving a value `cert`:
      - Parse `cert` as a list of signatures; break this "upon" block if parsing fails.
      - If for all `i=0..n-1`, `verify(hpk[i], sig[i], x) == true`
@@ -297,6 +297,7 @@ In a network-based scenario, where long-term host keys are available, the equali
        - Send `cert` to all other participants
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
+It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
 
 Proof. (TODO for footnote?)
 Integrity:
@@ -309,8 +310,6 @@ Consider any honest participant among these other participants.
 Assuming a reliable network, this honest participant eventually receives `cert`,
 and by integrity, has received `x` as input.
 Thus, this honest participant will accept `cert` and return SUCCESS.
-
-TODO Consider a variant based on MuSig2
 
 ##### Consensus protocol
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
