@@ -44,7 +44,6 @@ SimplPedPop requires SECURE point-to-point channels between the participants, i.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
 
 Also, SimplePedPop requires an interactive protocol `Eq` as described in section [Ensuring Agreement](#ensuring-agreement).
-<!-- This is unnecessary now since we're about to delete the INDETERMINATE state: It is important to note that with some instantiations of `Eq`, SimplPedPop may fail but the signer still cannot delete any secret key material that was created for the DKG session. -->
 
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
@@ -242,15 +241,15 @@ The DKG protocols described above work with a similar but slightly weaker abstra
 They assume that participants have access to an equality check mechanism "Eq", i.e.,
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
-TODO Consider removing INDETERMINATE... If we insist on conditional termination, this cannot be an output, it can be at most the state before the output. Then we're back to booleans as in the paper.
-TODO (Jonas): In the real world, the certifying network-based protocol might be aborted/interrupted. In that case, the signers are effectively in an INDETERMINATE state (and are not supposed to delete their secrets).
-
 Eq has the following abstract interface:
-Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS, INDETERMINATE, or FAIL to the calling participant.
+Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS or FAIL to the calling participant.
  - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained. It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
  - FAIL means that it is guaranteed that no honest participant will output SUCCESS. In that case, the generated secret keys can safely be deleted.
- - INDETERMINATE means that it is unknown whether the honest participants agree on the value and whether some honest participants have output SUCCESS.
-   In that case, the DKG was potentially successful. Other honest participants may believe that it was successful and may assume that the resulting keys can be used. As a result, the generated keys may not deleted.
+
+As long as Eq(x) has not returned for some participant, this participant does not know whether all honest participants agree on the value or whether some honest participants have output SUCCESS or will output SUCCESS.
+In that case, the DKG was potentially successful.
+Other honest participants may believe that it was successful and may assume that the resulting keys can be used.
+As a result, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state.
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs SUCCESS, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
@@ -262,7 +261,7 @@ Optionally, the following property is desired but not always achievable:
  - (Full) Termination: All honest participants will (eventually) output SUCCESS or FAIL.
 
 #### Examples
-TODO: Expand these scenarios. Relate them to SUCCESS, FAIL, INDETERMINATE.
+TODO: Expand these scenarios. Relate them to SUCCESS, FAIL.
 
 Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
 
