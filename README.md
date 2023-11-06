@@ -50,16 +50,16 @@ Also, SimplePedPop requires an interactive protocol `Eq` as described in section
 
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
-TODO: We need to make sure that there are no two honest participants who believe they have the same id. (Note that just checking that my_id is in ids is not enough.) It should suffice that everyone announces their id (or their index in ids) and aborts if there's another participant claiming the same id. 
+TODO: We need to make sure that there are no two honest participants who believe they have the same id. (Note that just checking that my_id is in ids is not enough.) It should suffice that everyone announces their id (or their index in ids) and aborts if there's another participant claiming the same id.
 
 ```python
-def simplpedpop_setup(seed, t, ids):
+def simplpedpop_setup(seed):
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
-    :param List[bytes] ids: 33-bytes that identify the participants, must be unique
+    :param int n:
     :return: a VSS commitment and shares
     """
     f = polynomial_gen(seed, t)
@@ -71,20 +71,22 @@ def simplpedpop_setup(seed, t, ids):
     sig = sign(sk, "")
     # FIXME make sig a separate thing
     vss_commit = vss_commit + sig
-    shares = [ f(hash_sometag(id)) for id in ids ]
+    shares = [ f(i+1) for i in range(n) ]
     return vss_commit, shares
 ```
 
 In SimplPedPop every participant has secure channels to every other participant.
 For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
 
+TODO: there needs to be a global order of participants
+      before: jeder hat ne id, und die muss vorher ausgetauscht werden und einig halt eben darueber sein
+
 ```python
-def simplpedpop_finalize(t, ids, my_id, vss_commits, shares, Eq, eta = ()):
+def simplpedpop_finalize(t, n, my_idx, vss_commits, shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
-    :param List[bytes] ids: 33-bytes that identify the participants, must be unique
-    :param my_id bytes: 33-bytes that identify this participant, must be in ids TODO: assert this
+    :param my_idx bytes:
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
         Each vss_commits[i] must be of length t
@@ -92,20 +94,17 @@ def simplpedpop_finalize(t, ids, my_id, vss_commits, shares, Eq, eta = ()):
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
-    n = len(ids)
     assert(n == len(shares) and n == len(vss_commits))
     for i in range(n):
-        if not verify_vss(my_id, vss_commits[i], shares[i]):
-            throw BadParticipant(ids[i])
+        if not verify_vss(my_idx, vss_commits[i], shares[i]):
+            raise BadParticipant(i)
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], ""):
-            throw BadParticipant(ids[i])
-        eta[ids[i]] += (ids[i], vss_commits[i], vss_commit[i].sig)
-    # Create list of eta's values lexicographically sorted by the ids
-    eta = [eta[key] for key in sorted(eta.keys())]
+            raise BadParticipant(i)
+        eta += (vss_commits[i], vss_commit[i].sig)
     if not Eq(eta):
         return False
-    # helper_compute_pk computes the individual pubkey of participant with the given id
-    signer_pubkeys = [helper_compute_pk(vss_commits, ids[i]) for i in range(n)]
+    # helper_compute_pk computes the individual pubkey of participant with the given idx
+    signer_pubkeys = [helper_compute_pk(vss_commits, i) for i in range(n)]
     pubkey = sum([vss_commits[i][0] for i in range(n)])
     return sum(shares), pubkey, signer_pubkeys
 ```
@@ -126,29 +125,29 @@ def encpedpop_round1(seed):
 
 The (public) encryption keys are distributed among each other.
 They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
-The receiver of an encryption key from participant `ids[i]` stores the encryption key in an array `enckeys` at position `i` (TODO: duplicates).
-
-TODO: this is slightly awkward for users who could use the pubkeys as ids
+The receiver of an encryption key from participant `i` stores the encryption key in an array `enckeys` at position `i` (TODO: duplicates).
 
 ```python
-def encpedpop_round2(seed, t, ids, enckeys):
+def encpedpop_round2(seed, t, n, enckeys):
+    assert(n == len(enckeys))
     # Protect against reuse of seed in case we previously exported shares
-    # for wrong ids or encrypted under wrong enckeys.
-    seed_ = Hash(seed, t, ids, enckeys)
-    vss_commit, shares = simplpedpop_setup(seed_, t, ids)
+    # encrypted under wrong enckeys.
+    seed_ = Hash(seed, t, enckeys)
+    vss_commit, shares = simplpedpop_setup(seed_, t, n)
     # TODO The encrypt function should have a randomness argument. Derive this also from seed_?
     enc_shares = [encrypt(shares[i], enckeys[i]) for i in range(len(enckeys))
     return vss_commit, enc_shares
 ```
 
-For every other participant `ids[i]`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
+For every other participant `i`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def encpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, Eq):
-    shares = [decrypt(enc_share, sec) for enc_share in enc_shares]
-    # eta is a dictionary consisting of (ID, enckey) key-value pairs.
-    eta = {ids[i]: enckeys[i] for i in range(len(ids))}
-    return simplpedpop_finalize(ids, my_id, vss_commits, shares, Eq, eta):
+# TODO: my_deckey is missing
+# TODO: we could keep my_idx (or my_enckey) as state
+def encpedpop_finalize(t, n, my_idx, enckeys, vss_commits, enc_shares, Eq):
+    shares = [decrypt(enc_share, my_deckey) for enc_share in enc_shares]
+    eta = enckeys
+    simplpedpop_finalize(t, n, my_idx, vss_commits, shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
@@ -174,6 +173,9 @@ After receiving a host pubkey from every other participant, compute a setup iden
 
 ```python
 def recpedpop_setup_id(setup_params):
+    # TODO: if duplicate hostverkeys, abort
+    if len(hostverkeys) != len(set(hostverkeys)):
+        raise DuplicateHostkeys
     (hostverkeys, t, context) = setup_params
     setup_id = Hash(setup_params)
     return setup_id
@@ -196,17 +198,16 @@ def recpedpop_round1(seed, params):
 def recpedpop_round2(seed, params, round1s):
     # TODO Rederive hostverkeys, seed_ and t.
 
-    ids = hostverkeys
-    return encpedpop_round2(seed_, t, ids, enckeys)
+    return encpedpop_round2(seed_, t, n, enckeys)
 ```
 
 ```python
 def recpedpop_finalize(seed, hostverkeys, vss_commits, enc_shares):
     # TODO Rederive stuff.
 
-    my_id = my_hostverkey
+    my_idx = my_hostverkey.index(my_hostverkey)
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
-    return encpedpop_finalize(ids, my_id, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
+    return encpedpop_finalize(t, n, my_idx, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
 ```
 
 ### Ensuring Agreement
