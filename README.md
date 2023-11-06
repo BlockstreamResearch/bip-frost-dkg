@@ -24,7 +24,6 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 ### Design
 
 - **Large Number of Applications**: This DKG supports a wide range of scenarios. It can handle situations from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. The DKG can support situations where backup information is required to be written down manually , as well as those with ample backup space. To support this flexiblity, the document proposes several methods to [ensure agreement](#ensuring-agreement), including a potentially novel (?) network-based certification protocol.
-- **Arbitrary 33-byte arrays instead of indices as participant identifiers (IDs)**: This allows for greater flexibility (e.g., IDs can be long-term public keys on the secp256k1 curve), and avoids the need to agree on a global order of signers upfront. The honest participants must choose their IDs such that no two honest participants have the same ID, because a collision between IDs of honest participants means that some `t` honest signers may not able to produce a signature despite reaching the threshold. (However, if a malicious participant claims to have the same ID as an honest participant, signatures remain unforgeable.) A simple way to exclude ID collisions between honest participants is to let each participant choose a random ID. As long as the IDs are chosen uniformly at random from a large enough space, e.g., random 33-byte arrays or random points on the secp256k1 curve, collisions will happen only with negligible probability.
 - **DKG outputs per-participant public keys**: When DKG used in FROST allowing partial signature verification.
 - **Optional instantiation of secure channels for share transfer** (TODO: may not remain optional)
 - **Support for backups**
@@ -37,7 +36,6 @@ We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 with the following minor modifications:
 
-- Using [arbitrary 33-byte arrays](https://github.com/frostsnap/frostsnap/issues/72) instead of indices as participant identifiers (IDs).
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
@@ -50,10 +48,8 @@ Also, SimplePedPop requires an interactive protocol `Eq` as described in section
 
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
-TODO: We need to make sure that there are no two honest participants who believe they have the same id. (Note that just checking that my_id is in ids is not enough.) It should suffice that everyone announces their id (or their index in ids) and aborts if there's another participant claiming the same id.
-
 ```python
-def simplpedpop_setup(seed):
+def simplpedpop_setup(seed, t, n):
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
@@ -72,17 +68,18 @@ def simplpedpop_setup(seed):
     # FIXME make sig a separate thing
     vss_commit = vss_commit + sig
     shares = [ f(i+1) for i in range(n) ]
-    return vss_commit, shares
+    state = (t, n)
+    return state, vss_commit, shares
 ```
 
 In SimplPedPop every participant has secure channels to every other participant.
 For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
 
-TODO: there needs to be a global order of participants
-      before: jeder hat ne id, und die muss vorher ausgetauscht werden und einig halt eben darueber sein
+All participants agree on an assignment of indices `0` to `n-1` to participants.
+The vss commitment received from participant `i` is stored at `vss_commits[i]` and similarly, the share from participant `i` is stored at `shares[i]`.
 
 ```python
-def simplpedpop_finalize(t, n, my_idx, vss_commits, shares, Eq, eta = ()):
+def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -94,8 +91,11 @@ def simplpedpop_finalize(t, n, my_idx, vss_commits, shares, Eq, eta = ()):
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
+    t, n = state
     assert(n == len(shares) and n == len(vss_commits))
     for i in range(n):
+        if not len(vss_commits[i]) == t:
+            raise BadParticipant(i)
         if not verify_vss(my_idx, vss_commits[i], shares[i]):
             raise BadParticipant(i)
         if not verify_sig(vss_commits[i].sig, vss_commits[i][0], ""):
@@ -120,34 +120,43 @@ TODO: Specify an encryption scheme. Good candidates are ECIES and `crypto_box` f
 def encpedpop_round1(seed):
     my_deckey = kdf(seed, "deckey")
     my_enckey = individual_pk(my_deckey)
-    return my_enckey
+    state1 = (my_deckey, my_enckey)
+    return state1, my_enckey
 ```
 
 The (public) encryption keys are distributed among each other.
 They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
-The receiver of an encryption key from participant `i` stores the encryption key in an array `enckeys` at position `i` (TODO: duplicates).
+The receiver of an encryption key from participant `i` stores the encryption key in an array `enckeys` at position `i`.
+
+TODO: there needs to be a global order of participants
+TODO: explain how to arrive at the global order, in particular, by sorting enckeys
 
 ```python
-def encpedpop_round2(seed, t, n, enckeys):
+def encpedpop_round2(seed, state1, t, n, enckeys):
     assert(n == len(enckeys))
+    if len(enckeys) != len(set(enckeys)):
+        raise DuplicateEnckeys
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
-    vss_commit, shares = simplpedpop_setup(seed_, t, n)
+    simpl_state, vss_commit, shares = simplpedpop_setup(seed_, t, n)
     # TODO The encrypt function should have a randomness argument. Derive this also from seed_?
     enc_shares = [encrypt(shares[i], enckeys[i]) for i in range(len(enckeys))
-    return vss_commit, enc_shares
+    state2 = (state1, simpl_state, enckeys)
+    return state2, vss_commit, enc_shares
 ```
 
 For every other participant `i`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-# TODO: my_deckey is missing
-# TODO: we could keep my_idx (or my_enckey) as state
-def encpedpop_finalize(t, n, my_idx, enckeys, vss_commits, enc_shares, Eq):
+def encpedpop_finalize(state2, vss_commits, enc_shares, Eq):
+    state1, simpl_state, enckeys = state2
+    my_deckey, my_enckey = state1
+
     shares = [decrypt(enc_share, my_deckey) for enc_share in enc_shares]
+    my_idx = enckeys.index(my_enckey)
     eta = enckeys
-    simplpedpop_finalize(t, n, my_idx, vss_commits, shares, Eq, eta):
+    simplpedpop_finalize(simpl_state, my_idx, vss_commits, shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
@@ -165,49 +174,53 @@ Generate long-term host keys.
 def recpedpop_hostpubkey(seed):
     my_hostsigkey = kdf(seed, "hostsigkey")
     my_hostverkey = individual_pk(hostsigkey)
-    return my_hostverkey
+    state1 = my_hostsigkey
+    return state1, my_hostverkey
 ```
 
 Send host pubkey to every other participant.
 After receiving a host pubkey from every other participant, compute a setup identifier.
+TODO: there needs to be a global order of participants
 
 ```python
-def recpedpop_setup_id(setup_params):
-    # TODO: if duplicate hostverkeys, abort
-    if len(hostverkeys) != len(set(hostverkeys)):
-        raise DuplicateHostkeys
-    (hostverkeys, t, context) = setup_params
-    setup_id = Hash(setup_params)
-    return setup_id
+def recpedpop_setup_id(state1, hostverkeys, t, context_string):
+    setup_id = Hash(hostverkeys, t, context_string)
+    state2 = (state1, hostverkeys, t, setup_id)
+    return state2, setup_id
 ```
 
 Compare the setup identifier with every other participant out-of-band.
 If some other participant presents a different setup identifier, abort.
 
 ```python
-def recpedpop_round1(seed, params):
-    # TODO Rederive setup_id. Or make this a class with state.
+def recpedpop_round1(seed, state2):
+    my_hostsigkey, hostverkeys, t, setup_id = state2
 
     # Derive setup-dependent seed
     seed_ = kdf(seed, setup_id)
 
-    return encpedpop_round1(seed_)
+    enc_state1, my_enckey =  encpedpop_round1(seed_)
+    state3 = (my_hostsigkey, hostverkeys, t, setup_id, enc_state1)
+    return state3, my_enckey
+```
+
+The enckey received from participant `hostverkeys[i]` is stored at `enckeys[i]`.
+
+```python
+def recpedpop_round2(seed, state3, enckeys):
+    my_hostsigkey, hostverkeys, t, setup_id, enc_state1 = state3
+
+    enc_state2, vss_commit, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
+    state4 = (my_hostsigkey, hostverkeys, setup_id, enc_state2)
+    return state4, vss_commit, enc_shares
 ```
 
 ```python
-def recpedpop_round2(seed, params, round1s):
-    # TODO Rederive hostverkeys, seed_ and t.
+def recpedpop_finalize(seed, state4, vss_commits, enc_shares):
+    (my_hostsigkey, hostverkeys, setup_id, enc_state2) = state4
 
-    return encpedpop_round2(seed_, t, n, enckeys)
-```
-
-```python
-def recpedpop_finalize(seed, hostverkeys, vss_commits, enc_shares):
-    # TODO Rederive stuff.
-
-    my_idx = my_hostverkey.index(my_hostverkey)
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
-    return encpedpop_finalize(t, n, my_idx, enckeys, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
+    return encpedpop_finalize(enc_state2, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id)
 ```
 
 ### Ensuring Agreement
