@@ -30,6 +30,30 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 - **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
 - **Little optimized for communication overhead or number of rounds**
 
+### Notation
+
+All participants agree on an assignment of indices `0` to `n-1` to participants.
+
+* The function `chan_send(i, m)` sends message `m` to participant `i` (does not block).
+* The function `chan_receive(i)` returns a message received by participant `i` (blocks).
+* The functions `secure_chan_send(i, m)` and `secure_chan_receive(i)` are the same as `chan_send(i, m)` and `chan_send(i, m)` except that the message is sent through a secure (authenticated and encrypted) channel.
+* The function `verify_sig(pk, m, sig,)` is identical to the BIP 340 `Verify` function.
+
+### Verifiable Secret Sharing (VSS)
+
+TODO: use sensible names, maybe make them match the IETF FROST spec
+
+```python
+def polynomial_gen(seed, t)
+    # TODO
+def commit_to_coefficients(f)
+    # TODO
+def verify_vss(...)
+    # TODO
+def helper_compute_pk(...)
+    # TODO
+```
+
 ### SimplPedPop
 
 TODO For each DKG, add a function that implements an entire protocol run (for one party) by calling the existing functions. This will involve adding a network abstraction (i.e., "send()" and "receive()" functions). Once we have a network abstraction, we can cleanly "implement" (in pseudocode) Eq protocols as functions and call them from DKGs.
@@ -56,7 +80,7 @@ def simplpedpop_setup(seed, t, n):
 
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
-    :param int n:
+    :param int n: number of participants
     :return: a VSS commitment and shares
     """
     f = polynomial_gen(seed, t)
@@ -71,20 +95,12 @@ def simplpedpop_setup(seed, t, n):
     shares = [ f(i+1) for i in range(n) ]
     state = (t, n)
     return state, vss_commit, shares
-```
 
-In SimplPedPop every participant has secure channels to every other participant.
-For every other participant `id[i]`, the participant sends `vss_commit` and `shares[i]` through the secure channel.
-
-All participants agree on an assignment of indices `0` to `n-1` to participants.
-The vss commitment received from participant `i` is stored at `vss_commits[i]` and similarly, the share from participant `i` is stored at `shares[i]`.
-
-```python
 def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
-    :param my_idx bytes:
+    :param int my_idx:
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
         Each vss_commits[i] must be of length t
@@ -99,7 +115,7 @@ def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
             raise BadParticipant(i)
         if not verify_vss(my_idx, vss_commits[i], shares[i]):
             raise BadParticipant(i)
-        if not verify_sig(vss_commits[i].sig, vss_commits[i][0], ""):
+        if not verify_sig(vss_commits[i][0], "", vss_commits[i].sig):
             raise BadParticipant(i)
         eta += (vss_commits[i], vss_commit[i].sig)
     if not Eq(eta):
@@ -108,6 +124,16 @@ def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
     signer_pubkeys = [helper_compute_pk(vss_commits, i) for i in range(n)]
     pubkey = sum([vss_commits[i][0] for i in range(n)])
     return sum(shares), pubkey, signer_pubkeys
+
+# TODO: what about coordinator?
+# TODO: we don't actually need to send everything through encrypted channel and we could relay some parts through the coordinator. But we don't want people to use
+def simplpedpop(seed, t, n, my_idx, Eq):
+  state, my_vss_commit, my_generated_shares = simplpedpop_setup(seed, t, n)
+  for i in range(n)
+      secure_chan_send(i, my_vss_commit + my_generated_shares[i])
+  for i in n:
+      vss_commits[i], shares[i] = secure_chan_receive(i)
+  return simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
 ```
 
 ### EncPedPop
