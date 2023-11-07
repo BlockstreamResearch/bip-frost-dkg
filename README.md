@@ -131,7 +131,7 @@ def simplpedpop(seed, t, n, my_idx, Eq):
   state, my_vss_commit, my_generated_shares = simplpedpop_setup(seed, t, n)
   for i in range(n)
       secure_chan_send(i, my_vss_commit + my_generated_shares[i])
-  for i in n:
+  for i in range(n):
       vss_commits[i], shares[i] = secure_chan_receive(i)
   return simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
 ```
@@ -188,6 +188,21 @@ def encpedpop_finalize(state2, vss_commits, enc_shares, Eq):
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds. (TODO This should be solved now?)
+
+```python
+def encpedpop(seed, t, n, my_idx, Eq):
+    state1, my_enckey = encpedpop_round1(seed):
+    for i in range(n)
+        chan_send(i, my_enckey)
+    for i in range(n):
+      enckeys[i] = chan_receive(i)
+    state2, my_vss_commit, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys):
+    for i in range(n)
+        chan_send(i, my_vss_commit + my_generated_enc_shares[i])
+    for i in range(n):
+        vss_commits[i], shares[i] = chan_receive(i)
+    return encpedpop_finalize(state2, vss_commits, enc_shares, Eq)
+```
 
 ### RecPedPop
 
