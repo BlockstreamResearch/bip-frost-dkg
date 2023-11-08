@@ -39,6 +39,7 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The functions `secure_chan_send(i, m)` and `secure_chan_receive(i)` are the same as `chan_send(i, m)` and `chan_send(i, m)` except that the message is sent through a secure (authenticated and encrypted) channel.
 * The function `individual_pk(sk) is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(pk, m, sig)` is identical to the BIP 340 `Verify` function.
+* The function `sign(sk, m)` is identical to the BIP 340 `Sign` function.
 
 ```python
 def kdf(seed, ...):
@@ -273,7 +274,7 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, enc_shares):
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
     eta = setup_id + enc_shares
-    return encpedpop_finalize(enc_state2, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id + enc_shares)
+    return encpedpop_finalize(enc_state2, vss_commits, enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), setup_id + enc_shares)
 ```
 
 ```python
@@ -346,23 +347,61 @@ TODO The hpk should be the id here... clean this up and write something about se
 
 In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
 
-TODO Make this two or three algorithms Pythonic
- - On initialization:
-   - Send `sig = sign(hsk, x)` to all other participants
-   - Initialize an empty key-value store `cert`, ordered by keys
- - Upon receiving a signature `sig` from participant `hpk`:
-   - If `sig[hpk]` is not yet defined and `verify(hpk, sig, x) == true`:
-     - Store `sigs[hpk] = sig`
-     - If a valid signature was received from all other participants (i.e., `if sigs.keys() = hpks`):
-       - Return SUCCESS
-       - Send `cert = array(sigs.values())` to all other participants
-   - Else if `verify(hpk, sig, x) == false`:
-     - (The signer `hpk` is either malicious or an honest signer whose input is not equal to `x`. This means that there is some malicious signer or that some messages have been tampered with on the wire. We must not abort, and we could still output SUCCESS when receiving a cert later, but we should indicate to the user (logs?) that something went wrong.)
- - Upon receiving a value `cert`:
-     - Parse `cert` as a list of signatures; break this "upon" block if parsing fails.
-     - If for all `i=0..n-1`, `verify(hpk[i], sig[i], x) == true`
-       - Return SUCCESS
-       - Send `cert` to all other participants
+```python
+def make_certifying_Eq(my_hostsigkey, hostverkeys):
+    def certifying_Eq(x):
+        for i in range(n)
+            chan_send(i, sign(my_hostsigkey, x))
+        cert = [None] * len(hostverkeys)
+        sig = [None] * len(hostverkeys)
+        while(True)
+            # TODO: this chan_receive is different to the one used in the
+            #       pedpops. Change or specify.
+            i, ty, msg = chan_receive()
+            if ty == SIGNATURE:
+                is_valid = verify(hostverkeys[i], x, msg)
+                if sig[i] is None and is_valid:
+                    sig[i] = msg
+                elif not is_valid:
+                    # The signer `hpk` is either malicious or an honest signer
+                    # whose input is not equal to `x`. This means that there is
+                    # some malicious signer or that some messages have been
+                    # tampered with on the wire. We must not abort, and we could
+                    # still output SUCCESS when receiving a cert later, but we
+                    # should indicate to the user (logs?) that something went
+                    # wrong.)
+                if sig.count(None) == 0:
+                    cert = sig
+                    for i in n:
+                        chan.send(i, cert)
+                    return SUCCESS
+            if ty == CERT:
+                sigs = parse_cert(msg)
+                if sigs is not None and len(sigs) == len(hostverkys:
+                    is_valid = [verify(hostverkeys[i], x, sig[i]) \
+                                for i in range(hostverkeys)]
+                    if all(is_valid)
+                        for i in n:
+                            chan.send(i, cert)
+                        return SUCCESS
+    return certifying_eq
+```
+ <!-- - On initialization: -->
+ <!--   - Send `sig = sign(hsk, x)` to all other participants -->
+ <!--   - Initialize an empty key-value store `cert`, ordered by keys -->
+ <!-- - Upon receiving a signature `sig` from participant `hpk`: -->
+ <!--   - If `sig[hpk]` is not yet defined and `verify(hpk, sig, x) == true`: -->
+ <!--     - Store `sigs[hpk] = sig` -->
+ <!--     - If a valid signature was received from all other participants (i.e., `if sigs.keys() = hpks`): -->
+ <!--       - Return SUCCESS -->
+ <!--       - Send `cert = array(sigs.values())` to all other participants -->
+ <!--   - Else if `verify(hpk, sig, x) == false`: -->
+ <!--     - (The signer `hpk` is either malicious or an honest signer whose input is not equal to `x`. This means that there is some malicious signer or that some messages have been tampered with on the wire. We must not abort, and we could still output SUCCESS when receiving a cert later, but we should indicate to the user (logs?) that something went wrong.) -->
+ <!-- - Upon receiving a value `cert`: -->
+ <!--     - Parse `cert` as a list of signatures; break this "upon" block if parsing fails. -->
+ <!--     - If for all `i=0..n-1`, `verify(hpk[i], sig[i], x) == true` -->
+ <!--       - Return SUCCESS -->
+ <!--       - Send `cert` to all other participants -->
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
 It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
