@@ -103,7 +103,7 @@ def simplpedpop_setup(seed, t, n):
     state = (t, n)
     return state, vss_commit, shares
 
-def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
+def simplpedpop_finalize(state, my_idx, vss_commits, summed_shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -111,7 +111,7 @@ def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
     :param List[bytes] vss_commits: VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commit)
         Each vss_commits[i] must be of length t
-    :param List[bytes] shares: shares from all participants (including this participant)
+    :param scalar summed_shares: summed shares from all participants (including this participant) mod n
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
@@ -120,17 +120,19 @@ def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
     for i in range(n):
         if not len(vss_commits[i]) == t:
             raise BadParticipant(i)
-        if not verify_vss(my_idx, vss_commits[i], shares[i]):
-            raise BadParticipant(i)
         if not verify_sig(vss_commits[i][0], "", vss_commits[i].sig):
             raise BadParticipant(i)
         eta += (vss_commits[i], vss_commit[i].sig)
+    # TODO: using "Lloyd's trick"
+    summed_vss_commits = [sum([vss_commits[i][j] for i in range(n)]) for j in range(t)]
+    if not verify_vss(my_idx, summed_vss_commits, summed_shares):
+        return False
     if Eq(eta) != SUCCESS:
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given idx
     signer_pubkeys = [helper_compute_pk(vss_commits, i) for i in range(n)]
     pubkey = sum([vss_commits[i][0] for i in range(n)])
-    return sum(shares), pubkey, signer_pubkeys
+    return summed_shares, pubkey, signer_pubkeys
 
 # TODO: what about coordinator?
 # TODO: we don't actually need to send everything through encrypted channel and we could relay some parts through the coordinator. But we don't want people to use
@@ -140,12 +142,12 @@ def simplpedpop(seed, t, n, my_idx, Eq):
       secure_chan_send(i, my_vss_commit + my_generated_shares[i])
   for i in range(n):
       vss_commits[i], shares[i] = secure_chan_receive(i)
-  return simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
+  return simplpedpop_finalize(state, my_idx, vss_commits, sum(shares), Eq, eta = ()):
 ```
 
 ### EncPedPop
 
-### Encryption
+#### Encryption
 
 ```python
 def ecdh(x, Y):
@@ -153,13 +155,9 @@ def ecdh(x, Y):
 
 def encrypt(share, my_deckey, enckey):
     return share + ecdh(my_deckey, enckey)
-
-def decrypt(enc_share, my_deckey, enckey):
-    return enc_share - ecdh(my_deckey, enckey)
 ```
 
-
-### Specification
+#### EncPedPop
 
 EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
@@ -201,15 +199,15 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
 For every other participant `i`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
 
 ```python
-def encpedpop_finalize(state2, vss_commits, enc_shares, Eq):
+def encpedpop_finalize(state2, vss_commits, summed_enc_shares, Eq):
     my_deckey, my_enckey, simpl_state, enckeys = state2
     n = len(enckeys)
     assert(len(enc_shares) == n)
 
-    shares = [decrypt(enc_shares[i], my_deckey, enckeys[i]) for i in range(n)]
+    summed_shares = summed_enc_shares - sum([ecdh(my_deckey, enckeys[i]) for i in range(n)]
     my_idx = enckeys.index(my_enckey)
     eta = enckeys
-    simplpedpop_finalize(simpl_state, my_idx, vss_commits, shares, Eq, eta):
+    simplpedpop_finalize(simpl_state, my_idx, vss_commits, summed_shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
@@ -226,7 +224,7 @@ def encpedpop(seed, t, n, Eq):
         chan_send(i, my_vss_commit + my_generated_enc_shares[i])
     for i in range(n):
         vss_commits[i], enc_shares[i] = chan_receive(i)
-    return encpedpop_finalize(state2, vss_commits, enc_shares, Eq)
+    return encpedpop_finalize(state2, vss_commits, sum(enc_shares), Eq)
 ```
 
 ### RecPedPop
@@ -282,8 +280,7 @@ def recpedpop_round2(seed, state1, enckeys):
 ```
 
 ```python
-def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_enc_shares):
-    assert(len(all_enc_shares) == len(hostverkeys)**2)
+def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_summed_enc_shares):
     (hostverkeys, setup_id, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -291,10 +288,10 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_enc_shares)
     # shares, which in turn ensures that they have the right transcript.
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
-    eta = setup_id + all_enc_shares
+    eta = setup_id + all_summed_enc_shares
     # TODO: fix my_idx
-    my_enc_shares = [enc_shares[i][my_idx] for i in range(enc_shares)]
-    return encpedpop_finalize(enc_state2, vss_commits, my_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), setup_id + all_enc_shares)
+    my_summed_enc_shares = all_summed_enc_shares[my_idx]
+    return encpedpop_finalize(enc_state2, vss_commits, my_summed_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
 ```
 
 ```python
@@ -310,8 +307,10 @@ def recpedpop(seed, my_hostsigkey, setup):
         chan_send(i, my_vss_commit + my_generated_enc_shares)
     for i in range(n):
         vss_commits[i], all_enc_shares[i] = chan_receive(i)
-    transcript = (setup, enckeys, vss_commits, all_enc_shares)
-    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_enc_shares), transcript
+    all_summed_enc_shares = [sum([all_enc_shares[from_][to] for from_ in range(n)]) for to in range(n)]
+    # TODO: vss_commits have size t*n
+    transcript = (setup, enckeys, vss_commits, all_summed_enc_shares)
+    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_summed_enc_shares), transcript
 ```
 
 ### Ensuring Agreement
