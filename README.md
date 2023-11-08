@@ -145,6 +145,22 @@ def simplpedpop(seed, t, n, my_idx, Eq):
 
 ### EncPedPop
 
+### Encryption
+
+```python
+def ecdh(x, Y):
+    return Hash(x*Y)
+
+def encrypt(share, my_deckey, enckey):
+    return share + ecdh(my_deckey, enckey)
+
+def decrypt(enc_share, my_deckey, enckey):
+    return enc_share - ecdh(my_deckey, enckey)
+```
+
+
+### Specification
+
 EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
@@ -170,13 +186,15 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
         raise DuplicateEnckeys
+
+    my_deckey, my_enckey = state1
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
     simpl_state, vss_commit, shares = simplpedpop_setup(seed_, t, n)
     # TODO The encrypt function should have a randomness argument (or a secret key in case of AE).
-    enc_shares = [encrypt(shares[i], enckeys[i]) for i in range(len(enckeys))
-    state2 = (state1, simpl_state, enckeys)
+    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i]) for i in range(len(enckeys))
+    state2 = (my_deckey, my_enckey, simpl_state, enckeys)
     return state2, vss_commit, enc_shares
 ```
 
@@ -184,10 +202,11 @@ For every other participant `i`, the participant sends `vss_commit` and `enc_sha
 
 ```python
 def encpedpop_finalize(state2, vss_commits, enc_shares, Eq):
-    state1, simpl_state, enckeys = state2
-    my_deckey, my_enckey = state1
+    my_deckey, my_enckey, simpl_state, enckeys = state2
+    n = len(enckeys)
+    assert(len(enc_shares) == n)
 
-    shares = [decrypt(enc_share, my_deckey) for enc_share in enc_shares]
+    shares = [decrypt(enc_shares[i], my_deckey, enckeys[i]) for i in range(n)]
     my_idx = enckeys.index(my_enckey)
     eta = enckeys
     simplpedpop_finalize(simpl_state, my_idx, vss_commits, shares, Eq, eta):
