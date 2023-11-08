@@ -148,7 +148,7 @@ def simplpedpop(seed, t, n, my_idx, Eq):
 EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
-TODO: Specify an encryption scheme. Good candidates are ECIES and `crypto_box` from NaCl, which is just ECDH+AEAD (https://doc.libsodium.org/public-key_cryptography/authenticated_encryption). We also we may want to consider encrypting all traffic. Depending on the scheme, we could reuse keys for signatures and encryption but then we need stronger hardness assumptions (https://crypto.stackexchange.com/questions/37896/using-a-single-ed25519-key-for-encryption-and-signature). We have to think about desired properties, in particular in combination with signatures (authentication vs signatures -- remember the iMessage attack).
+TODO: Specify an encryption scheme. Good candidates are ECIES and the `crypto_box` authenticated PKE from NaCl, which is just ECDH+AEAD (https://doc.libsodium.org/public-key_cryptography/authenticated_encryption). Depending on the scheme, we could reuse keys for signatures and encryption but then we need stronger hardness assumptions (https://crypto.stackexchange.com/questions/37896/using-a-single-ed25519-key-for-encryption-and-signature). Performance per participant when using ECIES: 2 `ecmult_gen` (keygen, noncegen) + 2*(n-1) `ecmult_const` (ecdh for sending and receiving). When using `crypto_box`: 1x `ecmult_gen` (keygen), n-1 `ecmult_const` (ecdh, sending and receiving uses the same shared secret).
 
 ```python
 def encpedpop_round1(seed):
@@ -174,7 +174,7 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
     simpl_state, vss_commit, shares = simplpedpop_setup(seed_, t, n)
-    # TODO The encrypt function should have a randomness argument. Derive this also from seed_?
+    # TODO The encrypt function should have a randomness argument (or a secret key in case of AE).
     enc_shares = [encrypt(shares[i], enckeys[i]) for i in range(len(enckeys))
     state2 = (state1, simpl_state, enckeys)
     return state2, vss_commit, enc_shares
