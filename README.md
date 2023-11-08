@@ -37,7 +37,13 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The function `chan_send(i, m)` sends message `m` to participant `i` (does not block).
 * The function `chan_receive(i)` returns a message received by participant `i` (blocks).
 * The functions `secure_chan_send(i, m)` and `secure_chan_receive(i)` are the same as `chan_send(i, m)` and `chan_send(i, m)` except that the message is sent through a secure (authenticated and encrypted) channel.
-* The function `verify_sig(pk, m, sig,)` is identical to the BIP 340 `Verify` function.
+* The function `individual_pk(sk) is identical to the BIP 327 `IndividualPubkey` function.
+* The function `verify_sig(pk, m, sig)` is identical to the BIP 340 `Verify` function.
+
+```python
+def kdf(seed, ...):
+    # TODO
+```
 
 ### Verifiable Secret Sharing (VSS)
 
@@ -118,7 +124,7 @@ def simplpedpop_finalize(state, my_idx, vss_commits, shares, Eq, eta = ()):
         if not verify_sig(vss_commits[i][0], "", vss_commits[i].sig):
             raise BadParticipant(i)
         eta += (vss_commits[i], vss_commit[i].sig)
-    if not Eq(eta):
+    if Eq(eta) != SUCCESS:
         return False
     # helper_compute_pk computes the individual pubkey of participant with the given idx
     signer_pubkeys = [helper_compute_pk(vss_commits, i) for i in range(n)]
@@ -187,10 +193,9 @@ def encpedpop_finalize(state2, vss_commits, enc_shares, Eq):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
-However, if `Eq(eta)` does fail, then confidentiality of the share may be broken, which makes it even more important to not reuse seeds. (TODO This should be solved now?)
 
 ```python
-def encpedpop(seed, t, n, my_idx, Eq):
+def encpedpop(seed, t, n, Eq):
     state1, my_enckey = encpedpop_round1(seed):
     for i in range(n)
         chan_send(i, my_enckey)
@@ -216,8 +221,7 @@ Generate long-term host keys.
 def recpedpop_hostpubkey(seed):
     my_hostsigkey = kdf(seed, "hostsigkey")
     my_hostverkey = individual_pk(hostsigkey)
-    state1 = my_hostsigkey
-    return state1, my_hostverkey
+    return (my_hostsigkey, my_hostverkey)
 ```
 
 Send host pubkey to every other participant.
@@ -225,43 +229,43 @@ After receiving a host pubkey from every other participant, compute a setup iden
 TODO: there needs to be a global order of participants
 
 ```python
-def recpedpop_setup_id(state1, hostverkeys, t, context_string):
+def recpedpop_setup_id(hostverkeys, t, context_string):
     setup_id = Hash(hostverkeys, t, context_string)
-    state2 = (state1, hostverkeys, t, setup_id)
-    return state2, setup_id
+    setup = (hostverkeys, t, setup_id)
+    return setup, setup_id
 ```
 
 Compare the setup identifier with every other participant out-of-band.
 If some other participant presents a different setup identifier, abort.
 
 ```python
-def recpedpop_round1(seed, state2):
-    my_hostsigkey, hostverkeys, t, setup_id = state2
+def recpedpop_round1(seed, setup):
+    hostverkeys, t, setup_id = setup
 
     # Derive setup-dependent seed
     seed_ = kdf(seed, setup_id)
 
     enc_state1, my_enckey =  encpedpop_round1(seed_)
-    state3 = (my_hostsigkey, hostverkeys, t, setup_id, enc_state1)
-    return state3, my_enckey
+    state1 = (hostverkeys, t, setup_id, enc_state1)
+    return state1, my_enckey
 ```
 
 The enckey received from participant `hostverkeys[i]` is stored at `enckeys[i]`.
 
 ```python
-def recpedpop_round2(seed, state3, enckeys):
-    my_hostsigkey, hostverkeys, t, setup_id, enc_state1 = state3
+def recpedpop_round2(seed, state1, enckeys):
+    hostverkeys, t, setup_id, enc_state1 = state1
 
     enc_state2, vss_commit, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
-    state4 = (my_hostsigkey, hostverkeys, setup_id, enc_state2)
-    return state4, vss_commit, enc_shares
+    state2 = (hostverkeys, setup_id, enc_state2)
+    return state2, vss_commit, enc_shares
 ```
 
 ```python
-def recpedpop_finalize(seed, state4, vss_commits, enc_shares):
+def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, enc_shares):
     # TODO: explain broadcast of enc_shares
     assert(len(enc_shares) == len(hostverkeys)**2)
-    (my_hostsigkey, hostverkeys, setup_id, enc_state2) = state4
+    (hostverkeys, setup_id, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
@@ -270,6 +274,21 @@ def recpedpop_finalize(seed, state4, vss_commits, enc_shares):
     # participate in Eq?
     eta = setup_id + enc_shares
     return encpedpop_finalize(enc_state2, vss_commits, enc_shares, certifying_Eq(my_hostsigkey, hostverkeys), setup_id + enc_shares)
+```
+
+```python
+def recpedpop(seed, my_hostsigkey, setup):
+    state1, my_enckey = recpedpop_round1(seed, setup)
+    for i in range(n)
+        chan_send(i, my_enckey)
+    for i in range(n):
+      enckeys[i] = chan_receive(i)
+    state2, my_vss_commit, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
+    for i in range(n)
+        chan_send(i, my_vss_commit + my_generated_enc_shares[i])
+    for i in range(n):
+        vss_commits[i], shares[i] = chan_receive(i)
+    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, enc_shares)
 ```
 
 ### Ensuring Agreement
