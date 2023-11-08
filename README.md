@@ -51,13 +51,13 @@ def kdf(seed, ...):
 TODO: use sensible names, maybe make them match the IETF FROST spec
 
 ```python
-def polynomial_gen(seed, t)
+def polynomial_gen(seed, t):
     # TODO
-def commit_to_coefficients(f)
+def commit_to_coefficients(f):
     # TODO
-def verify_vss(...)
+def verify_vss(...):
     # TODO
-def helper_compute_pk(...)
+def helper_compute_pk(...):
     # TODO
 ```
 
@@ -377,7 +377,7 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys):
                     return SUCCESS
             if ty == CERT:
                 sigs = parse_cert(msg)
-                if sigs is not None and len(sigs) == len(hostverkys:
+                if sigs is not None and len(sigs) == len(hostverkys):
                     is_valid = [verify(hostverkeys[i], x, sig[i]) \
                                 for i in range(hostverkeys)]
                     if all(is_valid)
