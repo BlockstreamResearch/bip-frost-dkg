@@ -206,7 +206,7 @@ def encpedpop(seed, t, n, Eq):
     for i in range(n)
         chan_send(i, my_vss_commit + my_generated_enc_shares[i])
     for i in range(n):
-        vss_commits[i], shares[i] = chan_receive(i)
+        vss_commits[i], enc_shares[i] = chan_receive(i)
     return encpedpop_finalize(state2, vss_commits, enc_shares, Eq)
 ```
 
@@ -263,9 +263,8 @@ def recpedpop_round2(seed, state1, enckeys):
 ```
 
 ```python
-def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, enc_shares):
-    # TODO: explain broadcast of enc_shares
-    assert(len(enc_shares) == len(hostverkeys)**2)
+def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_enc_shares):
+    assert(len(all_enc_shares) == len(hostverkeys)**2)
     (hostverkeys, setup_id, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -273,8 +272,10 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, enc_shares):
     # shares, which in turn ensures that they have the right transcript.
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
-    eta = setup_id + enc_shares
-    return encpedpop_finalize(enc_state2, vss_commits, enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), setup_id + enc_shares)
+    eta = setup_id + all_enc_shares
+    # TODO: fix my_idx
+    my_enc_shares = [enc_shares[i][my_idx] for i in range(enc_shares)]
+    return encpedpop_finalize(enc_state2, vss_commits, my_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), setup_id + all_enc_shares)
 ```
 
 ```python
@@ -286,10 +287,12 @@ def recpedpop(seed, my_hostsigkey, setup):
       enckeys[i] = chan_receive(i)
     state2, my_vss_commit, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
     for i in range(n)
-        chan_send(i, my_vss_commit + my_generated_enc_shares[i])
+        # Send encrypted shares to everyone
+        chan_send(i, my_vss_commit + my_generated_enc_shares)
     for i in range(n):
-        vss_commits[i], shares[i] = chan_receive(i)
-    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, enc_shares)
+        vss_commits[i], all_enc_shares[i] = chan_receive(i)
+    transcript = (setup, enckeys, vss_commits, all_enc_shares)
+    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_enc_shares), transcript
 ```
 
 ### Ensuring Agreement
