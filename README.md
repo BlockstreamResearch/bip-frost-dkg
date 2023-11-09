@@ -151,6 +151,7 @@ def simplpedpop(seed, t, n, my_idx, Eq):
 
 ```python
 def ecdh(x, Y):
+    # TODO include (enckeys, t) in the hash to make sure we don't reuse one-time pads for different shares
     return Hash(x*Y)
 
 def encrypt(share, my_deckey, enckey):
