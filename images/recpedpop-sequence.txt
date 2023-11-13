@@ -22,5 +22,10 @@ Coordinator->Signer : vss_commitments, all_enc_shares
 rnote over Signer: recpedpop_finalize
 group certifying_Eq
     Signer -> Coordinator : sig(my_hostsigkey, x)
-    Coordinator -> Signer : sig or cert
+    alt #LightBlue Coordinator has cert
+        Coordinator -> Signer : cert
+    else #LightYellow Coordinator has no cert yet
+        Coordinator -> Signer : sigs
+        Signer -> Coordinator : cert
+    end
 end
