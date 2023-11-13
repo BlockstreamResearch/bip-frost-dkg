@@ -2,7 +2,9 @@
 
 At this moment, the following are merely rough ideas rather than finalized suggestions.
 
-## Distributed Key Generation (DKG)
+## Introduction
+
+### Distributed Key Generation (DKG)
 
 Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
 This can be achieved through a trusted dealer who generates the shared public key and verifiably shares the corresponding secret key with the FROST signers.
@@ -30,7 +32,9 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 - **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
 - **Little optimized for communication overhead or number of rounds**
 
-### Notation
+### Preliminaries
+
+#### Notation
 
 All participants agree on an assignment of indices `0` to `n-1` to participants.
 
@@ -46,7 +50,7 @@ def kdf(seed, ...):
     # TODO
 ```
 
-### Verifiable Secret Sharing (VSS)
+#### Verifiable Secret Sharing (VSS)
 
 TODO: use sensible names, maybe make them match the IETF FROST spec
 
