@@ -1,6 +1,6 @@
-# Suggestions for a bip-frost DKG section
+# BIP-DKG (WIP)
 
-At this moment, the following are merely rough ideas rather than finalized suggestions.
+This document is a work-in-progress Bitcoin Improvement Proposal for a DKG that can be used in FROST.
 
 ## Introduction
 
