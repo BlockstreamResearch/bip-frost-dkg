@@ -373,7 +373,7 @@ In a network-based scenario, where long-term host keys are available, the equali
 def make_certifying_Eq(my_hostsigkey, hostverkeys):
     def certifying_Eq(x):
         for i in range(n)
-            chan_send(i, sign(my_hostsigkey, x))
+            chan_send(i, SIG, sign(my_hostsigkey, x))
         cert = [None] * len(hostverkeys)
         sig = [None] * len(hostverkeys)
         while(True)
@@ -394,8 +394,8 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys):
                     # wrong.)
                 if sig.count(None) == 0:
                     cert = sig
-                    for i in n:
-                        chan.send(i, cert)
+                    for i in range(n):
+                        chan.send(i, CERT, cert)
                     return SUCCESS
             if ty == CERT:
                 sigs = parse_cert(msg)
@@ -403,8 +403,8 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys):
                     is_valid = [verify(hostverkeys[i], x, sig[i]) \
                                 for i in range(hostverkeys)]
                     if all(is_valid)
-                        for i in n:
-                            chan.send(i, cert)
+                        for i in range(n):
+                            chan.send(i, CERT, cert)
                         return SUCCESS
     return certifying_eq
 ```
