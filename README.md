@@ -89,6 +89,19 @@ def vss_commit(coeffs):
        vss_commitment.append(A_i)
      return vss_commitment
 
+def vss_sum_commitments(vss_commitments, t):
+    # TODO: using "Lloyd's trick", this optimization should be mentioned somewhere
+    n = len(vss_commitments)
+    # TODO: may instead raise BadParticipant(i)
+    assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
+    # The returned array consists of 2*n + t - 1 elements
+    # [vss_commitments[0][0][0], ..., vss_commitments[n-1][0][0],
+    #  sum(vss_commitments[i][1]), ..., sum(vss_commitments[i][t-1]),
+    #  vss_commitments[0][1], ..., vss_commitments[n-1][1]]
+    return [vss_commitments[i][0][0] for i in range(n)] +
+           [sum([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] +
+           [vss_commitments[i][1] for i in range(n)]
+
 # Copied from draft-irtf-cfrg-frost-15
 def vss_verify_irtf(share_i, vss_commitment)
      (i, sk_i) = share_i
@@ -100,9 +113,6 @@ def vss_verify_irtf(share_i, vss_commitment)
 
 def vss_verify(my_idx, summed_vss_commitments, summed_shares):
     return vss_verify_irtf((my_idx, summed_shares), summed_vss_commitments)
-
-def helper_compute_pk(...):
-    # TODO
 
 # Copied from draft-irtf-cfrg-frost-15
 def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
@@ -153,49 +163,46 @@ def simplpedpop_setup(seed, t, n):
     assert(vss_commitment[0] == pubkey_gen(sk))
     sig = sign(sk, "")
     # FIXME make sig a separate thing
-    vss_commitment = vss_commitment + sig
+    vss_commitment = (vss_commitment, sig)
     shares = secret_share_shard(coeffs, n):
     state = (t, n)
     return state, vss_commitment, shares
 
-def simplpedpop_finalize(state, my_idx, vss_commitments, summed_shares, Eq, eta = ()):
+def simplpedpop_finalize(state, my_idx, summed_vss_commitments, summed_shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
     :param int my_idx:
-    :param List[bytes] vss_commitments: VSS commitments from all participants
+    :param List[bytes] summed_vss_commitments: summed VSS commitments from all participants
         (including myself, TODO: it's unnecessary that we verify our own vss_commitment)
-        Each vss_commitments[i] must be of length t
     :param scalar summed_shares: summed shares from all participants (including this participant) mod n
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n = state
-    assert(n == len(shares) and n == len(vss_commitments))
+    assert(n == len(shares) and 2*n + t - 1 == len(summed_vss_commitments))
     for i in range(n):
-        if not len(vss_commitments[i]) == t:
+        if not verify_sig(summed_vss_commitments[i], "", summed_vss_commitments[n + t-1 + i]):
             raise BadParticipant(i)
-        if not verify_sig(vss_commitments[i][0], "", vss_commitments[i].sig):
-            raise BadParticipant(i)
-        eta += (vss_commitments[i], vss_commitment[i].sig)
-    # TODO: using "Lloyd's trick"
-    summed_vss_commitments = [sum([vss_commitments[i][j] for i in range(n)]) for j in range(t)]
-    if not vss_verify(my_idx, summed_vss_commitments, summed_shares):
+    eta += (summed_vss_commitments)
+    summed_vss_commitments_coeffs = sum([summed_vss_commitments[i] for i in range(n)]) + summed_vss_commitments[n:n+t-1]
+    if not vss_verify(my_idx, summed_vss_commitments_coeffs, summed_shares):
         return False
     if Eq(eta) != SUCCESS:
         return False
-    shared_pubkey, signer_pubkeys = derive_group_info(n, t, summed_vss_commitments)
+    shared_pubkey, signer_pubkeys = derive_group_info(n, t, summed_vss_commitments_coeffs)
     return summed_shares, shared_pubkey, signer_pubkeys
 
 # TODO: what about coordinator?
-# TODO: we don't actually need to send everything through encrypted channel and we could relay some parts through the coordinator. But we don't want people to use
+# TODO: we don't actually need to send everything through encrypted channel and we could relay some parts through the coordinator. But we don't want people to use SimplePedPop anyway.
 def simplpedpop(seed, t, n, my_idx, Eq):
   state, my_vss_commitment, my_generated_shares = simplpedpop_setup(seed, t, n)
   for i in range(n)
       secure_chan_send(i, my_vss_commitment + my_generated_shares[i])
   for i in range(n):
       vss_commitments[i], shares[i] = secure_chan_receive(i)
-  return simplpedpop_finalize(state, my_idx, vss_commitments, sum(shares), Eq, eta = ()):
+  summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
+  return simplpedpop_finalize(state, my_idx, summed_vss_commitments, sum(shares), Eq, eta = ()):
 ```
 
 ### EncPedPop
@@ -253,7 +260,7 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
 For every other participant `i`, the participant sends `vss_commitment` and `enc_shares[i]` through the communication channel.
 
 ```python
-def encpedpop_finalize(state2, vss_commitments, summed_enc_shares, Eq):
+def encpedpop_finalize(state2, summed_vss_commitments, summed_enc_shares, Eq):
     my_deckey, my_enckey, simpl_state, enckeys = state2
     n = len(enckeys)
     assert(len(enc_shares) == n)
@@ -261,7 +268,7 @@ def encpedpop_finalize(state2, vss_commitments, summed_enc_shares, Eq):
     summed_shares = summed_enc_shares - sum([ecdh(my_deckey, enckeys[i]) for i in range(n)]
     my_idx = enckeys.index(my_enckey)
     eta = enckeys
-    simplpedpop_finalize(simpl_state, my_idx, vss_commitments, summed_shares, Eq, eta):
+    simplpedpop_finalize(simpl_state, my_idx, summed_vss_commitments, summed_shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
@@ -281,7 +288,8 @@ def encpedpop(seed, t, n, Eq):
         chan_send(i, my_vss_commitment + my_generated_enc_shares[i])
     for i in range(n):
         vss_commitments[i], enc_shares[i] = chan_receive(i)
-    return encpedpop_finalize(state2, vss_commitments, sum(enc_shares), Eq)
+    summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
+    return encpedpop_finalize(state2, summed_vss_commitments, sum(enc_shares), Eq)
 ```
 
 ### RecPedPop
@@ -337,7 +345,7 @@ def recpedpop_round2(seed, state1, enckeys):
 ```
 
 ```python
-def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_enc_shares):
+def recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_summed_enc_shares):
     (hostverkeys, setup_id, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -348,7 +356,7 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_
     eta = setup_id + all_summed_enc_shares
     # TODO: fix my_idx
     my_summed_enc_shares = all_summed_enc_shares[my_idx]
-    return encpedpop_finalize(enc_state2, vss_commitments, my_summed_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
+    return encpedpop_finalize(enc_state2, summed_vss_commitments, my_summed_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
 ```
 
 ```python
@@ -368,9 +376,9 @@ def recpedpop(seed, my_hostsigkey, setup):
     for i in range(n):
         vss_commitments[i], all_enc_shares[i] = chan_receive(i)
     all_summed_enc_shares = [sum([all_enc_shares[from_][to] for from_ in range(n)]) for to in range(n)]
-    # TODO: vss_commitments have size t*n
-    transcript = (setup, enckeys, vss_commitments, all_summed_enc_shares)
-    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_enc_shares), transcript
+    transcript = (setup, enckeys, summed_vss_commitments, all_summed_enc_shares)
+    summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
+    return recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_summed_enc_shares), transcript
 ```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
