@@ -267,6 +267,9 @@ def encpedpop_finalize(state2, vss_commitments, summed_enc_shares, Eq):
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 
 ```python
+# TODO: need to make EXTRA SURE that chan_send(my_idx, my_enckey) preserves
+# integrity (i.e. we don't send it). Otherwise we may reuse the deterministic
+# seed_ in different setups.
 def encpedpop(seed, t, n, Eq):
     state1, my_enckey = encpedpop_round1(seed):
     for i in range(n)
@@ -349,6 +352,9 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_
 ```
 
 ```python
+# TODO: need to make EXTRA SURE that chan_send(my_idx, my_enckey) preserves
+# integrity (i.e. we don't send it). Otherwise we may reuse the deterministic
+# seed_ in different setups.
 def recpedpop(seed, my_hostsigkey, setup):
     state1, my_enckey = recpedpop_round1(seed, setup)
     for i in range(n)
@@ -366,6 +372,8 @@ def recpedpop(seed, my_hostsigkey, setup):
     transcript = (setup, enckeys, vss_commitments, all_summed_enc_shares)
     return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_enc_shares), transcript
 ```
+
+![recpedpop diagram](images/recpedpop-sequence.png)
 
 ### Ensuring Agreement
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
@@ -461,22 +469,6 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys):
                         return SUCCESS
     return certifying_eq
 ```
- <!-- - On initialization: -->
- <!--   - Send `sig = sign(hsk, x)` to all other participants -->
- <!--   - Initialize an empty key-value store `cert`, ordered by keys -->
- <!-- - Upon receiving a signature `sig` from participant `hpk`: -->
- <!--   - If `sig[hpk]` is not yet defined and `verify(hpk, sig, x) == true`: -->
- <!--     - Store `sigs[hpk] = sig` -->
- <!--     - If a valid signature was received from all other participants (i.e., `if sigs.keys() = hpks`): -->
- <!--       - Return SUCCESS -->
- <!--       - Send `cert = array(sigs.values())` to all other participants -->
- <!--   - Else if `verify(hpk, sig, x) == false`: -->
- <!--     - (The signer `hpk` is either malicious or an honest signer whose input is not equal to `x`. This means that there is some malicious signer or that some messages have been tampered with on the wire. We must not abort, and we could still output SUCCESS when receiving a cert later, but we should indicate to the user (logs?) that something went wrong.) -->
- <!-- - Upon receiving a value `cert`: -->
- <!--     - Parse `cert` as a list of signatures; break this "upon" block if parsing fails. -->
- <!--     - If for all `i=0..n-1`, `verify(hpk[i], sig[i], x) == true` -->
- <!--       - Return SUCCESS -->
- <!--       - Send `cert` to all other participants -->
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
 It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
