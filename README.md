@@ -266,6 +266,7 @@ def encpedpop_finalize(state2, summed_vss_commitments, summed_enc_shares, Eq):
     assert(len(enc_shares) == n)
 
     summed_shares = summed_enc_shares - sum([ecdh(my_deckey, enckeys[i]) for i in range(n)]
+    # TODO: catch "ValueError: not in list" exception
     my_idx = enckeys.index(my_enckey)
     eta = enckeys
     simplpedpop_finalize(simpl_state, my_idx, summed_vss_commitments, summed_shares, Eq, eta):
@@ -274,9 +275,6 @@ def encpedpop_finalize(state2, summed_vss_commitments, summed_enc_shares, Eq):
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 
 ```python
-# TODO: need to make EXTRA SURE that chan_send(my_idx, my_enckey) preserves
-# integrity (i.e. we don't send it). Otherwise we may reuse the deterministic
-# seed_ in different setups.
 def encpedpop(seed, t, n, Eq):
     state1, my_enckey = encpedpop_round1(seed):
     for i in range(n)
@@ -360,9 +358,6 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_
 ```
 
 ```python
-# TODO: need to make EXTRA SURE that chan_send(my_idx, my_enckey) preserves
-# integrity (i.e. we don't send it). Otherwise we may reuse the deterministic
-# seed_ in different setups.
 def recpedpop(seed, my_hostsigkey, setup):
     state1, my_enckey = recpedpop_round1(seed, setup)
     for i in range(n)
@@ -376,6 +371,7 @@ def recpedpop(seed, my_hostsigkey, setup):
     for i in range(n):
         vss_commitments[i], all_enc_shares[i] = chan_receive(i)
     all_summed_enc_shares = [sum([all_enc_shares[from_][to] for from_ in range(n)]) for to in range(n)]
+    # TODO: transcript misses certifying_Eq transcript
     transcript = (setup, enckeys, summed_vss_commitments, all_summed_enc_shares)
     summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
     return recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_summed_enc_shares), transcript
