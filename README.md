@@ -52,17 +52,68 @@ def kdf(seed, ...):
 
 #### Verifiable Secret Sharing (VSS)
 
-TODO: use sensible names, maybe make them match the IETF FROST spec
+TODO: the functions from the irtf spec are a bit clunky to use for us...
 
 ```python
-def polynomial_gen(seed, t):
-    # TODO
-def commit_to_coefficients(f):
-    # TODO
-def verify_vss(...):
-    # TODO
+# Copied from draft-irtf-cfrg-frost-15
+def polynomial_evaluate(x, coeffs):
+   value = Scalar(0)
+   for coeff in reverse(coeffs):
+     value *= x
+     value += coeff
+   return value
+
+# Copied from draft-irtf-cfrg-frost-15
+def secret_share_shard_irtf(s, coefficients, MAX_PARTICIPANTS):
+     # Prepend the secret to the coefficients
+     coefficients = [s] + coefficients
+
+     # Evaluate the polynomial for each point x=1,...,n
+     secret_key_shares = []
+     for x_i in range(1, MAX_PARTICIPANTS + 1):
+       y_i = polynomial_evaluate(Scalar(x_i), coefficients)
+       secret_key_share_i = (x_i, y_i)
+       secret_key_shares.append(secret_key_share_i)
+     return secret_key_shares, coefficients
+
+def secret_share_shard(coefficients, MAX_PARTICIPANTS):
+    # strip coefficients, strip indices
+    shares = secret_share_shard_irtf(s, coefficients, MAX_PARTICIPANTS)[0]
+    return [pair[0] for pair in shares]
+
+# Copied from draft-irtf-cfrg-frost-15
+def vss_commit(coeffs):
+     vss_commitment = []
+     for coeff in coeffs:
+       A_i = G.ScalarBaseMult(coeff)
+       vss_commitment.append(A_i)
+     return vss_commitment
+
+# Copied from draft-irtf-cfrg-frost-15
+def vss_verify_irtf(share_i, vss_commitment)
+     (i, sk_i) = share_i
+     S_i = G.ScalarBaseMult(sk_i)
+     S_i' = G.Identity()
+     for j in range(0, MIN_PARTICIPANTS):
+       S_i' += G.ScalarMult(vss_commitment[j], pow(i, j))
+     return S_i == S_i'
+
+def vss_verify(my_idx, summed_vss_commitments, summed_shares):
+    return vss_verify_irtf((my_idx, summed_shares), summed_vss_commitments)
+
 def helper_compute_pk(...):
     # TODO
+
+# Copied from draft-irtf-cfrg-frost-15
+def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
+  PK = vss_commitment[0]
+  participant_public_keys = []
+  for i in range(1, MAX_PARTICIPANTS+1):
+    PK_i = G.Identity()
+    for j in range(0, MIN_PARTICIPANTS):
+      PK_i += G.ScalarMult(vss_commitment[j], pow(i, j))
+    participant_public_keys.append(PK_i)
+  return PK, participant_public_keys
 ```
 
 ### SimplPedPop
@@ -94,59 +145,57 @@ def simplpedpop_setup(seed, t, n):
     :param int n: number of participants
     :return: a VSS commitment and shares
     """
-    f = polynomial_gen(seed, t)
-    # vss_commit[0] denotes the commitment to the constant term
-    vss_commit = commit_to_coefficients(f)
-    # sk is the constant term of f and the dlog of vss_commit[0]
-    sk = f[0]
-    assert(vss_commit[0] == pubkey_gen(sk))
+    coeffs = [kdf(seed, "coeffs", i) for i in range(t)]
+    # vss_commitment[0] denotes the commitment to the constant term
+    vss_commitment = vss_commit(coeffs)
+    # sk is the constant term of f and the dlog of vss_commitment[0]
+    sk = coeffs[0]
+    assert(vss_commitment[0] == pubkey_gen(sk))
     sig = sign(sk, "")
     # FIXME make sig a separate thing
-    vss_commit = vss_commit + sig
-    shares = [ f(i+1) for i in range(n) ]
+    vss_commitment = vss_commitment + sig
+    shares = secret_share_shard(coeffs, n):
     state = (t, n)
-    return state, vss_commit, shares
+    return state, vss_commitment, shares
 
-def simplpedpop_finalize(state, my_idx, vss_commits, summed_shares, Eq, eta = ()):
+def simplpedpop_finalize(state, my_idx, vss_commitments, summed_shares, Eq, eta = ()):
     """
     Take the messages received from the participants and finalize the DKG
 
     :param int my_idx:
-    :param List[bytes] vss_commits: VSS commitments from all participants
-        (including myself, TODO: it's unnecessary that we verify our own vss_commit)
-        Each vss_commits[i] must be of length t
+    :param List[bytes] vss_commitments: VSS commitments from all participants
+        (including myself, TODO: it's unnecessary that we verify our own vss_commitment)
+        Each vss_commitments[i] must be of length t
     :param scalar summed_shares: summed shares from all participants (including this participant) mod n
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n = state
-    assert(n == len(shares) and n == len(vss_commits))
+    assert(n == len(shares) and n == len(vss_commitments))
     for i in range(n):
-        if not len(vss_commits[i]) == t:
+        if not len(vss_commitments[i]) == t:
             raise BadParticipant(i)
-        if not verify_sig(vss_commits[i][0], "", vss_commits[i].sig):
+        if not verify_sig(vss_commitments[i][0], "", vss_commitments[i].sig):
             raise BadParticipant(i)
-        eta += (vss_commits[i], vss_commit[i].sig)
+        eta += (vss_commitments[i], vss_commitment[i].sig)
     # TODO: using "Lloyd's trick"
-    summed_vss_commits = [sum([vss_commits[i][j] for i in range(n)]) for j in range(t)]
-    if not verify_vss(my_idx, summed_vss_commits, summed_shares):
+    summed_vss_commitments = [sum([vss_commitments[i][j] for i in range(n)]) for j in range(t)]
+    if not vss_verify(my_idx, summed_vss_commitments, summed_shares):
         return False
     if Eq(eta) != SUCCESS:
         return False
-    # helper_compute_pk computes the individual pubkey of participant with the given idx
-    signer_pubkeys = [helper_compute_pk(vss_commits, i) for i in range(n)]
-    pubkey = sum([vss_commits[i][0] for i in range(n)])
-    return summed_shares, pubkey, signer_pubkeys
+    shared_pubkey, signer_pubkeys = derive_group_info(n, t, summed_vss_commitments)
+    return summed_shares, shared_pubkey, signer_pubkeys
 
 # TODO: what about coordinator?
 # TODO: we don't actually need to send everything through encrypted channel and we could relay some parts through the coordinator. But we don't want people to use
 def simplpedpop(seed, t, n, my_idx, Eq):
-  state, my_vss_commit, my_generated_shares = simplpedpop_setup(seed, t, n)
+  state, my_vss_commitment, my_generated_shares = simplpedpop_setup(seed, t, n)
   for i in range(n)
-      secure_chan_send(i, my_vss_commit + my_generated_shares[i])
+      secure_chan_send(i, my_vss_commitment + my_generated_shares[i])
   for i in range(n):
-      vss_commits[i], shares[i] = secure_chan_receive(i)
-  return simplpedpop_finalize(state, my_idx, vss_commits, sum(shares), Eq, eta = ()):
+      vss_commitments[i], shares[i] = secure_chan_receive(i)
+  return simplpedpop_finalize(state, my_idx, vss_commitments, sum(shares), Eq, eta = ()):
 ```
 
 ### EncPedPop
@@ -194,17 +243,17 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
-    simpl_state, vss_commit, shares = simplpedpop_setup(seed_, t, n)
+    simpl_state, vss_commitment, shares = simplpedpop_setup(seed_, t, n)
     # TODO The encrypt function should have a randomness argument (or a secret key in case of AE).
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i]) for i in range(len(enckeys))
     state2 = (my_deckey, my_enckey, simpl_state, enckeys)
-    return state2, vss_commit, enc_shares
+    return state2, vss_commitment, enc_shares
 ```
 
-For every other participant `i`, the participant sends `vss_commit` and `enc_shares[i]` through the communication channel.
+For every other participant `i`, the participant sends `vss_commitment` and `enc_shares[i]` through the communication channel.
 
 ```python
-def encpedpop_finalize(state2, vss_commits, summed_enc_shares, Eq):
+def encpedpop_finalize(state2, vss_commitments, summed_enc_shares, Eq):
     my_deckey, my_enckey, simpl_state, enckeys = state2
     n = len(enckeys)
     assert(len(enc_shares) == n)
@@ -212,7 +261,7 @@ def encpedpop_finalize(state2, vss_commits, summed_enc_shares, Eq):
     summed_shares = summed_enc_shares - sum([ecdh(my_deckey, enckeys[i]) for i in range(n)]
     my_idx = enckeys.index(my_enckey)
     eta = enckeys
-    simplpedpop_finalize(simpl_state, my_idx, vss_commits, summed_shares, Eq, eta):
+    simplpedpop_finalize(simpl_state, my_idx, vss_commitments, summed_shares, Eq, eta):
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
@@ -224,12 +273,12 @@ def encpedpop(seed, t, n, Eq):
         chan_send(i, my_enckey)
     for i in range(n):
       enckeys[i] = chan_receive(i)
-    state2, my_vss_commit, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys):
+    state2, my_vss_commitment, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys):
     for i in range(n)
-        chan_send(i, my_vss_commit + my_generated_enc_shares[i])
+        chan_send(i, my_vss_commitment + my_generated_enc_shares[i])
     for i in range(n):
-        vss_commits[i], enc_shares[i] = chan_receive(i)
-    return encpedpop_finalize(state2, vss_commits, sum(enc_shares), Eq)
+        vss_commitments[i], enc_shares[i] = chan_receive(i)
+    return encpedpop_finalize(state2, vss_commitments, sum(enc_shares), Eq)
 ```
 
 ### RecPedPop
@@ -279,13 +328,13 @@ The enckey received from participant `hostverkeys[i]` is stored at `enckeys[i]`.
 def recpedpop_round2(seed, state1, enckeys):
     hostverkeys, t, setup_id, enc_state1 = state1
 
-    enc_state2, vss_commit, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
+    enc_state2, vss_commitment, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
     state2 = (hostverkeys, setup_id, enc_state2)
-    return state2, vss_commit, enc_shares
+    return state2, vss_commitment, enc_shares
 ```
 
 ```python
-def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_summed_enc_shares):
+def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_enc_shares):
     (hostverkeys, setup_id, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -296,7 +345,7 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_summed_enc_
     eta = setup_id + all_summed_enc_shares
     # TODO: fix my_idx
     my_summed_enc_shares = all_summed_enc_shares[my_idx]
-    return encpedpop_finalize(enc_state2, vss_commits, my_summed_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
+    return encpedpop_finalize(enc_state2, vss_commitments, my_summed_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
 ```
 
 ```python
@@ -306,16 +355,16 @@ def recpedpop(seed, my_hostsigkey, setup):
         chan_send(i, my_enckey)
     for i in range(n):
       enckeys[i] = chan_receive(i)
-    state2, my_vss_commit, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
+    state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
     for i in range(n)
         # Send encrypted shares to everyone
-        chan_send(i, my_vss_commit + my_generated_enc_shares)
+        chan_send(i, my_vss_commitment + my_generated_enc_shares)
     for i in range(n):
-        vss_commits[i], all_enc_shares[i] = chan_receive(i)
+        vss_commitments[i], all_enc_shares[i] = chan_receive(i)
     all_summed_enc_shares = [sum([all_enc_shares[from_][to] for from_ in range(n)]) for to in range(n)]
-    # TODO: vss_commits have size t*n
-    transcript = (setup, enckeys, vss_commits, all_summed_enc_shares)
-    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commits, all_summed_enc_shares), transcript
+    # TODO: vss_commitments have size t*n
+    transcript = (setup, enckeys, vss_commitments, all_summed_enc_shares)
+    return recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments, all_summed_enc_shares), transcript
 ```
 
 ### Ensuring Agreement
