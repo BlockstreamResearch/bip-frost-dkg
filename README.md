@@ -33,6 +33,13 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 - **Little optimized for communication overhead or number of rounds**
 - **Support for Coordinator**: In many scenarios there is a "natural" coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 
+|                 | seed              | requires secure channels between participants | backup                      |
+|-----------------|-------------------|-----------------------------------------------|-----------------------------|
+| **SimplPedPop** | fresh             | yes                                           | share per setup             |
+| **EncPedPop**   | reuse allowed     | no                                            | share per setup             |
+| **RecPedPop**   | reuse for backups | no                                            | seed + transcript per setup |
+
+
 ### Preliminaries
 
 #### Notation
