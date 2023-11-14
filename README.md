@@ -1,44 +1,82 @@
-# Ready-to-deploy Distributed Key Generation for FROST
+# Ready-to-use Distributed Key Generation for FROST
 
 This document is a work-in-progress Bitcoin Improvement Proposal for a DKG that can be used in FROST.
 
 ## Introduction
 While the digital ecosystem gravitates toward more decentralized and distributed architectures,
-threshold cryptography has gained considerable renewed attention in the recent years,
-as is underlined by NIST's forthcoming call for multi-party threshold schemes.
-Of particular interest are threshold signatures,
-in which a threshold $t$ of some set of $n$ signers is required to produce a signature.
-Threshold signatures retain unforgeability even if up to $t-1$ signers are compromised,
-and they retain their functionality as long as $t$ honest signers do not lose their secret key material.
+and as underlined by NIST's forthcoming call for multi-party threshold schemes,
+*threshold signatures* are gaining considerable renewed attention.
+In a threshold signature scheme, a threshold $t$ of some set of $n$ signers is required to produce a signature.
+Threshold signatures remain unforgeable even if up to $t-1$ signers are compromised,
+and remain functional as long as $t$ honest signers do not lose their secret key material.
 As a result, threshold signatures increase *both* security and availability,
 enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
-This makes threshold signatures an attractive solution for securing highly valuable keys
-such as DNSSEC root keys and keys in cryptocurrency wallets.
+Of particular interest are threshold signatures that "look like" and can be verified like single-signer signatures produced by existing and widely deployed signature schemes.
+These *compatible* threshold signatures offer a drop-in solution for securing highly valuable keys in already deployed systems,
+e.g., in DNSSEC or in cryptocurrencies, without the need to replace the verification algorithm in all clients.
 
-Due to its compatibility with single-signer Schnorr signatures (including EdDSA),
-the FROST scheme is a prominent candidate, ...
-standardization efforts by IETF [CKGW23] (TODO add more)
-underline ... (TODO add more, also add real-world usage examples)
+The state-of-the art solution in the realm of compatibility to Schnorr signatures (including EdDSA)
+is the FROST threshold signature scheme, which was proposed by Komlo and Goldberg, and whose design and security proof has been refined by multiple follow up works.
+FROST's signing protocol supports dishonest majority setups (TODO t<n/2), and offers a low number of rounds, high overall efficiency, and implementation simplicity.
+This makes it an attractive candidate for real-world deployment
+and standardization efforts by IRTF are under way~\cite{} (TODO add more)
+(TODO add more, also add real-world usage examples)
 
-While FROST is an excellent signing protocol,
-Distributed Key Generation (DKG),—critical for initiating any threshold signature scheme—remains a principal challenge for FROST.
-DKG is the process through which the $n$ signers jointly establish a shared secret key without a single trusted entity (and thus, without ever reconstructing the full secret key in a single place).
+While FROST offers an excellent threshold signing protocol,
+Distributed Key Generation (DKG) remains a principal challenge for FROST.
+DKG is the process through which the $n$ signers jointly establish a shared secret key without a single trusted entity,
+and, as corollary, without ever reconstructing the full secret key in a single place.
+While there are numerous DKG protocols in the literature,
+implementers face significant hurdles in real-world deployment.
 
-While their are numerous DKG protocols in the literature, implementers often face significant hurdles in real-world deployment, largely due to their intricate setup requirements.
-First, secure channels...
-Second, reliable broadcast channel...
+The difficulties encountered in practice are mainly due to the intricate setup requirements of DKGs in the literature.
+Virtually all DKG protocols in the literature assume
+i) some form of secure (i.e., authenticated and encrypted) channels between signers, typically to deliver secret shares to individual signers,
+and ii) some form of reliable broadcast (or consensus) mechanism.
 
-However, neither of these tasks is trivial:
-While off-the-shelf solutions exist, their guarantees and requirement can differ subtly.
-TODO explain more
+However, neither of these tasks is trivial, and
+this is in stark contrast to FROST's signing protocol itself, which does not need any further special communication setup,
+and which remains unforgeable against a network adversary who can inspect, modify and reorder messages at will.
+In the case of secure channels,
+while off-the-shelf solutions exist (e.g., Wireguard, TLS and Noise),
+leaving it to implementers to picking one that suits the requirements of the DKG remains questionable.
 
-This leaves implementers, users, as well as designers of high-level protocols in the unfortunate situation that
-they either need to reinvent secure channels and broadcast (which is prone to mistakes),
-or that they need to compose DKGs with other protocols.
+However, in case of reliable broadcast, the situation is considerably worse.
+Many protocols and flavors of reliable "broadcast" exist,
+ranging from simple echo broadcast schemes to full-fledged BFT/consensus protocols,
+and their safety and availability guarantees differ significantly (and sometimes subtly).
+Depending on the network assumptions (e.g., asynchronous vs synchronous), these may even be impossible to realize in a dishonest majority setting,
+potentially rendering FROST's support for dishonest majority useless.
+Moreover, while research into consensus dates back many decades,
+large-scale and real-world deployments of consensus protocols has only taken up recently and can still be considered in its infancy.
+What adds to the difficulty is that the exact requirements of a given DKGs are often underspecified or not specified at all.
+For example PedPoP, the canonical DKG TODO
+
+<!-- Might move this paragraph down again... It distracts the flow a bit, but pointing out the vulnerability here is a great motivation. -->
+The reason why DKGs rely on reliable broadcast is that,
+in many settings, a crucial prerequisite for security is that all $n$ participants reach agreement over the results of the DKG.
+Indeed, disagreement may lead to catastrophic failure.
+For example, when setting up a $t$-of-$n$ Bitcoin wallet,
+assume that all but one honest participant has received invalid secret shares from a malicious participant and therefore must abort the DKG,
+but one participant has received correct shares.
+Since this one participant believes that the DKG has finished successfully, it may sends funds to the resulting threshold public key.
+But those funds will be lost irrevocably, because the single remaining secret share is not sufficient to produce a signature (assuming t > 1).
+
+Notably, at the time of writing, the variant of PedPoP implemented in https://frost.zfnd.org/terminology.html#broadcast-channel is vulnerable to exactly this attack,
+even though it makes careful use of a broadcast channel and defines its exact properties!
+The issue is that broadcast is only used in the first protocol round to ensure that all signers agree on the common parameters,
+but it is not used again at the end of the broadcast to reach agreement over the fact that all signers have received proper secret shares. 
+We reached out, TODO  blabla.
+
+To sum up, the current state of affairs leaves implementers, users, as well as designers of high-level protocols in the unfortunate situation that
+they either need to reinvent and reimplement secure channels and broadcast from scratch (which is prone to mistakes),
+or that they need to stack a given DKG protocol on top of existing protocols for secure channels and broadcast.
+TODO Omer's paper
 We believe that this state of affairs is similar to the pre-AEAD era and the early days of SSL/TLS,
 where the cryptographic research community left the intricate task of securely composing cryptographic primitives such as unauthenticated encryption schemes and MACs to protocol designers and implementers,
 leading to a long of history of severe vulnerabilities and difficult-to-deploy emergency fixes.
 
+## Contribution
 In order to overcome the aforementioned difficulties,
 we propose a new holistic DKG protocol tailored to the use in FROST:
 The main feature of our protocol is that it is self-sufficient and comes with "batteries included":
@@ -47,7 +85,15 @@ while all of this underlying complexity is hidden behind a simple and hard-to-mi
 As a result, our protocol is ready to use and does not rely on any setup assumption
 except that participants have verified each other's identities keys out of band.
 
-Minimal tailored solution: we encrypt exactly what's necessary, and we use broadcast only once and afterwards.
+Minimal tailored solution: we encrypt exactly what's necessary, and we use authenticated broadcast only once and afterwards.
+
+### Seamless Backup
+
+### Getting rid of communication assumptions
+
+### No Robustness
+Robustness is an anti-feature
+
 
 ### Distributed Key Generation (DKG)
 
