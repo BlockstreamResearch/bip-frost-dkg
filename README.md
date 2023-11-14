@@ -64,7 +64,7 @@ def kdf(seed, ...):
 
 #### Verifiable Secret Sharing (VSS)
 
-TODO: the functions from the irtf spec are a bit clunky to use for us...
+TODO: the functions `secret_share_shard` and `vss_verify` from the irtf spec are a bit clunky to use for us...
 
 ```python
 # Copied from draft-irtf-cfrg-frost-15
@@ -241,8 +241,6 @@ def encrypt(share, my_deckey, enckey):
 EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
-TODO: Specify an encryption scheme. Good candidates are ECIES and the `crypto_box` authenticated PKE from NaCl, which is just ECDH+AEAD (https://doc.libsodium.org/public-key_cryptography/authenticated_encryption). Depending on the scheme, we could reuse keys for signatures and encryption but then we need stronger hardness assumptions (https://crypto.stackexchange.com/questions/37896/using-a-single-ed25519-key-for-encryption-and-signature). Performance per participant when using ECIES: 2 `ecmult_gen` (keygen, noncegen) + 2*(n-1) `ecmult_const` (ecdh for sending and receiving). When using `crypto_box`: 1x `ecmult_gen` (keygen), n-1 `ecmult_const` (ecdh, sending and receiving uses the same shared secret).
-
 ```python
 def encpedpop_round1(seed):
     my_deckey = kdf(seed, "deckey")
@@ -335,8 +333,7 @@ def recpedpop_hostpubkey(seed):
 ```
 
 Send host pubkey to every other participant.
-After receiving a host pubkey from every other participant, compute a setup identifier.
-TODO: there needs to be a global order of participants
+Collect host pubkeys from all other participants and compute a setup identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
 
 ```python
 def recpedpop_setup_id(hostverkeys, t, context_string):
@@ -356,7 +353,7 @@ def recpedpop_round1(seed, setup):
     seed_ = kdf(seed, setup_id)
 
     enc_state1, my_enckey =  encpedpop_round1(seed_)
-    state1 = (hostverkeys, t, setup_id, enc_state1)
+    state1 = (hostverkeys, t, setup_id, enc_state1, my_enckey)
     return state1, my_enckey
 ```
 
@@ -364,16 +361,17 @@ The enckey received from participant `hostverkeys[i]` is stored at `enckeys[i]`.
 
 ```python
 def recpedpop_round2(seed, state1, enckeys):
-    hostverkeys, t, setup_id, enc_state1 = state1
+    hostverkeys, t, setup_id, enc_state1, my_enckey = state1
 
     enc_state2, vss_commitment, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
-    state2 = (hostverkeys, setup_id, enc_state2)
+    my_idx = enckeys.index(my_enckey)
+    state2 = (hostverkeys, setup_id, my_idx, enc_state2)
     return state2, vss_commitment, enc_shares
 ```
 
 ```python
 def recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_summed_enc_shares):
-    (hostverkeys, setup_id, enc_state2) = state2
+    (hostverkeys, setup_id, my_idx, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
@@ -381,7 +379,6 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
     eta = setup_id + all_summed_enc_shares
-    # TODO: fix my_idx
     my_summed_enc_shares = all_summed_enc_shares[my_idx]
     return encpedpop_finalize(enc_state2, summed_vss_commitments, my_summed_enc_shares, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
 ```
