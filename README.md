@@ -393,9 +393,9 @@ def recpedpop(seed, my_hostsigkey, setup):
     chan_send(my_vss_commitment + my_generated_enc_shares)
     vss_commitments, summed_enc_shares = chan_receive()
 
-    # TODO: transcript misses certifying_Eq transcript
-    transcript = (setup, enckeys, summed_vss_commitments, summed_enc_shares)
-    return recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, summed_enc_shares), transcript
+    summed_shares, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, summed_enc_shares)
+    transcript = (setup, enckeys, summed_vss_commitments, summed_enc_shares, result["cert"])
+    return summed_shares, shared_pubkey, signer_pubkeys, transcript
 
 def recpedpop_coordinate(t, n):
     summed_vss_commitments, summed_enc_shares = encpedpop_coordinate_internal(t, n)
@@ -460,17 +460,16 @@ TODO The hpk should be the id here... clean this up and write something about se
 In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
 
 ```python
-def make_certifying_Eq(my_hostsigkey, hostverkeys):
+def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
     def certifying_Eq(x):
         chan_send(SIG, sign(my_hostsigkey, x))
-        cert = [None] * len(hostverkeys)
-        sig = [None] * len(hostverkeys)
+        sigs = [None] * len(hostverkeys)
         while(True)
             i, ty, msg = chan_receive()
             if ty == SIGNATURE:
                 is_valid = verify(hostverkeys[i], x, msg)
-                if sig[i] is None and is_valid:
-                    sig[i] = msg
+                if sigs[i] is None and is_valid:
+                    sigs[i] = msg
                 elif not is_valid:
                     # The signer `hpk` is either malicious or an honest signer
                     # whose input is not equal to `x`. This means that there is
@@ -479,17 +478,19 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys):
                     # still output SUCCESS when receiving a cert later, but we
                     # should indicate to the user (logs?) that something went
                     # wrong.)
-                if sig.count(None) == 0:
-                    cert = sig
+                if sigs.count(None) == 0:
+                    cert = sigs
+                    result["cert"] = cert
                     for i in range(n):
                         chan.send(i, CERT, cert)
                     return SUCCESS
             if ty == CERT:
                 sigs = parse_cert(msg)
                 if sigs is not None and len(sigs) == len(hostverkys):
-                    is_valid = [verify(hostverkeys[i], x, sig[i]) \
+                    is_valid = [verify(hostverkeys[i], x, sigs[i]) \
                                 for i in range(hostverkeys)]
                     if all(is_valid)
+                        result["cert"] = cert
                         for i in range(n):
                             chan.send(i, CERT, cert)
                         return SUCCESS
