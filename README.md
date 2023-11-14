@@ -159,8 +159,10 @@ SimplPedPop requires SECURE point-to-point channels between the participants, i.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
 
 Also, SimplePedPop requires an interactive protocol `Eq` as described in section [Ensuring Agreement](#ensuring-agreement).
-
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
+
+In SimplPedPop, the signers designate a coordinator who relays and aggregates messages.
+Every participant runs the `simplpedpop` algorithm and the coordinator runs the `simplpedpop_coordinate` algorithm as described below.
 
 ```python
 def simplpedpop_round1(seed, t, n):
@@ -197,6 +199,7 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
         if not verify_sig(vss_commitments_sum[i], "", vss_commitments_sum[n + t-1 + i]):
             raise BadParticipantError(i, "Participant sent invalid proof-of-knowledge")
     eta += (vss_commitments_sum)
+    # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [sum_group([vss_commitments_sum[i] for i in range(n)])] + vss_commitments_sum[n:n+t-1]
     if not vss_verify(my_idx, vss_commitments_sum_coeffs, shares_sum):
         return False
@@ -231,6 +234,9 @@ def simplpedpop_coordinate(t, n):
 
 ### EncPedPop
 
+EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
+Every EncPedPop participant runs the `encpedpop` algorithm and the coordinator runs the `encpedpop_coordinate` algorithm as described below.
+
 #### Encryption
 
 ```python
@@ -243,7 +249,6 @@ def encrypt(share, my_deckey, enckey, context):
 
 #### EncPedPop
 
-EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
 ```python
@@ -254,9 +259,7 @@ def encpedpop_round1(seed):
     return state1, my_enckey
 ```
 
-The (public) encryption keys are distributed among each other.
-They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
-The receiver of an encryption key from participant `i` stores the encryption key in an array `enckeys` at position `i`.
+The (public) encryption keys are distributed among the participants.
 
 ```python
 def encpedpop_round2(seed, state1, t, n, enckeys):
@@ -273,11 +276,7 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
-```
 
-For every other participant `i`, the participant sends `vss_commitment` and `enc_shares[i]` through the communication channel.
-
-```python
 def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()):
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
@@ -341,8 +340,8 @@ def recpedpop_hostpubkey(seed):
     return (my_hostsigkey, my_hostverkey)
 ```
 
-Send host pubkey to every other participant.
-Collect host pubkeys from all other participants and compute a setup identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
+The participants send their host pubkey to the other participant and collect received host pubkeys.
+They then compute a setup identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
 
 ```python
 def recpedpop_setup_id(hostverkeys, t, context_string):
@@ -351,8 +350,8 @@ def recpedpop_setup_id(hostverkeys, t, context_string):
     return setup, setup_id
 ```
 
-Compare the setup identifier with every other participant out-of-band.
-If some other participant presents a different setup identifier, abort.
+The participants compare the setup identifier with every other participant out-of-band.
+If some other participant presents a different setup identifier, the participant aborts.
 
 ```python
 def recpedpop_round1(seed, setup):
@@ -365,8 +364,6 @@ def recpedpop_round1(seed, setup):
     state1 = (hostverkeys, t, setup_id, enc_state1, my_enckey)
     return state1, my_enckey
 ```
-
-The enckey received from participant `hostverkeys[i]` is stored at `enckeys[i]`.
 
 ```python
 def recpedpop_round2(seed, state1, enckeys):
