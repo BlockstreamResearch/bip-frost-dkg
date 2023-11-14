@@ -140,8 +140,6 @@ def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
 
 ### SimplPedPop
 
-TODO For each DKG, add a function that implements an entire protocol run (for one party) by calling the existing functions. This will involve adding a network abstraction (i.e., "send()" and "receive()" functions). Once we have a network abstraction, we can cleanly "implement" (in pseudocode) Eq protocols as functions and call them from DKGs.
-
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 with the following minor modifications:
@@ -186,7 +184,7 @@ def simplpedpop_finalize(state, my_idx, summed_vss_commitments, summed_shares, E
 
     :param int my_idx:
     :param List[bytes] summed_vss_commitments: summed VSS commitments from all participants
-        (including myself, TODO: it's unnecessary that we verify our own vss_commitment)
+        (including myself)
     :param scalar summed_shares: summed shares from all participants (including this participant) mod n
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
@@ -228,12 +226,11 @@ def simplpedpop_coordinate(t, n):
 #### Encryption
 
 ```python
-def ecdh(x, Y):
-    # TODO include (enckeys, t) in the hash to make sure we don't reuse one-time pads for different shares
-    return Hash(x*Y)
+def ecdh(x, Y, context):
+    return Hash(x*Y, context)
 
-def encrypt(share, my_deckey, enckey):
-    return share + ecdh(my_deckey, enckey)
+def encrypt(share, my_deckey, enckey, context):
+    return share + ecdh(my_deckey, enckey, context)
 ```
 
 #### EncPedPop
@@ -264,9 +261,9 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
     simpl_state, vss_commitment, shares = simplpedpop_setup(seed_, t, n)
-    # TODO The encrypt function should have a randomness argument (or a secret key in case of AE).
-    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i]) for i in range(len(enckeys))
-    state2 = (my_deckey, my_enckey, simpl_state, enckeys)
+    enc_context = t + enckeys
+    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))
+    state2 = (t, my_deckey, my_enckey, simpl_state, enckeys)
     return state2, vss_commitment, enc_shares
 ```
 
@@ -274,11 +271,12 @@ For every other participant `i`, the participant sends `vss_commitment` and `enc
 
 ```python
 def encpedpop_finalize(state2, summed_vss_commitments, summed_enc_shares, Eq):
-    my_deckey, my_enckey, simpl_state, enckeys = state2
+    t, my_deckey, my_enckey, simpl_state, enckeys = state2
     n = len(enckeys)
     assert(len(enc_shares) == n)
 
-    summed_shares = summed_enc_shares - sum([ecdh(my_deckey, enckeys[i]) for i in range(n)]
+    enc_context = t + enckeys
+    summed_shares = summed_enc_shares - sum([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     # TODO: catch "ValueError: not in list" exception
     my_idx = enckeys.index(my_enckey)
     eta = enckeys
