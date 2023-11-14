@@ -78,22 +78,52 @@ leading to a long of history of severe vulnerabilities and difficult-to-deploy e
 
 ## Contribution
 In order to overcome the aforementioned difficulties,
-we propose a new holistic DKG protocol tailored to the use in FROST:
+we propose a new one-stop DKG protocol tailored to the use in FROST:
 The main feature of our protocol is that it is self-sufficient and comes with "batteries included":
 The establishment of secure communications and reliable broadcast is done within the protocol,
 while all of this underlying complexity is hidden behind a simple and hard-to-misuse API.
-As a result, our protocol is ready to use and does not rely on any setup assumption
-except that participants have verified each other's identities keys out of band.
+As a result, our protocol is ready to use in practice and does not rely on any setup assumption
+except that participants have verified each other's identity keys out of band.
+Moreover, this holistic treatment enables us to reduce the overhead of encryption and broadcast to a minimum
+by using it only and precisely where it is required.
 
-Minimal tailored solution: we encrypt exactly what's necessary, and we use authenticated broadcast only once and afterwards.
+TODO Mention coordinator
 
-### Seamless Backup
+As a second feature, our protocol is *certifying*:
+If DKG terminates successfully for a given honest participant,
+this participant is not only convinced that the DKG was successful,
+but it also obtains a certificate (i.e., a transferable proof)
+that will convince every other participant that the protocol was successful DKG.
 
-### Getting rid of communication assumptions
+This solves the agreement problem even if some communications breaks down for some signers entirely during the protocol run.
+For example, it can always happen that a honest participant does not receive the last protocol message
+and thus is forced to remain in an uncertain state, where it can neither conclude that the DKG was successful,
+nor that the DKG should be aborted (which would mean that imply keys can be deleted safely).
+Certificates ensure that, whenever some honest participant considers the DKG to be successful
+(and as in the above example, may send funds to the resulting key)
+this honest participant can, ultimately at the time of a signing request, convince all other honest participants that the DKG was indeed successful
+(which ensures that funds can be spend eventually).
 
-### No Robustness
-Robustness is an anti-feature
+Moreover, this design makes backups of individual participants seamless.
+The state of any honest participant can fully recovered from a backup of a single secret seed and a full transcript of the protocol.
+Since the transcript was seen by all participants and possibly the coordinator,
+restoring a failed participant from a seed backup is as simple as asking any available participant for a copy of the transcript.
+The recovering participant can verify the authenticity of the transcript using the included certificate, which includes a signature by the recovering participant (the required verification key can be rederived from the seed).
+Note that, since confidential parts in the transcript are encrypted, the transcript can be in principle be stored in many places, including on untrusted storage.
 
+A crucial design decision in our protocol is that we do not aim for robustness,
+i.e., our DKG is not guaranteed to terminate in the presence of malicious participants.
+While foregoing robustness is necessary if we want to support dishonest majority settings
+(otherwise we would need BFT as explained above),
+we believe robustness is in fact an anti-feature in many applications.
+Since robustness means that the DKG terminates even in the presence of malicious or otherwise faulty participants,
+robustness will mask these faults.
+However, in many applications, it would be desirable to abort the process and investigate out of band.
+
+For example, consider the setup ceremony of a high-security DNSSEC key.
+If it turns out that one of the devices participating appears faulty, e.g., because it runs a buggy implementation of DKG,
+we believe that it would be desirable to prefer security over progress, and abort instead of forcing the DKG to terminate.
+Note that a robust DKG would effectively exclude the buggy device from DKG and reduce the size of the setup already already from the beginning to n-1 instead of n.
 
 ### Distributed Key Generation (DKG)
 
