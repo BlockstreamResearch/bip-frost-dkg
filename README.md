@@ -106,7 +106,6 @@ def vss_commit(coeffs):
 def vss_sum_commitments(vss_commitments, t):
     # TODO: using "Lloyd's trick", this optimization should be mentioned somewhere
     n = len(vss_commitments)
-    # TODO: may instead raise BadParticipant(i)
     assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
     # The returned array consists of 2*n + t - 1 elements
     # [vss_commitments[0][0][0], ..., vss_commitments[n-1][0][0],
@@ -116,6 +115,10 @@ def vss_sum_commitments(vss_commitments, t):
            [sum_group([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] +
            [vss_commitments[i][1] for i in range(n)]
 
+```
+
+<!-- This is not python -->
+```
 # Copied from draft-irtf-cfrg-frost-15
 def vss_verify_irtf(share_i, vss_commitment)
      (i, sk_i) = share_i
@@ -124,7 +127,9 @@ def vss_verify_irtf(share_i, vss_commitment)
      for j in range(0, MIN_PARTICIPANTS):
        S_i' += G.ScalarMult(vss_commitment[j], pow(i, j))
      return S_i == S_i'
+```
 
+```python
 def vss_verify(my_idx, vss_commitments_sum, shares_sum):
     return vss_verify_irtf((my_idx, shares_sum), vss_commitments_sum)
 
@@ -180,17 +185,17 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
     Take the messages received from the participants and finalize the DKG
 
     :param int my_idx:
-    :param List[bytes] vss_commitments_sum: summed VSS commitments from all participants
-        (including myself)
-    :param scalar shares_sum: summed shares from all participants (including this participant) mod group order
+    :param List[bytes] vss_commitments_sum: output of running vss_sum_commitments() with vss_commitments from all participants (including this participant) (TODO: not a list of bytes)
+    :param scalar shares_sum: summed shares from all participants (including this participant) for this participant mod group order
     :param eta: Optional argument for extra data that goes into `Eq`
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n = state
-    assert(n == len(shares) and 2*n + t - 1 == len(vss_commitments_sum))
+    assert(len(shares_sum) == n)
+    assert(len(vss_commitments_sum) == 2*n + t - 1)
     for i in range(n):
         if not verify_sig(vss_commitments_sum[i], "", vss_commitments_sum[n + t-1 + i]):
-            raise BadParticipant(i)
+            raise BadParticipantError(i, "Participant sent invalid proof-of-knowledge")
     eta += (vss_commitments_sum)
     vss_commitments_sum_coeffs = [sum_group([vss_commitments_sum[i] for i in range(n)])] + vss_commitments_sum[n:n+t-1]
     if not vss_verify(my_idx, vss_commitments_sum_coeffs, shares_sum):
@@ -200,13 +205,19 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
     shared_pubkey, signer_pubkeys = derive_group_info(n, t, vss_commitments_sum_coeffs)
     return shares_sum, shared_pubkey, signer_pubkeys
 
+# TODO: We would actually have to parse the received network messages. This
+# should include parsing of the group elementsas well as checking that the
+# length of the lists is correct (e.g. vss_commitments are of length t) and
+# allow to identify bad participants/coordinator instead of running into
+# assertions.
 def simplpedpop(seed, t, n, my_idx, Eq):
   state, my_vss_commitment, my_generated_shares = simplpedpop_round1(seed, t, n)
   for i in range(n)
       secure_chan_send(i, my_generated_shares[i])
   chan_send(my_vss_commitment)
+  shares = []
   for i in range(n):
-      shares[i] = secure_chan_receive(i)
+      shares += [secure_chan_receive(i)]
   vss_commitments_sum = chan_receive()
   return simplpedpop_finalize(state, my_idx, vss_commitments_sum, sum_scalar(shares), Eq, eta = ()):
 
@@ -251,7 +262,7 @@ The receiver of an encryption key from participant `i` stores the encryption key
 def encpedpop_round2(seed, state1, t, n, enckeys):
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
-        raise DuplicateEnckeys
+        raise DuplicateEnckeysError
 
     my_deckey, my_enckey = state1
     # Protect against reuse of seed in case we previously exported shares
@@ -270,12 +281,15 @@ For every other participant `i`, the participant sends `vss_commitment` and `enc
 def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()):
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
-    assert(len(enc_shares) == n)
+    assert(len(vss_commitments_sum) == 2*n + t - 1)
 
     enc_context = [t] + enckeys
     shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     # TODO: catch "ValueError: not in list" exception
-    my_idx = enckeys.index(my_enckey)
+    try:
+        my_idx = enckeys.index(my_enckey)
+    except ValueError:
+        raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     eta += (enckeys)
     simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta):
 ```
@@ -458,10 +472,11 @@ In a network-based scenario, where long-term host keys are available, the equali
 def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
     def certifying_Eq(x):
         chan_send(("SIG", sign(my_hostsigkey, x)))
+        sigs = [None] * len(hostverkeys)
         while(True)
             i, ty, msg = chan_receive()
             if ty == "SIG":
-                is_valid = verify(hostverkeys[i], x, msg)
+                is_valid = verify_sig(hostverkeys[i], x, msg)
                 if sigs[i] is None and is_valid:
                     sigs[i] = msg
                 elif not is_valid:
@@ -479,9 +494,9 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                         chan_send(("CERT", cert))
                     return SUCCESS
             if ty == "CERT":
-                sigs = parse_cert(msg)
-                if sigs is not None and len(sigs) == len(hostverkys):
-                    is_valid = [verify(hostverkeys[i], x, sigs[i]) \
+                sigs = msg
+                if len(sigs) == len(hostverkys):
+                    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) \
                                 for i in range(hostverkeys)]
                     if all(is_valid)
                         result["cert"] = cert
