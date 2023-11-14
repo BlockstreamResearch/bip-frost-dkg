@@ -51,9 +51,11 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The function `chan_receive_from(i)` returns the message received by participant `i`.
 * The function `chan_send_to(i, m)` sends message `m` to participant `i`.
 * The function `chan_send_all(m)` sends message `m` to all participants.
-* The function `secure_chan_send(i, m)` sends message `m` to participant `i` through a secure (encrypted and authenticated) channel
-* The function `secure_chan_receive(i)` returns the message received by participant `i` through a secure (encrypted and authenticated) channel
-* The function `individual_pk(sk) is identical to the BIP 327 `IndividualPubkey` function.
+* The function `secure_chan_send(i, m)` sends message `m` to participant `i` through a secure (encrypted and authenticated) channel.
+* The function `secure_chan_receive(i)` returns the message received by participant `i` through a secure (encrypted and authenticated) channel.
+* The function `sum_group(group_elements)` performs the group operation on the given elements and returns the result.
+* The function `sum_scalar(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
+* The function `individual_pk(sk)` is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(pk, m, sig)` is identical to the BIP 340 `Verify` function.
 * The function `sign(sk, m)` is identical to the BIP 340 `Sign` function.
 
@@ -108,10 +110,10 @@ def vss_sum_commitments(vss_commitments, t):
     assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
     # The returned array consists of 2*n + t - 1 elements
     # [vss_commitments[0][0][0], ..., vss_commitments[n-1][0][0],
-    #  sum(vss_commitments[i][1]), ..., sum(vss_commitments[i][t-1]),
+    #  sum_group(vss_commitments[i][1]), ..., sum_group(vss_commitments[i][t-1]),
     #  vss_commitments[0][1], ..., vss_commitments[n-1][1]]
     return [vss_commitments[i][0][0] for i in range(n)] +
-           [sum([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] +
+           [sum_group([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] +
            [vss_commitments[i][1] for i in range(n)]
 
 # Copied from draft-irtf-cfrg-frost-15
@@ -190,7 +192,7 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
         if not verify_sig(vss_commitments_sum[i], "", vss_commitments_sum[n + t-1 + i]):
             raise BadParticipant(i)
     eta += (vss_commitments_sum)
-    vss_commitments_sum_coeffs = sum([vss_commitments_sum[i] for i in range(n)]) + vss_commitments_sum[n:n+t-1]
+    vss_commitments_sum_coeffs = [sum_group([vss_commitments_sum[i] for i in range(n)])] + vss_commitments_sum[n:n+t-1]
     if not vss_verify(my_idx, vss_commitments_sum_coeffs, shares_sum):
         return False
     if Eq(eta) != SUCCESS:
@@ -206,7 +208,7 @@ def simplpedpop(seed, t, n, my_idx, Eq):
   for i in range(n):
       shares[i] = secure_chan_receive(i)
   vss_commitments_sum = chan_receive()
-  return simplpedpop_finalize(state, my_idx, vss_commitments_sum, sum(shares), Eq, eta = ()):
+  return simplpedpop_finalize(state, my_idx, vss_commitments_sum, sum_scalar(shares), Eq, eta = ()):
 
 def simplpedpop_coordinate(t, n):
     vss_commitments = []
@@ -225,7 +227,7 @@ def ecdh(x, Y, context):
     return Hash(x*Y, context)
 
 def encrypt(share, my_deckey, enckey, context):
-    return share + ecdh(my_deckey, enckey, context)
+    return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 ```
 
 #### EncPedPop
@@ -256,7 +258,7 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n)
-    enc_context = t + enckeys
+    enc_context = [t] + enckeys
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
@@ -270,8 +272,8 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
     n = len(enckeys)
     assert(len(enc_shares) == n)
 
-    enc_context = t + enckeys
-    shares_sum = enc_shares_sum - sum([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
+    enc_context = [t] + enckeys
+    shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     # TODO: catch "ValueError: not in list" exception
     my_idx = enckeys.index(my_enckey)
     eta += (enckeys)
@@ -299,7 +301,7 @@ def encpedpop_coordinate_internal(t, n):
     enc_shares_sum = (0)*n
     for i in range(n)
         vss_commitment, enc_shares = [chan_receive_from(i)]
-        vss_commitments += vss_commitment
+        vss_commitments += [vss_commitment]
         enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
     return vss_commitments_sum, enc_shares_sum
@@ -371,7 +373,7 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, all_enc
     # shares, which in turn ensures that they have the right transcript.
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
-    eta = setup_id + all_enc_shares_sum
+    eta = (setup_id, all_enc_shares_sum)
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
     return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
 ```
