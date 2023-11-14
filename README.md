@@ -31,6 +31,7 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 - **Support for backups**
 - **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
 - **Little optimized for communication overhead or number of rounds**
+- **Support for Coordinator**: In many scenarios there is a "natural" coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 
 ### Preliminaries
 
@@ -38,9 +39,12 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 
 All participants agree on an assignment of indices `0` to `n-1` to participants.
 
-* The function `chan_send(i, m)` sends message `m` to participant `i` (does not block).
-* The function `chan_receive(i)` returns a message received by participant `i` (blocks).
-* The functions `secure_chan_send(i, m)` and `secure_chan_receive(i)` are the same as `chan_send(i, m)` and `chan_send(i, m)` except that the message is sent through a secure (authenticated and encrypted) channel.
+* The function `chan_send(m)` sends message `m` to the coordinator.
+* The function `chan_receive()` returns the message received by the coordinator.
+* The function `chan_receive_from(i)` returns the message received by participant `i`.
+* The function `chan_send_all(m)` sends message `m` to all participants.
+* The function `secure_chan_send(i, m)` sends message `m` to participant `i` through a secure (encrypted and authenticated) channel
+* The function `secure_chan_receive(i)` returns the message received by participant `i` through a secure (encrypted and authenticated) channel
 * The function `individual_pk(sk) is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(pk, m, sig)` is identical to the BIP 340 `Verify` function.
 * The function `sign(sk, m)` is identical to the BIP 340 `Sign` function.
@@ -193,16 +197,22 @@ def simplpedpop_finalize(state, my_idx, summed_vss_commitments, summed_shares, E
     shared_pubkey, signer_pubkeys = derive_group_info(n, t, summed_vss_commitments_coeffs)
     return summed_shares, shared_pubkey, signer_pubkeys
 
-# TODO: what about coordinator?
-# TODO: we don't actually need to send everything through encrypted channel and we could relay some parts through the coordinator. But we don't want people to use SimplePedPop anyway.
 def simplpedpop(seed, t, n, my_idx, Eq):
   state, my_vss_commitment, my_generated_shares = simplpedpop_setup(seed, t, n)
   for i in range(n)
-      secure_chan_send(i, my_vss_commitment + my_generated_shares[i])
+      secure_chan_send(i, my_generated_shares[i])
+  chan_send(my_vss_commitment)
   for i in range(n):
-      vss_commitments[i], shares[i] = secure_chan_receive(i)
-  summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
+      shares[i] = secure_chan_receive(i)
+  summed_vss_commitments = chan_receive()
   return simplpedpop_finalize(state, my_idx, summed_vss_commitments, sum(shares), Eq, eta = ()):
+
+def simplpedpop_coordinate(t, n):
+    vss_commitments = []
+    for i in range(n)
+        vss_commitments += [chan_receive_from(i)]
+    summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
+    chan_send_all(summed_vss_commitments)
 ```
 
 ### EncPedPop
@@ -277,17 +287,24 @@ Note that if the public keys are not distributed correctly or the messages have 
 ```python
 def encpedpop(seed, t, n, Eq):
     state1, my_enckey = encpedpop_round1(seed):
-    for i in range(n)
-        chan_send(i, my_enckey)
-    for i in range(n):
-      enckeys[i] = chan_receive(i)
+    chan_send(my_enckey)
+    enckeys = chan_receive()
+
     state2, my_vss_commitment, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys):
+    chan_send(my_vss_commitment + my_generated_enc_shares)
+    summed_vss_commitments, summed_enc_shares = chan_receive()
+
+    return encpedpop_finalize(state2, summed_vss_commitments, summed_enc_shares, Eq)
+
+def encpedpop_coordinate(t, n):
+    vss_commitments = []
+    summed_enc_shares = (0)*n
     for i in range(n)
-        chan_send(i, my_vss_commitment + my_generated_enc_shares[i])
-    for i in range(n):
-        vss_commitments[i], enc_shares[i] = chan_receive(i)
+        vss_commitment, enc_shares = [chan_receive_from(i)]
+        vss_commitments += vss_commitment
+        summed_enc_shares = [ summed_enc_shares[j] + enc_shares[j] for j in range(n) ]
     summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
-    return encpedpop_finalize(state2, summed_vss_commitments, sum(enc_shares), Eq)
+    chan_send_all(summed_vss_commitments, summed_enc_shares)
 ```
 
 ### RecPedPop
@@ -360,21 +377,19 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_
 ```python
 def recpedpop(seed, my_hostsigkey, setup):
     state1, my_enckey = recpedpop_round1(seed, setup)
-    for i in range(n)
-        chan_send(i, my_enckey)
-    for i in range(n):
-      enckeys[i] = chan_receive(i)
+    chan_send(my_enckey)
+    enckeys = chan_receive()
+
     state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
-    for i in range(n)
-        # Send encrypted shares to everyone
-        chan_send(i, my_vss_commitment + my_generated_enc_shares)
-    for i in range(n):
-        vss_commitments[i], all_enc_shares[i] = chan_receive(i)
-    all_summed_enc_shares = [sum([all_enc_shares[from_][to] for from_ in range(n)]) for to in range(n)]
+    chan_send(my_vss_commitment + my_generated_enc_shares)
+    vss_commitments, summed_enc_shares = chan_receive()
+
     # TODO: transcript misses certifying_Eq transcript
-    transcript = (setup, enckeys, summed_vss_commitments, all_summed_enc_shares)
-    summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
-    return recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, all_summed_enc_shares), transcript
+    transcript = (setup, enckeys, summed_vss_commitments, summed_enc_shares)
+    return recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, summed_enc_shares), transcript
+
+def recpedpop_coordinate(t, n):
+    return encpedpop_coordinate(t,n)
 ```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
