@@ -49,6 +49,7 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The function `chan_send(m)` sends message `m` to the coordinator.
 * The function `chan_receive()` returns the message received by the coordinator.
 * The function `chan_receive_from(i)` returns the message received by participant `i`.
+* The function `chan_send_to(i, m)` sends message `m` to participant `i`.
 * The function `chan_send_all(m)` sends message `m` to all participants.
 * The function `secure_chan_send(i, m)` sends message `m` to participant `i` through a secure (encrypted and authenticated) channel
 * The function `secure_chan_receive(i)` returns the message received by participant `i` through a secure (encrypted and authenticated) channel
@@ -254,9 +255,6 @@ The (public) encryption keys are distributed among each other.
 They are not sent through authenticated channels but their correct distribution is ensured through the `Eq` protocol.
 The receiver of an encryption key from participant `i` stores the encryption key in an array `enckeys` at position `i`.
 
-TODO: there needs to be a global order of participants
-TODO: explain how to arrive at the global order, in particular, by sorting enckeys
-
 ```python
 def encpedpop_round2(seed, state1, t, n, enckeys):
     assert(n == len(enckeys))
@@ -303,7 +301,9 @@ def encpedpop(seed, t, n, Eq):
 
     return encpedpop_finalize(state2, summed_vss_commitments, summed_enc_shares, Eq)
 
-def encpedpop_coordinate(t, n):
+# TODO: explain that it's possible to arrive at the global order of signer indices by sorting enckeys
+
+def encpedpop_coordinate_internal(t, n):
     vss_commitments = []
     summed_enc_shares = (0)*n
     for i in range(n)
@@ -311,7 +311,12 @@ def encpedpop_coordinate(t, n):
         vss_commitments += vss_commitment
         summed_enc_shares = [ summed_enc_shares[j] + enc_shares[j] for j in range(n) ]
     summed_vss_commitments = vss_sum_commitments(vss_commitments, t)
-    chan_send_all(summed_vss_commitments, summed_enc_shares)
+    return summed_vss_commitments, summed_enc_shares
+
+def encpedpop_coordinate(t, n):
+    summed_vss_commitments, summed_enc_shares = encpedpop_coordinate_internal(t, n)
+    for i in range(n)
+        chan_send_to(i, summed_vss_commitments, summed_enc_shares[i])
 ```
 
 ### RecPedPop
@@ -396,7 +401,8 @@ def recpedpop(seed, my_hostsigkey, setup):
     return recpedpop_finalize(seed, my_hostsigkey, state2, summed_vss_commitments, summed_enc_shares), transcript
 
 def recpedpop_coordinate(t, n):
-    return encpedpop_coordinate(t,n)
+    summed_vss_commitments, summed_enc_shares = encpedpop_coordinate_internal(t, n)
+    chan_send_all(summed_vss_commitments, summed_enc_shares)
 ```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
