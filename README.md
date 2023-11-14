@@ -289,7 +289,7 @@ def encpedpop(seed, t, n, Eq):
     enckeys = chan_receive()
 
     state2, my_vss_commitment, my_generenckeys):
-    chan_send(my_vss_commitment + my_generated_enc_shares)
+    chan_send((my_vss_commitment, my_generated_enc_shares))
     vss_commitments_sum, enc_shares_sum = chan_receive()
 
     return encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq)
@@ -309,7 +309,7 @@ def encpedpop_coordinate_internal(t, n):
 def encpedpop_coordinate(t, n):
     vss_commitments_sum, enc_shares_sum = encpedpop_coordinate_internal(t, n)
     for i in range(n)
-        chan_send_to(i, vss_commitments_sum, enc_shares_sum[i])
+        chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
 ```
 
 ### RecPedPop
@@ -385,7 +385,7 @@ def recpedpop(seed, my_hostsigkey, setup):
     enckeys = chan_receive()
 
     state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
-    chan_send(my_vss_commitment + my_generated_enc_shares)
+    chan_send((my_vss_commitment, my_generated_enc_shares))
     vss_commitments, enc_shares_sum = chan_receive()
 
     shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, enc_shares_sum)
@@ -394,7 +394,7 @@ def recpedpop(seed, my_hostsigkey, setup):
 
 def recpedpop_coordinate(t, n):
     vss_commitments_sum, enc_shares_sum = encpedpop_coordinate_internal(t, n)
-    chan_send_all(vss_commitments_sum, enc_shares_sum)
+    chan_send_all((vss_commitments_sum, enc_shares_sum))
 ```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
@@ -457,10 +457,10 @@ In a network-based scenario, where long-term host keys are available, the equali
 ```python
 def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
     def certifying_Eq(x):
-        chan_send(SIG, sign(my_hostsigkey, x))
+        chan_send(("SIG", sign(my_hostsigkey, x)))
         while(True)
             i, ty, msg = chan_receive()
-            if ty == SIGNATURE:
+            if ty == "SIG":
                 is_valid = verify(hostverkeys[i], x, msg)
                 if sigs[i] is None and is_valid:
                     sigs[i] = msg
@@ -476,9 +476,9 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     cert = sigs
                     result["cert"] = cert
                     for i in range(n):
-                        chan_send(CERT, cert)
+                        chan_send(("CERT", cert))
                     return SUCCESS
-            if ty == CERT:
+            if ty == "CERT":
                 sigs = parse_cert(msg)
                 if sigs is not None and len(sigs) == len(hostverkys):
                     is_valid = [verify(hostverkeys[i], x, sigs[i]) \
@@ -486,7 +486,7 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     if all(is_valid)
                         result["cert"] = cert
                         for i in range(n):
-                            chan_send(CERT, cert)
+                            chan_send(("CERT", cert))
                         return SUCCESS
     return certifying_eq
 
@@ -494,7 +494,7 @@ def certifying_Eq_coordinate():
     while(True):
         for i in range(n):
             ty, msg = chan_receive_from(i)
-            chan_send_all(i, ty, msg)
+            chan_send_all((i, ty, msg))
 ```
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
