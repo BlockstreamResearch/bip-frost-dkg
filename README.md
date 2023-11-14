@@ -71,7 +71,8 @@ We reached out, TODO  blabla.
 To sum up, the current state of affairs leaves implementers, users, as well as designers of high-level protocols in the unfortunate situation that
 they either need to reinvent and reimplement secure channels and broadcast from scratch (which is prone to mistakes),
 or that they need to stack a given DKG protocol on top of existing protocols for secure channels and broadcast.
-TODO Omer's paper
+TODO Mention that RFC draft considers DKG out of scope.
+TODO The Forget-And-Forgive Attack, Chapter 3 in https://eprint.iacr.org/2020/1052.pdf
 We believe that this state of affairs is similar to the pre-AEAD era and the early days of SSL/TLS,
 where the cryptographic research community left the intricate task of securely composing cryptographic primitives such as unauthenticated encryption schemes and MACs to protocol designers and implementers,
 leading to a long of history of severe vulnerabilities and difficult-to-deploy emergency fixes.
@@ -110,9 +111,11 @@ Since the transcript was seen by all participants and possibly the coordinator,
 restoring a failed participant from a seed backup is as simple as asking any available participant for a copy of the transcript.
 The recovering participant can verify the authenticity of the transcript using the included certificate, which includes a signature by the recovering participant (the required verification key can be rederived from the seed).
 Note that, since confidential parts in the transcript are encrypted, the transcript can be in principle be stored in many places, including on untrusted storage.
+Our careful design enables the coordinator to aggregate large parts of the transcript, ensuring that it has a size of $O(n)$ (instead of $O(n^2)$ in a naive design).
 
 A crucial design decision in our protocol is that we do not aim for robustness,
 i.e., our DKG is not guaranteed to terminate in the presence of malicious participants.
+TODO This is in line with FROST's design.
 While foregoing robustness is necessary if we want to support dishonest majority settings
 (otherwise we would need BFT as explained above),
 we believe robustness is in fact an anti-feature in many applications.
