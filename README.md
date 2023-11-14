@@ -459,13 +459,10 @@ In a network-based scenario, where long-term host keys are available, the equali
 ```python
 def make_certifying_Eq(my_hostsigkey, hostverkeys):
     def certifying_Eq(x):
-        for i in range(n)
-            chan_send(i, SIG, sign(my_hostsigkey, x))
+        chan_send(SIG, sign(my_hostsigkey, x))
         cert = [None] * len(hostverkeys)
         sig = [None] * len(hostverkeys)
         while(True)
-            # TODO: this chan_receive is different to the one used in the
-            #       pedpops. Change or specify.
             i, ty, msg = chan_receive()
             if ty == SIGNATURE:
                 is_valid = verify(hostverkeys[i], x, msg)
@@ -494,6 +491,13 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys):
                             chan.send(i, CERT, cert)
                         return SUCCESS
     return certifying_eq
+
+def certifying_Eq_coordinate():
+    while(True)
+        # TODO: this chan_receive is different to the one used in the
+        #       pedpops. Change or specify.
+        i, ty, msg = chan_receive(i)
+        chan_send_all(ty, msg)
 ```
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
