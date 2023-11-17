@@ -38,7 +38,21 @@ You can refer to the [Backup and Recover](#backup-and-recover) section for addit
 |-----------------|-------------------|-----------------------------------------------|----------------------|-----------------------------|
 | **SimplPedPop** | fresh             | yes                                           | yes                  | share per setup             |
 | **EncPedPop**   | reuse allowed     | no                                            | yes                  | share per setup             |
-| **RecPedPop**   | reuse for backups | no                                            | no                   | seed + transcript per setup |
+| **RecPedPop**   | reuse for backups | no                                            | no                   | seed + public transcript per setup |
+
+### Backup and Recover
+
+Losing the secret share or the shared public key will render the signer incapable of producing signatures.
+These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
+In many scenarios, it is highly recommended to have a backup strategy to recover the outputs of the DKG.
+The recommended strategies are described in the EncPedPop and RecPedPop Backup and Recover sections.
+
+There are strategies to recover if the backup is lost and other signers assist in recovering.
+In such cases, the recovering signer must be very careful to obtain the correct secret share and shared public key!
+1. If all other signers are cooperative and their seed is backed up (EncPedPop or RecPedPop), it's possible that the other signers can recreate the signer's lost secret share.
+2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+   This scheme requires no additional backup or storage space for the signers.
+These strategies are out of scope for this document.
 
 
 ### Preliminaries
@@ -326,6 +340,16 @@ def encpedpop_coordinate(t, n):
         chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
 ```
 
+#### Backup and Recover
+
+Backups consist of the signer index and DKG outputs: secret share and shared public key.
+It is possible to only back up the secret share, but then the shared public key and index needs to be provided to complete a recovery (TODO: what if the public key and index are wrong?).
+This data needs to be backed up for every DKG the signer is involved in.
+The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
+
+In some scenarios it may make sense to back up the seed - if it is less likely to get lost than the per-setup DKG outputs.
+In case the per-setup DKG outputs are lost and all other signers are cooperative and have seed backups, the DKG can just be re-run.
+
 ### RecPedPop
 
 RecPedPop is a wrapper around EncPedPop.
@@ -410,6 +434,13 @@ def recpedpop_coordinate(t, n):
 ```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
+
+#### Backup and Recover
+A backup of DKG consists of the seed and the DKG transcript.
+The seed can be reused for multiple DKGs and must be stored securely.
+On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
+
+If a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
 ### Ensuring Agreement
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
@@ -530,19 +561,3 @@ If the participants run a BFT-style consensus protocol (e.g., as part of a feder
 
 TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
 
-### Backup and Recover
-
-Losing the secret share or the shared public key will render the signer incapable of producing signatures.
-These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
-In many scenarios, it's highly recommended to securely back up the secret share or the shared public key.
-
-If the DKG output is lost, it is possible to ask the other signers to assist in recovering the lost data.
-In this case, the signer must be very careful to obtain the correct secret share and shared public key (TODO)!
-1. If all other signers are cooperative and their seed is backed up (TODO: do we want to encourage that?), it's possible that the other signers can recreate the signer's lost secret share, .
-   If the signer who lost the share also has a seed backup, they can re-run the DKG.
-2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
-   This scheme requires no additional backup or storage space for the signers.
-
-If a signer has the option of deriving a decryption key from some securely backed-up seed and the other signers agree with storing additional data, the signer can use the following alternative backup strategy:
-The signer encrypts their secret share to themselves and distributes it to every other signer.
-If the signer loses their secret share, it can be restored as long as at least one other signer cooperates and sends the encrypted backup.
