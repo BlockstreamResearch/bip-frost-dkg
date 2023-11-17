@@ -1,27 +1,28 @@
 # BIP-DKG (WIP)
 
-This document is a work-in-progress Bitcoin Improvement Proposal for a DKG that can be used in FROST.
+This document is a work-in-progress Bitcoin Improvement Proposal for a DKG protocol that can be used in FROST.
 
 ## Introduction
 
 ### Distributed Key Generation (DKG)
 
-Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
-This can be achieved through a trusted dealer who generates the shared public key and verifiably shares the corresponding secret key with the FROST signers.
-If the dealer is dishonest or compromised, or the secret key is not deleted correctly and compromised later, an adversary can forge signatures.
+Distributed Key Generation is a protocol between `n` participants that outputs secret key shares for every participant and a shared public key.
+Recovering the secret key of the shared public key requires no less than threshold `t` participants to cooperate and use their key shares.
+DKG is used as part of the key generation phase in threshold signature schemes like FROST, for example.
+In threshold signatures, the shared public key is not recovered.
+Instead, the individual key shares are used to sign for the shared public key.
+If the DKG succeeds from the point of view of a signer, then FROST signatures are unforgeable, i.e., `t` signers are required to cooperate to produce a signature for the shared public key - regardless of how many other participants in the the DKG were dishonest.
 
-To avoid the single point of failure when trusting the dealer, the signers run an interactive distributed key generation (DKG) protocol.
-If the DKG for threshold `t` succeeds from the point of view of a signer and outputs a shared public key, then FROST signatures are unforgeable, i.e., `t` signers are required to cooperate to produce a signature for the shared public key - regardless of how many other participants in the the DKG were dishonest.
+As an alternative of using DKG in threshold signing, a trusted dealer could generate the shared public key and verifiably share the corresponding secret key with the signers.
+However, a dishonest or compromised dealer, or not deleting the secret key correctly and getting compromised later, can allow an adversary to forge signatures.
 
-To instantiate a DKG there are many possible schemes which differ by the guarantees they provide.
-Since DKGs are difficult to implement correctly in practice, the aim of this document is to describe pragmatic DKGs that are *simple*, namely SimplPedPop and EncPedPop. TODO
+To instantiate DKG there are many possible schemes which differ by the guarantees they provide.
+Since DKGs are difficult to implement correctly in practice, the aim of this document is to describe pragmatic DKG protocols that are *simple*, namely SimplPedPop, EncPedPop and RecPedPop.
 However, the DKG can be swapped out for a different one provided it is proven to be secure when used in FROST.
 
-For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
-The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
-You can refer to the [Backup and Recover](#backup-and-recover) section for additional details.
-
 Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup.
+Moreover, the secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
+You can refer to the [Backup and Recover](#backup-and-recover) section for additional details.
 
 ### Design
 
@@ -33,11 +34,11 @@ Once the DKG concludes successfully, applications should consider creating a FRO
 - **Little optimized for communication overhead or number of rounds**
 - **Support for Coordinator**: In many scenarios there is a "natural" coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 
-|                 | seed              | requires secure channels between participants | backup                      |
-|-----------------|-------------------|-----------------------------------------------|-----------------------------|
-| **SimplPedPop** | fresh             | yes                                           | share per setup             |
-| **EncPedPop**   | reuse allowed     | no                                            | share per setup             |
-| **RecPedPop**   | reuse for backups | no                                            | seed + transcript per setup |
+|                 | seed              | requires secure channels between participants | Requires external Eq | backup                      |
+|-----------------|-------------------|-----------------------------------------------|----------------------|-----------------------------|
+| **SimplPedPop** | fresh             | yes                                           | yes                  | share per setup             |
+| **EncPedPop**   | reuse allowed     | no                                            | yes                  | share per setup             |
+| **RecPedPop**   | reuse for backups | no                                            | no                   | seed + transcript per setup |
 
 
 ### Preliminaries
