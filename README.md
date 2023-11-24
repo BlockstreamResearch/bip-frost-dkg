@@ -3,7 +3,12 @@
 This document is a work-in-progress Bitcoin Improvement Proposal proposing Distributed Key Generation methods for use in FROST.
 
 ## Introduction
+In the FROST threshold signature scheme [KG20], a threshold `t` of some set of `n` signers is required to produce a signature.
+FROST remains unforgeable even if up to `t-1` signers are compromised,
+and remains functional as long as `t` honest signers do not lose their secret key material.
 
+As a result, threshold signatures increase \emph{both} security and availability,
+enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
 Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
 This can, in principle, be achieved through a trusted dealer who generates the shared public key and distributes shares of the corresponding secret key to the FROST signers.
 However, the dealer is a single point of failure:
@@ -15,7 +20,7 @@ If a DKG run succeeds from the point of view of an honest signers and outputs a 
 then it is guaranteed that `t` signers are required to cooperate to produce a signature for the shared public key.
 
 There exist a number of DKG protocols with different requirements and guarantees.
-Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'').
+Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
 But similar to most DKG protocols in the literature, the PedPop DKG has strong requirements on the communication between signers:
 It assumes that signers have secure (i.e., authenticated and encrypted) channels between each other to deliver secret shares to individual signers,
 and it assumes that signers have access to a secure broadcast mechanism.
@@ -26,14 +31,26 @@ i.e., they incorporate minimal but sufficient implementations of secure channels
 
 ### Design
 
-Our protocols are based on the SimplPedPop protocol, which has been proven to be secure when combined with FROST and needs only a single invocation of broadcast.
+Our protocols are based on the SimplPedPop protocol, which has been proven to be secure when combined with FROST [CGRS23] and needs only a single invocation of broadcast.
 We first adapt SimplPedPop to a setting with an untrusted coordinator,
 which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
+
 Our design then follows a layered approach:
-We first wrap SimplPedPop in a protocol layer responsible for encrypting shares.
-We then wrap the resulting protocol in a second protocol layer that ensures authenticity and implements an equality check protocol, which is a particular abstraction of a broadcast mechanism with restricted functionality. 
-Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast protocol in order to provide an equality broadcast channel.
-The resulting protocol RecPedPop thus incorporates solutions for both secure channels and broadcast, and is what we recommend in practice.
+We first wrap SimplPedPop in a protocol EncPedPop responsible for encrypting shares.
+The encryption relies on pairwise ECDH key exchanges between the signers.
+
+We then wrap EncPedPop in a second protocol RecPedPop that ensures authenticity and implements an equality check protocol, which is a particular abstraction of a broadcast mechanism with restricted functionality. 
+Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [GW05] protocol
+and features "success certificates":
+whenever some honest signer considers the DKG to be successful
+this honest signer can, ultimately at the time of a signing request, convince all other honest signers that the DKG has indeed been successful.
+
+As an additional feature of RecPedPop, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG runs in which the device was involved.
+RecPedPop thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice. 
+
+As a result, RecPedPop is our primary recommendation that fits a wide range scenarios, 
+and due to its low overhead, we recommend RecPedPop even for applications which already have secure channels or have access to an external broadcast mechanism such as a BFT protocol.
+Nevertheless, such applications may wish to use the low-level variants SimplPedPop and EncPedPop in special cases.
 
 |                 | seed              | requires secure channels | requires equality check (broadcast) | backup                      |
 |-----------------|-------------------|--------------------------|-------------------------------------|-----------------------------|
@@ -43,7 +60,7 @@ The resulting protocol RecPedPop thus incorporates solutions for both secure cha
 
 We aim for the following additional design goals:
 
-- **Large Number of Applications**: We wish to support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, we wish to support situations where backup information is required to be written down manually, as well as those with ample backup space. To support this flexiblity, the document proposes multiple DKG protocols and multiple methods to [ensure agreement](#ensuring-agreement).
+- **Large Number of Applications**: We wish to support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, we wish to support situations where backup information is required to be written down manually, as well as those with ample backup space. To achieve this flexibility, the document proposes multiple DKG protocols and multiple methods to [ensure agreement](#ensuring-agreement).
 - **DKG outputs per-participant public keys**: When DKG is used in FROST,  partial signature verification should be possible.
 - **Simple backups**
 - **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
@@ -499,7 +516,7 @@ Similarly, if signing devices are controlled by different organizations in diffe
 
 These "out-of-band" methods can achieve termination (assuming the involved humans proceed with their tasks eventually).
 
-##### Certifying network-based protocol
+##### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
 TODO The hpk should be the id here... clean this up and write something about setup assumptions
 
 In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
