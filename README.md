@@ -60,13 +60,14 @@ Nevertheless, such applications may wish to use the low-level variants SimplPedP
 
 We aim for the following additional design goals:
 
-- **Large Number of Applications**: We wish to support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, we wish to support situations where backup information is required to be written down manually, as well as those with ample backup space. To achieve this flexibility, the document proposes multiple DKG protocols and multiple methods to [ensure agreement](#ensuring-agreement).
-- **DKG outputs per-participant public keys**: When DKG is used in FROST,  partial signature verification should be possible.
-- **Simple backups**
-- **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
-<!-- - **Little optimized for communication overhead or number of rounds** -->
-- **Support for Coordinator**: In many scenarios there is a "natural" coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
+- **Large Number of Applications**: We wish to support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, we wish to support situations where backup information is required to be written down manually, as well as those with ample backup space.
+- **DKG outputs per-participant public keys**: When DKG is used in FROST, partial signature verification should be possible.
+- **Simple backups**:
+- **Support for Coordinator**: As in the FROST signing protocol, we wish to support a coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 
+TODO Describe and explain non-goals
+- **No robustness**: Only very rudimentary ability to identify misbehaving signers in some situations.
+<!-- - **Little optimized for communication overhead or number of rounds** -->
 
 ### Backup and Recover
 
@@ -186,6 +187,10 @@ def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
     participant_public_keys.append(PK_i)
   return PK, participant_public_keys
 ```
+
+#### Equality Check
+
+TODO Move the Agreement section here and reorganize it
 
 ### DKG Protocols
 For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
