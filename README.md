@@ -69,12 +69,12 @@ TODO Describe and explain non-goals
 - **No robustness**: Only very rudimentary ability to identify misbehaving signers in some situations.
 <!-- - **Little optimized for communication overhead or number of rounds** -->
 
-### Backup and Recover
+### Backup and Recovery
 
 Losing the secret share or the shared public key will render the signer incapable of producing signatures.
 These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
 In many scenarios, it is highly recommended to have a backup strategy to recover the outputs of the DKG.
-The recommended strategies are described in the EncPedPop and RecPedPop Backup and Recover sections.
+The recommended strategies are described in the EncPedPop and RecPedPop Backup and Recovery sections.
 
 There are strategies to recover if the backup is lost and other signers assist in recovering.
 In such cases, the recovering signer must be very careful to obtain the correct secret share and shared public key!
@@ -195,7 +195,7 @@ TODO Move the Agreement section here and reorganize it
 ### DKG Protocols
 For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
 The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
-We refer to the [Backup and Recover](#backup-and-recover) section for additional details.
+We refer to the [Backup and Recovery](#backup-and-recovery) section for additional details.
 
 <!-- Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup. -->
 
@@ -464,7 +464,7 @@ def recpedpop_coordinate(t, n):
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
 
-#### Backup and Recover
+#### Backup and Recovery
 A backup of DKG consists of the seed and the DKG transcript.
 The seed can be reused for multiple DKGs and must be stored securely.
 On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
