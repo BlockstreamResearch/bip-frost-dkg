@@ -1,44 +1,55 @@
-# BIP-DKG (WIP)
+# Distributed Key Generation for FROST (BIP draft)
 
-This document is a work-in-progress Bitcoin Improvement Proposal for a DKG protocol that can be used in FROST.
+This document is a work-in-progress Bitcoin Improvement Proposal proposing Distributed Key Generation methods for use in FROST.
 
 ## Introduction
 
-### Distributed Key Generation (DKG)
+Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
+This can, in principle, be achieved through a trusted dealer who generates the shared public key and distributes shares of the corresponding secret key to the FROST signers.
+However, the dealer is a single point of failure:
+if the dealer is malicious or compromised, or the secret key is not deleted correctly and compromised later, an adversary can forge signatures.
 
-Distributed Key Generation is a protocol between `n` participants that outputs secret key shares for every participant and a shared public key.
-Recovering the secret key of the shared public key requires no less than threshold `t` participants to cooperate and use their key shares.
-DKG is used as part of the key generation phase in threshold signature schemes like FROST, for example.
-In threshold signatures, the shared public key is not recovered.
-Instead, the individual key shares are used to sign for the shared public key.
-If the DKG succeeds from the point of view of a signer, then FROST signatures are unforgeable, i.e., `t` signers are required to cooperate to produce a signature for the shared public key - regardless of how many other participants in the the DKG were dishonest.
+An interactive distributed key generation (DKG) protocol run by all signers avoids the need for a trusted dealer.
+Assume there are `n` signers and at most `t-1` of them are malicious, i.e., at least `n-t+1` signers are honest.
+If a DKG run succeeds from the point of view of an honest signers and outputs a shared public key,
+then it is guaranteed that `t` signers are required to cooperate to produce a signature for the shared public key.
 
-As an alternative of using DKG in threshold signing, a trusted dealer could generate the shared public key and verifiably share the corresponding secret key with the signers.
-However, a dishonest or compromised dealer, or not deleting the secret key correctly and getting compromised later, can allow an adversary to forge signatures.
+There exist a number of DKG protocols with different requirements and guarantees.
+Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'').
+But similar to most DKG protocols in the literature, the PedPop DKG has strong requirements on the communication between signers:
+It assumes that signers have secure (i.e., authenticated and encrypted) channels between each other to deliver secret shares to individual signers,
+and it assumes that signers have access to a secure broadcast mechanism.
 
-To instantiate DKG there are many possible schemes which differ by the guarantees they provide.
-Since DKGs are difficult to implement correctly in practice, the aim of this document is to describe pragmatic DKG protocols that are *simple*, namely SimplPedPop, EncPedPop and RecPedPop.
-However, the DKG can be swapped out for a different one provided it is proven to be secure when used in FROST.
-
-Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup.
-Moreover, the secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
-You can refer to the [Backup and Recover](#backup-and-recover) section for additional details.
+This requirements make PedPop difficult to implement correctly in practice, 
+and the aim of this document is to describe simple variants of PedPop with "batteries included",
+i.e., they incorporate minimal but sufficient implementations of secure channels and secure broadcast.
 
 ### Design
 
-- **Large Number of Applications**: This DKG supports a wide range of scenarios. It can handle situations from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. The DKG can support situations where backup information is required to be written down manually , as well as those with ample backup space. To support this flexiblity, the document proposes several methods to [ensure agreement](#ensuring-agreement), including a potentially novel (?) network-based certification protocol.
-- **DKG outputs per-participant public keys**: When DKG used in FROST allowing partial signature verification.
-- **Optional instantiation of secure channels for share transfer** (TODO: may not remain optional)
-- **Support for backups**
+Our protocols are based on the SimplPedPop protocol, which has been proven to be secure when combined with FROST and needs only a single invocation of broadcast.
+We first adapt SimplPedPop to a setting with an untrusted coordinator,
+which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
+Our design then follows a layered approach:
+We first wrap SimplPedPop in a protocol layer responsible for encrypting shares.
+We then wrap the resulting protocol in a second protocol layer that ensures authenticity and implements an equality check protocol, which is a particular abstraction of a broadcast mechanism with restricted functionality. 
+Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast protocol in order to provide an equality broadcast channel.
+The resulting protocol RecPedPop thus incorporates solutions for both secure channels and broadcast, and is what we recommend in practice.
+
+|                 | seed              | requires secure channels | requires equality check (broadcast) | backup                      |
+|-----------------|-------------------|--------------------------|-------------------------------------|-----------------------------|
+| **SimplPedPop** | fresh             | yes                      | yes                                 | share per setup             |
+| **EncPedPop**   | reuse allowed     | no                       | yes                                 | share per setup             |
+| **RecPedPop**   | reuse for backups | no                       | no                                  | seed + public transcript per setup |
+
+We aim for the following additional design goals:
+
+- **Large Number of Applications**: We wish to support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, we wish to support situations where backup information is required to be written down manually, as well as those with ample backup space. To support this flexiblity, the document proposes multiple DKG protocols and multiple methods to [ensure agreement](#ensuring-agreement).
+- **DKG outputs per-participant public keys**: When DKG is used in FROST,  partial signature verification should be possible.
+- **Simple backups**
 - **No robustness**: Very rudimentary ability to identify misbehaving signers in some situations.
-- **Little optimized for communication overhead or number of rounds**
+<!-- - **Little optimized for communication overhead or number of rounds** -->
 - **Support for Coordinator**: In many scenarios there is a "natural" coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 
-|                 | seed              | requires secure channels between participants | Requires external Eq | backup                      |
-|-----------------|-------------------|-----------------------------------------------|----------------------|-----------------------------|
-| **SimplPedPop** | fresh             | yes                                           | yes                  | share per setup             |
-| **EncPedPop**   | reuse allowed     | no                                            | yes                  | share per setup             |
-| **RecPedPop**   | reuse for backups | no                                            | no                   | seed + public transcript per setup |
 
 ### Backup and Recover
 
@@ -53,7 +64,6 @@ In such cases, the recovering signer must be very careful to obtain the correct 
 2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
    This scheme requires no additional backup or storage space for the signers.
 These strategies are out of scope for this document.
-
 
 ### Preliminaries
 
@@ -160,7 +170,14 @@ def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
   return PK, participant_public_keys
 ```
 
-### SimplPedPop
+### DKG Protocols
+For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
+The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
+We refer to the [Backup and Recover](#backup-and-recover) section for additional details.
+
+<!-- Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup. -->
+
+#### SimplPedPop
 
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
@@ -247,12 +264,12 @@ def simplpedpop_coordinate(t, n):
     chan_send_all(vss_commitments_sum)
 ```
 
-### EncPedPop
+#### EncPedPop
 
 EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 Every EncPedPop participant runs the `encpedpop` algorithm and the coordinator runs the `encpedpop_coordinate` algorithm as described below.
 
-#### Encryption
+##### Encryption
 
 ```python
 def ecdh(x, Y, context):
@@ -340,17 +357,7 @@ def encpedpop_coordinate(t, n):
         chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
 ```
 
-#### Backup and Recover
-
-Backups consist of the signer index and DKG outputs: secret share and shared public key.
-It is possible to only back up the secret share, but then the shared public key and index needs to be provided to complete a recovery (TODO: what if the public key and index are wrong?).
-This data needs to be backed up for every DKG the signer is involved in.
-The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
-
-In some scenarios it may make sense to back up the seed - if it is less likely to get lost than the per-setup DKG outputs.
-In case the per-setup DKG outputs are lost and all other signers are cooperative and have seed backups, the DKG can just be re-run.
-
-### RecPedPop
+#### RecPedPop
 
 RecPedPop is a wrapper around EncPedPop.
 Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
