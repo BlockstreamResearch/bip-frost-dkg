@@ -379,6 +379,16 @@ def encpedpop_coordinate(t, n):
         chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
 ```
 
+##### Backup and Recovery
+
+Backups consist of the signer index and DKG outputs: secret share and shared public key.
+It is possible to only back up the secret share, but then the shared public key and index needs to be provided to complete a recovery (TODO: what if the public key and index are wrong?).
+This data needs to be backed up for every DKG the signer is involved in.
+The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
+
+In some scenarios it may make sense to back up the seed - if it is less likely to get lost than the per-setup DKG outputs.
+In case the per-setup DKG outputs are lost and all other signers are cooperative and have seed backups, the DKG can just be re-run.
+
 #### RecPedPop
 
 RecPedPop is a wrapper around EncPedPop.
@@ -464,7 +474,7 @@ def recpedpop_coordinate(t, n):
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
 
-#### Backup and Recovery
+##### Backup and Recovery
 A backup of DKG consists of the seed and the DKG transcript.
 The seed can be reused for multiple DKGs and must be stored securely.
 On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
