@@ -247,7 +247,6 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
     :return: a final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n = state
-    assert(len(shares_sum) == n)
     assert(len(vss_commitments_sum) == 2*n + t - 1)
     for i in range(n):
         if not verify_sig(vss_commitments_sum[i], "", vss_commitments_sum[n + t-1 + i]):
@@ -326,7 +325,7 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     # encrypted under wrong enckeys.
     seed_ = Hash(seed, t, enckeys)
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n)
-    enc_context = [t] + enckeys
+    enc_context = hash([t] + enckeys)
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
@@ -336,7 +335,7 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
     n = len(enckeys)
     assert(len(vss_commitments_sum) == 2*n + t - 1)
 
-    enc_context = [t] + enckeys
+    enc_context = hash([t] + enckeys)
     shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     # TODO: catch "ValueError: not in list" exception
     try:
@@ -381,13 +380,29 @@ def encpedpop_coordinate(t, n):
 
 ##### Backup and Recovery
 
-Backups consist of the signer index and DKG outputs: secret share and shared public key.
-It is possible to only back up the secret share, but then the shared public key and index needs to be provided to complete a recovery (TODO: what if the public key and index are wrong?).
-This data needs to be backed up for every DKG the signer is involved in.
-The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
+There are two possible backup strategies for `EncPedPop`:
 
-It is also possible to back up the seed in a secure location and back up the encrypted shares.
-If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.
+1. **Backup of the secret shares**
+    Backups consist of the signer index and DKG outputs: secret share and shared public key.
+    It is possible to only back up the secret share, but then the shared public key and index needs to be provided to complete a recovery (TODO: what if the public key and index are wrong?).
+    This data needs to be backed up for every DKG the signer is involved in.
+    The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
+2. **Backup of the seed and encrypted shares**
+    It is also possible to back up the seed in a secure location and back up the encrypted shares.
+    ```python
+    # All inputs of this function are required to be backed up for full recovery
+    # With the exception of seed, they are public data
+    def encpedpop_recover(seed, enc_shares_sum, t, enckeys, shared_pubkey, signer_pubkeys):
+        my_deckey = kdf(seed, "deckey")
+        enc_context = hash([t] + enckeys)
+        shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
+        return shares_sum, shared_pubkey, signer_pubkeys
+
+    # my_idx is required for signing
+    def encpedpop_recover_my_idx(seed, enc_shares_sum, t, enckeys, shared_pubkey, signer_pubkeys):
+        return enckeys.index(my_enckey)
+    ```
+    If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.
 
 #### RecPedPop
 
@@ -435,13 +450,13 @@ def recpedpop_round2(seed, state1, enckeys):
 
     enc_state2, vss_commitment, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
     my_idx = enckeys.index(my_enckey)
-    state2 = (hostverkeys, setup_id, my_idx, enc_state2)
-    return state2, vss_commitment, enc_shares
+    state2 = (setup_id, my_idx, enc_state2)
+    return state2, hostverkeys, vss_commitment, enc_shares
 ```
 
 ```python
-def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, all_enc_shares_sum):
-    (hostverkeys, setup_id, my_idx, enc_state2) = state2
+def recpedpop_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum, Eq):
+    (setup_id, my_idx, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
@@ -450,7 +465,7 @@ def recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, all_enc
     # participate in Eq?
     eta = (setup_id, all_enc_shares_sum)
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
-    return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, make_certifying_Eq(my_hostsigkey, hostverkeys), eta)
+    return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, Eq, eta)
 ```
 
 ```python
@@ -459,11 +474,11 @@ def recpedpop(seed, my_hostsigkey, setup):
     chan_send(my_enckey)
     enckeys = chan_receive()
 
-    state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
+    state2, hostverkeys, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
     chan_send((my_vss_commitment, my_generated_enc_shares))
     vss_commitments, enc_shares_sum = chan_receive()
 
-    shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, enc_shares_sum)
+    shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum, make_certifying_Eq(my_hostsigkey, hostverkeys))
     transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
 
@@ -475,11 +490,26 @@ def recpedpop_coordinate(t, n):
 ![recpedpop diagram](images/recpedpop-sequence.png)
 
 ##### Backup and Recovery
-A backup of DKG consists of the seed and the DKG transcript.
+A `RecPedPop` backup consists of the seed and the DKG transcript.
 The seed can be reused for multiple DKGs and must be stored securely.
 On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
 
-If a signer loses the backup of the DKG transcript, they can request it from the other signers.
+```python
+# Recovery requires the seed and the public transcript
+def recpedpop_recover(seed, transcript):
+    my_hostsigkey, _ = recpedpop_hostpubkey(seed)
+    setup, enckeys, vss_commitments_sum, enc_shares_sum, cert = transcript
+
+    state1, my_enckey = recpedpop_round1(seed, setup)
+    state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
+
+    def Eq(x):
+        return verify(hostverkeys, x, cert)
+    shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, enc_shares_sum, Eq)
+    return shares_sum, shared_pubkey, signer_pubkeys
+```
+
+In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
 ### Ensuring Agreement
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
@@ -537,6 +567,12 @@ TODO The hpk should be the id here... clean this up and write something about se
 In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
 
 ```python
+def verify_cert(hostverkeys, x, sigs):
+    if len(sigs) != len(hostverkeys):
+        return False
+    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) for i in range(hostverkeys)]
+    return all(is_valid)
+
 def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
     def certifying_Eq(x):
         chan_send(("SIG", sign(my_hostsigkey, x)))
@@ -563,14 +599,11 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     return SUCCESS
             if ty == "CERT":
                 sigs = msg
-                if len(sigs) == len(hostverkys):
-                    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) \
-                                for i in range(hostverkeys)]
-                    if all(is_valid)
-                        result["cert"] = cert
-                        for i in range(n):
-                            chan_send(("CERT", cert))
-                        return SUCCESS
+                if verify_cert(hostverkeys, x, sigs):
+                    result["cert"] = cert
+                    for i in range(n):
+                        chan_send(("CERT", cert))
+                    return SUCCESS
     return certifying_eq
 
 def certifying_Eq_coordinate():
