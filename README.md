@@ -386,8 +386,8 @@ It is possible to only back up the secret share, but then the shared public key 
 This data needs to be backed up for every DKG the signer is involved in.
 The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
 
-In some scenarios it may make sense to back up the seed - if it is less likely to get lost than the per-setup DKG outputs.
-In case the per-setup DKG outputs are lost and all other signers are cooperative and have seed backups, the DKG can just be re-run.
+It is also possible to back up the seed in a secure location and back up the encrypted shares.
+If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.
 
 #### RecPedPop
 
