@@ -526,41 +526,41 @@ In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
 A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
-Indeed, disagreement may lead to catastrophic failure.
+Indeed, disagreement may lead to catastrophic failure:
 For example, assume that all but one participant believe that DKG has failed and therefore delete their secret key material,
 but one participant believes that the DKG has finished successfully and sends funds to the resulting threshold public key.
-Then those funds will be lost irrevocably, because, assuming t > 1, the single remaining secret share is not sufficient to produce a signature.
+Then those funds will be lost irrevocably, because, assuming `t > 1`, the single remaining secret share is not sufficient to produce a signature.
 
 DKG protocols in the cryptographic literature often abstract away from this problem
 by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
-However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specific scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
+However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specifics of the application scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
 
-The DKG protocols described above work with a similar but slightly weaker abstraction instead.
+The DKG protocols described in this document work with a similar but slightly weaker abstraction instead.
 They assume that participants have access to an equality check mechanism "Eq", i.e.,
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
 Eq has the following abstract interface:
-Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return SUCCESS or FAIL to the calling participant.
- - SUCCESS means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
- - FAIL means that it is guaranteed that no honest participant will output SUCCESS. In that case, the generated secret keys can safely be deleted.
+Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return True (indicating success) or False (indicating failure) to the calling participant. In more detail:
+ - True means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
+ - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted.
 
-As long as Eq(x) has not returned for some participant, this participant does not know whether all honest participants agree on the value or whether some honest participants have output SUCCESS or will output SUCCESS.
+As long as Eq(x) has not returned for some participant, this participant does not know whether all honest participants agree on the value or whether some honest participants have output True or will output True.
 In that case, the DKG was potentially successful.
 Other honest participants may believe that it was successful and may assume that the resulting keys can be used.
 As a result, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state.
 
 More formally, Eq must fulfill the following properties:
- - Integrity: If some honest participant outputs SUCCESS, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
- - Consistency: If some honest participant outputs SUCCESS, no other honest participant outputs FAIL.
- - Conditional Termination: If some honest participant outputs SUCCESS, then all other participants will (eventually) output SUCCESS.
+ - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
+ - Consistency: If some honest participant outputs True, no other honest participant outputs False.
+ - Conditional Termination: If some honest participant outputs True, then all other participants will (eventually) output True.
 <!-- The latter two properties together are equivalent to Agreement in the paper. -->
 
 Optionally, the following property is desired but not always achievable:
- - (Full) Termination: All honest participants will (eventually) output SUCCESS or FAIL.
+ - (Full) Termination: All honest participants will (eventually) output True or False.
 
 ### Examples
 
-TODO: Expand these scenarios. Relate them to SUCCESS, FAIL.
+TODO: Expand these scenarios. Relate them to True, False.
 
 Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
 
@@ -610,14 +610,14 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     result["cert"] = cert
                     for i in range(n):
                         chan_send(("CERT", cert))
-                    return SUCCESS
+                    return True
             if ty == "CERT":
                 sigs = msg
                 if verify_cert(hostverkeys, x, sigs):
                     result["cert"] = cert
                     for i in range(n):
                         chan_send(("CERT", cert))
-                    return SUCCESS
+                    return True
     return certifying_eq
 
 def certifying_Eq_coordinate():
@@ -627,20 +627,20 @@ def certifying_Eq_coordinate():
             chan_send_all((i, ty, msg))
 ```
 
-In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning SUCCESS.
-It may still be helpful to check with other participants out-of-band that they have all arrived at the SUCCESS state. (TODO explain)
+In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning True.
+It may still be helpful to check with other participants out-of-band that they have all arrived at the True state. (TODO explain)
 
 Proof. (TODO for footnote?)
 Integrity:
-Unless a signature has been forged, if some honest participant with input `x` outputs SUCCESS,
+Unless a signature has been forged, if some honest participant with input `x` outputs True,
 then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
 Conditional Termination:
-If some honest participant with input `x` returns SUCCESS,
+If some honest participant with input `x` returns True,
 then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
 Consider any honest participant among these other participants.
 Assuming a reliable network, this honest participant eventually receives `cert`,
 and by integrity, has received `x` as input.
-Thus, this honest participant will accept `cert` and return SUCCESS.
+Thus, this honest participant will accept `cert` and return True.
 
 #### Consensus protocol
 
