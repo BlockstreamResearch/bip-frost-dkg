@@ -539,20 +539,27 @@ The DKG protocols described in this document work with a similar but slightly we
 They assume that participants have access to an equality check mechanism "Eq", i.e.,
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
+TODO: Is it really the DKG that is successful here or is it just Eq?
+
 Eq has the following abstract interface:
-Every participant can invoke Eq(x) with an input value x. When Eq returns for a calling participant, it will return True (indicating success) or False (indicating failure) to the calling participant. In more detail:
+Every participant can invoke Eq(x) with an input value x.
+Eq may not return at all to the calling participant, but if it returns, it will return True (indicating success) or False (indicating failure).
  - True means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
  - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted.
 
-As long as Eq(x) has not returned for some participant, this participant does not know whether all honest participants agree on the value or whether some honest participants have output True or will output True.
-In that case, the DKG was potentially successful.
-Other honest participants may believe that it was successful and may assume that the resulting keys can be used.
-As a result, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state.
+As long as Eq(x) has not returned for some participant, this participant remains uncertain about whether the DKG has been successful or will be successful.
+In particular, such an uncertain participant cannot rule out that other honest participants receive True as a return value and thus conclude that the DKG keys can be used.
+As a consequence, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state and the secret key material.
+
+TODO Add a more concrete example with lost funds that demonstrates the risk?
+
+While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers termination in the successful cases.
+Under the assumption that network messages eventually arrive (this is often called an "asynchronous network"), we can guarantee that if *some* honest participant determines the DKG to be successful, then *all* other honest participants determine it to be successful eventually. 
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
  - Consistency: If some honest participant outputs True, no other honest participant outputs False.
- - Conditional Termination: If some honest participant outputs True, then all other participants will (eventually) output True.
+ - Conditional Termination: If some honest participant outputs True, then all honest participants will (eventually) output True.
 <!-- The latter two properties together are equivalent to Agreement in the paper. -->
 
 Optionally, the following property is desired but not always achievable:
@@ -602,7 +609,7 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     # whose input is not equal to `x`. This means that there is
                     # some malicious signer or that some messages have been
                     # tampered with on the wire. We must not abort, and we could
-                    # still output SUCCESS when receiving a cert later, but we
+                    # still output True when receiving a cert later, but we
                     # should indicate to the user (logs?) that something went
                     # wrong.)
                 if sigs.count(None) == 0:
