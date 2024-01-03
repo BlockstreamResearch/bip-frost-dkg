@@ -4,21 +4,17 @@ This document is a work-in-progress Bitcoin Improvement Proposal proposing Distr
 
 ## Introduction
 In the FROST threshold signature scheme [KG20], a threshold `t` of some set of `n` signers is required to produce a signature.
-FROST remains unforgeable even if up to `t-1` signers are compromised,
+FROST remains unforgeable as long as at most `t-1` signers are compromised,
 and remains functional as long as `t` honest signers do not lose their secret key material.
 
-As a result, threshold signatures increase \emph{both} security and availability,
+As a result, threshold signatures increase both security and availability,
 enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
 Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
 This can, in principle, be achieved through a trusted dealer who generates the shared public key and distributes shares of the corresponding secret key to the FROST signers.
 However, the dealer is a single point of failure:
 if the dealer is malicious or compromised, or the secret key is not deleted correctly and compromised later, an adversary can forge signatures.
 
-An interactive distributed key generation (DKG) protocol run by all signers avoids the need for a trusted dealer.
-Assume there are `n` signers and at most `t-1` of them are malicious, i.e., at least `n-t+1` signers are honest.
-If a DKG run succeeds from the point of view of an honest signers and outputs a shared public key,
-then it is guaranteed that `t` signers are required to cooperate to produce a signature for the shared public key.
-
+An interactive *distributed key generation* (DKG) protocol run by all signers avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees.
 Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
 But similar to most DKG protocols in the literature, the PedPop DKG has strong requirements on the communication between signers:
@@ -198,6 +194,10 @@ The secret share and shared public key are required by a signer to produce signa
 We refer to the [Backup and Recovery](#backup-and-recovery) section for additional details.
 
 <!-- Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup. -->
+TODO Say something about the provided guarantees:
+If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
+then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
+
 
 #### SimplPedPop
 
