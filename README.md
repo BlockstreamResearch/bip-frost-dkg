@@ -1,8 +1,16 @@
 # Distributed Key Generation for FROST (BIP draft)
 
+### Abstract
+
 This document is a work-in-progress Bitcoin Improvement Proposal proposing Distributed Key Generation methods for use in FROST.
 
+### Copyright
+TODO
+
 ## Introduction
+
+### Motivation
+
 In the FROST threshold signature scheme [KG20], a threshold `t` of some set of `n` signers is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` signers are compromised,
 and remains functional as long as `t` honest signers do not lose their secret key material.
@@ -79,9 +87,9 @@ In such cases, the recovering signer must be very careful to obtain the correct 
    This scheme requires no additional backup or storage space for the signers.
 These strategies are out of scope for this document.
 
-### Preliminaries
+## Preliminaries
 
-#### Notation
+### Notation
 
 All participants agree on an assignment of indices `0` to `n-1` to participants.
 
@@ -103,7 +111,7 @@ def kdf(seed, ...):
     # TODO
 ```
 
-#### Verifiable Secret Sharing (VSS)
+### Verifiable Secret Sharing (VSS)
 
 TODO: the functions `secret_share_shard` and `vss_verify` from the irtf spec are a bit clunky to use for us...
 
@@ -184,11 +192,12 @@ def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
   return PK, participant_public_keys
 ```
 
-#### Equality Check
+### Equality Check
 
 TODO Move the Agreement section here and reorganize it
 
-### DKG Protocols
+## DKG Protocols
+
 For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
 The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
 We refer to the [Backup and Recovery](#backup-and-recovery) section for additional details.
@@ -199,7 +208,7 @@ If a DKG run succeeds from the point of view of an honest signer by outputting a
 then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
 
 
-#### SimplPedPop
+### SimplPedPop
 
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
@@ -285,12 +294,12 @@ def simplpedpop_coordinate(t, n):
     chan_send_all(vss_commitments_sum)
 ```
 
-#### EncPedPop
+### EncPedPop
 
 EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
 Every EncPedPop participant runs the `encpedpop` algorithm and the coordinator runs the `encpedpop_coordinate` algorithm as described below.
 
-##### Encryption
+#### Encryption
 
 ```python
 def ecdh(x, Y, context):
@@ -300,7 +309,7 @@ def encrypt(share, my_deckey, enckey, context):
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 ```
 
-#### EncPedPop
+### EncPedPop
 
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
@@ -378,7 +387,7 @@ def encpedpop_coordinate(t, n):
         chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
 ```
 
-##### Backup and Recovery
+#### Backup and Recovery
 
 There are two possible backup strategies for `EncPedPop`:
 
@@ -404,7 +413,7 @@ There are two possible backup strategies for `EncPedPop`:
     ```
     If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.
 
-#### RecPedPop
+### RecPedPop
 
 RecPedPop is a wrapper around EncPedPop.
 Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
@@ -489,7 +498,8 @@ def recpedpop_coordinate(t, n):
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
 
-##### Backup and Recovery
+#### Backup and Recovery
+
 A `RecPedPop` backup consists of the seed and the DKG transcript.
 The seed can be reused for multiple DKGs and must be stored securely.
 On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
@@ -511,7 +521,8 @@ def recpedpop_recover(seed, transcript):
 
 In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
-### Ensuring Agreement
+## Ensuring Agreement
+
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
 A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
@@ -547,12 +558,14 @@ More formally, Eq must fulfill the following properties:
 Optionally, the following property is desired but not always achievable:
  - (Full) Termination: All honest participants will (eventually) output SUCCESS or FAIL.
 
-#### Examples
+### Examples
+
 TODO: Expand these scenarios. Relate them to SUCCESS, FAIL.
 
 Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
 
-##### Participants are in a single room
+#### Participants are in a single room
+
 In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
 
 TODO add failure case, specify entire protocol
@@ -561,7 +574,8 @@ Similarly, if signing devices are controlled by different organizations in diffe
 
 These "out-of-band" methods can achieve termination (assuming the involved humans proceed with their tasks eventually).
 
-##### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
+#### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
+
 TODO The hpk should be the id here... clean this up and write something about setup assumptions
 
 In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
@@ -628,7 +642,8 @@ Assuming a reliable network, this honest participant eventually receives `cert`,
 and by integrity, has received `x` as input.
 Thus, this honest participant will accept `cert` and return SUCCESS.
 
-##### Consensus protocol
+#### Consensus protocol
+
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
 TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
