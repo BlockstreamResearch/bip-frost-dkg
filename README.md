@@ -558,11 +558,11 @@ Under the assumption that network messages eventually arrive (this is often call
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
- - Conditional Agreement: If some honest participant outputs True, then all honest participants will (eventually) output True.
+ - Conditional Agreement: If some honest participant outputs True and the delivery of messages between honest participants is guaranteed, then all honest participants output True.
 
 Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
 To ensure termination in that situation, the protocol requires a stronger property:
- - (Full) Agreement: All honest participants will (eventually) output True or False.
+ - (Full) Agreement: If the delivery of messages between honest participants is guaranteed, all honest participants will output True or False.
 
 ### Examples
 
