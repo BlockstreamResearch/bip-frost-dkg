@@ -560,9 +560,9 @@ More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
  - Consistency: If some honest participant outputs True, no other honest participant outputs False.
  - Conditional Agreement: If some honest participant outputs True, then all honest participants will (eventually) output True.
-<!-- The latter two properties together are equivalent to Agreement in the paper. -->
 
-Optionally, the following property is desired but not always achievable:
+Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
+To ensure termination in that situation, the protocol requires a stronger property:
  - (Full) Agreement: All honest participants will (eventually) output True or False.
 
 ### Examples
