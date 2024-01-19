@@ -221,7 +221,7 @@ with the following minor modifications:
 SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
 
-Also, SimplePedPop requires an interactive protocol `Eq` as described in section [Ensuring Agreement](#ensuring-agreement).
+Also, SimplePedPop requires an interactive equality check protocol `Eq` as described in section [Equality Protocol](#equality-protocol).
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
 In SimplPedPop, the signers designate a coordinator who relays and aggregates messages.
@@ -521,7 +521,7 @@ def recpedpop_recover(seed, transcript):
 
 In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
-## Ensuring Agreement
+## Equality Protocol
 
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
