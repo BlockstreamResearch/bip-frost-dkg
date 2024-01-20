@@ -107,8 +107,14 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The function `sign(sk, m)` is identical to the BIP 340 `Sign` function.
 
 ```python
-def kdf(seed, domain, extra_input):
-    # TODO
+biptag = "BIP DKG: "
+def tagged_hash(tag: str, msg: bytes) -> bytes:
+    tag_hash = hashlib.sha256(biptag.encode() + tag.encode()).digest()
+    return hashlib.sha256(tag_hash + tag_hash + msg).digest()
+
+def kdf(seed, tag, extra_input):
+    # TODO: consider different KDF
+    return tagged_hash(tag + "KDF ", seed + extra_input)
 ```
 
 ### Verifiable Secret Sharing (VSS)
@@ -303,7 +309,7 @@ Every EncPedPop participant runs the `encpedpop` algorithm and the coordinator r
 
 ```python
 def ecdh(x, Y, context):
-    return Hash(x*Y, context)
+    return tagged_hash("ECDH", x*Y, context)
 
 def encrypt(share, my_deckey, enckey, context):
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
@@ -332,7 +338,7 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     my_deckey, my_enckey = state1
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
-    seed_ = Hash(seed, t, enckeys)
+    seed_ = tagged_hash("encpedpop seed", seed, t, enckeys)
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n)
     enc_context = hash([t] + enckeys)
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))
@@ -433,7 +439,7 @@ They then compute a setup identifier that includes all participants (including y
 
 ```python
 def recpedpop_setup_id(hostverkeys, t, context_string):
-    setup_id = Hash(hostverkeys, t, context_string)
+    setup_id = tagged_hash("setup id", hostverkeys, t, context_string)
     setup = (hostverkeys, t, setup_id)
     return setup, setup_id
 ```
