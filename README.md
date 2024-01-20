@@ -5,7 +5,8 @@
 This document is a work-in-progress Bitcoin Improvement Proposal proposing Distributed Key Generation methods for use in FROST.
 
 ### Copyright
-TODO
+
+This document is licensed under the 3-clause BSD license.
 
 ## Introduction
 
