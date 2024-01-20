@@ -107,7 +107,7 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The function `sign(sk, m)` is identical to the BIP 340 `Sign` function.
 
 ```python
-def kdf(seed, ...):
+def kdf(seed, domain, extra_input):
     # TODO
 ```
 
@@ -446,7 +446,7 @@ def recpedpop_round1(seed, setup):
     hostverkeys, t, setup_id = setup
 
     # Derive setup-dependent seed
-    seed_ = kdf(seed, setup_id)
+    seed_ = kdf(seed, "setup", setup_id)
 
     enc_state1, my_enckey =  encpedpop_round1(seed_)
     state1 = (hostverkeys, t, setup_id, enc_state1, my_enckey)
