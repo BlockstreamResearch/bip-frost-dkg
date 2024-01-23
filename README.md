@@ -36,24 +36,26 @@ i.e., they incorporate minimal but sufficient implementations of secure channels
 
 ### Design
 
-Our protocols are based on the SimplPedPop protocol, which has been proven to be secure when combined with FROST [CGRS23] and needs only a single invocation of broadcast.
-We first adapt SimplPedPop to a setting with an untrusted coordinator,
-which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
+Our protocols are based on the SimplPedPop protocol, which has been proven to be secure when combined with FROST [CGRS23] and needs only a single invocation of an equality check protocol.
+The equality check protocol is a particular abstraction of a broadcast mechanism with restricted functionality that ensures all signers have the same view of the DKG protocol, thereby roughly resembling a secure broadcast mechanism.
+SimplPedPop does not have a built-in equality check and requires the signers to communicate through secure channels.
+The variant of SimplPedPop specified here is tailored for scenarios involving an untrusted coordinator, which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 
 Our design then follows a layered approach:
-We first wrap SimplPedPop in a protocol EncPedPop responsible for encrypting shares.
+We first wrap SimplPedPop in a protocol EncPedPop responsible not only for encrypting shares but also for authenticity, which is established via the equality check protocol.
+Consequently, unlike SecPedPop, EncPedPop does not require pre-existing secure channels between the signers.
 The encryption relies on pairwise ECDH key exchanges between the signers.
 
-We then wrap EncPedPop in a second protocol RecPedPop that ensures authenticity and implements an equality check protocol, which is a particular abstraction of a broadcast mechanism with restricted functionality. 
+We then wrap EncPedPop in a second protocol RecPedPop that implements an equality check protocol.
 Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [GW05] protocol
 and features "success certificates":
 whenever some honest signer considers the DKG to be successful
 this honest signer can, ultimately at the time of a signing request, convince all other honest signers that the DKG has indeed been successful.
 
 As an additional feature of RecPedPop, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG runs in which the device was involved.
-RecPedPop thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice. 
+RecPedPop thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
 
-As a result, RecPedPop is our primary recommendation that fits a wide range scenarios, 
+As a result, RecPedPop is our primary recommendation that fits a wide range scenarios,
 and due to its low overhead, we recommend RecPedPop even for applications which already have secure channels or have access to an external broadcast mechanism such as a BFT protocol.
 Nevertheless, such applications may wish to use the low-level variants SimplPedPop and EncPedPop in special cases.
 
