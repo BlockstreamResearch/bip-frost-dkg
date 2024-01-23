@@ -228,7 +228,7 @@ with the following minor modifications:
 SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
 The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
 
-Also, SimplePedPop requires an interactive protocol `Eq` as described in section [Ensuring Agreement](#ensuring-agreement).
+Also, SimplePedPop requires an interactive equality check protocol `Eq` as described in section [Equality Protocol](#equality-protocol).
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
 
 In SimplPedPop, the signers designate a coordinator who relays and aggregates messages.
@@ -528,7 +528,7 @@ def recpedpop_recover(seed, transcript):
 
 In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
-## Ensuring Agreement
+## Equality Protocol
 
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
@@ -560,17 +560,16 @@ As a consequence, even if Eq appears to be stuck, the caller must not assume (e.
 
 TODO Add a more concrete example with lost funds that demonstrates the risk?
 
-While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers termination in the successful cases.
+While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers agreement in the successful cases.
 Under the assumption that network messages eventually arrive (this is often called an "asynchronous network"), we can guarantee that if *some* honest participant determines the DKG to be successful, then *all* other honest participants determine it to be successful eventually. 
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
- - Consistency: If some honest participant outputs True, no other honest participant outputs False.
- - Conditional Termination: If some honest participant outputs True, then all honest participants will (eventually) output True.
-<!-- The latter two properties together are equivalent to Agreement in the paper. -->
+ - Conditional Agreement: If some honest participant outputs True and the delivery of messages between honest participants is guaranteed, then all honest participants output True.
 
-Optionally, the following property is desired but not always achievable:
- - (Full) Termination: All honest participants will (eventually) output True or False.
+Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
+To ensure termination in that situation, the protocol requires a stronger property:
+ - (Full) Agreement: If the delivery of messages between honest participants is guaranteed, all honest participants will output True or False.
 
 ### Examples
 
@@ -586,7 +585,7 @@ TODO add failure case, specify entire protocol
 
 Similarly, if signing devices are controlled by different organizations in different geographic locations, agents of these organizations can meet in a single room and compare the values.
 
-These "out-of-band" methods can achieve termination (assuming the involved humans proceed with their tasks eventually).
+These "out-of-band" methods can achieve agreement (assuming the involved humans proceed with their tasks eventually).
 
 #### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
 
@@ -648,7 +647,7 @@ Proof. (TODO for footnote?)
 Integrity:
 Unless a signature has been forged, if some honest participant with input `x` outputs True,
 then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
-Conditional Termination:
+Conditional Agreement:
 If some honest participant with input `x` returns True,
 then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
 Consider any honest participant among these other participants.
@@ -660,5 +659,5 @@ Thus, this honest participant will accept `cert` and return True.
 
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
-TODO: Explain more here. This can also achieve termination but consensus is hard (e.g., honest majority, network assumptions...)
+TODO: Explain more here. This can also achieve agreement but consensus is hard (e.g., honest majority, network assumptions...)
 
