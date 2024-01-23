@@ -57,11 +57,11 @@ As a result, RecPedPop is our primary recommendation that fits a wide range scen
 and due to its low overhead, we recommend RecPedPop even for applications which already have secure channels or have access to an external broadcast mechanism such as a BFT protocol.
 Nevertheless, such applications may wish to use the low-level variants SimplPedPop and EncPedPop in special cases.
 
-|                 | seed              | requires secure channels | requires equality check (broadcast) | backup                      |
-|-----------------|-------------------|--------------------------|-------------------------------------|-----------------------------|
-| **SimplPedPop** | fresh             | yes                      | yes                                 | share per setup             |
-| **EncPedPop**   | reuse allowed     | no                       | yes                                 | share per setup             |
-| **RecPedPop**   | reuse for backups | no                       | no                                  | seed + public transcript per setup |
+|                 | seed              | requires secure channels | equality check protocol included | backup                             |
+|-----------------|-------------------|--------------------------|----------------------------------|------------------------------------|
+| **SimplPedPop** | fresh             | yes                      | no                               | share per setup                    |
+| **EncPedPop**   | reuse allowed     | no                       | no                               | share per setup                    |
+| **RecPedPop**   | reuse for backups | no                       | yes                              | seed + public transcript per setup |
 
 We aim for the following additional design goals:
 
