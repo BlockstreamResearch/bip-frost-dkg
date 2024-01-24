@@ -204,10 +204,6 @@ def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
   return PK, participant_public_keys
 ```
 
-### Equality Check
-
-TODO Move the Agreement section here and reorganize it
-
 ## DKG Protocols
 
 For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
@@ -321,7 +317,7 @@ def encrypt(share, my_deckey, enckey, context):
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 ```
 
-### EncPedPop
+#### Wrapping SimplPedPop
 
 The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
 
@@ -426,7 +422,7 @@ There are two possible backup strategies for `EncPedPop`:
 
 ### RecPedPop
 
-RecPedPop is a wrapper around EncPedPop.
+RecPedPop is a wrapper around EncPedPop which also includes the built-in equality check protocol `certifying_Eq`.
 Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
 Since the transcript is public, every signer (and the coordinator) can store it to help recover any other signer.
 
@@ -507,95 +503,11 @@ def recpedpop_coordinate(t, n):
     chan_send_all((vss_commitments_sum, enc_shares_sum))
 ```
 
-![recpedpop diagram](images/recpedpop-sequence.png)
-
-#### Backup and Recovery
-
-A `RecPedPop` backup consists of the seed and the DKG transcript.
-The seed can be reused for multiple DKGs and must be stored securely.
-On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
-
-```python
-# Recovery requires the seed and the public transcript
-def recpedpop_recover(seed, transcript):
-    my_hostsigkey, _ = recpedpop_hostpubkey(seed)
-    setup, enckeys, vss_commitments_sum, enc_shares_sum, cert = transcript
-
-    state1, my_enckey = recpedpop_round1(seed, setup)
-    state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
-
-    def Eq(x):
-        return verify(hostverkeys, x, cert)
-    shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, enc_shares_sum, Eq)
-    return shares_sum, shared_pubkey, signer_pubkeys
-```
-
-In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
-
-## Equality Protocol
-
-TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
-
-A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
-Indeed, disagreement may lead to catastrophic failure:
-For example, assume that all but one participant believe that DKG has failed and therefore delete their secret key material,
-but one participant believes that the DKG has finished successfully and sends funds to the resulting threshold public key.
-Then those funds will be lost irrevocably, because, assuming `t > 1`, the single remaining secret share is not sufficient to produce a signature.
-
-DKG protocols in the cryptographic literature often abstract away from this problem
-by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
-However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specifics of the application scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
-
-The DKG protocols described in this document work with a similar but slightly weaker abstraction instead.
-They assume that participants have access to an equality check mechanism "Eq", i.e.,
-a mechanism that asserts that the input values provided to it by all participants are equal.
-
-TODO: Is it really the DKG that is successful here or is it just Eq?
-
-Eq has the following abstract interface:
-Every participant can invoke Eq(x) with an input value x.
-Eq may not return at all to the calling participant, but if it returns, it will return True (indicating success) or False (indicating failure).
- - True means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
- - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted.
-
-As long as Eq(x) has not returned for some participant, this participant remains uncertain about whether the DKG has been successful or will be successful.
-In particular, such an uncertain participant cannot rule out that other honest participants receive True as a return value and thus conclude that the DKG keys can be used.
-As a consequence, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state and the secret key material.
-
-TODO Add a more concrete example with lost funds that demonstrates the risk?
-
-While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers agreement in the successful cases.
-Under the assumption that network messages eventually arrive (this is often called an "asynchronous network"), we can guarantee that if *some* honest participant determines the DKG to be successful, then *all* other honest participants determine it to be successful eventually. 
-
-More formally, Eq must fulfill the following properties:
- - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
- - Conditional Agreement: If some honest participant outputs True and the delivery of messages between honest participants is guaranteed, then all honest participants output True.
-
-Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
-To ensure termination in that situation, the protocol requires a stronger property:
- - (Full) Agreement: If the delivery of messages between honest participants is guaranteed, all honest participants will output True or False.
-
-### Examples
-
-TODO: Expand these scenarios. Relate them to True, False.
-
-Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
-
-#### Participants are in a single room
-
-In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
-
-TODO add failure case, specify entire protocol
-
-Similarly, if signing devices are controlled by different organizations in different geographic locations, agents of these organizations can meet in a single room and compare the values.
-
-These "out-of-band" methods can achieve agreement (assuming the involved humans proceed with their tasks eventually).
-
-#### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
+#### Certifying equality check protocol based on Goldwasser-Lindell Echo Broadcast
 
 TODO The hpk should be the id here... clean this up and write something about setup assumptions
 
-In a network-based scenario, where long-term host keys are available, the equality check can be instantiated by the following protocol:
+The equality check of RecPedPop is instantiated by the following protocol:
 
 ```python
 def verify_cert(hostverkeys, x, sigs):
@@ -647,6 +559,95 @@ def certifying_Eq_coordinate():
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning True.
 It may still be helpful to check with other participants out-of-band that they have all arrived at the True state. (TODO explain)
 
+![recpedpop diagram](images/recpedpop-sequence.png)
+
+
+#### Backup and Recovery
+
+A `RecPedPop` backup consists of the seed and the DKG transcript.
+The seed can be reused for multiple DKGs and must be stored securely.
+On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
+
+```python
+# Recovery requires the seed and the public transcript
+def recpedpop_recover(seed, transcript):
+    my_hostsigkey, _ = recpedpop_hostpubkey(seed)
+    setup, enckeys, vss_commitments_sum, enc_shares_sum, cert = transcript
+
+    state1, my_enckey = recpedpop_round1(seed, setup)
+    state2, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
+
+    def Eq(x):
+        return verify(hostverkeys, x, cert)
+    shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, my_hostsigkey, state2, vss_commitments_sum, enc_shares_sum, Eq)
+    return shares_sum, shared_pubkey, signer_pubkeys
+```
+
+In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
+
+## Equality Check Protocol
+
+TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
+
+A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
+Indeed, disagreement may lead to catastrophic failure:
+For example, assume that all but one participant believe that DKG has failed and therefore delete their secret key material,
+but one participant believes that the DKG has finished successfully and sends funds to the resulting threshold public key.
+Then those funds will be lost irrevocably, because, assuming `t > 1`, the single remaining secret share is not sufficient to produce a signature.
+
+DKG protocols in the cryptographic literature often abstract away from this problem
+by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
+However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specifics of the application scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
+
+The DKG protocols described in this document work with a similar but slightly weaker abstraction instead.
+They assume that participants have access to an equality check mechanism "Eq", i.e.,
+a mechanism that asserts that the input values provided to it by all participants are equal.
+
+TODO: Is it really the DKG that is successful here or is it just Eq?
+
+Eq has the following abstract interface:
+Every participant can invoke Eq(x) with an input value x.
+Eq may not return at all to the calling participant, but if it returns, it will return True (indicating success) or False (indicating failure).
+ - True means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
+ - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted.
+
+As long as Eq(x) has not returned for some participant, this participant remains uncertain about whether the DKG has been successful or will be successful.
+In particular, such an uncertain participant cannot rule out that other honest participants receive True as a return value and thus conclude that the DKG keys can be used.
+As a consequence, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state and the secret key material.
+
+TODO Add a more concrete example with lost funds that demonstrates the risk?
+
+While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers agreement in the successful cases.
+Under the assumption that network messages eventually arrive (this is often called an "asynchronous network"), we can guarantee that if *some* honest participant determines the DKG to be successful, then *all* other honest participants determine it to be successful eventually.
+
+More formally, Eq must fulfill the following properties:
+ - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
+ - Conditional Agreement: If some honest participant outputs True and the delivery of messages between honest participants is guaranteed, then all honest participants output True.
+
+Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
+To ensure termination in that situation, the protocol requires a stronger property:
+ - (Full) Agreement: If the delivery of messages between honest participants is guaranteed, all honest participants will output True or False.
+
+### Examples
+
+TODO: Expand these scenarios. Relate them to True, False.
+
+Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
+
+#### Participants are in a single room
+
+In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
+
+TODO add failure case, specify entire protocol
+
+Similarly, if signing devices are controlled by different organizations in different geographic locations, agents of these organizations can meet in a single room and compare the values.
+
+These "out-of-band" methods can achieve agreement (assuming the involved humans proceed with their tasks eventually).
+
+#### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
+
+The [equality check protocol used by RecPedPop](#certifying-equality-check-protocol-based-on-goldwasser-lindell-echo-broadcast) is applicable to network-based scenarios where long-term host keys are available. It satisfies integrity and conditional agreement.
+
 Proof. (TODO for footnote?)
 Integrity:
 Unless a signature has been forged, if some honest participant with input `x` outputs True,
@@ -664,4 +665,3 @@ Thus, this honest participant will accept `cert` and return True.
 If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
 
 TODO: Explain more here. This can also achieve agreement but consensus is hard (e.g., honest majority, network assumptions...)
-
