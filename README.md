@@ -65,16 +65,19 @@ Nevertheless, such applications may wish to use the low-level variants SimplPedP
 | **EncPedPop**   | reuse allowed     | no                       | no                               | share per setup                    |
 | **RecPedPop**   | reuse for backups | no                       | yes                              | seed + public transcript per setup |
 
-We aim for the following additional design goals:
+In summary, we aim for the following design goals:
 
-- **Large Number of Applications**: We wish to support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, we wish to support situations where backup information is required to be written down manually, as well as those with ample backup space.
-- **DKG outputs per-participant public keys**: When DKG is used in FROST, partial signature verification should be possible.
-- **Simple backups**:
-- **Support for Coordinator**: As in the FROST signing protocol, we wish to support a coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
+- **Standalone**: The RecPedPop DKG protocol is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
+- **Dishonest Majority**: The three DKGs presented here support any threshold `t <= n` (including "dishonest majority" `t > n/2`).
+- **Flexibility**: The three DKGs presented here support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, they support situations where backup information is required to be written down manually, as well as those with ample backup space.
+- **Simple backups**: The capability of RecPedPop to recover from a static seed and public per-setup data impacts the user experience when backing up threshold-signature wallets. This can enhance the probability of having backups available, preventing users from losing access to their wallets.
+- **Support for Coordinator**: As in the FROST signing protocol, all three DKG protocols presented here support a coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
+- **DKG outputs per-participant public keys**: When DKG is used in FROST, this allows partial signature verification.
 
-TODO Describe and explain non-goals
-- **No robustness**: Only very rudimentary ability to identify misbehaving signers in some situations.
-<!-- - **Little optimized for communication overhead or number of rounds** -->
+As a consequence of above design goals, the DKG protocols inherit the following limitations:
+
+- **No robustness**: Misbehaving signers can prevent the protocol from completing successfully. In such cases it is not possible to identify who of the signers misbehaved (unless they misbehave in certain trivial ways).
+- **Communication complexity not optimal in all scenarios**: While the DKG protocols presented here are optimized for bandwidth efficiency and number of rounds under the premise of flexibility, there are conceivable scenarios where alternative protocols may have better communication complexity.
 
 ### Backup and Recovery
 
@@ -355,7 +358,6 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
 
     enc_context = hash([t] + enckeys)
     shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
-    # TODO: catch "ValueError: not in list" exception
     try:
         my_idx = enckeys.index(my_enckey)
     except ValueError:
