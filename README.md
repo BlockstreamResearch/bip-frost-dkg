@@ -162,8 +162,10 @@ def vss_commit(coeffs):
        vss_commitment.append(A_i)
      return vss_commitment
 
+# Sum the commitments to the i-th coefficients from the given vss_commitments
+# for i > 0. This procedure is introduced by Pedersen in section 5.1 of
+# 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
 def vss_sum_commitments(vss_commitments, t):
-    # TODO: using "Lloyd's trick", this optimization should be mentioned somewhere
     n = len(vss_commitments)
     assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
     # The returned array consists of 2*n + t - 1 elements
@@ -225,9 +227,10 @@ with the following minor modifications:
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
+- The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator to aggregate VSS commitments which reduces communication cost.
 
-SimplPedPop requires SECURE point-to-point channels between the participants, i.e., channels that are ENCRYPTED and AUTHENTICATED.
-The messages can be relayed through a coordinator who is responsible to pass the messages to the participants as long as the coordinator does not interfere with the secure channels between the participants.
+SimplPedPop requires SECURE point-to-point channels for transferring secret shares between participants - that is, channels that are both ENCRYPTED and AUTHENTICATED.
+These messages can be relayed through the coordinator who is responsible to pass the messages to the participants as long as the coordinator cannot interfere with the secure channels between the participants.
 
 Also, SimplePedPop requires an interactive equality check protocol `Eq` as described in section [Equality Protocol](#equality-protocol).
 While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
