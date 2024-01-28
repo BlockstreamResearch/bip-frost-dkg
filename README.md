@@ -67,6 +67,8 @@ Nevertheless, such applications may wish to use the low-level variants SimplPedP
 
 In summary, we aim for the following design goals:
 
+TODO: We could also mention (conditional) agreement and that it prevents losing coins, because it may not be a property supported by all DKGs. Also could mention "Modularity" since it's possible to wrap SimplPedPop in some other protocol.
+
 - **Standalone**: The RecPedPop DKG protocol is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
 - **Dishonest Majority**: The three DKGs presented here support any threshold `t <= n` (including "dishonest majority" `t > n/2`).
 - **Flexibility**: The three DKGs presented here support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, they support situations where backup information is required to be written down manually, as well as those with ample backup space.
