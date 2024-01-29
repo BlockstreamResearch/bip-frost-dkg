@@ -106,8 +106,6 @@ All participants agree on an assignment of indices `0` to `n-1` to participants.
 * The function `chan_receive_from(i)` returns the message received by participant `i`.
 * The function `chan_send_to(i, m)` sends message `m` to participant `i`.
 * The function `chan_send_all(m)` sends message `m` to all participants.
-* The function `secure_chan_send(i, m)` sends message `m` to participant `i` through a secure (encrypted and authenticated) channel.
-* The function `secure_chan_receive(i)` returns the message received by participant `i` through a secure (encrypted and authenticated) channel.
 * The function `sum_group(group_elements)` performs the group operation on the given elements and returns the result.
 * The function `sum_scalar(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
 * The function `individual_pk(sk)` is identical to the BIP 327 `IndividualPubkey` function.
@@ -222,6 +220,7 @@ then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a
 
 ### SimplPedPop
 
+TODO: introduce as building block for EncPedPop/RecPedPop instead of as its own thing
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 with the following minor modifications:
@@ -282,29 +281,6 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
         return False
     shared_pubkey, signer_pubkeys = derive_group_info(n, t, vss_commitments_sum_coeffs)
     return shares_sum, shared_pubkey, signer_pubkeys
-
-# TODO: We would actually have to parse the received network messages. This
-# should include parsing of the group elementsas well as checking that the
-# length of the lists is correct (e.g. vss_commitments are of length t) and
-# allow to identify bad participants/coordinator instead of running into
-# assertions.
-def simplpedpop(seed, t, n, my_idx, Eq):
-  state, my_vss_commitment, my_generated_shares = simplpedpop_round1(seed, t, n)
-  for i in range(n)
-      secure_chan_send(i, my_generated_shares[i])
-  chan_send(my_vss_commitment)
-  shares = []
-  for i in range(n):
-      shares += [secure_chan_receive(i)]
-  vss_commitments_sum = chan_receive()
-  return simplpedpop_finalize(state, my_idx, vss_commitments_sum, sum_scalar(shares), Eq, eta = ()):
-
-def simplpedpop_coordinate(t, n):
-    vss_commitments = []
-    for i in range(n)
-        vss_commitments += [chan_receive_from(i)]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
-    chan_send_all(vss_commitments_sum)
 ```
 
 ### EncPedPop
@@ -382,6 +358,12 @@ def encpedpop(seed, t, n, Eq):
     return encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq)
 
 # TODO: explain that it's possible to arrive at the global order of signer indices by sorting enckeys
+
+# TODO: We would actually have to parse the received network messages. This
+# should include parsing of the group elementsas well as checking that the
+# length of the lists is correct (e.g. vss_commitments are of length t) and
+# allow to identify bad participants/coordinator instead of running into
+# assertions.
 
 def encpedpop_coordinate_internal(t, n):
     vss_commitments = []
