@@ -59,15 +59,16 @@ As a result, RecPedPop is our primary recommendation that fits a wide range scen
 and due to its low overhead, we recommend RecPedPop even for applications which already have secure channels or have access to an external broadcast mechanism such as a BFT protocol.
 Nevertheless, such applications may wish to use the low-level variants SimplPedPop and EncPedPop in special cases.
 
-|                 | seed              | requires secure channels | equality check protocol included | backup                             |
-|-----------------|-------------------|--------------------------|----------------------------------|------------------------------------|
-| **SimplPedPop** | fresh             | yes                      | no                               | share per setup                    |
-| **EncPedPop**   | reuse allowed     | no                       | no                               | share per setup                    |
-| **RecPedPop**   | reuse for backups | no                       | yes                              | seed + public transcript per setup |
+|                 | seed              | requires secure channels | equality check protocol included | backup                             | Recommended  |
+|-----------------|-------------------|--------------------------|----------------------------------|------------------------------------|--------------|
+| **SimplPedPop** | fresh             | yes                      | no                               | share per setup                    | no           |
+| **EncPedPop**   | reuse allowed     | no                       | no                               | share per setup                    | yes, with Eq |
+| **RecPedPop**   | reuse for backups | no                       | yes                              | seed + public transcript per setup | yes          |
 
 In summary, we aim for the following design goals:
 
 TODO: We could also mention (conditional) agreement and that it prevents losing coins, because it may not be a property supported by all DKGs. Also could mention "Modularity" since it's possible to wrap SimplPedPop in some other protocol.
+TODO: We should improve distinction between features of EncPedPop and RecPedPop
 
 - **Standalone**: The RecPedPop DKG protocol is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
 - **Dishonest Majority**: The three DKGs presented here support any threshold `t <= n` (including "dishonest majority" `t > n/2`).
@@ -87,7 +88,9 @@ Losing the secret share or the shared public key will render the signer incapabl
 These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
 In many scenarios, it is highly recommended to have a backup strategy to recover the outputs of the DKG.
 The recommended strategies are described in the EncPedPop and RecPedPop Backup and Recovery sections.
+TODO: consider mentioning that backups are not always necessary
 
+TODO: make the following a footnote
 There are strategies to recover if the backup is lost and other signers assist in recovering.
 In such cases, the recovering signer must be very careful to obtain the correct secret share and shared public key!
 1. If all other signers are cooperative and their seed is backed up (EncPedPop or RecPedPop), it's possible that the other signers can recreate the signer's lost secret share.
@@ -99,7 +102,7 @@ These strategies are out of scope for this document.
 
 ### Notation
 
-All participants agree on an assignment of indices `0` to `n-1` to participants.
+We assume the participants agree on an assignment of indices `0` to `n-1` to participants. TODO: mention that there's also a coordinator, which may be a participant
 
 * The function `chan_send(m)` sends message `m` to the coordinator.
 * The function `chan_receive()` returns the message received by the coordinator.
@@ -127,6 +130,7 @@ def kdf(seed, tag, extra_input):
 
 TODO: the functions `secret_share_shard` and `vss_verify` from the irtf spec are a bit clunky to use for us...
 
+TODO: rewrite using our own group operations, add comment saying something like "this is roughly the same as IRTF ..."
 ```python
 # Copied from draft-irtf-cfrg-frost-15
 def polynomial_evaluate(x, coeffs):
@@ -212,10 +216,11 @@ For each signer, the DKG has three outputs: a secret share, the shared public ke
 The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
 We refer to the [Backup and Recovery](#backup-and-recovery) section for additional details.
 
-<!-- Once the DKG concludes successfully, applications should consider creating a FROST signature with all signers for some test message in order to rule out basic errors in the setup. -->
-TODO Say something about the provided guarantees:
+TODO: mention that these are properties when using the DKG with FROST
 If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
 then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
+TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
+TODO: consider mentioning ROAST
 
 
 ### SimplPedPop
@@ -228,7 +233,7 @@ with the following minor modifications:
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
-- The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator to aggregate VSS commitments which reduces communication cost.
+- The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
 
 SimplPedPop requires SECURE point-to-point channels for transferring secret shares between participants - that is, channels that are both ENCRYPTED and AUTHENTICATED.
 These messages can be relayed through the coordinator who is responsible to pass the messages to the participants as long as the coordinator cannot interfere with the secure channels between the participants.
@@ -351,7 +356,7 @@ def encpedpop(seed, t, n, Eq):
     chan_send(my_enckey)
     enckeys = chan_receive()
 
-    state2, my_vss_commitment, my_generenckeys):
+    state2, my_vss_commitment, my_generenckeys = encpedpop_round2(seed, state1, t, n, enckeys)
     chan_send((my_vss_commitment, my_generated_enc_shares))
     vss_commitments_sum, enc_shares_sum = chan_receive()
 
