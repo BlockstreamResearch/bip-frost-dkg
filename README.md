@@ -112,18 +112,19 @@ We assume the participants agree on an assignment of indices `0` to `n-1` to par
 * The function `point_add_multi(points)` performs the group operation on the given points and returns the result.
 * The function `sum_scalar(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
 * The function `individual_pk(sk)` is identical to the BIP 327 `IndividualPubkey` function.
-* The function `verify_sig(pk, m, sig)` is identical to the BIP 340 `Verify` function.
-* The function `sign(sk, m)` is identical to the BIP 340 `Sign` function.
+* The function `verify_sig(m, pk, sig)` is identical to the BIP 340 `Verify` function.
+* The function `sign(m, sk)` is identical to the BIP 340 `Sign` function.
 
 ```python
 biptag = "BIP DKG: "
-def tagged_hash(tag: str, msg: bytes) -> bytes:
-    tag_hash = hashlib.sha256(biptag.encode() + tag.encode()).digest()
-    return hashlib.sha256(tag_hash + tag_hash + msg).digest()
+
+def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
+    return tagged_hash(biptag + tag, msg)
 
 def kdf(seed, tag, extra_input):
     # TODO: consider different KDF
-    return tagged_hash(tag + "KDF ", seed + extra_input)
+    return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
+
 ```
 
 ### Verifiable Secret Sharing (VSS)
@@ -174,10 +175,12 @@ def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) ->
           for j in range(0, len(vss_commitment))]
      return P == point_add_multi(Q)
 
+VSSCommitmentSum = List[Union[Optional[Point], bytes]]
+
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def vss_sum_commitments(vss_commitments: List[Tuple[VSSCommitment, bytes]], t: int):
+def vss_sum_commitments(vss_commitments: List[Tuple[VSSCommitment, bytes]], t: int) -> VSSCommitmentSum:
     n = len(vss_commitments)
     assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments))
     # The returned array consists of 2*n + t - 1 elements
@@ -234,7 +237,10 @@ In SimplPedPop, the signers designate a coordinator who relays and aggregates me
 Every participant runs the `simplpedpop` algorithm and the coordinator runs the `simplpedpop_coordinate` algorithm as described below.
 
 ```python
-def simplpedpop_round1(seed, t, n):
+SimplePedPopR1State = Tuple[int, int]
+VSS_PoK_msg = (biptag + "VSS PoK").encode()
+
+def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State, Tuple[VSSCommitment, bytes], List[Scalar]]:
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
@@ -244,14 +250,22 @@ def simplpedpop_round1(seed, t, n):
     :return: a state, a VSS commitment and shares
     """
     coeffs = [kdf(seed, "coeffs", i) for i in range(t)]
-    sig = sign(coeffs[0], "")
+    sig = sign(VSS_PoK_msg, coeffs[0], kdf(seed, "VSS PoK", ""))
     # FIXME make sig a separate thing
     my_vss_commitment = (vss_commit(coeffs), sig)
-    my_generated_shares = secret_share_shard(coeffs, n):
+    my_generated_shares = secret_share_shard(coeffs, n)
     state = (t, n)
     return state, my_vss_commitment, my_generated_shares
 
-def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta = ()):
+class InvalidContributionError(Exception):
+    def __init__(self, signer, error):
+        self.signer = signer
+        self.contrib = error
+
+def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
+                         vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
+                         Eq: Callable[[Any],bool] , eta: Any = ()) \
+                         -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -264,16 +278,18 @@ def simplpedpop_finalize(state, my_idx, vss_commitments_sum, shares_sum, Eq, eta
     t, n = state
     assert(len(vss_commitments_sum) == 2*n + t - 1)
     for i in range(n):
-        if not verify_sig(vss_commitments_sum[i], "", vss_commitments_sum[n + t-1 + i]):
-            raise BadParticipantError(i, "Participant sent invalid proof-of-knowledge")
+        assert(isinstance(vss_commitments_sum[i], Point))
+        pk_i = bytes_from_point(vss_commitments_sum[i])
+        if not verify_sig(VSS_PoK_msg, pk_i, vss_commitments_sum[n + t-1 + i]):
+            raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
     eta += (vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
-    vss_commitments_sum_coeffs = [sum_group([vss_commitments_sum[i] for i in range(n)])] + vss_commitments_sum[n:n+t-1]
+    vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[i] for i in range(n)])] + vss_commitments_sum[n:n+t-1]
     if not vss_verify(my_idx, vss_commitments_sum_coeffs, shares_sum):
         return False
-    if Eq(eta) != SUCCESS:
+    if not Eq(eta):
         return False
-    shared_pubkey, signer_pubkeys = derive_group_info(n, t, vss_commitments_sum_coeffs)
+    shared_pubkey, signer_pubkeys = derive_group_info(vss_commitments_sum_coeffs, n, t)
     return shares_sum, shared_pubkey, signer_pubkeys
 ```
 
