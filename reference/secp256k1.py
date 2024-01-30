@@ -1,5 +1,5 @@
 #
-# The following helper functions were copied from the BIP-340 and BIP-327
+# Some of the following helper functions were copied from the BIP-340 and BIP-327
 # reference implementations:
 # https://github.com/bitcoin/bips/blob/master/bip-0340/reference.py
 # https://github.com/bitcoin/bips/blob/master/bip-0327/reference.py
@@ -142,3 +142,20 @@ def individual_pk(seckey: bytes) -> PlainPk:
     P = point_mul(G, d0)
     assert P is not None
     return PlainPk(cbytes(P))
+
+# BIP DKG specific functions
+
+from typing import List
+
+def point_add_multi(points: List[Optional[Point]]) -> Optional[Point]:
+    acc = None
+    for point in points:
+        acc = point_add(acc, point)
+    return acc
+
+def scalar_add_multi(scalars: List[int]) -> int:
+    acc = 0
+    for scalar in scalars:
+        acc = (acc + scalar) % n
+    return acc
+

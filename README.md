@@ -129,19 +129,6 @@ def kdf(seed, tag, extra_input):
 ### Verifiable Secret Sharing (VSS)
 
 ```python
-def point_add_multi(points: List[Optional[Point]]) -> Optional[Point]:
-    acc = None
-    for point in points:
-        acc = point_add(acc, point)
-    return acc
-
-def scalar_add_multi(scalars: List[int]) -> int:
-    acc = 0
-    for scalar in scalars:
-        acc = (acc + scalar) % GROUP_ORDER
-    return acc
-
-
 # A scalar is represented by an integer modulo GROUP_ORDER
 Scalar = int
 
@@ -161,9 +148,13 @@ def polynomial_evaluate(f: Polynomial, x: Scalar) -> Scalar:
 # Returns [f(1), ..., f(n)] for polynomial f with coefficients coeffs
 def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
     return [polynomial_evaluate(f, x_i) for x_i in range(1, n + 1)]
+```
 
+```python
 # A VSS Commitment is a list of points
 VSSCommitment = List[Optional[Point]]
+
+VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
 
 # Returns commitments to the coefficients of f
 def vss_commit(f: Polynomial) -> VSSCommitment:
@@ -178,8 +169,6 @@ def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) ->
      Q = [point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER) \
           for j in range(0, len(vss_commitment))]
      return P == point_add_multi(Q)
-
-VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
@@ -261,11 +250,6 @@ def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State
     state = (t, n)
     return state, my_vss_commitment, my_generated_shares
 
-class InvalidContributionError(Exception):
-    def __init__(self, signer, error):
-        self.signer = signer
-        self.contrib = error
-
 def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
                          Eq: Callable[[Any],bool] , eta: Any = ()) \
@@ -330,10 +314,6 @@ def encpedpop_round1(seed):
 The (public) encryption keys are distributed among the participants.
 
 ```python
-class DuplicateEnckeysError(Exception):
-    def __init__(self):
-        pass
-
 def encpedpop_round2(seed, state1, t, n, enckeys):
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
@@ -348,10 +328,6 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))]
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
-
-class BadCoordinatorError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
 
 def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()):
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
