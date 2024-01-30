@@ -1,7 +1,8 @@
 #
-# The following helper functions were copied from the BIP-340 reference implementation:
+# The following helper functions were copied from the BIP-340 and BIP-327
+# reference implementations:
 # https://github.com/bitcoin/bips/blob/master/bip-0340/reference.py
-#
+# https://github.com/bitcoin/bips/blob/master/bip-0327/reference.py
 
 from typing import Optional, Tuple
 import hashlib
@@ -119,3 +120,25 @@ def schnorr_verify(msg: bytes, pubkey: bytes, sig: bytes) -> bool:
     if (R is None) or (not has_even_y(R)) or (x(R) != r):
         return False
     return True
+
+# As per BIP 327
+
+from typing import NewType
+
+PlainPk = NewType('PlainPk', bytes)
+
+def xbytes(P: Point) -> bytes:
+    return bytes_from_int(x(P))
+
+def cbytes(P: Point) -> bytes:
+    a = b'\x02' if has_even_y(P) else b'\x03'
+    return a + xbytes(P)
+
+# Return the plain public key corresponding to a given secret key
+def individual_pk(seckey: bytes) -> PlainPk:
+    d0 = int_from_bytes(seckey)
+    if not (1 <= d0 <= n - 1):
+        raise ValueError('The secret key must be an integer in the range 1..n-1.')
+    P = point_mul(G, d0)
+    assert P is not None
+    return PlainPk(cbytes(P))

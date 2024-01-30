@@ -110,8 +110,8 @@ We assume the participants agree on an assignment of indices `0` to `n-1` to par
 * The function `chan_send_to(i, m)` sends message `m` to participant `i`.
 * The function `chan_send_all(m)` sends message `m` to all participants.
 * The function `point_add_multi(points)` performs the group operation on the given points and returns the result.
-* The function `sum_scalar(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
-* The function `individual_pk(sk)` is identical to the BIP 327 `IndividualPubkey` function.
+* The function `scalar_add_multi(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
+* The function `pubkey_gen(sk)` is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(m, pk, sig)` is identical to the BIP 340 `Verify` function.
 * The function `sign(m, sk)` is identical to the BIP 340 `Sign` function.
 
@@ -124,7 +124,6 @@ def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
 def kdf(seed, tag, extra_input):
     # TODO: consider different KDF
     return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
-
 ```
 
 ### Verifiable Secret Sharing (VSS)
@@ -135,6 +134,13 @@ def point_add_multi(points: List[Optional[Point]]) -> Optional[Point]:
     for point in points:
         acc = point_add(acc, point)
     return acc
+
+def scalar_add_multi(scalars: List[int]) -> int:
+    acc = 0
+    for scalar in scalars:
+        acc = (acc + scalar) % GROUP_ORDER
+    return acc
+
 
 # A scalar is represented by an integer modulo GROUP_ORDER
 Scalar = int
@@ -324,6 +330,10 @@ def encpedpop_round1(seed):
 The (public) encryption keys are distributed among the participants.
 
 ```python
+class DuplicateEnckeysError(Exception):
+    def __init__(self):
+        pass
+
 def encpedpop_round2(seed, state1, t, n, enckeys):
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
@@ -335,9 +345,13 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     seed_ = tagged_hash("encpedpop seed", seed, t, enckeys)
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n)
     enc_context = hash([t] + enckeys)
-    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))
+    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))]
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
+
+class BadCoordinatorError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
 
 def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()):
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
@@ -345,24 +359,24 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
     assert(len(vss_commitments_sum) == 2*n + t - 1)
 
     enc_context = hash([t] + enckeys)
-    shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
+    shares_sum = enc_shares_sum - scalar_add_multi([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)])
     try:
         my_idx = enckeys.index(my_enckey)
     except ValueError:
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     eta += (enckeys)
-    simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta):
+    simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
 ```
 
 Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
 
 ```python
 def encpedpop(seed, t, n, Eq):
-    state1, my_enckey = encpedpop_round1(seed):
+    state1, my_enckey = encpedpop_round1(seed)
     chan_send(my_enckey)
     enckeys = chan_receive()
 
-    state2, my_vss_commitment, my_generenckeys = encpedpop_round2(seed, state1, t, n, enckeys)
+    state2, my_vss_commitment, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys)
     chan_send((my_vss_commitment, my_generated_enc_shares))
     vss_commitments_sum, enc_shares_sum = chan_receive()
 
@@ -379,8 +393,8 @@ def encpedpop(seed, t, n, Eq):
 def encpedpop_coordinate_internal(t, n):
     vss_commitments = []
     enc_shares_sum = (0)*n
-    for i in range(n)
-        vss_commitment, enc_shares = [chan_receive_from(i)]
+    for i in range(n):
+        vss_commitment, enc_shares = chan_receive_from(i)
         vss_commitments += [vss_commitment]
         enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
@@ -388,7 +402,7 @@ def encpedpop_coordinate_internal(t, n):
 
 def encpedpop_coordinate(t, n):
     vss_commitments_sum, enc_shares_sum = encpedpop_coordinate_internal(t, n)
-    for i in range(n)
+    for i in range(n):
         chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
 ```
 
