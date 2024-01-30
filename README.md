@@ -109,7 +109,7 @@ We assume the participants agree on an assignment of indices `0` to `n-1` to par
 * The function `chan_receive_from(i)` returns the message received by participant `i`.
 * The function `chan_send_to(i, m)` sends message `m` to participant `i`.
 * The function `chan_send_all(m)` sends message `m` to all participants.
-* The function `sum_group(group_elements)` performs the group operation on the given elements and returns the result.
+* The function `point_add_multi(points)` performs the group operation on the given points and returns the result.
 * The function `sum_scalar(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
 * The function `individual_pk(sk)` is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(pk, m, sig)` is identical to the BIP 340 `Verify` function.
@@ -128,86 +128,75 @@ def kdf(seed, tag, extra_input):
 
 ### Verifiable Secret Sharing (VSS)
 
-TODO: the functions `secret_share_shard` and `vss_verify` from the irtf spec are a bit clunky to use for us...
-
-TODO: rewrite using our own group operations, add comment saying something like "this is roughly the same as IRTF ..."
 ```python
-# Copied from draft-irtf-cfrg-frost-15
-def polynomial_evaluate(x, coeffs):
-   value = Scalar(0)
-   for coeff in reverse(coeffs):
-     value *= x
-     value += coeff
+def point_add_multi(points: List[Optional[Point]]) -> Optional[Point]:
+    acc = None
+    for point in points:
+        acc = point_add(acc, point)
+    return acc
+
+# A scalar is represented by an integer modulo GROUP_ORDER
+Scalar = int
+
+# A polynomial is represented by a list of coefficients
+# f(x) = coeffs[0] + ... + coeff[n] * x^n
+Polynomial = List[Scalar]
+
+# Evaluates polynomial f at x
+def polynomial_evaluate(f: Polynomial, x: Scalar) -> Scalar:
+   value = 0
+   # Reverse coefficients to compute evaluation via Horner's method
+   for coeff in f[::-1]:
+        value = (value * x) % GROUP_ORDER
+        value = (value + coeff) % GROUP_ORDER
    return value
 
-# Copied from draft-irtf-cfrg-frost-15
-def secret_share_shard_irtf(s, coefficients, MAX_PARTICIPANTS):
-     # Prepend the secret to the coefficients
-     coefficients = [s] + coefficients
+# Returns [f(1), ..., f(n)] for polynomial f with coefficients coeffs
+def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
+    return [polynomial_evaluate(f, x_i) for x_i in range(1, n + 1)]
 
-     # Evaluate the polynomial for each point x=1,...,n
-     secret_key_shares = []
-     for x_i in range(1, MAX_PARTICIPANTS + 1):
-       y_i = polynomial_evaluate(Scalar(x_i), coefficients)
-       secret_key_share_i = (x_i, y_i)
-       secret_key_shares.append(secret_key_share_i)
-     return secret_key_shares, coefficients
+# A VSS Commitment is a list of points
+VSSCommitment = List[Point]
 
-def secret_share_shard(coefficients, MAX_PARTICIPANTS):
-    # strip coefficients, strip indices
-    shares = secret_share_shard_irtf(s, coefficients, MAX_PARTICIPANTS)[0]
-    return [pair[0] for pair in shares]
+# Returns commitments to the coefficients of f. The coefficients must be
+# non-zero.
+def vss_commit(f: Polynomial) -> VSSCommitment:
+    vss_commitment = []
+    for coeff in f:
+        A_i = point_mul(G, coeff)
+        assert(A_i is not None)
+        vss_commitment.append(A_i)
+    return vss_commitment
 
-# Copied from draft-irtf-cfrg-frost-15
-def vss_commit(coeffs):
-     vss_commitment = []
-     for coeff in coeffs:
-       A_i = G.ScalarBaseMult(coeff)
-       vss_commitment.append(A_i)
-     return vss_commitment
+def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
+     P = point_mul(G, share)
+     Q = [point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER) \
+          for j in range(0, len(vss_commitment))]
+     return P == point_add_multi(Q)
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def vss_sum_commitments(vss_commitments, t):
+def vss_sum_commitments(vss_commitments: List[Tuple[VSSCommitment, bytes]], t: int):
     n = len(vss_commitments)
-    assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
+    assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments))
     # The returned array consists of 2*n + t - 1 elements
     # [vss_commitments[0][0][0], ..., vss_commitments[n-1][0][0],
     #  sum_group(vss_commitments[i][1]), ..., sum_group(vss_commitments[i][t-1]),
     #  vss_commitments[0][1], ..., vss_commitments[n-1][1]]
-    return [vss_commitments[i][0][0] for i in range(n)] +
-           [sum_group([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] +
+    return [vss_commitments[i][0][0] for i in range(n)] + \
+           [point_add_multi([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] + \
            [vss_commitments[i][1] for i in range(n)]
 
-```
-
-<!-- This is not python -->
-```
-# Copied from draft-irtf-cfrg-frost-15
-def vss_verify_irtf(share_i, vss_commitment)
-     (i, sk_i) = share_i
-     S_i = G.ScalarBaseMult(sk_i)
-     S_i' = G.Identity()
-     for j in range(0, MIN_PARTICIPANTS):
-       S_i' += G.ScalarMult(vss_commitment[j], pow(i, j))
-     return S_i == S_i'
-```
-
-```python
-def vss_verify(my_idx, vss_commitments_sum, shares_sum):
-    return vss_verify_irtf((my_idx, shares_sum), vss_commitments_sum)
-
-# Copied from draft-irtf-cfrg-frost-15
-def derive_group_info(MAX_PARTICIPANTS, MIN_PARTICIPANTS, vss_commitment)
-  PK = vss_commitment[0]
+# Outputs the shared public key and individual public keys of the participants
+def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Optional[Point], List[Optional[Point]]]:
+  pk = vss_commitment[0]
   participant_public_keys = []
-  for i in range(1, MAX_PARTICIPANTS+1):
-    PK_i = G.Identity()
-    for j in range(0, MIN_PARTICIPANTS):
-      PK_i += G.ScalarMult(vss_commitment[j], pow(i, j))
-    participant_public_keys.append(PK_i)
-  return PK, participant_public_keys
+  for signer_idx in range(0, n):
+    pk_i = point_add_multi([point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER) \
+                            for j in range(0, len(vss_commitment))])
+    participant_public_keys += [pk_i]
+  return pk, participant_public_keys
 ```
 
 ## DKG Protocols
