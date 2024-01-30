@@ -137,13 +137,17 @@ def ecdh(x, Y, context):
 def encrypt(share, my_deckey, enckey, context):
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 
-def encpedpop_round1(seed):
-    my_deckey = kdf(seed, "deckey")
+EncPedPopR1State = Tuple[bytes, bytes]
+
+def encpedpop_round1(seed: bytes) -> Tuple[EncPedPopR1State, bytes]:
+    my_deckey = kdf(seed, "deckey", "")
     my_enckey = individual_pk(my_deckey)
     state1 = (my_deckey, my_enckey)
     return state1, my_enckey
 
-def encpedpop_round2(seed, state1, t, n, enckeys):
+EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplePedPopR1State]
+
+def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, Tuple[VSSCommitment, bytes], List[Scalar]]:
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
         raise DuplicateEnckeysError
@@ -151,14 +155,15 @@ def encpedpop_round2(seed, state1, t, n, enckeys):
     my_deckey, my_enckey = state1
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
-    seed_ = tagged_hash("encpedpop seed", seed, t, enckeys)
+    assert(t < 2**(4*8))
+    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + t.to_bytes(4, byteorder="big") + b''.join(enckeys))
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n)
     enc_context = hash([t] + enckeys)
     enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))]
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
-def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()):
+def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = ()) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
     assert(len(vss_commitments_sum) == 2*n + t - 1)
@@ -170,4 +175,4 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
     except ValueError:
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     eta += (enckeys)
-    simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
+    return simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
