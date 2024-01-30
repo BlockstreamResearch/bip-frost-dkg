@@ -41,15 +41,13 @@ def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
     return [polynomial_evaluate(f, x_i) for x_i in range(1, n + 1)]
 
 # A VSS Commitment is a list of points
-VSSCommitment = List[Point]
+VSSCommitment = List[Optional[Point]]
 
-# Returns commitments to the coefficients of f. The coefficients must be
-# non-zero.
+# Returns commitments to the coefficients of f
 def vss_commit(f: Polynomial) -> VSSCommitment:
     vss_commitment = []
     for coeff in f:
         A_i = point_mul(G, coeff)
-        assert(A_i is not None)
         vss_commitment.append(A_i)
     return vss_commitment
 
@@ -59,7 +57,7 @@ def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) ->
           for j in range(0, len(vss_commitment))]
      return P == point_add_multi(Q)
 
-VSSCommitmentSum = List[Union[Optional[Point], bytes]]
+VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
@@ -71,9 +69,9 @@ def vss_sum_commitments(vss_commitments: List[Tuple[VSSCommitment, bytes]], t: i
     # [vss_commitments[0][0][0], ..., vss_commitments[n-1][0][0],
     #  sum_group(vss_commitments[i][1]), ..., sum_group(vss_commitments[i][t-1]),
     #  vss_commitments[0][1], ..., vss_commitments[n-1][1]]
-    return [vss_commitments[i][0][0] for i in range(n)] + \
-           [point_add_multi([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)] + \
-           [vss_commitments[i][1] for i in range(n)]
+    return ([vss_commitments[i][0][0] for i in range(n)] + \
+           [point_add_multi([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)],
+           [vss_commitments[i][1] for i in range(n)])
 
 # Outputs the shared public key and individual public keys of the participants
 def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Optional[Point], List[Optional[Point]]]:
@@ -126,14 +124,17 @@ def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
     t, n = state
     assert(len(vss_commitments_sum) == 2*n + t - 1)
     for i in range(n):
-        assert(isinstance(vss_commitments_sum[i], Point))
-        pk_i = bytes_from_point(vss_commitments_sum[i])
-        if not verify_sig(VSS_PoK_msg, pk_i, vss_commitments_sum[n + t-1 + i]):
-            raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
+        P_i = vss_commitments_sum[0][i]
+        if P_i is None:
+            raise InvalidContributionError(i, "Participant sent invalid commitment")
+        else:
+            pk_i = bytes_from_point(P_i)
+            if not verify_sig(VSS_PoK_msg, pk_i, vss_commitments_sum[1][i]):
+                raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
     eta += (vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
-    vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[i] for i in range(n)])] + vss_commitments_sum[n:n+t-1]
-    if not vss_verify(my_idx, vss_commitments_sum_coeffs, shares_sum):
+    vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
+    if not vss_verify(my_idx, shares_sum, vss_commitments_sum_coeffs):
         return False
     if not Eq(eta):
         return False
