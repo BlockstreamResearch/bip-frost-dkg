@@ -197,37 +197,3 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     eta += (enckeys)
     simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
-
-def encpedpop(seed, t, n, Eq):
-    state1, my_enckey = encpedpop_round1(seed)
-    chan_send(my_enckey)
-    enckeys = chan_receive()
-
-    state2, my_vss_commitment, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys)
-    chan_send((my_vss_commitment, my_generated_enc_shares))
-    vss_commitments_sum, enc_shares_sum = chan_receive()
-
-    return encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq)
-
-# TODO: explain that it's possible to arrive at the global order of signer indices by sorting enckeys
-
-# TODO: We would actually have to parse the received network messages. This
-# should include parsing of the group elementsas well as checking that the
-# length of the lists is correct (e.g. vss_commitments are of length t) and
-# allow to identify bad participants/coordinator instead of running into
-# assertions.
-
-def encpedpop_coordinate_internal(t, n):
-    vss_commitments = []
-    enc_shares_sum = (0)*n
-    for i in range(n):
-        vss_commitment, enc_shares = chan_receive_from(i)
-        vss_commitments += [vss_commitment]
-        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
-    return vss_commitments_sum, enc_shares_sum
-
-def encpedpop_coordinate(t, n):
-    vss_commitments_sum, enc_shares_sum = encpedpop_coordinate_internal(t, n)
-    for i in range(n):
-        chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))

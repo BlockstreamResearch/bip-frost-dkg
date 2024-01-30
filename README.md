@@ -368,43 +368,7 @@ def encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq, eta = ()
     simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
 ```
 
-Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail.
-
-```python
-def encpedpop(seed, t, n, Eq):
-    state1, my_enckey = encpedpop_round1(seed)
-    chan_send(my_enckey)
-    enckeys = chan_receive()
-
-    state2, my_vss_commitment, my_generated_enc_shares = encpedpop_round2(seed, state1, t, n, enckeys)
-    chan_send((my_vss_commitment, my_generated_enc_shares))
-    vss_commitments_sum, enc_shares_sum = chan_receive()
-
-    return encpedpop_finalize(state2, vss_commitments_sum, enc_shares_sum, Eq)
-
-# TODO: explain that it's possible to arrive at the global order of signer indices by sorting enckeys
-
-# TODO: We would actually have to parse the received network messages. This
-# should include parsing of the group elementsas well as checking that the
-# length of the lists is correct (e.g. vss_commitments are of length t) and
-# allow to identify bad participants/coordinator instead of running into
-# assertions.
-
-def encpedpop_coordinate_internal(t, n):
-    vss_commitments = []
-    enc_shares_sum = (0)*n
-    for i in range(n):
-        vss_commitment, enc_shares = chan_receive_from(i)
-        vss_commitments += [vss_commitment]
-        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
-    return vss_commitments_sum, enc_shares_sum
-
-def encpedpop_coordinate(t, n):
-    vss_commitments_sum, enc_shares_sum = encpedpop_coordinate_internal(t, n)
-    for i in range(n):
-        chan_send_to(i, (vss_commitments_sum, enc_shares_sum[i]))
-```
+<!-- Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail. -->
 
 #### Backup and Recovery
 
@@ -511,7 +475,15 @@ def recpedpop(seed, my_hostsigkey, setup):
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
 
 def recpedpop_coordinate(t, n):
-    vss_commitments_sum, enc_shares_sum = encpedpop_coordinate_internal(t, n)
+    vss_commitments = []
+    enc_shares_sum = (0)*n
+    for i in range(n):
+        vss_commitment, enc_shares = chan_receive_from(i)
+        vss_commitments += [vss_commitment]
+        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    return vss_commitments_sum, enc_shares_sum
+
     chan_send_all((vss_commitments_sum, enc_shares_sum))
 ```
 
