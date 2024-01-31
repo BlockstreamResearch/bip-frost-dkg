@@ -182,17 +182,7 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
   return pk, participant_public_keys
 ```
 
-## DKG Protocols
-
-For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
-The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
-We refer to the [Backup and Recovery](#backup-and-recovery) section for additional details.
-
-TODO: mention that these are properties when using the DKG with FROST
-If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
-then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
-TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
-TODO: consider mentioning ROAST
+## Building Blocks
 
 TODO:
 As a result of our modular design approach, we also give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
@@ -344,11 +334,21 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     return simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
 ```
 
-### ChillDKG
+## ChillDKG
 
 ChillDKG is a wrapper around EncPedPop which also includes the built-in equality check protocol `certifying_Eq`.
 Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
 Since the transcript is public, every signer (and the coordinator) can store it to help recover any other signer.
+
+For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
+The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
+
+TODO: mention that these are properties when using the DKG with FROST
+If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
+then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
+TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
+TODO: consider mentioning ROAST
+
 
 Generate long-term host keys.
 
