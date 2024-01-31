@@ -158,4 +158,3 @@ def scalar_add_multi(scalars: List[int]) -> int:
     for scalar in scalars:
         acc = (acc + scalar) % n
     return acc
-
