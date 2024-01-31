@@ -1,7 +1,7 @@
 from random import randint
 import secrets
-from secp256k1 import n as GROUP_ORDER, scalar_add_multi, point_add_multi, point_mul, G
-from reference import secret_share_shard, vss_commit, vss_verify, simplpedpop_round1, simplpedpop_finalize, vss_sum_commitments, polynomial_evaluate
+from secp256k1 import n as GROUP_ORDER, scalar_add_multi, point_mul, G
+from reference import * 
 import sys
 
 def test_vss_correctness():
@@ -20,10 +20,30 @@ def simulate_simplpedpop(seeds, t, n, Eq):
     dkg_outputs = []
     for i in range(n):
         round1_outputs += [simplpedpop_round1(seeds[i], t, n)]
-    vss_commitments_sum = vss_sum_commitments([r1_out[1] for r1_out in round1_outputs], t) 
+    vss_commitments = [out[1] for out in round1_outputs]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t) 
     for i in range(n):
-        shares_sum = scalar_add_multi([r1_out[2][i] for r1_out in round1_outputs])
+        shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
         dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], i, vss_commitments_sum, shares_sum, Eq)]
+    return dkg_outputs 
+
+def simulate_encpedpop(seeds, t, n, Eq):
+    assert(len(seeds) == n)
+    round1_outputs = []
+    round2_outputs = []
+    dkg_outputs = []
+    for i in range(n):
+        round1_outputs += [encpedpop_round1(seeds[i])]
+
+    enckeys = [out[1] for out in round1_outputs]
+    for i in range(n):
+        round2_outputs += [encpedpop_round2(seeds[i], round1_outputs[i][0], t, n, enckeys)]
+
+    vss_commitments = [out[1] for out in round2_outputs]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t) 
+    for i in range(n):
+        enc_shares_sum = scalar_add_multi([out[2][i] for out in round2_outputs])
+        dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum, Eq)]
     return dkg_outputs 
 
 # Adapted from BIP 324
@@ -81,7 +101,9 @@ def test_recover_secret():
 def dkg_correctness(t, n, simulate_dkg):
     Eq = lambda x: True
     seeds = [secrets.token_bytes(32) for _ in range(n)]
+
     dkg_outputs = simulate_dkg(seeds, t, n, Eq)
+    assert(all([out != False for out in dkg_outputs]))
     shares = [out[0] for out in dkg_outputs]
     shared_pubkeys = [out[1] for out in dkg_outputs]
     signer_pubkeys = [out[2] for out in dkg_outputs]
@@ -110,3 +132,4 @@ def test_simplpedpop_correctness():
 test_vss_correctness()
 test_recover_secret()
 test_simplpedpop_correctness()
+dkg_correctness(2, 3, simulate_encpedpop)

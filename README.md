@@ -165,10 +165,10 @@ def vss_commit(f: Polynomial) -> VSSCommitment:
     return vss_commitment
 
 def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
-     P = point_mul(G, share)
-     Q = [point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER) \
-          for j in range(0, len(vss_commitment))]
-     return P == point_add_multi(Q)
+    P = point_mul(G, share)
+    Q = [point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER) \
+         for j in range(0, len(vss_commitment))]
+    return P == point_add_multi(Q)
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
@@ -245,7 +245,6 @@ def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State
     assert(t < 2**(4*8))
     coeffs = [int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))) % GROUP_ORDER for i in range(t)]
     sig = sign(VSS_PoK_msg, bytes_from_int(coeffs[0]), kdf(seed, "VSS PoK"))
-    # FIXME make sig a separate thing
     my_vss_commitment = (vss_commit(coeffs), sig)
     my_generated_shares = secret_share_shard(coeffs, n)
     state = (t, n)
@@ -253,7 +252,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State
 
 def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
-                         Eq: Callable[[Any],bool] , eta: Any = ()) \
+                         Eq: Callable[[Any],bool] , eta: Any = []) \
                          -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
     """
     Take the messages received from the participants and finalize the DKG
@@ -278,10 +277,11 @@ def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
             pk_i = bytes_from_point(P_i)
             if not verify_sig(VSS_PoK_msg, pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
-    eta += (vss_commitments_sum)
+    eta += [vss_commitments_sum]
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
     if not vss_verify(my_idx, shares_sum, vss_commitments_sum_coeffs):
+        print(my_idx, "vss fails")
         return False
     if not Eq(eta):
         return False
@@ -297,10 +297,15 @@ Every EncPedPop participant runs the `encpedpop` algorithm and the coordinator r
 #### Encryption
 
 ```python
-def ecdh(x, Y, context):
-    return tagged_hash("ECDH", x*Y, context)
+def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
+    x = int_from_bytes(deckey)
+    assert(x != 0)
+    Y = cpoint(enckey)
+    Z = point_mul(Y, x)
+    assert Z is not None
+    return int_from_bytes(tagged_hash_bip_dkg("ECDH", cbytes(Z) + context))
 
-def encrypt(share, my_deckey, enckey, context):
+def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 ```
 
@@ -332,25 +337,28 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
     assert(t < 2**(4*8))
-    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + t.to_bytes(4, byteorder="big") + b''.join(enckeys))
+    context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
+    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + context)
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n)
-    enc_context = hash([t] + enckeys)
-    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(len(enckeys))]
+    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], context) for i in range(len(enckeys))]
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
-def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = ()) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
+def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = []) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
-    assert(len(vss_commitments_sum) == 2*n + t - 1)
 
-    enc_context = hash([t] + enckeys)
+    assert(len(vss_commitments_sum) == 2)
+    assert(len(vss_commitments_sum[0]) == n + t - 1)
+    assert(len(vss_commitments_sum[1]) == n)
+
+    enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
     shares_sum = enc_shares_sum - scalar_add_multi([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)])
     try:
         my_idx = enckeys.index(my_enckey)
     except ValueError:
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
-    eta += (enckeys)
+    eta += enckeys
     return simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
 ```
 
