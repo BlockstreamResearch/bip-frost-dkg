@@ -26,77 +26,64 @@ if the dealer is malicious or compromised, or the secret key is not deleted corr
 An interactive *distributed key generation* (DKG) protocol run by all signers avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees.
 Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
-But similar to most DKG protocols in the literature, the PedPop DKG has strong requirements on the communication between signers:
+But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication between participants,
+which make it difficult to deploy PedPop in practice.
 It assumes that signers have secure (i.e., authenticated and encrypted) channels between each other to deliver secret shares to individual signers,
 and it assumes that signers have access to a secure broadcast mechanism.
+ - TODO Explain how funds are lost if broadcast doesn't work.
 
-This requirements make PedPop difficult to implement correctly in practice, 
-and the aim of this document is to describe simple variants of PedPop with "batteries included",
-i.e., they incorporate minimal but sufficient implementations of secure channels and secure broadcast.
+The aim of this document is to describe *ChillDKG*, a variant of PedPop with "batteries included",
+i.e., it incorporates minimal but sufficient implementations of secure channels and secure broadcast
+and thus is easy to deploy in practice.
 
 ### Design
 
-Our protocols are based on the SimplPedPop protocol, which has been proven to be secure when combined with FROST [CGRS23] and needs only a single invocation of an equality check protocol.
-The equality check protocol is a particular abstraction of a broadcast mechanism with restricted functionality that ensures all signers have the same view of the DKG protocol, thereby roughly resembling a secure broadcast mechanism.
-SimplPedPop does not have a built-in equality check and requires the signers to communicate through secure channels.
-The variant of SimplPedPop specified here is tailored for scenarios involving an untrusted coordinator, which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
+The basic building block of our DKG protocol is the SimplPedPop protocol, which has been proven to be secure when combined with FROST [CGRS23].
+The variant of SimplPedPop considered here is tailored for scenarios involving an untrusted coordinator, which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 
-Our design then follows a layered approach:
-We first wrap SimplPedPop in a protocol EncPedPop responsible not only for encrypting shares but also for authenticity, which is established via the equality check protocol.
-Consequently, unlike SecPedPop, EncPedPop does not require pre-existing secure channels between the signers.
-The encryption relies on pairwise ECDH key exchanges between the signers.
+TODO: Say something about dishonest majority here, not only in the list below.
 
-We then wrap EncPedPop in a second protocol RecPedPop that implements an equality check protocol.
-Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [GW05] protocol
-and features "success certificates":
-whenever some honest signer considers the DKG to be successful
-this honest signer can, ultimately at the time of a signing request, convince all other honest signers that the DKG has indeed been successful.
+Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
+The equality check protocol serves an abstraction of a secure broadcast mechanism with limited functionality:
+Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
 
-As an additional feature of RecPedPop, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG runs in which the device was involved.
-RecPedPop thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
+Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies. 
+We follow a modular approach that removes one dependency at a time.
+First, we take care of secure channels by wrapping SimplPedPop in a protocol EncPedPop,
+which relies on pairwise ECDH key exchanges between the participants to encrypt secret shares.
+Finally, we add a concrete equality check protocol to EncPedPop to obtain a standalone DKG protocol ChillDKG.
 
-As a result, RecPedPop is our primary recommendation that fits a wide range scenarios,
-and due to its low overhead, we recommend RecPedPop even for applications which already have secure channels or have access to an external broadcast mechanism such as a BFT protocol.
-Nevertheless, such applications may wish to use the low-level variants SimplPedPop and EncPedPop in special cases.
+Our equality check protocol is inspired by the Goldwasser-Lindell echo broadcast [GW05] protocol.
+Crucially, it ensures that 
+whenever some participant obtains a threshold public key as output of a successful DKG run, 
+this honest participant will additionally obtain a transferable "success certificate",
+which can convince all other honest participants
+(ultimately at the time of a signing request) 
+that the DKG has indeed been successful.
+This is sufficient to exclude the bad scenario described in the previous section. (TODO)
 
-|                 | seed              | requires secure channels | equality check protocol included | backup                             | Recommended  |
-|-----------------|-------------------|--------------------------|----------------------------------|------------------------------------|--------------|
-| **SimplPedPop** | fresh             | yes                      | no                               | share per setup                    | no           |
-| **EncPedPop**   | reuse allowed     | no                       | no                               | share per setup                    | yes, with Eq |
-| **RecPedPop**   | reuse for backups | no                       | yes                              | seed + public transcript per setup | yes          |
+As an additional feature of ChillDKG, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG runs in which the device was involved.
+ChillDKG thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
+
+In summary, ChillDKG fits a wide range of usage scenarios,
+and due to its low overhead, we recommend ChillDKG even for applications which already incorporate secure channels or an existing broadcast mechanism such as a BFT protocol.
+
+
+TODO: We could also mention (conditional) agreement and that it prevents losing coins, because it may not be a property supported by all DKGs. Also could mention "Modularity" since it's possible to wrap SimplPedPop in some other protocol.
 
 In summary, we aim for the following design goals:
 
-TODO: We could also mention (conditional) agreement and that it prevents losing coins, because it may not be a property supported by all DKGs. Also could mention "Modularity" since it's possible to wrap SimplPedPop in some other protocol.
-TODO: We should improve distinction between features of EncPedPop and RecPedPop
+- **Standalone**: ChillDKG protocol is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
+- **Dishonest Majority**:  ChillDKG supports any threshold `t <= n` (including "dishonest majority" `t > n/2`).
+- **Flexibility**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
+- **Simple backups**: The capability of ChillDKG to recover from a static seed and public per-setup data impacts the user experience when backing up threshold-signature wallets. This can enhance the probability of having backups available, preventing users from losing access to their wallets.
+- **Support for Coordinator**: Like the FROST signing protocol, ChillDKG supports a coordinator who can relay messages between the participants. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
+- **DKG outputs per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
-- **Standalone**: The RecPedPop DKG protocol is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
-- **Dishonest Majority**: The three DKGs presented here support any threshold `t <= n` (including "dishonest majority" `t > n/2`).
-- **Flexibility**: The three DKGs presented here support a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations. Moreover, they support situations where backup information is required to be written down manually, as well as those with ample backup space.
-- **Simple backups**: The capability of RecPedPop to recover from a static seed and public per-setup data impacts the user experience when backing up threshold-signature wallets. This can enhance the probability of having backups available, preventing users from losing access to their wallets.
-- **Support for Coordinator**: As in the FROST signing protocol, all three DKG protocols presented here support a coordinator who can relay messages between the peers. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
-- **DKG outputs per-participant public keys**: When DKG is used in FROST, this allows partial signature verification.
-
-As a consequence of above design goals, the DKG protocols inherit the following limitations:
+As a consequence of these design goals, ChillDKG inherit the following limitations:
 
 - **No robustness**: Misbehaving signers can prevent the protocol from completing successfully. In such cases it is not possible to identify who of the signers misbehaved (unless they misbehave in certain trivial ways).
-- **Communication complexity not optimal in all scenarios**: While the DKG protocols presented here are optimized for bandwidth efficiency and number of rounds under the premise of flexibility, there are conceivable scenarios where alternative protocols may have better communication complexity.
-
-### Backup and Recovery
-
-Losing the secret share or the shared public key will render the signer incapable of producing signatures.
-These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
-In many scenarios, it is highly recommended to have a backup strategy to recover the outputs of the DKG.
-The recommended strategies are described in the EncPedPop and RecPedPop Backup and Recovery sections.
-TODO: consider mentioning that backups are not always necessary
-
-TODO: make the following a footnote
-There are strategies to recover if the backup is lost and other signers assist in recovering.
-In such cases, the recovering signer must be very careful to obtain the correct secret share and shared public key!
-1. If all other signers are cooperative and their seed is backed up (EncPedPop or RecPedPop), it's possible that the other signers can recreate the signer's lost secret share.
-2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
-   This scheme requires no additional backup or storage space for the signers.
-These strategies are out of scope for this document.
+- **Communication complexity not optimal in all scenarios**: While ChillDKG is optimized for bandwidth efficiency and number of rounds under the premise of flexibility, there are conceivable scenarios where specialized protocols may have better communication complexity, e.g., when setting up multiple signing devices in a single location.
 
 ## Preliminaries
 
@@ -195,22 +182,15 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
   return pk, participant_public_keys
 ```
 
-## DKG Protocols
+## Building Blocks
 
-For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
-The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
-We refer to the [Backup and Recovery](#backup-and-recovery) section for additional details.
-
-TODO: mention that these are properties when using the DKG with FROST
-If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
-then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
-TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
-TODO: consider mentioning ROAST
-
+TODO:
+As a result of our modular design approach, we also give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
+Nevertheless, this is not meant to endorse the direct use of SimplPedPop or EncPedPod as DKGs.
+While these may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism), this requires careful further considerations, which are not in scope of this document.
 
 ### SimplPedPop
 
-TODO: introduce as building block for EncPedPop/RecPedPop instead of as its own thing
 We specify the SimplPedPop scheme as described in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 with the following minor modifications:
@@ -362,39 +342,21 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     return simplpedpop_finalize(simpl_state, my_idx, vss_commitments_sum, shares_sum, Eq, eta)
 ```
 
-<!-- Note that if the public keys are not distributed correctly or the messages have been tampered with, `Eq(eta)` will fail. -->
+## ChillDKG
 
-#### Backup and Recovery
-
-There are two possible backup strategies for `EncPedPop`:
-
-1. **Backup of the secret shares**
-    Backups consist of the signer index and DKG outputs: secret share and shared public key.
-    It is possible to only back up the secret share, but then the shared public key and index needs to be provided to complete a recovery (TODO: what if the public key and index are wrong?).
-    This data needs to be backed up for every DKG the signer is involved in.
-    The backup needs to be stored securely: anyone obtaining the backup has stolen all the data necessary to create partial signatures just as the victim signer.
-2. **Backup of the seed and encrypted shares**
-    It is also possible to back up the seed in a secure location and back up the encrypted shares.
-    ```python
-    # All inputs of this function are required to be backed up for full recovery
-    # With the exception of seed, they are public data
-    def encpedpop_recover(seed, enc_shares_sum, t, enckeys, shared_pubkey, signer_pubkeys):
-        my_deckey = kdf(seed, "deckey")
-        enc_context = hash([t] + enckeys)
-        shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
-        return shares_sum, shared_pubkey, signer_pubkeys
-
-    # my_idx is required for signing
-    def encpedpop_recover_my_idx(seed, enc_shares_sum, t, enckeys, shared_pubkey, signer_pubkeys):
-        return enckeys.index(my_enckey)
-    ```
-    If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.
-
-### RecPedPop
-
-RecPedPop is a wrapper around EncPedPop which also includes the built-in equality check protocol `certifying_Eq`.
+ChillDKG is a wrapper around EncPedPop which also includes the built-in equality check protocol `certifying_Eq`.
 Its advantage is that recovering a signer is securely possible from a single seed and the full transcript of the protocol.
 Since the transcript is public, every signer (and the coordinator) can store it to help recover any other signer.
+
+For each signer, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
+The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
+
+TODO: mention that these are properties when using the DKG with FROST
+If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
+then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
+TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
+TODO: consider mentioning ROAST
+
 
 Generate long-term host keys.
 
@@ -485,7 +447,7 @@ def recpedpop_coordinate(t, n):
 
 TODO The hpk should be the id here... clean this up and write something about setup assumptions
 
-The equality check of RecPedPop is instantiated by the following protocol:
+The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
 def verify_cert(hostverkeys, x, sigs):
@@ -539,12 +501,14 @@ It may still be helpful to check with other participants out-of-band that they h
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
 
-
 #### Backup and Recovery
+Losing the secret share or the shared public key will render the signer incapable of producing signatures.
+These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
+TODO: consider mentioning that backups are not always necessary
 
-A `RecPedPop` backup consists of the seed and the DKG transcript.
+A `ChillDKG` backup consists of the seed and the DKG transcript.
 The seed can be reused for multiple DKGs and must be stored securely.
-On the other hand, DKG transcripts are public and allow to re-run above RecPedPop algorithms to obtain the DKG outputs.
+On the other hand, DKG transcripts are public and allow to re-run above ChillDKG algorithms to obtain the DKG outputs.
 
 ```python
 # Recovery requires the seed and the public transcript
@@ -563,7 +527,15 @@ def recpedpop_recover(seed, transcript):
 
 In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
-## Equality Check Protocol
+TODO: make the following a footnote
+There are strategies to recover if the backup is lost and other signers assist in recovering.
+In such cases, the recovering signer must be very careful to obtain the correct secret share and shared public key!
+1. If all other signers are cooperative and their seed is backed up (EncPedPop or ChillDKG), it's possible that the other signers can recreate the signer's lost secret share.
+2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+   This scheme requires no additional backup or storage space for the signers.
+These strategies are out of scope for this document.
+
+## Background on Equality Check Protocols
 
 TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
 
@@ -624,7 +596,7 @@ These "out-of-band" methods can achieve agreement (assuming the involved humans 
 
 #### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
 
-The [equality check protocol used by RecPedPop](#certifying-equality-check-protocol-based-on-goldwasser-lindell-echo-broadcast) is applicable to network-based scenarios where long-term host keys are available. It satisfies integrity and conditional agreement.
+The [equality check protocol used by ChillDKG](#certifying-equality-check-protocol-based-on-goldwasser-lindell-echo-broadcast) is applicable to network-based scenarios where long-term host keys are available. It satisfies integrity and conditional agreement.
 
 Proof. (TODO for footnote?)
 Integrity:
