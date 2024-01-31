@@ -1,0 +1,13 @@
+class InvalidContributionError(Exception):
+    def __init__(self, signer, error):
+        self.signer = signer
+        self.contrib = error
+
+class DuplicateEnckeysError(Exception):
+    def __init__(self):
+        pass
+
+class BadCoordinatorError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
