@@ -44,7 +44,7 @@ The variant of SimplPedPop considered here is tailored for scenarios involving a
 TODO: Say something about dishonest majority here, not only in the list below.
 
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
-The equality check protocol serves an abstraction of a secure broadcast mechanism with limited functionality:
+The equality check protocol serves an abstraction of a secure broadcast mechanism with limited functionality (TODO: this may be a confusing way to introduce the realtionship between equality check and broadcast. E.g., it doesn't only have limited functionality, it has more functionality as in broadcast only a single party broadcasts):
 Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
 
 Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies. 
@@ -73,7 +73,7 @@ TODO: We could also mention (conditional) agreement and that it prevents losing 
 
 In summary, we aim for the following design goals:
 
-- **Standalone**: ChillDKG protocol is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
+- **Standalone**: ChillDKG is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
 - **Dishonest Majority**:  ChillDKG supports any threshold `t <= n` (including "dishonest majority" `t > n/2`).
 - **Flexibility**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
 - **Simple backups**: The capability of ChillDKG to recover from a static seed and public per-setup data impacts the user experience when backing up threshold-signature wallets. This can enhance the probability of having backups available, preventing users from losing access to their wallets.
