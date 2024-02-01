@@ -184,10 +184,9 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
 
 ## Building Blocks
 
-TODO:
 As a result of our modular design approach, we also give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
 Nevertheless, this is not meant to endorse the direct use of SimplPedPop or EncPedPod as DKGs.
-While these may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism), this requires careful further considerations, which are not in scope of this document.
+While these may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism), this requires careful further consideration, which is not in the scope of this document.
 
 ### SimplPedPop
 
@@ -199,15 +198,6 @@ with the following minor modifications:
 - Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
-
-SimplPedPop requires SECURE point-to-point channels for transferring secret shares between participants - that is, channels that are both ENCRYPTED and AUTHENTICATED.
-These messages can be relayed through the coordinator who is responsible to pass the messages to the participants as long as the coordinator cannot interfere with the secure channels between the participants.
-
-Also, SimplePedPop requires an interactive equality check protocol `Eq` as described in section [Equality Protocol](#equality-protocol).
-While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
-
-In SimplPedPop, the signers designate a coordinator who relays and aggregates messages.
-Every participant runs the `simplpedpop` algorithm and the coordinator runs the `simplpedpop_coordinate` algorithm as described below.
 
 ```python
 SimplePedPopR1State = Tuple[int, int]

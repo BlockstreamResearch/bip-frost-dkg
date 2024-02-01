@@ -11,6 +11,16 @@ Consequently, unlike SimplPedPop, EncPedPop does not require pre-existing secure
 
 Flexibility: Moreover, they support situations where backup information is required to be written down manually, as well as those with ample backup space.
 
+### SimplePedPop
+SimplPedPop requires SECURE point-to-point channels for transferring secret shares between participants - that is, channels that are both ENCRYPTED and AUTHENTICATED.
+These messages can be relayed through the coordinator who is responsible to pass the messages to the participants as long as the coordinator cannot interfere with the secure channels between the participants.
+
+Also, SimplePedPop requires an interactive equality check protocol `Eq` as described in section [Equality Protocol](#equality-protocol).
+While SimplPedPop is able to identify participants who are misbehaving in certain ways, it is easy for a participant to misbehave such that it will not be identified.
+
+In SimplPedPop, the signers designate a coordinator who relays and aggregates messages.
+Every participant runs the `simplpedpop` algorithm and the coordinator runs the `simplpedpop_coordinate` algorithm as described below.
+
 ### EncPedPop in optimistic mode (= equality check takes care of authenticity at the end)
 
 - EncPedPod takes care not only of encrypting shares but also of authenticity, which is established via the equality check protocol.
