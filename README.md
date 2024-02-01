@@ -195,7 +195,6 @@ We specify the SimplPedPop scheme as described in
 with the following minor modifications:
 
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
-- Very rudimentary ability to identify misbehaving signers in some situations.
 - The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
 
