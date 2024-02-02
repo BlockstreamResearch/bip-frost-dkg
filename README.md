@@ -199,10 +199,10 @@ with the following minor modifications:
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
 
 ```python
-SimplePedPopR1State = Tuple[int, int]
+SimplPedPopR1State = Tuple[int, int]
 VSS_PoK_msg = (biptag + "VSS PoK").encode()
 
-def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State, Tuple[VSSCommitment, bytes], List[Scalar]]:
+def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplPedPopR1State, Tuple[VSSCommitment, bytes], List[Scalar]]:
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
@@ -219,7 +219,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State
     state = (t, n)
     return state, my_vss_commitment, my_generated_shares
 
-def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
+def simplpedpop_finalize(state: SimplPedPopR1State, my_idx: int,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
                          Eq: Callable[[Any],bool] , eta: Any = []) \
                          -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
@@ -295,7 +295,7 @@ def encpedpop_round1(seed: bytes) -> Tuple[EncPedPopR1State, bytes]:
 The (public) encryption keys are distributed among the participants.
 
 ```python
-EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplePedPopR1State]
+EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplPedPopR1State]
 
 def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, Tuple[VSSCommitment, bytes], List[Scalar]]:
     assert(n == len(enckeys))
