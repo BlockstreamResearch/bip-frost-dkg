@@ -184,18 +184,17 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
 
 ## Building Blocks
 
-As a result of our modular design approach, we also give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
+As a result of our modular design approach, we give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
 Nevertheless, this is not meant to endorse the direct use of SimplPedPop or EncPedPod as DKGs.
 While these may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism), this requires careful further consideration, which is not in the scope of this document.
 
 ### SimplPedPop
 
-We specify the SimplPedPop scheme as described in
-[Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
-with the following minor modifications:
-
+The SimplPedPop scheme has been proposed in
+[Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf).
+We make the following modifications as compared to the original proposal:
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
-- The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it doesn't require the setup algorithm to take the ID as input.
+- The proof-of-knowledge in the setup does not commit to the prover's ID. This is slightly simpler because it does not require the setup algorithm to take the ID as input. (TODO The current security proof doesn't allow for this simplification.)
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
 
 ```python
@@ -280,7 +279,7 @@ def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> S
 
 #### Wrapping SimplPedPop
 
-The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) for encrypting the 32-byte key shares.
+The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) algorithm for encrypting the 32-byte key shares.
 
 ```python
 EncPedPopR1State = Tuple[bytes, bytes]
