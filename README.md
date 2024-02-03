@@ -223,7 +223,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
 def simplpedpop_finalize(state: SimplPedPopR1State,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
                          Eq: Callable[[Any],bool] , eta: Any = []) \
-                         -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
+                         -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -317,7 +317,7 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
-def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = []) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
+def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = []) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
 
@@ -351,9 +351,9 @@ TODO: consider mentioning ROAST
 Generate long-term host keys.
 
 ```python
-def recpedpop_hostpubkey(seed):
+def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostsigkey = kdf(seed, "hostsigkey")
-    my_hostverkey = individual_pk(hostsigkey)
+    my_hostverkey = individual_pk(my_hostsigkey)
     return (my_hostsigkey, my_hostverkey)
 ```
 
@@ -361,8 +361,10 @@ The participants send their host pubkey to the other participant and collect rec
 They then compute a setup identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
 
 ```python
-def recpedpop_setup_id(hostverkeys, t, context_string):
-    setup_id = tagged_hash("setup id", hostverkeys, t, context_string)
+Setup = Tuple[List[bytes], int, bytes]
+def recpedpop_setup_id(hostverkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
+    assert(t < 2**(4*8))
+    setup_id = tagged_hash("setup id", b''.join(hostverkeys) + t.to_bytes(4, byteorder="big") + context_string)
     setup = (hostverkeys, t, setup_id)
     return setup, setup_id
 ```
@@ -371,7 +373,9 @@ The participants compare the setup identifier with every other participant out-o
 If some other participant presents a different setup identifier, the participant aborts.
 
 ```python
-def recpedpop_round1(seed, setup):
+RecPedPopR1State = Tuple[List[bytes], int, bytes, EncPedPopR1State, bytes]
+
+def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, bytes]:
     hostverkeys, t, setup_id = setup
 
     # Derive setup-dependent seed
@@ -383,9 +387,13 @@ def recpedpop_round1(seed, setup):
 ```
 
 ```python
-def recpedpop_round2(seed, state1, enckeys):
+RecPedPopR2State = Tuple[bytes, int, EncPedPopR2State]
+
+def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, List[bytes], Tuple[VSSCommitment, bytes], List[Scalar]]:
     hostverkeys, t, setup_id, enc_state1, my_enckey = state1
 
+    seed_ = kdf(seed, "setup", setup_id)
+    n = len(hostverkeys)
     enc_state2, vss_commitment, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
     my_idx = enckeys.index(my_enckey)
     state2 = (setup_id, my_idx, enc_state2)
@@ -393,7 +401,7 @@ def recpedpop_round2(seed, state1, enckeys):
 ```
 
 ```python
-def recpedpop_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum, Eq):
+def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar], Eq: Callable[[Any],bool]) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
     (setup_id, my_idx, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -407,16 +415,21 @@ def recpedpop_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum, Eq
 ```
 
 ```python
-def recpedpop(seed, my_hostsigkey, setup):
+def recpedpop(seed: bytes, my_hostsigkey: bytes, setup: Setup):
     state1, my_enckey = recpedpop_round1(seed, setup)
     chan_send(my_enckey)
     enckeys = chan_receive()
 
     state2, hostverkeys, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
     chan_send((my_vss_commitment, my_generated_enc_shares))
-    vss_commitments, enc_shares_sum = chan_receive()
+    vss_commitments_sum, enc_shares_sum = chan_receive()
 
-    shares_sum, shared_pubkey, signer_pubkeys = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum, make_certifying_Eq(my_hostsigkey, hostverkeys))
+    result: Dict[str, List[bytes]] = {}
+    Eq = make_certifying_Eq(my_hostsigkey, hostverkeys, result)
+    res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum, Eq)
+    if res is False:
+        return False
+    shares_sum, shared_pubkey, signer_pubkeys = res
     transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
 
@@ -440,17 +453,20 @@ TODO The hpk should be the id here... clean this up and write something about se
 The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
-def verify_cert(hostverkeys, x, sigs):
-    if len(sigs) != len(hostverkeys):
+def verify_cert(hostverkeys: List[bytes], x: Any, sigs: List[bytes]) -> bool:
+    n = len(hostverkeys)
+    if len(sigs) != n:
         return False
-    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) for i in range(hostverkeys)]
+    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) for i in range(n)]
     return all(is_valid)
 
-def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
-    def certifying_Eq(x):
-        chan_send(("SIG", sign(my_hostsigkey, x)))
-        sigs = [None] * len(hostverkeys)
-        while(True)
+def make_certifying_Eq(my_hostsigkey: bytes, hostverkeys: List[bytes], result: Dict[str, List[bytes]]) -> Callable[[Any],bool]:
+    n = len(hostverkeys)
+    def certifying_Eq(x: Any) -> bool:
+        # TODO: fix aux_rand
+        chan_send(("SIG", sign(my_hostsigkey, x, b'')))
+        sigs = [b''] * len(hostverkeys)
+        while(True):
             i, ty, msg = chan_receive()
             if ty == "SIG":
                 is_valid = verify_sig(hostverkeys[i], x, msg)
@@ -464,7 +480,8 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     # still output True when receiving a cert later, but we
                     # should indicate to the user (logs?) that something went
                     # wrong.)
-                if sigs.count(None) == 0:
+                    pass
+                if sigs.count(b'') == 0:
                     cert = sigs
                     result["cert"] = cert
                     for i in range(n):
@@ -477,9 +494,9 @@ def make_certifying_Eq(my_hostsigkey, hostverkeys, result):
                     for i in range(n):
                         chan_send(("CERT", cert))
                     return True
-    return certifying_eq
+    return certifying_Eq
 
-def certifying_Eq_coordinate():
+def certifying_Eq_coordinate(n):
     while(True):
         for i in range(n):
             ty, msg = chan_receive_from(i)

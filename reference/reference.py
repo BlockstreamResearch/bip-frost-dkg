@@ -2,7 +2,7 @@
 # reference_py_gen.sh.
 
 from secp256k1 import n as GROUP_ORDER, Point, G, point_mul, schnorr_sign as sign, schnorr_verify as verify_sig, tagged_hash, bytes_from_point, individual_pk, point_add_multi, scalar_add_multi, int_from_bytes, bytes_from_int, cpoint, cbytes
-from typing import Tuple, List, Optional, Callable, Any, Union
+from typing import Tuple, List, Optional, Callable, Any, Union, Dict, Literal
 from network import *
 from util import *
 
@@ -104,7 +104,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
 def simplpedpop_finalize(state: SimplPedPopR1State,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
                          Eq: Callable[[Any],bool] , eta: Any = []) \
-                         -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
+                         -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -179,7 +179,7 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
-def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = []) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
+def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = []) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
 
@@ -192,3 +192,130 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
     eta += enckeys
     return simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum, Eq, eta)
+
+def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
+    my_hostsigkey = kdf(seed, "hostsigkey")
+    my_hostverkey = individual_pk(my_hostsigkey)
+    return (my_hostsigkey, my_hostverkey)
+
+Setup = Tuple[List[bytes], int, bytes]
+def recpedpop_setup_id(hostverkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
+    assert(t < 2**(4*8))
+    setup_id = tagged_hash("setup id", b''.join(hostverkeys) + t.to_bytes(4, byteorder="big") + context_string)
+    setup = (hostverkeys, t, setup_id)
+    return setup, setup_id
+
+RecPedPopR1State = Tuple[List[bytes], int, bytes, EncPedPopR1State, bytes]
+
+def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, bytes]:
+    hostverkeys, t, setup_id = setup
+
+    # Derive setup-dependent seed
+    seed_ = kdf(seed, "setup", setup_id)
+
+    enc_state1, my_enckey =  encpedpop_round1(seed_)
+    state1 = (hostverkeys, t, setup_id, enc_state1, my_enckey)
+    return state1, my_enckey
+
+RecPedPopR2State = Tuple[bytes, int, EncPedPopR2State]
+
+def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, List[bytes], Tuple[VSSCommitment, bytes], List[Scalar]]:
+    hostverkeys, t, setup_id, enc_state1, my_enckey = state1
+
+    seed_ = kdf(seed, "setup", setup_id)
+    n = len(hostverkeys)
+    enc_state2, vss_commitment, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
+    my_idx = enckeys.index(my_enckey)
+    state2 = (setup_id, my_idx, enc_state2)
+    return state2, hostverkeys, vss_commitment, enc_shares
+
+def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar], Eq: Callable[[Any],bool]) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
+    (setup_id, my_idx, enc_state2) = state2
+
+    # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
+    # Include the enc_shares in eta to ensure that participants agree on all
+    # shares, which in turn ensures that they have the right transcript.
+    # TODO This means all parties who hold the "transcript" in the end should
+    # participate in Eq?
+    eta = (setup_id, all_enc_shares_sum)
+    my_enc_shares_sum = all_enc_shares_sum[my_idx]
+    return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, Eq, eta)
+
+def recpedpop(seed: bytes, my_hostsigkey: bytes, setup: Setup):
+    state1, my_enckey = recpedpop_round1(seed, setup)
+    chan_send(my_enckey)
+    enckeys = chan_receive()
+
+    state2, hostverkeys, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
+    chan_send((my_vss_commitment, my_generated_enc_shares))
+    vss_commitments_sum, enc_shares_sum = chan_receive()
+
+    result: Dict[str, List[bytes]] = {}
+    Eq = make_certifying_Eq(my_hostsigkey, hostverkeys, result)
+    res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum, Eq)
+    if res is False:
+        return False
+    shares_sum, shared_pubkey, signer_pubkeys = res
+    transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
+    return shares_sum, shared_pubkey, signer_pubkeys, transcript
+
+def recpedpop_coordinate(t, n):
+    vss_commitments = []
+    enc_shares_sum = (0)*n
+    for i in range(n):
+        vss_commitment, enc_shares = chan_receive_from(i)
+        vss_commitments += [vss_commitment]
+        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    return vss_commitments_sum, enc_shares_sum
+
+    chan_send_all((vss_commitments_sum, enc_shares_sum))
+
+def verify_cert(hostverkeys: List[bytes], x: Any, sigs: List[bytes]) -> bool:
+    n = len(hostverkeys)
+    if len(sigs) != n:
+        return False
+    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) for i in range(n)]
+    return all(is_valid)
+
+def make_certifying_Eq(my_hostsigkey: bytes, hostverkeys: List[bytes], result: Dict[str, List[bytes]]) -> Callable[[Any],bool]:
+    n = len(hostverkeys)
+    def certifying_Eq(x: Any) -> bool:
+        # TODO: fix aux_rand
+        chan_send(("SIG", sign(my_hostsigkey, x, b'')))
+        sigs = [b''] * len(hostverkeys)
+        while(True):
+            i, ty, msg = chan_receive()
+            if ty == "SIG":
+                is_valid = verify_sig(hostverkeys[i], x, msg)
+                if sigs[i] is None and is_valid:
+                    sigs[i] = msg
+                elif not is_valid:
+                    # The signer `hpk` is either malicious or an honest signer
+                    # whose input is not equal to `x`. This means that there is
+                    # some malicious signer or that some messages have been
+                    # tampered with on the wire. We must not abort, and we could
+                    # still output True when receiving a cert later, but we
+                    # should indicate to the user (logs?) that something went
+                    # wrong.)
+                    pass
+                if sigs.count(b'') == 0:
+                    cert = sigs
+                    result["cert"] = cert
+                    for i in range(n):
+                        chan_send(("CERT", cert))
+                    return True
+            if ty == "CERT":
+                sigs = msg
+                if verify_cert(hostverkeys, x, sigs):
+                    result["cert"] = cert
+                    for i in range(n):
+                        chan_send(("CERT", cert))
+                    return True
+    return certifying_Eq
+
+def certifying_Eq_coordinate(n):
+    while(True):
+        for i in range(n):
+            ty, msg = chan_receive_from(i)
+            chan_send_all((i, ty, msg))
