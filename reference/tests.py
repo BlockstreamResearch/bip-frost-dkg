@@ -19,12 +19,12 @@ def simulate_simplpedpop(seeds, t, n, Eq):
     round1_outputs = []
     dkg_outputs = []
     for i in range(n):
-        round1_outputs += [simplpedpop_round1(seeds[i], t, n)]
+        round1_outputs += [simplpedpop_round1(seeds[i], t, n, i)]
     vss_commitments = [out[1] for out in round1_outputs]
     vss_commitments_sum = vss_sum_commitments(vss_commitments, t) 
     for i in range(n):
         shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
-        dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], i, vss_commitments_sum, shares_sum, Eq)]
+        dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum, Eq)]
     return dkg_outputs 
 
 def simulate_encpedpop(seeds, t, n, Eq):
