@@ -1,7 +1,7 @@
 from random import randint
 import secrets
 from secp256k1 import n as GROUP_ORDER, scalar_add_multi, point_mul, G
-from reference import * 
+from reference import *
 import sys
 
 def test_vss_correctness():
@@ -21,11 +21,11 @@ def simulate_simplpedpop(seeds, t, n, Eq):
     for i in range(n):
         round1_outputs += [simplpedpop_round1(seeds[i], t, n, i)]
     vss_commitments = [out[1] for out in round1_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t) 
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
     for i in range(n):
         shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
         dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum, Eq)]
-    return dkg_outputs 
+    return dkg_outputs
 
 def simulate_encpedpop(seeds, t, n, Eq):
     assert(len(seeds) == n)
@@ -40,11 +40,11 @@ def simulate_encpedpop(seeds, t, n, Eq):
         round2_outputs += [encpedpop_round2(seeds[i], round1_outputs[i][0], t, n, enckeys)]
 
     vss_commitments = [out[1] for out in round2_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t) 
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
     for i in range(n):
         enc_shares_sum = scalar_add_multi([out[2][i] for out in round2_outputs])
         dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum, Eq)]
-    return dkg_outputs 
+    return dkg_outputs
 
 # Adapted from BIP 324
 def scalar_inv(a: int):
@@ -120,7 +120,7 @@ def dkg_correctness(t, n, simulate_dkg):
         assert(point_mul(G, shares[i]) == signer_pubkeys[0][i])
 
     # Check that the first t signers (TODO: should be an arbitrary set) can
-    # recover the shared pubkey 
+    # recover the shared pubkey
     recovered_secret = recover_secret(list(range(1, t+1)), shares[0:t])
     assert(point_mul(G, recovered_secret) == shared_pubkey)
 

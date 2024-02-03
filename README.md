@@ -47,18 +47,18 @@ Besides external secure channels, SimplPedPod depends on an external *equality c
 The equality check protocol serves an abstraction of a secure broadcast mechanism with limited functionality (TODO: this may be a confusing way to introduce the realtionship between equality check and broadcast. E.g., it doesn't only have limited functionality, it has more functionality as in broadcast only a single party broadcasts):
 Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
 
-Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies. 
+Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies.
 We follow a modular approach that removes one dependency at a time.
 First, we take care of secure channels by wrapping SimplPedPop in a protocol EncPedPop,
 which relies on pairwise ECDH key exchanges between the participants to encrypt secret shares.
 Finally, we add a concrete equality check protocol to EncPedPop to obtain a standalone DKG protocol ChillDKG.
 
 Our equality check protocol is inspired by the Goldwasser-Lindell echo broadcast [GW05] protocol.
-Crucially, it ensures that 
-whenever some participant obtains a threshold public key as output of a successful DKG run, 
+Crucially, it ensures that
+whenever some participant obtains a threshold public key as output of a successful DKG run,
 this honest participant will additionally obtain a transferable "success certificate",
 which can convince all other honest participants
-(ultimately at the time of a signing request) 
+(ultimately at the time of a signing request)
 that the DKG has indeed been successful.
 This is sufficient to exclude the bad scenario described in the previous section. (TODO)
 
