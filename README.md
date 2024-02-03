@@ -119,7 +119,7 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b'') -> bytes:
 # A scalar is represented by an integer modulo GROUP_ORDER
 Scalar = int
 
-# A polynomial of degree t is represented by a list of t + 1 coefficients
+# A polynomial of degree t - 1 is represented by a list of t coefficients
 # f(x) = coeffs[0] + ... + coeff[t] * x^n
 Polynomial = List[Scalar]
 

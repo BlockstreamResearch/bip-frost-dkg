@@ -18,7 +18,7 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b'') -> bytes:
 # A scalar is represented by an integer modulo GROUP_ORDER
 Scalar = int
 
-# A polynomial of degree t is represented by a list of t + 1 coefficients
+# A polynomial of degree t - 1 is represented by a list of t coefficients
 # f(x) = coeffs[0] + ... + coeff[t] * x^n
 Polynomial = List[Scalar]
 
@@ -78,10 +78,10 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
     participant_public_keys += [pk_i]
   return pk, participant_public_keys
 
-SimplePedPopR1State = Tuple[int, int]
+SimplPedPopR1State = Tuple[int, int]
 VSS_PoK_msg = (biptag + "VSS PoK").encode()
 
-def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State, Tuple[VSSCommitment, bytes], List[Scalar]]:
+def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplPedPopR1State, Tuple[VSSCommitment, bytes], List[Scalar]]:
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
@@ -98,7 +98,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int) -> Tuple[SimplePedPopR1State
     state = (t, n)
     return state, my_vss_commitment, my_generated_shares
 
-def simplpedpop_finalize(state: SimplePedPopR1State, my_idx: int,
+def simplpedpop_finalize(state: SimplPedPopR1State, my_idx: int,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
                          Eq: Callable[[Any],bool] , eta: Any = []) \
                          -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], bool]:
@@ -155,7 +155,7 @@ def encpedpop_round1(seed: bytes) -> Tuple[EncPedPopR1State, bytes]:
     state1 = (my_deckey, my_enckey)
     return state1, my_enckey
 
-EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplePedPopR1State]
+EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplPedPopR1State]
 
 def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, Tuple[VSSCommitment, bytes], List[Scalar]]:
     assert(n == len(enckeys))

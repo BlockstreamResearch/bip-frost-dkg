@@ -12,7 +12,7 @@ from network import *
 from util import *
 EOF
 
-awk '/### Notation/,/### RecPedPop/ {
+awk '/### Notation/,/## ChillDKG/ {
     if ($0 ~ /^```python$/) {
         in_python_block = 1;
         print "";
