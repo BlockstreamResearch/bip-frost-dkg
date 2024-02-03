@@ -168,14 +168,14 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
     assert(t < 2**(4*8))
-    context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
-    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + context)
+    enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
+    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
     try:
         my_idx = enckeys.index(my_enckey)
     except ValueError:
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n, my_idx)
-    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], context) for i in range(len(enckeys))]
+    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
@@ -188,6 +188,7 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     assert(len(vss_commitments_sum[1]) == n)
 
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
-    shares_sum = enc_shares_sum - scalar_add_multi([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)])
+    ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
+    shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
     eta += enckeys
     return simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum, Eq, eta)

@@ -124,12 +124,9 @@ def dkg_correctness(t, n, simulate_dkg):
     recovered_secret = recover_secret(list(range(1, t+1)), shares[0:t])
     assert(point_mul(G, recovered_secret) == shared_pubkey)
 
-def test_simplpedpop_correctness():
-    for t in range(1, 3):
-        for n in range(t, 2*t + 1):
-            dkg_correctness(t, n, simulate_simplpedpop)
-
 test_vss_correctness()
 test_recover_secret()
-test_simplpedpop_correctness()
-dkg_correctness(2, 3, simulate_encpedpop)
+for t in range(1, 3):
+    for n in range(t, 2*t + 1):
+            dkg_correctness(t, n, simulate_simplpedpop)
+            dkg_correctness(t, n, simulate_encpedpop)
