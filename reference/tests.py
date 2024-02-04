@@ -14,8 +14,8 @@ def test_vss_correctness():
             assert(len(shares) == n)
             assert(all(vss_verify(i, shares[i], vss_commit(f)) for i in range(n)))
 
-def simulate_simplpedpop(seeds, t, n, Eq):
-    assert(len(seeds) == n)
+def simulate_simplpedpop(seeds, t, Eq):
+    n = len(seeds)
     round1_outputs = []
     dkg_outputs = []
     for i in range(n):
@@ -27,8 +27,8 @@ def simulate_simplpedpop(seeds, t, n, Eq):
         dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum, Eq)]
     return dkg_outputs
 
-def simulate_encpedpop(seeds, t, n, Eq):
-    assert(len(seeds) == n)
+def simulate_encpedpop(seeds, t, Eq):
+    n = len(seeds)
     round1_outputs = []
     round2_outputs = []
     dkg_outputs = []
@@ -46,8 +46,8 @@ def simulate_encpedpop(seeds, t, n, Eq):
         dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum, Eq)]
     return dkg_outputs
 
-def simulate_recpedpop(seeds, t, n, Eq):
-    assert(len(seeds) == n)
+def simulate_recpedpop(seeds, t, Eq):
+    n = len(seeds)
 
     hostkeys = []
     for i in range(n):
@@ -139,7 +139,7 @@ def dkg_correctness(t, n, simulate_dkg):
         return prev_x == x
     seeds = [secrets.token_bytes(32) for _ in range(n)]
 
-    dkg_outputs = simulate_dkg(seeds, t, n, Eq)
+    dkg_outputs = simulate_dkg(seeds, t, Eq)
     assert(all([out != False for out in dkg_outputs]))
     shares = [out[0] for out in dkg_outputs]
     shared_pubkeys = [out[1] for out in dkg_outputs]
@@ -163,8 +163,7 @@ def dkg_correctness(t, n, simulate_dkg):
 
 test_vss_correctness()
 test_recover_secret()
-for t in range(1, 2):
-    for n in range(t, 2*t + 1):
-            dkg_correctness(t, n, simulate_simplpedpop)
-            dkg_correctness(t, n, simulate_encpedpop)
-            dkg_correctness(t, n, simulate_recpedpop)
+for (t, n) in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
+    dkg_correctness(t, n, simulate_simplpedpop)
+    dkg_correctness(t, n, simulate_encpedpop)
+    dkg_correctness(t, n, simulate_recpedpop)
