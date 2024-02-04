@@ -130,7 +130,13 @@ def test_recover_secret():
     assert(recover_secret([2,3], [shares[1], shares[2]]) == f[0])
 
 def dkg_correctness(t, n, simulate_dkg):
-    Eq = lambda x: True
+    prev_x = None
+    def Eq(x):
+        nonlocal prev_x
+        if prev_x is None:
+            prev_x = x
+            return True
+        return prev_x == x
     seeds = [secrets.token_bytes(32) for _ in range(n)]
 
     dkg_outputs = simulate_dkg(seeds, t, n, Eq)
