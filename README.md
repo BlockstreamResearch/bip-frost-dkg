@@ -496,7 +496,7 @@ def make_certifying_Eq(my_hostsigkey: bytes, hostverkeys: List[bytes], result: D
                     return True
     return certifying_Eq
 
-def certifying_Eq_coordinate(n):
+def certifying_Eq_coordinate(n: int) -> None:
     while(True):
         for i in range(n):
             ty, msg = chan_receive_from(i)
