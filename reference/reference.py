@@ -237,7 +237,7 @@ def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_su
     # shares, which in turn ensures that they have the right transcript.
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
-    eta = (setup_id, all_enc_shares_sum)
+    eta = [setup_id, all_enc_shares_sum]
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
     return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, Eq, eta)
 
@@ -259,9 +259,9 @@ def recpedpop(seed: bytes, my_hostsigkey: bytes, setup: Setup):
     transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
 
-def recpedpop_coordinate(t, n):
+def recpedpop_coordinate(t: int, n: int) -> Tuple[VSSCommitmentSum, List[Scalar]]:
     vss_commitments = []
-    enc_shares_sum = (0)*n
+    enc_shares_sum = [0]*n
     for i in range(n):
         vss_commitment, enc_shares = chan_receive_from(i)
         vss_commitments += [vss_commitment]

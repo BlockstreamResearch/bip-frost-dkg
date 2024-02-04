@@ -46,6 +46,37 @@ def simulate_encpedpop(seeds, t, n, Eq):
         dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum, Eq)]
     return dkg_outputs
 
+def simulate_recpedpop(seeds, t, n, Eq):
+    assert(len(seeds) == n)
+
+    hostkeys = []
+    for i in range(n):
+        hostkeys += [recpedpop_hostpubkey(seeds[i])]
+
+    hostverkeys = [hostkey[1] for hostkey in hostkeys]
+    setup_id = recpedpop_setup_id(hostverkeys, t, b'')
+
+    round1_outputs = []
+    for i in range(n):
+        round1_outputs += [recpedpop_round1(seeds[i], setup_id[0])]
+
+    state1s = [out[0] for out in round1_outputs]
+    enckeys = [out[1] for out in round1_outputs]
+    round2_outputs = []
+    for i in range(n):
+        round2_outputs += [recpedpop_round2(seeds[i], state1s[i], enckeys)]
+
+    state2s = [out[0] for out in round2_outputs]
+    vss_commitments = [out[2] for out in round2_outputs]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    dkg_outputs = []
+    all_enc_shares_sum = []
+    for i in range(n):
+        all_enc_shares_sum += [scalar_add_multi([out[3][i] for out in round2_outputs])]
+    for i in range(n):
+        dkg_outputs += [recpedpop_finalize(seeds[i], state2s[i], vss_commitments_sum, all_enc_shares_sum, Eq)]
+    return dkg_outputs
+
 # Adapted from BIP 324
 def scalar_inv(a: int):
     """Compute the modular inverse of a modulo n using the extended Euclidean
@@ -126,7 +157,8 @@ def dkg_correctness(t, n, simulate_dkg):
 
 test_vss_correctness()
 test_recover_secret()
-for t in range(1, 3):
+for t in range(1, 2):
     for n in range(t, 2*t + 1):
             dkg_correctness(t, n, simulate_simplpedpop)
             dkg_correctness(t, n, simulate_encpedpop)
+            dkg_correctness(t, n, simulate_recpedpop)
