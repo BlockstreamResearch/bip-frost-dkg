@@ -1,6 +1,7 @@
 from random import randint
 import secrets
-from secp256k1 import n as GROUP_ORDER, scalar_add_multi, point_mul, G
+from crypto_bip340 import n as GROUP_ORDER, point_mul, G
+from crypto_extra import scalar_add_multi
 from reference import *
 import sys
 import asyncio
@@ -21,11 +22,11 @@ def simulate_simplpedpop(seeds, t):
     dkg_outputs = []
     for i in range(n):
         round1_outputs += [simplpedpop_round1(seeds[i], t, n, i)]
-    vss_commitments = [out[1] for out in round1_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    vss_commitments_ext = [out[1] for out in round1_outputs]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     for i in range(n):
         shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
-        dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum)]
+        dkg_outputs += [simplpedpop_pre_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum)]
     return dkg_outputs
 
 def simulate_encpedpop(seeds, t):
@@ -40,11 +41,11 @@ def simulate_encpedpop(seeds, t):
     for i in range(n):
         round2_outputs += [encpedpop_round2(seeds[i], round1_outputs[i][0], t, n, enckeys)]
 
-    vss_commitments = [out[1] for out in round2_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    vss_commitments_ext = [out[1] for out in round2_outputs]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     for i in range(n):
         enc_shares_sum = scalar_add_multi([out[2][i] for out in round2_outputs])
-        dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum)]
+        dkg_outputs += [encpedpop_pre_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum)]
     return dkg_outputs
 
 def simulate_recpedpop(seeds, t):
@@ -68,14 +69,14 @@ def simulate_recpedpop(seeds, t):
         round2_outputs += [recpedpop_round2(seeds[i], state1s[i], enckeys)]
 
     state2s = [out[0] for out in round2_outputs]
-    vss_commitments = [out[2] for out in round2_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    vss_commitments_ext = [out[2] for out in round2_outputs]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     dkg_outputs = []
     all_enc_shares_sum = []
     for i in range(n):
         all_enc_shares_sum += [scalar_add_multi([out[3][i] for out in round2_outputs])]
     for i in range(n):
-        dkg_outputs += [recpedpop_finalize(seeds[i], state2s[i], vss_commitments_sum, all_enc_shares_sum)]
+        dkg_outputs += [recpedpop_pre_finalize(seeds[i], state2s[i], vss_commitments_sum, all_enc_shares_sum)]
     return dkg_outputs
 
 def simulate_recpedpop_full(seeds, t):
@@ -84,13 +85,13 @@ def simulate_recpedpop_full(seeds, t):
     for i in range(n):
         hostkeys += [recpedpop_hostpubkey(seeds[i])]
 
-    setup = recpedpop_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')
+    setup = recpedpop_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')[0]
     async def main():
         coord_chans = CoordinatorChannels(n)
         signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
         coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
-        tasks = [recpedpop_coordinate(coord_chans, t, n)] + [recpedpop(signer_chans[i], seeds[i], hostkeys[i][0], setup[0]) for i in range(n)]
-        return await asyncio.gather(*tasks)
+        coroutines = [recpedpop_coordinate(coord_chans, t, n)] + [recpedpop(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
+        return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())
     return outputs[1:]

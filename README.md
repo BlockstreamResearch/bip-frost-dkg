@@ -119,7 +119,7 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b'') -> bytes:
 Scalar = int
 
 # A polynomial of degree t - 1 is represented by a list of t coefficients
-# f(x) = coeffs[0] + ... + coeff[t] * x^n
+# f(x) = a[0] + ... + a[t] * x^n
 Polynomial = List[Scalar]
 
 # Evaluates polynomial f at x
@@ -140,11 +140,6 @@ def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
 # A VSS Commitment is a list of points
 VSSCommitment = List[Optional[Point]]
 
-VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
-
-def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSum)-> bytes:
-    return b''.join([cbytes_ext(P) for P in vss_commitment_sum[0]]) + b''.join(vss_commitment_sum[1])
-
 # Returns commitments to the coefficients of f
 def vss_commit(f: Polynomial) -> VSSCommitment:
     vss_commitment = []
@@ -159,19 +154,25 @@ def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) ->
          for j in range(0, len(vss_commitment))]
     return P == point_add_multi(Q)
 
+# An extended VSS Commitment is a VSS commitment with a proof of knowledge
+VSSCommitmentExt = Tuple[VSSCommitment, bytes]
+
+# A VSS Commitment Sum is the sum of multiple VSS Commitment PoKs
+VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
+
+def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSum)-> bytes:
+    return b''.join([cbytes_ext(P) for P in vss_commitment_sum[0]]) + b''.join(vss_commitment_sum[1])
+
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def vss_sum_commitments(vss_commitments: List[Tuple[VSSCommitment, bytes]], t: int) -> VSSCommitmentSum:
+def vss_sum_commitments(vss_commitments: List[VSSCommitmentExt], t: int) -> VSSCommitmentSum:
     n = len(vss_commitments)
     assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments))
-    # The returned array consists of 2*n + t - 1 elements
-    # [vss_commitments[0][0][0], ..., vss_commitments[n-1][0][0],
-    #  sum_group(vss_commitments[i][1]), ..., sum_group(vss_commitments[i][t-1]),
-    #  vss_commitments[0][1], ..., vss_commitments[n-1][1]]
-    return ([vss_commitments[i][0][0] for i in range(n)] + \
-           [point_add_multi([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)],
-           [vss_commitments[i][1] for i in range(n)])
+    first_coefficients = [vss_commitments[i][0][0] for i in range(n)]
+    remaining_coeffs_sum = [point_add_multi([vss_commitments[i][0][j] for i in range(n)]) for j in range(1, t)]
+    poks = [vss_commitments[i][1] for i in range(n)]
+    return (first_coefficients + remaining_coeffs_sum, poks)
 
 # Outputs the shared public key and individual public keys of the participants
 def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Optional[Point], List[Optional[Point]]]:
@@ -203,7 +204,7 @@ We make the following modifications as compared to the original proposal:
 SimplPedPopR1State = Tuple[int, int, int]
 VSS_PoK_msg = (biptag + "VSS PoK").encode()
 
-def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplPedPopR1State, Tuple[VSSCommitment, bytes], List[Scalar]]:
+def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplPedPopR1State, VSSCommitmentExt, List[Scalar]]:
     """
     Start SimplPedPop by generating messages to send to the other participants.
 
@@ -217,19 +218,19 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
     coeffs = [int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))) % GROUP_ORDER for i in range(t)]
     # TODO: fix aux_rand
     assert(my_idx < 2**(4*8))
-    sig = sign(VSS_PoK_msg + my_idx.to_bytes(4, byteorder="big"), bytes_from_int(coeffs[0]), kdf(seed, "VSS PoK"))
-    my_vss_commitment = (vss_commit(coeffs), sig)
-    my_generated_shares = secret_share_shard(coeffs, n)
+    sig = schnorr_sign(VSS_PoK_msg + my_idx.to_bytes(4, byteorder="big"), bytes_from_int(coeffs[0]), kdf(seed, "VSS PoK"))
+    vss_commitment_ext = (vss_commit(coeffs), sig)
+    gen_shares = secret_share_shard(coeffs, n)
     state = (t, n, my_idx)
-    return state, my_vss_commitment, my_generated_shares
+    return state, vss_commitment_ext, gen_shares
 
 DKGOutput = Tuple[bytes, Tuple[Scalar, Optional[Point], List[Optional[Point]]]]
 
-def simplpedpop_finalize(state: SimplPedPopR1State,
+def simplpedpop_pre_finalize(state: SimplPedPopR1State,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar) \
                          -> DKGOutput:
     """
-    Take the messages received from the participants and finalize the DKG
+    Take the messages received from the participants and pre_finalize the DKG
 
     :param List[bytes] vss_commitments_sum: output of running vss_sum_commitments() with vss_commitments from all participants (including this participant) (TODO: not a list of bytes)
     :param vss_commitments_sum: TODO
@@ -247,8 +248,8 @@ def simplpedpop_finalize(state: SimplPedPopR1State,
         if P_i is None:
             raise InvalidContributionError(i, "Participant sent invalid commitment")
         else:
-            pk_i = bytes_from_point(P_i)
-            if not verify_sig(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
+            pk_i = xbytes(P_i)
+            if not schnorr_verify(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
     # TODO: also add t, n to eta?
     eta = serialize_vss_commitment_sum(vss_commitments_sum)
@@ -289,7 +290,7 @@ EncPedPopR1State = Tuple[bytes, bytes]
 
 def encpedpop_round1(seed: bytes) -> Tuple[EncPedPopR1State, bytes]:
     my_deckey = kdf(seed, "deckey")
-    my_enckey = individual_pk(my_deckey)
+    my_enckey = pubkey_gen_plain(my_deckey)
     state1 = (my_deckey, my_enckey)
     return state1, my_enckey
 ```
@@ -299,7 +300,7 @@ The (public) encryption keys are distributed among the participants.
 ```python
 EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplPedPopR1State]
 
-def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, Tuple[VSSCommitment, bytes], List[Scalar]]:
+def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, VSSCommitmentExt, List[Scalar]]:
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
         raise DuplicateEnckeysError
@@ -314,13 +315,13 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
         my_idx = enckeys.index(my_enckey)
     except ValueError:
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
-    simpl_state, vss_commitment, shares = simplpedpop_round1(seed_, t, n, my_idx)
-    enc_shares = [encrypt(shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
+    simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(seed_, t, n, my_idx)
+    enc_gen_shares = [encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
-    return state2, vss_commitment, enc_shares
+    return state2, vss_commitment_ext, enc_gen_shares
 
-def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> DKGOutput:
-    t, my_deckey, my_enckey, enckeys, simpl_state = state2
+def encpedpop_pre_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> DKGOutput:
+    t, my_deckey, _, enckeys, simpl_state = state2
     n = len(enckeys)
 
     assert(len(vss_commitments_sum) == 2)
@@ -330,7 +331,7 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
     ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
-    eta, dkg_output = simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum)
+    eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
     eta += b''.join(enckeys)
     return eta, dkg_output
 ```
@@ -366,6 +367,7 @@ They then compute a setup identifier that includes all participants (including y
 
 ```python
 Setup = Tuple[List[bytes], int, bytes]
+
 def recpedpop_setup_id(hostverkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
     assert(t < 2**(4*8))
     setup_id = tagged_hash("setup id", b''.join(hostverkeys) + t.to_bytes(4, byteorder="big") + context_string)
@@ -393,19 +395,19 @@ def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, bytes
 ```python
 RecPedPopR2State = Tuple[bytes, int, EncPedPopR2State]
 
-def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, List[bytes], Tuple[VSSCommitment, bytes], List[Scalar]]:
+def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, List[bytes], VSSCommitmentExt, List[Scalar]]:
     hostverkeys, t, setup_id, enc_state1, my_enckey = state1
 
     seed_ = kdf(seed, "setup", setup_id)
     n = len(hostverkeys)
-    enc_state2, vss_commitment, enc_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
+    enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
     my_idx = enckeys.index(my_enckey)
     state2 = (setup_id, my_idx, enc_state2)
-    return state2, hostverkeys, vss_commitment, enc_shares
+    return state2, hostverkeys, vss_commitment_ext, enc_gen_shares
 ```
 
 ```python
-def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> DKGOutput:
+def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> DKGOutput:
     (setup_id, my_idx, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -414,7 +416,7 @@ def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_su
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
-    eta, dkg_output = encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum)
+    eta, dkg_output = encpedpop_pre_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum)
     eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
     return eta, dkg_output
 ```
@@ -427,18 +429,17 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setu
     chan.send(my_enckey)
     enckeys = await chan.receive()
 
-    state2, hostverkeys, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
-    chan.send((my_vss_commitment, my_generated_enc_shares))
-    vss_commitments_sum, enc_shares_sum = await chan.receive()
+    state2, hostverkeys, vss_commitment_ext, enc_gen_shares =  recpedpop_round2(seed, state1, enckeys)
+    chan.send((vss_commitment_ext, enc_gen_shares))
+    vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
     try:
-        res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum)
+        eta, (shares_sum, shared_pubkey, signer_pubkeys) = recpedpop_pre_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum)
     except Exception as e:
         print("Exception", repr(e))
         return False
-    eta, (shares_sum, shared_pubkey, signer_pubkeys) = res
     cert = await certifying_eq(chan, my_hostsigkey, hostverkeys, eta)
-    transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, cert)
+    transcript = (setup, enckeys, vss_commitments_sum, all_enc_shares_sum, cert)
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
 ```
 
@@ -453,18 +454,18 @@ def verify_cert(hostverkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
     n = len(hostverkeys)
     if len(sigs) != n:
         return False
-    is_valid = [verify_sig(x, hostverkeys[i], sigs[i]) for i in range(n)]
+    is_valid = [schnorr_verify(x, hostverkeys[i], sigs[i]) for i in range(n)]
     return all(is_valid)
 
 async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], x: bytes) -> List[bytes]:
     n = len(hostverkeys)
     # TODO: fix aux_rand
-    chan.send(("SIG", sign(x, my_hostsigkey, b'0'*32)))
+    chan.send(("SIG", schnorr_sign(x, my_hostsigkey, b'0'*32)))
     sigs = [b''] * len(hostverkeys)
     while(True):
         i, ty, msg = await chan.receive()
         if ty == "SIG":
-            is_valid = verify_sig(x, hostverkeys[i], msg)
+            is_valid = schnorr_verify(x, hostverkeys[i], msg)
             if sigs[i] == b'' and is_valid:
                 sigs[i] = msg
             elif not is_valid:
@@ -499,14 +500,14 @@ async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> No
     for i in range(n):
         enckeys += [await chans.receive_from(i)]
     chans.send_all(enckeys)
-    vss_commitments = []
-    enc_shares_sum = [0]*n
+    vss_commitments_ext = []
+    all_enc_shares_sum = [0]*n
     for i in range(n):
-        vss_commitment, enc_shares = await chans.receive_from(i)
-        vss_commitments += [vss_commitment]
-        enc_shares_sum = [ (enc_shares_sum[j] + enc_shares[j]) % GROUP_ORDER for j in range(n) ]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
-    chans.send_all((vss_commitments_sum, enc_shares_sum))
+        vss_commitment_ext, enc_shares = await chans.receive_from(i)
+        vss_commitments_ext += [vss_commitment_ext]
+        all_enc_shares_sum = [ (all_enc_shares_sum[j] + enc_shares[j]) % GROUP_ORDER for j in range(n) ]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
+    chans.send_all((vss_commitments_sum, all_enc_shares_sum))
     while(True):
         for i in range(n):
             ty, msg = await chans.receive_from(i)
