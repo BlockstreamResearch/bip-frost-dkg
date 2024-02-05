@@ -3,6 +3,7 @@ import secrets
 from secp256k1 import n as GROUP_ORDER, scalar_add_multi, point_mul, G
 from reference import *
 import sys
+import asyncio
 
 def test_vss_correctness():
     def rand_polynomial(t):
@@ -14,7 +15,7 @@ def test_vss_correctness():
             assert(len(shares) == n)
             assert(all(vss_verify(i, shares[i], vss_commit(f)) for i in range(n)))
 
-def simulate_simplpedpop(seeds, t, Eq):
+def simulate_simplpedpop(seeds, t):
     n = len(seeds)
     round1_outputs = []
     dkg_outputs = []
@@ -24,10 +25,10 @@ def simulate_simplpedpop(seeds, t, Eq):
     vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
     for i in range(n):
         shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
-        dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum, Eq)]
+        dkg_outputs += [simplpedpop_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum)]
     return dkg_outputs
 
-def simulate_encpedpop(seeds, t, Eq):
+def simulate_encpedpop(seeds, t):
     n = len(seeds)
     round1_outputs = []
     round2_outputs = []
@@ -43,10 +44,10 @@ def simulate_encpedpop(seeds, t, Eq):
     vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
     for i in range(n):
         enc_shares_sum = scalar_add_multi([out[2][i] for out in round2_outputs])
-        dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum, Eq)]
+        dkg_outputs += [encpedpop_finalize(round2_outputs[i][0], vss_commitments_sum, enc_shares_sum)]
     return dkg_outputs
 
-def simulate_recpedpop(seeds, t, Eq):
+def simulate_recpedpop(seeds, t):
     n = len(seeds)
 
     hostkeys = []
@@ -74,8 +75,25 @@ def simulate_recpedpop(seeds, t, Eq):
     for i in range(n):
         all_enc_shares_sum += [scalar_add_multi([out[3][i] for out in round2_outputs])]
     for i in range(n):
-        dkg_outputs += [recpedpop_finalize(seeds[i], state2s[i], vss_commitments_sum, all_enc_shares_sum, Eq)]
+        dkg_outputs += [recpedpop_finalize(seeds[i], state2s[i], vss_commitments_sum, all_enc_shares_sum)]
     return dkg_outputs
+
+def simulate_recpedpop_full(seeds, t):
+    n = len(seeds)
+    hostkeys = []
+    for i in range(n):
+        hostkeys += [recpedpop_hostpubkey(seeds[i])]
+
+    setup = recpedpop_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')
+    async def main():
+        coord_chans = CoordinatorChannels(n)
+        signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
+        coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
+        tasks = [recpedpop_coordinate(coord_chans, t, n)] + [recpedpop(signer_chans[i], seeds[i], hostkeys[i][0], setup[0]) for i in range(n)]
+        return await asyncio.gather(*tasks)
+
+    outputs = asyncio.run(main())
+    return outputs[1:]
 
 # Adapted from BIP 324
 def scalar_inv(a: int):
@@ -129,21 +147,23 @@ def test_recover_secret():
     assert(recover_secret([1,3], [shares[0], shares[2]]) == f[0])
     assert(recover_secret([2,3], [shares[1], shares[2]]) == f[0])
 
-def dkg_correctness(t, n, simulate_dkg):
-    prev_x = None
-    def Eq(x):
-        nonlocal prev_x
-        if prev_x is None:
-            prev_x = x
-            return True
-        return prev_x == x
+def dkg_correctness(t, n, simulate_dkg, external_eq):
     seeds = [secrets.token_bytes(32) for _ in range(n)]
 
-    dkg_outputs = simulate_dkg(seeds, t, Eq)
+    dkg_outputs = simulate_dkg(seeds, t)
     assert(all([out != False for out in dkg_outputs]))
-    shares = [out[0] for out in dkg_outputs]
-    shared_pubkeys = [out[1] for out in dkg_outputs]
-    signer_pubkeys = [out[2] for out in dkg_outputs]
+    if external_eq:
+        etas = [out[0] for out in dkg_outputs]
+        assert(len(etas) == n)
+        for i in range(1, n):
+            assert(etas[0] == etas[i])
+        cur = 1
+    else:
+        cur = 0
+
+    shares = [out[cur] for out in dkg_outputs]
+    shared_pubkeys = [out[cur + 1] for out in dkg_outputs]
+    signer_pubkeys = [out[cur + 2] for out in dkg_outputs]
 
     # Check that the shared pubkey and signer_pubkeys are the same for all
     # participants
@@ -164,6 +184,11 @@ def dkg_correctness(t, n, simulate_dkg):
 test_vss_correctness()
 test_recover_secret()
 for (t, n) in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
-    dkg_correctness(t, n, simulate_simplpedpop)
-    dkg_correctness(t, n, simulate_encpedpop)
-    dkg_correctness(t, n, simulate_recpedpop)
+    external_eq = True
+    dkg_correctness(t, n, simulate_simplpedpop, external_eq)
+    dkg_correctness(t, n, simulate_encpedpop, external_eq)
+    dkg_correctness(t, n, simulate_recpedpop, external_eq)
+    external_eq = False
+    dkg_correctness(2, 2, simulate_recpedpop_full, external_eq)
+
+

@@ -194,6 +194,7 @@ The SimplPedPop scheme has been proposed in
 We make the following modifications as compared to the original proposal:
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
+- TODO: removed Eq check, MUST happen afterwards
 
 ```python
 SimplPedPopR1State = Tuple[int, int, int]
@@ -219,10 +220,12 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
     state = (t, n, my_idx)
     return state, my_vss_commitment, my_generated_shares
 
+DKGOutput = Union[Tuple[Any, Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]
+
 def simplpedpop_finalize(state: SimplPedPopR1State,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
-                         Eq: Callable[[Any],bool] , eta: Any = []) \
-                         -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
+                         eta: Any = []) \
+                         -> DKGOutput:
     """
     Take the messages received from the participants and finalize the DKG
 
@@ -249,12 +252,9 @@ def simplpedpop_finalize(state: SimplPedPopR1State,
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
     if not vss_verify(my_idx, shares_sum, vss_commitments_sum_coeffs):
-        print(my_idx, "vss fails")
-        return False
-    if not Eq(eta):
         return False
     shared_pubkey, signer_pubkeys = derive_group_info(vss_commitments_sum_coeffs, n, t)
-    return shares_sum, shared_pubkey, signer_pubkeys
+    return eta, shares_sum, shared_pubkey, signer_pubkeys
 ```
 
 ### EncPedPop
@@ -316,7 +316,7 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
-def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, Eq: Callable[[Any],bool], eta: Any = []) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
+def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, eta: Any = []) -> DKGOutput:
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
 
@@ -328,7 +328,7 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
     eta += enckeys
-    return simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum, Eq, eta)
+    return simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum, eta)
 ```
 
 ## ChillDKG
@@ -352,7 +352,8 @@ Generate long-term host keys.
 ```python
 def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostsigkey = kdf(seed, "hostsigkey")
-    my_hostverkey = individual_pk(my_hostsigkey)
+    # TODO: rename to distinguish plain and xonly key gen
+    my_hostverkey = pubkey_gen(my_hostsigkey)
     return (my_hostsigkey, my_hostverkey)
 ```
 
@@ -400,7 +401,7 @@ def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]
 ```
 
 ```python
-def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar], Eq: Callable[[Any],bool]) -> Union[Tuple[Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]:
+def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> DKGOutput:
     (setup_id, my_idx, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -410,39 +411,30 @@ def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_su
     # participate in Eq?
     eta = [setup_id, all_enc_shares_sum]
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
-    return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, Eq, eta)
+    return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, eta)
 ```
 
 ```python
-def recpedpop(seed: bytes, my_hostsigkey: bytes, setup: Setup):
+EqualityCheck = Callable[[Any], Coroutine[Any, Any, bool]]
+
+async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setup: Setup):
     state1, my_enckey = recpedpop_round1(seed, setup)
-    chan_send(my_enckey)
-    enckeys = chan_receive()
+    chan.send(my_enckey)
+    enckeys = await chan.receive()
 
     state2, hostverkeys, my_vss_commitment, my_generated_enc_shares =  recpedpop_round2(seed, state1, enckeys)
-    chan_send((my_vss_commitment, my_generated_enc_shares))
-    vss_commitments_sum, enc_shares_sum = chan_receive()
+    chan.send((my_vss_commitment, my_generated_enc_shares))
+    vss_commitments_sum, enc_shares_sum = await chan.receive()
 
     result: Dict[str, List[bytes]] = {}
-    Eq = make_certifying_Eq(my_hostsigkey, hostverkeys, result)
-    res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum, Eq)
+    Eq = make_certifying_Eq(chan, my_hostsigkey, hostverkeys, result)
+    res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum)
     if res is False:
         return False
-    shares_sum, shared_pubkey, signer_pubkeys = res
+    eta, shares_sum, shared_pubkey, signer_pubkeys = res
+    await Eq(eta)
     transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
-
-def recpedpop_coordinate(t: int, n: int) -> Tuple[VSSCommitmentSum, List[Scalar]]:
-    vss_commitments = []
-    enc_shares_sum = [0]*n
-    for i in range(n):
-        vss_commitment, enc_shares = chan_receive_from(i)
-        vss_commitments += [vss_commitment]
-        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
-    return vss_commitments_sum, enc_shares_sum
-
-    chan_send_all((vss_commitments_sum, enc_shares_sum))
 ```
 
 #### Certifying equality check protocol based on Goldwasser-Lindell Echo Broadcast
@@ -456,20 +448,21 @@ def verify_cert(hostverkeys: List[bytes], x: Any, sigs: List[bytes]) -> bool:
     n = len(hostverkeys)
     if len(sigs) != n:
         return False
-    is_valid = [verify_sig(hostverkeys[i], x, sigs[i]) for i in range(n)]
+    is_valid = [verify_sig(bytes_from_int(len(x)), hostverkeys[i], sigs[i]) for i in range(n)]
     return all(is_valid)
 
-def make_certifying_Eq(my_hostsigkey: bytes, hostverkeys: List[bytes], result: Dict[str, List[bytes]]) -> Callable[[Any],bool]:
+# TODO: actually compare x instead of len(x), need to use type bytes for x instead of Any
+def make_certifying_Eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], result: Dict[str, List[bytes]]) -> EqualityCheck:
     n = len(hostverkeys)
-    def certifying_Eq(x: Any) -> bool:
+    async def certifying_Eq(x: Any) -> bool:
         # TODO: fix aux_rand
-        chan_send(("SIG", sign(my_hostsigkey, x, b'')))
+        chan.send(("SIG", sign(bytes_from_int(len(x)), my_hostsigkey, b'0'*32)))
         sigs = [b''] * len(hostverkeys)
         while(True):
-            i, ty, msg = chan_receive()
+            i, ty, msg = await chan.receive()
             if ty == "SIG":
-                is_valid = verify_sig(hostverkeys[i], x, msg)
-                if sigs[i] is None and is_valid:
+                is_valid = verify_sig(bytes_from_int(len(x)), hostverkeys[i], msg)
+                if sigs[i] == b'' and is_valid:
                     sigs[i] = msg
                 elif not is_valid:
                     # The signer `hpk` is either malicious or an honest signer
@@ -483,27 +476,44 @@ def make_certifying_Eq(my_hostsigkey: bytes, hostverkeys: List[bytes], result: D
                 if sigs.count(b'') == 0:
                     cert = sigs
                     result["cert"] = cert
-                    for i in range(n):
-                        chan_send(("CERT", cert))
+                    chan.send(("CERT", cert))
                     return True
             if ty == "CERT":
                 sigs = msg
                 if verify_cert(hostverkeys, x, sigs):
                     result["cert"] = cert
-                    for i in range(n):
-                        chan_send(("CERT", cert))
+                    chan.send(("CERT", cert))
                     return True
     return certifying_Eq
-
-def certifying_Eq_coordinate(n: int) -> None:
-    while(True):
-        for i in range(n):
-            ty, msg = chan_receive_from(i)
-            chan_send_all((i, ty, msg))
 ```
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning True.
 It may still be helpful to check with other participants out-of-band that they have all arrived at the True state. (TODO explain)
+
+#### Coordinator
+
+```python
+async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> None:
+    enckeys = []
+    for i in range(n):
+        enckeys += [await chans.receive_from(i)]
+    chans.send_all(enckeys)
+    vss_commitments = []
+    enc_shares_sum = [0]*n
+    for i in range(n):
+        vss_commitment, enc_shares = await chans.receive_from(i)
+        vss_commitments += [vss_commitment]
+        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
+    vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
+    chans.send_all((vss_commitments_sum, enc_shares_sum))
+    while(True):
+        for i in range(n):
+            ty, msg = await chans.receive_from(i)
+            chans.send_all((i, ty, msg))
+            # TODO: make more robust against malicious participants
+            if ty == "CERT":
+                return
+```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)
 

@@ -83,6 +83,14 @@ def has_even_y(P: Point) -> bool:
     assert not is_infinite(P)
     return y(P) % 2 == 0
 
+def pubkey_gen(seckey: bytes) -> bytes:
+    d0 = int_from_bytes(seckey)
+    if not (1 <= d0 <= n - 1):
+        raise ValueError('The secret key must be an integer in the range 1..n-1.')
+    P = point_mul(G, d0)
+    assert P is not None
+    return bytes_from_point(P)
+
 def schnorr_sign(msg: bytes, seckey: bytes, aux_rand: bytes) -> bytes:
     d0 = int_from_bytes(seckey)
     if not (1 <= d0 <= n - 1):
