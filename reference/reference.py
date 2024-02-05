@@ -101,11 +101,10 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
     state = (t, n, my_idx)
     return state, my_vss_commitment, my_generated_shares
 
-DKGOutput = Union[Tuple[Any, Scalar, Optional[Point], List[Optional[Point]]], Literal[False]]
+DKGOutput = Tuple[Any, Tuple[Scalar, Optional[Point], List[Optional[Point]]]]
 
 def simplpedpop_finalize(state: SimplPedPopR1State,
-                         vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar,
-                         eta: Any = []) \
+                         vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar) \
                          -> DKGOutput:
     """
     Take the messages received from the participants and finalize the DKG
@@ -129,13 +128,13 @@ def simplpedpop_finalize(state: SimplPedPopR1State,
             pk_i = bytes_from_point(P_i)
             if not verify_sig(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
-    eta += [vss_commitments_sum]
+    eta = [vss_commitments_sum]
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
     if not vss_verify(my_idx, shares_sum, vss_commitments_sum_coeffs):
-        return False
+        raise VSSVerifyError()
     shared_pubkey, signer_pubkeys = derive_group_info(vss_commitments_sum_coeffs, n, t)
-    return eta, shares_sum, shared_pubkey, signer_pubkeys
+    return eta, (shares_sum, shared_pubkey, signer_pubkeys)
 
 def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     x = int_from_bytes(deckey)
@@ -178,7 +177,7 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
     state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
     return state2, vss_commitment, enc_shares
 
-def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar, eta: Any = []) -> DKGOutput:
+def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> DKGOutput:
     t, my_deckey, my_enckey, enckeys, simpl_state = state2
     n = len(enckeys)
 
@@ -189,8 +188,9 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
     ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
+    eta, dkg_output = simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum)
     eta += enckeys
-    return simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum, eta)
+    return eta, dkg_output
 
 def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostsigkey = kdf(seed, "hostsigkey")
@@ -237,9 +237,10 @@ def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_su
     # shares, which in turn ensures that they have the right transcript.
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
-    eta = [setup_id, all_enc_shares_sum]
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
-    return encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum, eta)
+    eta, dkg_output = encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum)
+    eta += [setup_id, all_enc_shares_sum]
+    return eta, dkg_output
 
 EqualityCheck = Callable[[Any], Coroutine[Any, Any, bool]]
 
@@ -254,10 +255,12 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setu
 
     result: Dict[str, List[bytes]] = {}
     Eq = make_certifying_Eq(chan, my_hostsigkey, hostverkeys, result)
-    res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum)
-    if res is False:
+    try:
+        res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum)
+    except Exception as e:
+        print(e)
         return False
-    eta, shares_sum, shared_pubkey, signer_pubkeys = res
+    eta, (shares_sum, shared_pubkey, signer_pubkeys) = res
     await Eq(eta)
     transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
     return shares_sum, shared_pubkey, signer_pubkeys, transcript

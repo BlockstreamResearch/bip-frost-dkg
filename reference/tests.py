@@ -157,13 +157,11 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
         assert(len(etas) == n)
         for i in range(1, n):
             assert(etas[0] == etas[i])
-        cur = 1
-    else:
-        cur = 0
+        dkg_outputs = [out[1] for out in dkg_outputs]
 
-    shares = [out[cur] for out in dkg_outputs]
-    shared_pubkeys = [out[cur + 1] for out in dkg_outputs]
-    signer_pubkeys = [out[cur + 2] for out in dkg_outputs]
+    shares = [out[0] for out in dkg_outputs]
+    shared_pubkeys = [out[1] for out in dkg_outputs]
+    signer_pubkeys = [out[2] for out in dkg_outputs]
 
     # Check that the shared pubkey and signer_pubkeys are the same for all
     # participants

@@ -3,6 +3,10 @@ class InvalidContributionError(Exception):
         self.signer = signer
         self.contrib = error
 
+class VSSVerifyError(Exception):
+    def __init__(self):
+        pass
+
 class DuplicateEnckeysError(Exception):
     def __init__(self):
         pass
