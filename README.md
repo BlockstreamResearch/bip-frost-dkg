@@ -142,6 +142,9 @@ VSSCommitment = List[Optional[Point]]
 
 VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
 
+def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSum)-> bytes:
+    return b''.join([cbytes_ext(P) for P in vss_commitment_sum[0]]) + b''.join(vss_commitment_sum[1])
+
 # Returns commitments to the coefficients of f
 def vss_commit(f: Polynomial) -> VSSCommitment:
     vss_commitment = []
@@ -220,7 +223,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
     state = (t, n, my_idx)
     return state, my_vss_commitment, my_generated_shares
 
-DKGOutput = Tuple[Any, Tuple[Scalar, Optional[Point], List[Optional[Point]]]]
+DKGOutput = Tuple[bytes, Tuple[Scalar, Optional[Point], List[Optional[Point]]]]
 
 def simplpedpop_finalize(state: SimplPedPopR1State,
                          vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar) \
@@ -247,7 +250,8 @@ def simplpedpop_finalize(state: SimplPedPopR1State,
             pk_i = bytes_from_point(P_i)
             if not verify_sig(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
-    eta = [vss_commitments_sum]
+    # TODO: also add t, n to eta?
+    eta = serialize_vss_commitment_sum(vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
     if not vss_verify(my_idx, shares_sum, vss_commitments_sum_coeffs):
@@ -327,7 +331,7 @@ def encpedpop_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitm
     ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
     eta, dkg_output = simplpedpop_finalize(simpl_state, vss_commitments_sum, shares_sum)
-    eta += enckeys
+    eta += b''.join(enckeys)
     return eta, dkg_output
 ```
 
@@ -411,12 +415,12 @@ def recpedpop_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_su
     # participate in Eq?
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
     eta, dkg_output = encpedpop_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum)
-    eta += [setup_id, all_enc_shares_sum]
+    eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
     return eta, dkg_output
 ```
 
 ```python
-EqualityCheck = Callable[[Any], Coroutine[Any, Any, bool]]
+EqualityCheck = Callable[[bytes], Coroutine[Any, Any, bool]]
 
 async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setup: Setup):
     state1, my_enckey = recpedpop_round1(seed, setup)
@@ -432,7 +436,7 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setu
     try:
         res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum)
     except Exception as e:
-        print(e)
+        print("Exception", repr(e))
         return False
     eta, (shares_sum, shared_pubkey, signer_pubkeys) = res
     await Eq(eta)
@@ -447,27 +451,27 @@ TODO The hpk should be the id here... clean this up and write something about se
 The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
-def verify_cert(hostverkeys: List[bytes], x: Any, sigs: List[bytes]) -> bool:
+def verify_cert(hostverkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
     n = len(hostverkeys)
     if len(sigs) != n:
         return False
-    is_valid = [verify_sig(bytes_from_int(len(x)), hostverkeys[i], sigs[i]) for i in range(n)]
+    is_valid = [verify_sig(x, hostverkeys[i], sigs[i]) for i in range(n)]
     return all(is_valid)
 
-# TODO: actually compare x instead of len(x), need to use type bytes for x instead of Any
 def make_certifying_Eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], result: Dict[str, List[bytes]]) -> EqualityCheck:
     n = len(hostverkeys)
-    async def certifying_Eq(x: Any) -> bool:
+    async def certifying_Eq(x: bytes) -> bool:
         # TODO: fix aux_rand
-        chan.send(("SIG", sign(bytes_from_int(len(x)), my_hostsigkey, b'0'*32)))
+        chan.send(("SIG", sign(x, my_hostsigkey, b'0'*32)))
         sigs = [b''] * len(hostverkeys)
         while(True):
             i, ty, msg = await chan.receive()
             if ty == "SIG":
-                is_valid = verify_sig(bytes_from_int(len(x)), hostverkeys[i], msg)
+                is_valid = verify_sig(x, hostverkeys[i], msg)
                 if sigs[i] == b'' and is_valid:
                     sigs[i] = msg
                 elif not is_valid:
+                    print("sig not valid for x", x)
                     # The signer `hpk` is either malicious or an honest signer
                     # whose input is not equal to `x`. This means that there is
                     # some malicious signer or that some messages have been
@@ -506,7 +510,7 @@ async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> No
     for i in range(n):
         vss_commitment, enc_shares = await chans.receive_from(i)
         vss_commitments += [vss_commitment]
-        enc_shares_sum = [ enc_shares_sum[j] + enc_shares[j] for j in range(n) ]
+        enc_shares_sum = [ (enc_shares_sum[j] + enc_shares[j]) % GROUP_ORDER for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments, t)
     chans.send_all((vss_commitments_sum, enc_shares_sum))
     while(True):

@@ -142,6 +142,12 @@ def cbytes(P: Point) -> bytes:
     a = b'\x02' if has_even_y(P) else b'\x03'
     return a + xbytes(P)
 
+def cbytes_ext(P: Optional[Point]) -> bytes:
+    if is_infinite(P):
+        return (0).to_bytes(33, byteorder='big')
+    assert P is not None
+    return cbytes(P)
+
 def point_negate(P: Optional[Point]) -> Optional[Point]:
     if P is None:
         return P
