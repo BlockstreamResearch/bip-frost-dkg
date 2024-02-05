@@ -10,12 +10,12 @@ cat <<EOF > reference.py
 
 from crypto_bip340 import n as GROUP_ORDER, Point, G, point_mul, schnorr_sign, schnorr_verify, tagged_hash, pubkey_gen, int_from_bytes, bytes_from_int
 from crypto_extra import pubkey_gen_plain, point_add_multi, scalar_add_multi, cpoint, xbytes, cbytes, cbytes_ext
-from typing import Tuple, List, Optional, Callable, Any, Union, Dict, Literal, Coroutine
+from typing import Tuple, List, Optional, Callable, Any, Union, Dict, Coroutine
 from network import SignerChannel, CoordinatorChannels
 from util import *
 EOF
 
-awk '/### Notation/,/#### Backup and Recovery/ {
+awk '/### Notation/,/## Background on Equality Check Protocols/ {
     if ($0 ~ /^```python$/) {
         in_python_block = 1;
         print "";

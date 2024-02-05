@@ -94,7 +94,7 @@ def simulate_recpedpop_full(seeds, t):
         return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())
-    return outputs[1:]
+    return [[out[0][0], out[0][1], out[0][2], out[1]] for out in outputs[1:]]
 
 # Adapted from BIP 324
 def scalar_inv(a: int):
@@ -179,6 +179,14 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     # recover the shared pubkey
     recovered_secret = recover_secret(list(range(1, t+1)), shares[0:t])
     assert(point_mul(G, recovered_secret) == shared_pubkey)
+
+    # test correctness of recpedpop_recover
+    if len (dkg_outputs[0]) > 3:
+        for i in range(n):
+            (shares_sum_, shared_pubkey_, signer_pubkeys_), _ = recpedpop_recover(seeds[i], dkg_outputs[i][3])
+            assert(shares_sum_ == shares[i])
+            assert(shared_pubkey_ == shared_pubkeys[i])
+            assert(signer_pubkeys_ == signer_pubkeys[i])
 
 test_vss_correctness()
 test_recover_secret()
