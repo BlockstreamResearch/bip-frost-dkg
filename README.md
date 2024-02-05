@@ -94,7 +94,6 @@ We assume the participants agree on an assignment of indices `0` to `n-1` to par
 * The function `chan_send(m)` sends message `m` to the coordinator.
 * The function `chan_receive()` returns the message received by the coordinator.
 * The function `chan_receive_from(i)` returns the message received by participant `i`.
-* The function `chan_send_to(i, m)` sends message `m` to participant `i`.
 * The function `chan_send_all(m)` sends message `m` to all participants.
 * The function `point_add_multi(points)` performs the group operation on the given points and returns the result.
 * The function `scalar_add_multi(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
