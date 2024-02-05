@@ -431,16 +431,14 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setu
     chan.send((my_vss_commitment, my_generated_enc_shares))
     vss_commitments_sum, enc_shares_sum = await chan.receive()
 
-    result: Dict[str, List[bytes]] = {}
-    Eq = make_certifying_Eq(chan, my_hostsigkey, hostverkeys, result)
     try:
         res = recpedpop_finalize(seed, state2, vss_commitments_sum, enc_shares_sum)
     except Exception as e:
         print("Exception", repr(e))
         return False
     eta, (shares_sum, shared_pubkey, signer_pubkeys) = res
-    await Eq(eta)
-    transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, result["cert"])
+    cert = await certifying_eq(chan, my_hostsigkey, hostverkeys, eta)
+    transcript = (setup, enckeys, vss_commitments_sum, enc_shares_sum, cert)
     return shares_sum, shared_pubkey, signer_pubkeys, transcript
 ```
 
@@ -458,40 +456,36 @@ def verify_cert(hostverkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
     is_valid = [verify_sig(x, hostverkeys[i], sigs[i]) for i in range(n)]
     return all(is_valid)
 
-def make_certifying_Eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], result: Dict[str, List[bytes]]) -> EqualityCheck:
+async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], x: bytes) -> List[bytes]:
     n = len(hostverkeys)
-    async def certifying_Eq(x: bytes) -> bool:
-        # TODO: fix aux_rand
-        chan.send(("SIG", sign(x, my_hostsigkey, b'0'*32)))
-        sigs = [b''] * len(hostverkeys)
-        while(True):
-            i, ty, msg = await chan.receive()
-            if ty == "SIG":
-                is_valid = verify_sig(x, hostverkeys[i], msg)
-                if sigs[i] == b'' and is_valid:
-                    sigs[i] = msg
-                elif not is_valid:
-                    print("sig not valid for x", x)
-                    # The signer `hpk` is either malicious or an honest signer
-                    # whose input is not equal to `x`. This means that there is
-                    # some malicious signer or that some messages have been
-                    # tampered with on the wire. We must not abort, and we could
-                    # still output True when receiving a cert later, but we
-                    # should indicate to the user (logs?) that something went
-                    # wrong.)
-                    pass
-                if sigs.count(b'') == 0:
-                    cert = sigs
-                    result["cert"] = cert
-                    chan.send(("CERT", cert))
-                    return True
-            if ty == "CERT":
-                sigs = msg
-                if verify_cert(hostverkeys, x, sigs):
-                    result["cert"] = cert
-                    chan.send(("CERT", cert))
-                    return True
-    return certifying_Eq
+    # TODO: fix aux_rand
+    chan.send(("SIG", sign(x, my_hostsigkey, b'0'*32)))
+    sigs = [b''] * len(hostverkeys)
+    while(True):
+        i, ty, msg = await chan.receive()
+        if ty == "SIG":
+            is_valid = verify_sig(x, hostverkeys[i], msg)
+            if sigs[i] == b'' and is_valid:
+                sigs[i] = msg
+            elif not is_valid:
+                print("sig not valid for x", x)
+                # The signer `hpk` is either malicious or an honest signer
+                # whose input is not equal to `x`. This means that there is
+                # some malicious signer or that some messages have been
+                # tampered with on the wire. We must not abort, and we could
+                # still output True when receiving a cert later, but we
+                # should indicate to the user (logs?) that something went
+                # wrong.)
+                pass
+            if sigs.count(b'') == 0:
+                cert = sigs
+                chan.send(("CERT", cert))
+                return cert
+        if ty == "CERT":
+            sigs = msg
+            if verify_cert(hostverkeys, x, sigs):
+                chan.send(("CERT", cert))
+                return cert
 ```
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning True.
