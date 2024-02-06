@@ -333,7 +333,7 @@ def encpedpop_round1(seed: bytes) -> Tuple[EncPedPopR1State, bytes]:
 The (public) encryption keys are distributed among the participants.
 
 ```python
-EncPedPopR2State = Tuple[int, bytes, bytes, List[bytes], SimplPedPopR1State]
+EncPedPopR2State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
 def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, VSSCommitmentExt, List[Scalar]]:
     assert(n == len(enckeys))
@@ -352,11 +352,11 @@ def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enck
         raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(seed_, t, n, my_idx)
     enc_gen_shares = [encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
-    state2 = (t, my_deckey, my_enckey, enckeys, simpl_state)
+    state2 = (t, my_deckey, enckeys, simpl_state)
     return state2, vss_commitment_ext, enc_gen_shares
 
 def encpedpop_pre_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
-    t, my_deckey, _, enckeys, simpl_state = state2
+    t, my_deckey, enckeys, simpl_state = state2
     n = len(enckeys)
 
     assert(len(vss_commitments_sum) == 2)
@@ -414,7 +414,7 @@ The participants compare the setup identifier with every other participant out-o
 If some other participant presents a different setup identifier, the participant aborts.
 
 ```python
-RecPedPopR1State = Tuple[List[bytes], int, bytes, EncPedPopR1State, bytes]
+RecPedPopR1State = Tuple[int, int, bytes, EncPedPopR1State, bytes]
 
 def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, bytes]:
     hostverkeys, t, setup_id = setup
@@ -422,23 +422,23 @@ def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, bytes
     # Derive setup-dependent seed
     seed_ = kdf(seed, "setup", setup_id)
 
+    n = len(hostverkeys)
     enc_state1, my_enckey =  encpedpop_round1(seed_)
-    state1 = (hostverkeys, t, setup_id, enc_state1, my_enckey)
+    state1 = (t, n, setup_id, enc_state1, my_enckey)
     return state1, my_enckey
 ```
 
 ```python
 RecPedPopR2State = Tuple[bytes, int, EncPedPopR2State]
 
-def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, List[bytes], VSSCommitmentExt, List[Scalar]]:
-    hostverkeys, t, setup_id, enc_state1, my_enckey = state1
+def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, VSSCommitmentExt, List[Scalar]]:
+    t, n, setup_id, enc_state1, my_enckey = state1
 
     seed_ = kdf(seed, "setup", setup_id)
-    n = len(hostverkeys)
     enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
     my_idx = enckeys.index(my_enckey)
     state2 = (setup_id, my_idx, enc_state2)
-    return state2, hostverkeys, vss_commitment_ext, enc_gen_shares
+    return state2, vss_commitment_ext, enc_gen_shares
 ```
 
 ```python
@@ -460,11 +460,12 @@ def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitment
 EqualityCheck = Callable[[bytes], Coroutine[Any, Any, bool]]
 
 async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], bool]:
+    (hostverkeys, _, _) = setup
     state1, my_enckey = recpedpop_round1(seed, setup)
     chan.send(my_enckey)
     enckeys = await chan.receive()
 
-    state2, hostverkeys, vss_commitment_ext, enc_gen_shares =  recpedpop_round2(seed, state1, enckeys)
+    state2, vss_commitment_ext, enc_gen_shares =  recpedpop_round2(seed, state1, enckeys)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
@@ -573,7 +574,7 @@ def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Se
         return False
 
     state1, _ = recpedpop_round1(seed, setup)
-    state2, _, _, _ = recpedpop_round2(seed, state1, enckeys)
+    state2, _, _ = recpedpop_round2(seed, state1, enckeys)
 
     eta, (shares_sum, shared_pubkey, signer_pubkeys) = recpedpop_pre_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum)
     if not verify_cert(hostverkeys, eta, cert):

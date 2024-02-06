@@ -69,12 +69,12 @@ def simulate_recpedpop(seeds, t):
         round2_outputs += [recpedpop_round2(seeds[i], state1s[i], enckeys)]
 
     state2s = [out[0] for out in round2_outputs]
-    vss_commitments_ext = [out[2] for out in round2_outputs]
+    vss_commitments_ext = [out[1] for out in round2_outputs]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     dkg_outputs = []
     all_enc_shares_sum = []
     for i in range(n):
-        all_enc_shares_sum += [scalar_add_multi([out[3][i] for out in round2_outputs])]
+        all_enc_shares_sum += [scalar_add_multi([out[2][i] for out in round2_outputs])]
     for i in range(n):
         dkg_outputs += [recpedpop_pre_finalize(seeds[i], state2s[i], vss_commitments_sum, all_enc_shares_sum)]
     return dkg_outputs
