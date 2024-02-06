@@ -87,9 +87,44 @@ As a consequence of these design goals, ChillDKG inherit the following limitatio
 
 ## Preliminaries
 
+### Protocol Setup
+
+There are `n >= 2` *signers*, `t` of which will be required to produce a signature.
+Each signer has a point-to-point communication link to the *aggregator*
+(but signers do not have direct communication links to each other).
+
+If there is no dedicated aggregator, one of the signers can act as the aggregator.
+(TODO This is like in MuSig, but we explained this differently in BIP327 where we say that the aggregator is optional...)
+
+### Threat Model and Security Goals
+
+Some signers, the aggregator and all network links may be malicious, i.e., controlled by an attacker.
+We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.
+(See TODO for a more formal treatment.)
+
+If a run of the DKG protocol returns an output to an (honest) signer,
+then we say that this signer *deems the protocol run successful*.
+In that case, the output returned by the protocol run to the signer is a tuple consisting of a *secret share* (individual to the signer), the *shared public key* (common to all signers), a list of n *individual public keys* for partial signature verification (common to all signers), and a *success certificate* (common to all signers).
+
+If a signer deems a protocol run successful, then this signer is assured that:
+ - A coalition of a malicious aggregator and at most `t - 1` malicious signers cannot forge signatures under that shared public key. (Unforgeability)
+ - All (honest) signers who deem the protocol run successful will have correct and consistent protocol outputs.
+   In particular, they agree on the shared public key, the list of individual public keys and the success certificate.
+   Moreover, any `t` of them have secret shares which are, in principle, sufficient to reconstruct the secret key corresponding to the shared public key.
+   This means that any `t` of have all the necessary inputs to run a successful FROST signing sessions that produce signatures valid under the shared public key.
+ - The success certificate will, when presented to any other (honest) signer, convince that other signer to deem the protocol successful.
+
+We stress that the mere fact one signer deems a protocol run successful does not imply that other signers deem it successful yet.
+That is exactly why the success certificate is necessary:
+If some signers have deemed the protocol not successful, but others have not (yet) and thus are stuck in the protocol run,
+e.g., due to failing network links or invalid messages sent by malicious signers,
+the successful signers can eventually make the stuck signers unstuck
+by presenting them a success certificate.
+The success certificate can, e.g., be attached to a request to initiate a FROST signing session.
+
 ### Notation
 
-We assume the participants agree on an assignment of indices `0` to `n-1` to participants. TODO: mention that there's also a coordinator, which may be a participant
+We assume the participants agree on an assignment of indices `0` to `n-1` to participants.
 
 * The function `chan_send(m)` sends message `m` to the coordinator.
 * The function `chan_receive()` returns the message received by the coordinator.
