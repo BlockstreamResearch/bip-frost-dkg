@@ -153,31 +153,18 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 
-EncPedPopR1State = Tuple[bytes, bytes]
-
-def encpedpop_round1(seed: bytes) -> Tuple[EncPedPopR1State, bytes]:
-    my_deckey = kdf(seed, "deckey")
-    my_enckey = pubkey_gen_plain(my_deckey)
-    state1 = (my_deckey, my_enckey)
-    return state1, my_enckey
-
 EncPedPopR2State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
-def encpedpop_round2(seed: bytes, state1: EncPedPopR1State, t: int, n: int, enckeys: List[bytes]) -> Tuple[EncPedPopR2State, VSSCommitmentExt, List[Scalar]]:
+def encpedpop_round2(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int) -> Tuple[EncPedPopR2State, VSSCommitmentExt, List[Scalar]]:
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
         raise DuplicateEnckeysError
 
-    my_deckey, my_enckey = state1
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
     assert(t < 2**(4*8))
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
     seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
-    try:
-        my_idx = enckeys.index(my_enckey)
-    except ValueError:
-        raise BadCoordinatorError("Coordinator sent list of encryption keys that does not contain our key.")
     simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(seed_, t, n, my_idx)
     enc_gen_shares = [encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
     state2 = (t, my_deckey, enckeys, simpl_state)
@@ -201,7 +188,7 @@ def encpedpop_pre_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCom
 def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostsigkey = kdf(seed, "hostsigkey")
     # TODO: rename to distinguish plain and xonly key gen
-    my_hostverkey = pubkey_gen(my_hostsigkey)
+    my_hostverkey = pubkey_gen_plain(my_hostsigkey)
     return (my_hostsigkey, my_hostverkey)
 
 Setup = Tuple[List[bytes], int, bytes]
@@ -212,27 +199,16 @@ def recpedpop_setup_id(hostverkeys: List[bytes], t: int, context_string: bytes) 
     setup = (hostverkeys, t, setup_id)
     return setup, setup_id
 
-RecPedPopR1State = Tuple[int, int, bytes, EncPedPopR1State, bytes]
-
-def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, bytes]:
-    hostverkeys, t, setup_id = setup
-
-    # Derive setup-dependent seed
-    seed_ = kdf(seed, "setup", setup_id)
-
-    n = len(hostverkeys)
-    enc_state1, my_enckey =  encpedpop_round1(seed_)
-    state1 = (t, n, setup_id, enc_state1, my_enckey)
-    return state1, my_enckey
-
 RecPedPopR2State = Tuple[bytes, int, EncPedPopR2State]
 
-def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, enckeys: List[bytes]) -> Tuple[RecPedPopR2State, VSSCommitmentExt, List[Scalar]]:
-    t, n, setup_id, enc_state1, my_enckey = state1
+def recpedpop_round2(seed: bytes, setup: Setup) -> Tuple[RecPedPopR2State, VSSCommitmentExt, List[Scalar]]:
+    my_hostsigkey, my_hostverkey = recpedpop_hostpubkey(seed)
+    (hostverkeys, t, setup_id) = setup
+    n = len(hostverkeys)
 
     seed_ = kdf(seed, "setup", setup_id)
-    enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round2(seed_, enc_state1, t, n, enckeys)
-    my_idx = enckeys.index(my_enckey)
+    my_idx = hostverkeys.index(my_hostverkey)
+    enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round2(seed_, t, n, my_hostsigkey, hostverkeys, my_idx)
     state2 = (setup_id, my_idx, enc_state2)
     return state2, vss_commitment_ext, enc_gen_shares
 
@@ -253,11 +229,8 @@ EqualityCheck = Callable[[bytes], Coroutine[Any, Any, bool]]
 
 async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], bool]:
     (hostverkeys, _, _) = setup
-    state1, my_enckey = recpedpop_round1(seed, setup)
-    chan.send(my_enckey)
-    enckeys = await chan.receive()
 
-    state2, vss_commitment_ext, enc_gen_shares =  recpedpop_round2(seed, state1, enckeys)
+    state2, vss_commitment_ext, enc_gen_shares =  recpedpop_round2(seed, setup)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
@@ -267,14 +240,14 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setu
         print("Exception", repr(e))
         return False
     cert = await certifying_eq(chan, my_hostsigkey, hostverkeys, eta)
-    transcript = (setup, enckeys, vss_commitments_sum, all_enc_shares_sum, cert)
+    transcript = (setup, vss_commitments_sum, all_enc_shares_sum, cert)
     return (shares_sum, shared_pubkey, signer_pubkeys), transcript
 
 def verify_cert(hostverkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
     n = len(hostverkeys)
     if len(sigs) != n:
         return False
-    is_valid = [schnorr_verify(x, hostverkeys[i], sigs[i]) for i in range(n)]
+    is_valid = [schnorr_verify(x, hostverkeys[i][1:33], sigs[i]) for i in range(n)]
     return all(is_valid)
 
 async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], x: bytes) -> List[bytes]:
@@ -285,11 +258,12 @@ async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: 
     while(True):
         i, ty, msg = await chan.receive()
         if ty == "SIG":
-            is_valid = schnorr_verify(x, hostverkeys[i], msg)
+            # TODO: We're just slicing into a hostverkey to get a 32 byte BIP 340
+            # pubkey. This makes signatures sort of malleable. Is this ok?
+            is_valid = schnorr_verify(x, hostverkeys[i][1:33], msg)
             if sigs[i] == b'' and is_valid:
                 sigs[i] = msg
             elif not is_valid:
-                print("sig not valid for x", x)
                 # The signer `hpk` is either malicious or an honest signer
                 # whose input is not equal to `x`. This means that there is
                 # some malicious signer or that some messages have been
@@ -309,10 +283,6 @@ async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: 
                 return cert
 
 async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> None:
-    enckeys = []
-    for i in range(n):
-        enckeys += [await chans.receive_from(i)]
-    chans.send_all(enckeys)
     vss_commitments_ext = []
     all_enc_shares_sum = [0]*n
     for i in range(n):
@@ -332,13 +302,12 @@ async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> No
 # Recovery requires the seed and the public transcript
 def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], bool]:
     _, my_hostverkey = recpedpop_hostpubkey(seed)
-    setup, enckeys, vss_commitments_sum, all_enc_shares_sum, cert = transcript
+    setup, vss_commitments_sum, all_enc_shares_sum, cert = transcript
     hostverkeys, _, _ = setup
     if not my_hostverkey in hostverkeys:
         return False
 
-    state1, _ = recpedpop_round1(seed, setup)
-    state2, _, _ = recpedpop_round2(seed, state1, enckeys)
+    state2, _, _ = recpedpop_round2(seed, setup)
 
     eta, (shares_sum, shared_pubkey, signer_pubkeys) = recpedpop_pre_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum)
     if not verify_cert(hostverkeys, eta, cert):
