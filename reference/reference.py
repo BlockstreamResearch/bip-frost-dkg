@@ -182,6 +182,8 @@ def encpedpop_pre_finalize(state2: EncPedPopR1State, vss_commitments_sum: VSSCom
     ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
     eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
+    # TODO: for recpedpop this is unnecessary because the hostpubkeys are already
+    # included in eta via setup_id.
     eta += b''.join(enckeys)
     return eta, dkg_output
 
