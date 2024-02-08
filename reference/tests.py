@@ -59,7 +59,7 @@ def simulate_recpedpop(seeds, t):
 
     hostkeys = []
     for i in range(n):
-        hostkeys += [recpedpop_hostpubkey(seeds[i])]
+        hostkeys += [recpedpop_hostkey_gen(seeds[i])]
 
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     setup, _ = recpedpop_setup_id(hostpubkeys, t, b'')
@@ -83,7 +83,7 @@ def simulate_recpedpop_full(seeds, t):
     n = len(seeds)
     hostkeys = []
     for i in range(n):
-        hostkeys += [recpedpop_hostpubkey(seeds[i])]
+        hostkeys += [recpedpop_hostkey_gen(seeds[i])]
 
     setup = recpedpop_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')[0]
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]

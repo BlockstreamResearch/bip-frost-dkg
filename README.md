@@ -377,7 +377,7 @@ TODO: consider mentioning ROAST
 Generate long-term host keys.
 
 ```python
-def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
+def recpedpop_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostseckey = kdf(seed, "hostseckey")
     # TODO: rename to distinguish plain and xonly key gen
     my_hostpubkey = pubkey_gen_plain(my_hostseckey)
@@ -404,7 +404,7 @@ If some other participant presents a different setup identifier, the participant
 RecPedPopR1State = Tuple[bytes, int, EncPedPopR1State]
 
 def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, VSSCommitmentExt, List[Scalar]]:
-    my_hostseckey, my_hostpubkey = recpedpop_hostpubkey(seed)
+    my_hostseckey, my_hostpubkey = recpedpop_hostkey_gen(seed)
     (hostpubkeys, t, setup_id) = setup
     n = len(hostpubkeys)
 
@@ -520,7 +520,7 @@ On the other hand, DKG transcripts are public and allow to re-run above ChillDKG
 ```python
 # Recovery requires the seed and the public transcript
 def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], bool]:
-    _, my_hostpubkey = recpedpop_hostpubkey(seed)
+    _, my_hostpubkey = recpedpop_hostkey_gen(seed)
     setup, vss_commitments_sum, all_enc_shares_sum, cert = transcript
     hostpubkeys, _, _ = setup
     if not my_hostpubkey in hostpubkeys:
