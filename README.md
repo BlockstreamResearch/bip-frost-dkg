@@ -455,44 +455,34 @@ TODO The hpk should be the id here... clean this up and write something about se
 The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
-def verify_cert(hostpubkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
+def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     n = len(hostpubkeys)
-    if len(sigs) != n:
+    if len(cert) != 64*n:
         return False
-    is_valid = [schnorr_verify(x, hostpubkeys[i][1:33], sigs[i]) for i in range(n)]
+    is_valid = [schnorr_verify(x, hostpubkeys[i][1:33], cert[i*64:(i+1)*64]) for i in range(n)]
+    # If a signature is invalid, the signer `hpk` is either malicious or an
+    # honest signer whose input is not equal to `x`. This means that there is
+    # some malicious signer or that some messages have been tampered with on the
+    # wire. We must not abort, and we could still output True when receiving a
+    # cert later, but we should indicate to the user (logs?) that something went
+    # wrong.)
     return all(is_valid)
 
 async def certifying_eq(chan: SignerChannel, my_hostseckey: bytes, hostpubkeys: List[bytes], x: bytes) -> List[bytes]:
-    n = len(hostpubkeys)
     # TODO: fix aux_rand
-    chan.send(("SIG", schnorr_sign(x, my_hostseckey, b'0'*32)))
-    sigs = [b''] * len(hostpubkeys)
+    chan.send(schnorr_sign(x, my_hostseckey, b'0'*32))
     while(True):
-        i, ty, msg = await chan.receive()
-        if ty == "SIG":
-            # TODO: We're just slicing into a hostpubkey to get a 32 byte BIP 340
-            # pubkey. This makes signatures sort of malleable. Is this ok?
-            is_valid = schnorr_verify(x, hostpubkeys[i][1:33], msg)
-            if sigs[i] == b'' and is_valid:
-                sigs[i] = msg
-            elif not is_valid:
-                # The signer `hpk` is either malicious or an honest signer
-                # whose input is not equal to `x`. This means that there is
-                # some malicious signer or that some messages have been
-                # tampered with on the wire. We must not abort, and we could
-                # still output True when receiving a cert later, but we
-                # should indicate to the user (logs?) that something went
-                # wrong.)
-                pass
-            if sigs.count(b'') == 0:
-                cert = sigs
-                chan.send(("CERT", cert))
-                return cert
-        if ty == "CERT":
-            sigs = msg
-            if verify_cert(hostpubkeys, x, sigs):
-                chan.send(("CERT", cert))
-                return cert
+        cert = await chan.receive()
+        if verify_cert(hostpubkeys, x, cert):
+            return cert
+
+async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List[bytes]) -> None:
+    n = len(hostpubkeys)
+    sigs = []
+    for i in range(n):
+        sig = await chans.receive_from(i)
+        sigs += [sig]
+    chans.send_all(b''.join(sigs))
 ```
 
 In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning True.
@@ -501,7 +491,8 @@ It may still be helpful to check with other participants out-of-band that they h
 #### Coordinator
 
 ```python
-async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> None:
+async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: List[bytes]) -> None:
+    n = len(hostpubkeys)
     vss_commitments_ext = []
     all_enc_shares_sum = [0]*n
     for i in range(n):
@@ -510,13 +501,7 @@ async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, n: int) -> No
         all_enc_shares_sum = [ (all_enc_shares_sum[j] + enc_shares[j]) % GROUP_ORDER for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     chans.send_all((vss_commitments_sum, all_enc_shares_sum))
-    while(True):
-        for i in range(n):
-            ty, msg = await chans.receive_from(i)
-            chans.send_all((i, ty, msg))
-            # TODO: make more robust against malicious participants
-            if ty == "CERT":
-                return
+    await certifying_eq_coordinate(chans, hostpubkeys)
 ```
 
 ![recpedpop diagram](images/recpedpop-sequence.png)

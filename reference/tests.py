@@ -86,11 +86,12 @@ def simulate_recpedpop_full(seeds, t):
         hostkeys += [recpedpop_hostpubkey(seeds[i])]
 
     setup = recpedpop_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')[0]
+    hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     async def main():
         coord_chans = CoordinatorChannels(n)
         signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
         coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
-        coroutines = [recpedpop_coordinate(coord_chans, t, n)] + [recpedpop(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
+        coroutines = [recpedpop_coordinate(coord_chans, t, hostpubkeys)] + [recpedpop(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
         return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())
