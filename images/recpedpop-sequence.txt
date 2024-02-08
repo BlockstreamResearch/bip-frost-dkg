@@ -6,22 +6,19 @@ participant Coordinator
 == Setup ==
 
 rnote over Signer: recpedpop_hostpubkey
-Signer->Coordinator : my_hostverkey
-Coordinator->Signer : hostverkeys
+Signer->Coordinator : my_hostpubkey
+Coordinator->Signer : hostpubkeys
 rnote over Signer: recpedpop_setup_id
 note across: Compare setup_id out-of-band
 
 == DKG ==
 
 rnote over Signer: recpedpop_round1
-Signer->Coordinator : my_enckey
-Coordinator->Signer : enckeys
-rnote over Signer: recpedpop_round2
 Signer->Coordinator : my_vss_commitment, my_generated_enc_shares
 Coordinator->Signer : vss_commitments, all_enc_shares
 rnote over Signer: recpedpop_finalize
 group certifying_Eq
-    Signer -> Coordinator : sig(my_hostsigkey, x)
+    Signer -> Coordinator : sig(x, my_hostseckey)
     alt #LightBlue Coordinator has cert
         Coordinator -> Signer : cert
     else #LightYellow Coordinator has no cert yet

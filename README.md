@@ -323,9 +323,9 @@ The participants start by generating an ephemeral key pair as per [BIP 327's Ind
 The (public) encryption keys are distributed among the participants.
 
 ```python
-EncPedPopR2State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
+EncPedPopR1State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
-def encpedpop_round2(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int) -> Tuple[EncPedPopR2State, VSSCommitmentExt, List[Scalar]]:
+def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int) -> Tuple[EncPedPopR1State, VSSCommitmentExt, List[Scalar]]:
     assert(n == len(enckeys))
     if len(enckeys) != len(set(enckeys)):
         raise DuplicateEnckeysError
@@ -340,7 +340,7 @@ def encpedpop_round2(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: Lis
     state2 = (t, my_deckey, enckeys, simpl_state)
     return state2, vss_commitment_ext, enc_gen_shares
 
-def encpedpop_pre_finalize(state2: EncPedPopR2State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
+def encpedpop_pre_finalize(state2: EncPedPopR1State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
     t, my_deckey, enckeys, simpl_state = state2
     n = len(enckeys)
 
@@ -376,10 +376,10 @@ Generate long-term host keys.
 
 ```python
 def recpedpop_hostpubkey(seed: bytes) -> Tuple[bytes, bytes]:
-    my_hostsigkey = kdf(seed, "hostsigkey")
+    my_hostseckey = kdf(seed, "hostseckey")
     # TODO: rename to distinguish plain and xonly key gen
-    my_hostverkey = pubkey_gen_plain(my_hostsigkey)
-    return (my_hostsigkey, my_hostverkey)
+    my_hostpubkey = pubkey_gen_plain(my_hostseckey)
+    return (my_hostseckey, my_hostpubkey)
 ```
 
 The participants send their host pubkey to the other participant and collect received host pubkeys.
@@ -388,10 +388,10 @@ They then compute a setup identifier that includes all participants (including y
 ```python
 Setup = Tuple[List[bytes], int, bytes]
 
-def recpedpop_setup_id(hostverkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
+def recpedpop_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
     assert(t < 2**(4*8))
-    setup_id = tagged_hash("setup id", b''.join(hostverkeys) + t.to_bytes(4, byteorder="big") + context_string)
-    setup = (hostverkeys, t, setup_id)
+    setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string)
+    setup = (hostpubkeys, t, setup_id)
     return setup, setup_id
 ```
 
@@ -399,22 +399,22 @@ The participants compare the setup identifier with every other participant out-o
 If some other participant presents a different setup identifier, the participant aborts.
 
 ```python
-RecPedPopR2State = Tuple[bytes, int, EncPedPopR2State]
+RecPedPopR1State = Tuple[bytes, int, EncPedPopR1State]
 
-def recpedpop_round2(seed: bytes, setup: Setup) -> Tuple[RecPedPopR2State, VSSCommitmentExt, List[Scalar]]:
-    my_hostsigkey, my_hostverkey = recpedpop_hostpubkey(seed)
-    (hostverkeys, t, setup_id) = setup
-    n = len(hostverkeys)
+def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, VSSCommitmentExt, List[Scalar]]:
+    my_hostseckey, my_hostpubkey = recpedpop_hostpubkey(seed)
+    (hostpubkeys, t, setup_id) = setup
+    n = len(hostpubkeys)
 
     seed_ = kdf(seed, "setup", setup_id)
-    my_idx = hostverkeys.index(my_hostverkey)
-    enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round2(seed_, t, n, my_hostsigkey, hostverkeys, my_idx)
+    my_idx = hostpubkeys.index(my_hostpubkey)
+    enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round1(seed_, t, n, my_hostseckey, hostpubkeys, my_idx)
     state2 = (setup_id, my_idx, enc_state2)
     return state2, vss_commitment_ext, enc_gen_shares
 ```
 
 ```python
-def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[bytes, DKGOutput]:
+def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR1State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[bytes, DKGOutput]:
     (setup_id, my_idx, enc_state2) = state2
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
@@ -431,10 +431,10 @@ def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR2State, vss_commitment
 ```python
 EqualityCheck = Callable[[bytes], Coroutine[Any, Any, bool]]
 
-async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], bool]:
-    (hostverkeys, _, _) = setup
+async def recpedpop(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], bool]:
+    (hostpubkeys, _, _) = setup
 
-    state2, vss_commitment_ext, enc_gen_shares =  recpedpop_round2(seed, setup)
+    state2, vss_commitment_ext, enc_gen_shares =  recpedpop_round1(seed, setup)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
@@ -443,7 +443,7 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostsigkey: bytes, setu
     except Exception as e:
         print("Exception", repr(e))
         return False
-    cert = await certifying_eq(chan, my_hostsigkey, hostverkeys, eta)
+    cert = await certifying_eq(chan, my_hostseckey, hostpubkeys, eta)
     transcript = (setup, vss_commitments_sum, all_enc_shares_sum, cert)
     return (shares_sum, shared_pubkey, signer_pubkeys), transcript
 ```
@@ -455,24 +455,24 @@ TODO The hpk should be the id here... clean this up and write something about se
 The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
-def verify_cert(hostverkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
-    n = len(hostverkeys)
+def verify_cert(hostpubkeys: List[bytes], x: bytes, sigs: List[bytes]) -> bool:
+    n = len(hostpubkeys)
     if len(sigs) != n:
         return False
-    is_valid = [schnorr_verify(x, hostverkeys[i][1:33], sigs[i]) for i in range(n)]
+    is_valid = [schnorr_verify(x, hostpubkeys[i][1:33], sigs[i]) for i in range(n)]
     return all(is_valid)
 
-async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: List[bytes], x: bytes) -> List[bytes]:
-    n = len(hostverkeys)
+async def certifying_eq(chan: SignerChannel, my_hostseckey: bytes, hostpubkeys: List[bytes], x: bytes) -> List[bytes]:
+    n = len(hostpubkeys)
     # TODO: fix aux_rand
-    chan.send(("SIG", schnorr_sign(x, my_hostsigkey, b'0'*32)))
-    sigs = [b''] * len(hostverkeys)
+    chan.send(("SIG", schnorr_sign(x, my_hostseckey, b'0'*32)))
+    sigs = [b''] * len(hostpubkeys)
     while(True):
         i, ty, msg = await chan.receive()
         if ty == "SIG":
-            # TODO: We're just slicing into a hostverkey to get a 32 byte BIP 340
+            # TODO: We're just slicing into a hostpubkey to get a 32 byte BIP 340
             # pubkey. This makes signatures sort of malleable. Is this ok?
-            is_valid = schnorr_verify(x, hostverkeys[i][1:33], msg)
+            is_valid = schnorr_verify(x, hostpubkeys[i][1:33], msg)
             if sigs[i] == b'' and is_valid:
                 sigs[i] = msg
             elif not is_valid:
@@ -490,7 +490,7 @@ async def certifying_eq(chan: SignerChannel, my_hostsigkey: bytes, hostverkeys: 
                 return cert
         if ty == "CERT":
             sigs = msg
-            if verify_cert(hostverkeys, x, sigs):
+            if verify_cert(hostpubkeys, x, sigs):
                 chan.send(("CERT", cert))
                 return cert
 ```
@@ -533,16 +533,16 @@ On the other hand, DKG transcripts are public and allow to re-run above ChillDKG
 ```python
 # Recovery requires the seed and the public transcript
 def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], bool]:
-    _, my_hostverkey = recpedpop_hostpubkey(seed)
+    _, my_hostpubkey = recpedpop_hostpubkey(seed)
     setup, vss_commitments_sum, all_enc_shares_sum, cert = transcript
-    hostverkeys, _, _ = setup
-    if not my_hostverkey in hostverkeys:
+    hostpubkeys, _, _ = setup
+    if not my_hostpubkey in hostpubkeys:
         return False
 
-    state2, _, _ = recpedpop_round2(seed, setup)
+    state2, _, _ = recpedpop_round1(seed, setup)
 
     eta, (shares_sum, shared_pubkey, signer_pubkeys) = recpedpop_pre_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum)
-    if not verify_cert(hostverkeys, eta, cert):
+    if not verify_cert(hostpubkeys, eta, cert):
         return False
     return (shares_sum, shared_pubkey, signer_pubkeys), setup
 ```
