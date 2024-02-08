@@ -29,6 +29,11 @@ def simulate_simplpedpop(seeds, t):
         dkg_outputs += [simplpedpop_pre_finalize(round1_outputs[i][0], vss_commitments_sum, shares_sum)]
     return dkg_outputs
 
+def encpedpop_round1(seed: bytes) -> Tuple[bytes, bytes]:
+    my_deckey = kdf(seed, "deckey")
+    my_enckey = pubkey_gen_plain(my_deckey)
+    return my_deckey, my_enckey
+
 def simulate_encpedpop(seeds, t):
     n = len(seeds)
     round1_outputs = []
@@ -39,7 +44,8 @@ def simulate_encpedpop(seeds, t):
 
     enckeys = [out[1] for out in round1_outputs]
     for i in range(n):
-        round2_outputs += [encpedpop_round2(seeds[i], round1_outputs[i][0], t, n, enckeys)]
+        my_deckey = round1_outputs[i][0]
+        round2_outputs += [encpedpop_round2(seeds[i], t, n, my_deckey, enckeys, i)]
 
     vss_commitments_ext = [out[1] for out in round2_outputs]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
@@ -56,17 +62,11 @@ def simulate_recpedpop(seeds, t):
         hostkeys += [recpedpop_hostpubkey(seeds[i])]
 
     hostverkeys = [hostkey[1] for hostkey in hostkeys]
-    setup_id = recpedpop_setup_id(hostverkeys, t, b'')
+    setup, _ = recpedpop_setup_id(hostverkeys, t, b'')
 
-    round1_outputs = []
-    for i in range(n):
-        round1_outputs += [recpedpop_round1(seeds[i], setup_id[0])]
-
-    state1s = [out[0] for out in round1_outputs]
-    enckeys = [out[1] for out in round1_outputs]
     round2_outputs = []
     for i in range(n):
-        round2_outputs += [recpedpop_round2(seeds[i], state1s[i], enckeys)]
+        round2_outputs += [recpedpop_round2(seeds[i], setup)]
 
     state2s = [out[0] for out in round2_outputs]
     vss_commitments_ext = [out[1] for out in round2_outputs]
