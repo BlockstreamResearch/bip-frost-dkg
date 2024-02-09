@@ -157,8 +157,13 @@ Scalar = int
 # f(x) = a[0] + ... + a[t] * x^n
 Polynomial = List[Scalar]
 
-# Evaluates polynomial f at x
+# Evaluates polynomial f at x != 0
 def polynomial_evaluate(f: Polynomial, x: Scalar) -> Scalar:
+   # From a mathematical point of view, there's nothing wrong with evaluating
+   # at position 0. But if we try this in a DKG, we may have a catastrophic
+   # bug, because we'd compute the implicit secret.
+   assert x != 0
+
    value = 0
    # Reverse coefficients to compute evaluation via Horner's method
    for coeff in f[::-1]:
