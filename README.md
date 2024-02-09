@@ -498,11 +498,9 @@ async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List
     for i in range(n):
         sig = await chans.receive_from(i)
         sigs += [sig]
-    chans.send_all(b''.join(sigs))
+    cert = b''.join(sigs)
+    chans.send_all(cert)
 ```
-
-In practice, the certificate can also be attached to signing requests instead of sending it to every participant after returning True.
-It may still be helpful to check with other participants out-of-band that they have all arrived at the True state. (TODO explain)
 
 #### Coordinator
 
