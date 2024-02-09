@@ -7,7 +7,7 @@ class VSSVerifyError(Exception):
     def __init__(self):
         pass
 
-class DuplicateEnckeysError(Exception):
+class DuplicateHostpubkeyError(Exception):
     def __init__(self):
         pass
 

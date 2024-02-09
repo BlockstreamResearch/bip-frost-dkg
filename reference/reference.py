@@ -160,16 +160,16 @@ def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> S
 EncPedPopR1State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
 def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int) -> Tuple[EncPedPopR1State, VSSCommitmentExt, List[Scalar]]:
-    assert(n == len(enckeys))
-    if len(enckeys) != len(set(enckeys)):
-        raise DuplicateEnckeysError
+    assert(t < 2**(4*8))
+    n = len(enckeys)
 
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
-    assert(t < 2**(4*8))
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
     seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
+
     simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(seed_, t, n, my_idx)
+    assert(len(gen_shares) == n)
     enc_gen_shares = [encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
     state2 = (t, my_deckey, enckeys, simpl_state)
     return state2, vss_commitment_ext, enc_gen_shares
@@ -200,6 +200,9 @@ def recpedpop_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
 Setup = Tuple[List[bytes], int, bytes]
 
 def recpedpop_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
+    if len(hostpubkeys) != len(set(hostpubkeys)):
+        raise DuplicateHostpubkeyError
+
     assert(t < 2**(4*8))
     setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string)
     setup = (hostpubkeys, t, setup_id)
@@ -236,7 +239,7 @@ EqualityCheck = Callable[[bytes], Coroutine[Any, Any, bool]]
 async def recpedpop(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], bool]:
     (hostpubkeys, _, _) = setup
 
-    state2, vss_commitment_ext, enc_gen_shares =  recpedpop_round1(seed, setup)
+    state2, vss_commitment_ext, enc_gen_shares = recpedpop_round1(seed, setup)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
