@@ -286,7 +286,7 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
             pk_i = xbytes(P_i)
             if not schnorr_verify(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
-    # TODO: also add t, n to eta?
+    # TODO: also add t, n to eta? (and/or the polynomial?)
     eta = serialize_vss_commitment_sum(vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
@@ -298,10 +298,12 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
 
 ### EncPedPop
 
-EncPedPop is identical to SimplPedPop except that it does not require secure channels between the participants.
-Every EncPedPop participant runs the `encpedpop` algorithm and the coordinator runs the `encpedpop_coordinate` algorithm as described below.
+EncPedPop is a thin wrapper around that SimplPedPop.
+It takes care of encrypting the secret shares,
+so that they can be sent over insecure channels.
 
-#### Encryption
+EncPedPod encrypts the shares to a 33-byte public key
+(as generated using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) algorithm).
 
 ```python
 def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
@@ -309,20 +311,16 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     assert(x != 0)
     Y = cpoint(enckey)
     Z = point_mul(Y, x)
+    # TODO This assert should be replaced by a proper exception
+    # because enckey may be provided by the attacker.
     assert Z is not None
     return int_from_bytes(tagged_hash_bip_dkg("ECDH", cbytes(Z) + context))
 
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
-```
 
-#### Wrapping SimplPedPop
+# TODO Add `aggregate` and `decrypt` algorithms for better readability/encapsulation.
 
-The participants start by generating an ephemeral key pair as per [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) algorithm for encrypting the 32-byte key shares.
-
-The (public) encryption keys are distributed among the participants.
-
-```python
 EncPedPopR1State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
 def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int) -> Tuple[EncPedPopR1State, VSSCommitmentExt, List[Scalar]]:

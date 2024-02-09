@@ -133,7 +133,7 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
             pk_i = xbytes(P_i)
             if not schnorr_verify(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
-    # TODO: also add t, n to eta?
+    # TODO: also add t, n to eta? (and/or the polynomial?)
     eta = serialize_vss_commitment_sum(vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
@@ -147,11 +147,15 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     assert(x != 0)
     Y = cpoint(enckey)
     Z = point_mul(Y, x)
+    # TODO This assert should be replaced by a proper exception
+    # because enckey may be provided by the attacker.
     assert Z is not None
     return int_from_bytes(tagged_hash_bip_dkg("ECDH", cbytes(Z) + context))
 
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
+
+# TODO Add `aggregate` and `decrypt` algorithms for better readability/encapsulation.
 
 EncPedPopR1State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
