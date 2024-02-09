@@ -228,8 +228,14 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
 ## Building Blocks
 
 As a result of our modular design approach, we give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
-Nevertheless, this is not meant to endorse the direct use of SimplPedPop or EncPedPod as DKGs.
-While these may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism), this requires careful further consideration, which is not in the scope of this document.
+**This is not meant to endorse direct use of SimplPedPop or EncPedPod as DKG protocols.**
+While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism),
+this requires careful further consideration, which is not in the scope of this document.
+Consequently, we recommend implementations not to expose the SimplPedPod and EncPedPod algorithms as part of a high-level API targeted towards developers who are not cryptographic experts. (TODO Is this too arrogant? )
+
+To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
+we omit explicit invocations of an interactive equality check protocol.
+ChillDKG will take care of invoking the equality check protocol.
 
 ### SimplPedPop
 
@@ -238,7 +244,6 @@ The SimplPedPop scheme has been proposed in
 We make the following modifications as compared to the original proposal:
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
-- TODO: removed Eq check, MUST happen afterwards
 
 ```python
 SimplPedPopR1State = Tuple[int, int, int]
