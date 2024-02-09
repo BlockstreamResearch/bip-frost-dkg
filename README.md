@@ -87,7 +87,7 @@ As a consequence of these design goals, ChillDKG inherit the following limitatio
 
 ## Preliminaries
 
-### Protocol Setup
+### Protocol Roles and Network Setup
 
 There are `n >= 2` *signers*, `t` of which will be required to produce a signature.
 Each signer has a point-to-point communication link to the *aggregator*
@@ -122,9 +122,20 @@ the successful signers can eventually make the stuck signers unstuck
 by presenting them a success certificate.
 The success certificate can, e.g., be attached to a request to initiate a FROST signing session.
 
-### Notation
+## Building Blocks
 
-We assume the participants agree on an assignment of indices `0` to `n-1` to participants.
+We start by providing Python code for low-level building blocks of ChillDKG,
+namely Feldman's Verifiable Secret Sharing (VSS) scheme, and parts of the DKG protocol SimplPedPop and EncPedPod.
+**This is not meant to endorse direct use of VSS, or of SimplPedPop or EncPedPod as DKG protocols.**
+While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism),
+this requires careful further consideration, which is not in the scope of this document.
+Consequently, we recommend implementations not to expose the algorithms of the building blocks as part of a high-level API targeted towards developers who are not cryptographic experts. (TODO Is this too arrogant? )
+
+To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
+we omit explicit invocations of an interactive equality check protocol.
+ChillDKG will take care of invoking the equality check protocol.
+
+### Assumed Functions
 
 * The function `chan_send(m)` sends message `m` to the coordinator.
 * The function `chan_receive()` returns the message received by the coordinator.
@@ -147,7 +158,7 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b'') -> bytes:
     return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
 ```
 
-### Verifiable Secret Sharing (VSS)
+### Feldman's Verifiable Secret Sharing (VSS)
 
 ```python
 # A scalar is represented by an integer modulo GROUP_ORDER
@@ -224,18 +235,6 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Op
     participant_public_keys += [pk_i]
   return pk, participant_public_keys
 ```
-
-## Building Blocks
-
-As a result of our modular design approach, we give detailed algorithmic descriptions of the low-level building blocks SimplPedPop and EncPedPod.
-**This is not meant to endorse direct use of SimplPedPop or EncPedPod as DKG protocols.**
-While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism),
-this requires careful further consideration, which is not in the scope of this document.
-Consequently, we recommend implementations not to expose the SimplPedPod and EncPedPod algorithms as part of a high-level API targeted towards developers who are not cryptographic experts. (TODO Is this too arrogant? )
-
-To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
-we omit explicit invocations of an interactive equality check protocol.
-ChillDKG will take care of invoking the equality check protocol.
 
 ### SimplPedPop
 
@@ -391,7 +390,11 @@ def recpedpop_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     return (my_hostseckey, my_hostpubkey)
 ```
 
-The participants send their host pubkey to the other participant and collect received host pubkeys.
+To initiate a concrete DKG run,
+the participants send their host pubkey to all other participants and collect received host pubkeys.
+We assume that the participants agree on an assignment of indices `0` to `n-1` to participants.
+(But if they do not agree, the comparison of the setup identifier in the next protocol step will simply fail.)
+
 They then compute a setup identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
 
 ```python
@@ -408,7 +411,8 @@ def recpedpop_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) 
 ```
 
 The participants compare the setup identifier with every other participant out-of-band.
-If some other participant presents a different setup identifier, the participant aborts.
+If a participant is presented a setup identifier that does not match the locally computed setup identifier, the participant aborts.
+Only if all other `n-1` setup identifiers are identical to the locally computed setup identifier, the participant proceeds with the protocol.
 
 ```python
 RecPedPopR1State = Tuple[bytes, int, EncPedPopR1State]
