@@ -122,8 +122,7 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
     :param List[bytes] vss_commitments_sum: output of running vss_sum_commitments() with vss_commitments from all participants (including this participant) (TODO: not a list of bytes)
     :param vss_commitments_sum: TODO
     :param scalar shares_sum: sum of shares received by all participants (including this participant) for this participant mod group order
-    :param eta: Optional argument for extra data that goes into `Eq`
-    :return: a final share, the shared pubkey, the individual participants' pubkeys
+    :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n, my_idx = state
     assert(len(vss_commitments_sum) == 2)
