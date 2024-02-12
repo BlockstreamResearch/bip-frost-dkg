@@ -260,8 +260,8 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
     """
     assert(t < 2**(4*8))
     coeffs = [int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))) % GROUP_ORDER for i in range(t)]
-    # TODO: fix aux_rand
     assert(my_idx < 2**(4*8))
+    # TODO: fix aux_rand
     sig = schnorr_sign(VSS_PoK_msg + my_idx.to_bytes(4, byteorder="big"), bytes_from_int(coeffs[0]), kdf(seed, "VSS PoK"))
     vss_commitment_ext = (vss_commit(coeffs), sig)
     gen_shares = secret_share_shard(coeffs, n)
@@ -321,6 +321,7 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     Z = point_mul(Y, x)
     # TODO This assert should be replaced by a proper exception
     # because enckey may be provided by the attacker.
+    # TODO (jonas): I don't see why. x != 0 and Y != 0 => x*Y != 0
     assert Z is not None
     return int_from_bytes(tagged_hash_bip_dkg("ECDH", cbytes(Z) + context))
 
@@ -343,11 +344,11 @@ def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: Lis
     simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(seed_, t, n, my_idx)
     assert(len(gen_shares) == n)
     enc_gen_shares = [encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
-    state2 = (t, my_deckey, enckeys, simpl_state)
-    return state2, vss_commitment_ext, enc_gen_shares
+    state1 = (t, my_deckey, enckeys, simpl_state)
+    return state1, vss_commitment_ext, enc_gen_shares
 
-def encpedpop_pre_finalize(state2: EncPedPopR1State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
-    t, my_deckey, enckeys, simpl_state = state2
+def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
+    t, my_deckey, enckeys, simpl_state = state1
     n = len(enckeys)
 
     assert(len(vss_commitments_sum) == 2)
@@ -385,7 +386,6 @@ Generate long-term host keys.
 ```python
 def recpedpop_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostseckey = kdf(seed, "hostseckey")
-    # TODO: rename to distinguish plain and xonly key gen
     my_hostpubkey = pubkey_gen_plain(my_hostseckey)
     return (my_hostseckey, my_hostpubkey)
 ```
@@ -415,7 +415,7 @@ If a participant is presented a setup identifier that does not match the locally
 Only if all other `n-1` setup identifiers are identical to the locally computed setup identifier, the participant proceeds with the protocol.
 
 ```python
-RecPedPopR1State = Tuple[bytes, int, EncPedPopR1State]
+RecPedPopR1State = Tuple[Setup, int, EncPedPopR1State]
 
 def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, VSSCommitmentExt, List[Scalar]]:
     my_hostseckey, my_hostpubkey = recpedpop_hostkey_gen(seed)
@@ -424,14 +424,18 @@ def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, VSSCo
 
     seed_ = kdf(seed, "setup", setup_id)
     my_idx = hostpubkeys.index(my_hostpubkey)
-    enc_state2, vss_commitment_ext, enc_gen_shares = encpedpop_round1(seed_, t, n, my_hostseckey, hostpubkeys, my_idx)
-    state2 = (setup_id, my_idx, enc_state2)
-    return state2, vss_commitment_ext, enc_gen_shares
+    enc_state1, vss_commitment_ext, enc_gen_shares = encpedpop_round1(seed_, t, n, my_hostseckey, hostpubkeys, my_idx)
+    state1 = (setup, my_idx, enc_state1)
+    return state1, vss_commitment_ext, enc_gen_shares
 ```
 
 ```python
-def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR1State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[bytes, DKGOutput]:
-    (setup_id, my_idx, enc_state2) = state2
+RecPedPopR2State = Tuple[Setup, bytes, DKGOutput]
+
+def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[RecPedPopR2State, bytes]:
+    (my_hostseckey, _) = recpedpop_hostkey_gen(seed)
+    (setup, my_idx, enc_state1) = state1
+    setup_id = setup[2]
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
@@ -439,29 +443,39 @@ def recpedpop_pre_finalize(seed: bytes, state2: RecPedPopR1State, vss_commitment
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
     my_enc_shares_sum = all_enc_shares_sum[my_idx]
-    eta, dkg_output = encpedpop_pre_finalize(enc_state2, vss_commitments_sum, my_enc_shares_sum)
+    eta, dkg_output = encpedpop_pre_finalize(enc_state1, vss_commitments_sum, my_enc_shares_sum)
     eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
-    return eta, dkg_output
+    state2 = (setup, eta, dkg_output)
+    return state2, certifying_eq_round1(my_hostseckey, eta)
+
+def recpedpop_finalize(state2: RecPedPopR2State, cert: bytes) -> Union[DKGOutput, Literal[False]]:
+    (setup, eta, dkg_output) = state2
+    hostpubkeys = setup[0]
+    if not certifying_eq_finalize(hostpubkeys, eta, cert):
+        return False
+    return dkg_output
 ```
 
 ```python
-EqualityCheck = Callable[[bytes], Coroutine[Any, Any, bool]]
-
-async def recpedpop(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], bool]:
-    (hostpubkeys, _, _) = setup
-
-    state2, vss_commitment_ext, enc_gen_shares = recpedpop_round1(seed, setup)
+async def recpedpop(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
+    state1, vss_commitment_ext, enc_gen_shares = recpedpop_round1(seed, setup)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
     try:
-        eta, (shares_sum, shared_pubkey, signer_pubkeys) = recpedpop_pre_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum)
+        state2, eq_round1 = recpedpop_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
     except Exception as e:
         print("Exception", repr(e))
         return False
-    cert = await certifying_eq(chan, my_hostseckey, hostpubkeys, eta)
+
+    chan.send(eq_round1)
+    cert = await chan.receive()
+    dkg_output = recpedpop_finalize(state2, cert)
+    if dkg_output == False:
+        return False
+
     transcript = (setup, vss_commitments_sum, all_enc_shares_sum, cert)
-    return (shares_sum, shared_pubkey, signer_pubkeys), transcript
+    return (dkg_output, transcript)
 ```
 
 #### Certifying equality check protocol based on Goldwasser-Lindell Echo Broadcast
@@ -471,6 +485,10 @@ TODO The hpk should be the id here... clean this up and write something about se
 The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
+def certifying_eq_round1(my_hostseckey: bytes, x: bytes) -> bytes:
+    # TODO: fix aux_rand
+    return schnorr_sign(x, my_hostseckey, b'0'*32)
+
 def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     n = len(hostpubkeys)
     if len(cert) != 64*n:
@@ -484,13 +502,8 @@ def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     # wrong.)
     return all(is_valid)
 
-async def certifying_eq(chan: SignerChannel, my_hostseckey: bytes, hostpubkeys: List[bytes], x: bytes) -> List[bytes]:
-    # TODO: fix aux_rand
-    chan.send(schnorr_sign(x, my_hostseckey, b'0'*32))
-    while(True):
-        cert = await chan.receive()
-        if verify_cert(hostpubkeys, x, cert):
-            return cert
+def certifying_eq_finalize(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
+    return verify_cert(hostpubkeys, x, cert)
 
 async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List[bytes]) -> None:
     n = len(hostpubkeys)
@@ -498,8 +511,7 @@ async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List
     for i in range(n):
         sig = await chans.receive_from(i)
         sigs += [sig]
-    cert = b''.join(sigs)
-    chans.send_all(cert)
+    chans.send_all(b''.join(sigs))
 ```
 
 #### Coordinator
@@ -531,19 +543,20 @@ On the other hand, DKG transcripts are public and allow to re-run above ChillDKG
 
 ```python
 # Recovery requires the seed and the public transcript
-def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], bool]:
+def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
     _, my_hostpubkey = recpedpop_hostkey_gen(seed)
     setup, vss_commitments_sum, all_enc_shares_sum, cert = transcript
     hostpubkeys, _, _ = setup
     if not my_hostpubkey in hostpubkeys:
         return False
 
-    state2, _, _ = recpedpop_round1(seed, setup)
+    state1, _, _ = recpedpop_round1(seed, setup)
 
-    eta, (shares_sum, shared_pubkey, signer_pubkeys) = recpedpop_pre_finalize(seed, state2, vss_commitments_sum, all_enc_shares_sum)
-    if not verify_cert(hostpubkeys, eta, cert):
+    state2, eta  = recpedpop_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
+    dkg_output = recpedpop_finalize(state2, cert)
+    if dkg_output == False:
         return False
-    return (shares_sum, shared_pubkey, signer_pubkeys), setup
+    return dkg_output, setup
 ```
 
 In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.

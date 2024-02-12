@@ -75,8 +75,14 @@ def simulate_recpedpop(seeds, t):
     all_enc_shares_sum = []
     for i in range(n):
         all_enc_shares_sum += [scalar_add_multi([out[2][i] for out in round1_outputs])]
+    round2_outputs = []
     for i in range(n):
-        dkg_outputs += [recpedpop_pre_finalize(seeds[i], state1s[i], vss_commitments_sum, all_enc_shares_sum)]
+        round2_outputs += [recpedpop_round2(seeds[i], state1s[i], vss_commitments_sum, all_enc_shares_sum)]
+
+    cert = b''.join([out[1] for out in round2_outputs])
+    for i in range(n):
+        dkg_outputs += [recpedpop_finalize(round2_outputs[i][0], cert)]
+
     return dkg_outputs
 
 def simulate_recpedpop_full(seeds, t):
@@ -195,8 +201,8 @@ for (t, n) in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     external_eq = True
     dkg_correctness(t, n, simulate_simplpedpop, external_eq)
     dkg_correctness(t, n, simulate_encpedpop, external_eq)
-    dkg_correctness(t, n, simulate_recpedpop, external_eq)
     external_eq = False
-    dkg_correctness(2, 2, simulate_recpedpop_full, external_eq)
+    dkg_correctness(t, n, simulate_recpedpop, external_eq)
+    dkg_correctness(t, n, simulate_recpedpop_full, external_eq)
 
 
