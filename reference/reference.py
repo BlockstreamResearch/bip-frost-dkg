@@ -283,7 +283,8 @@ async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List
     for i in range(n):
         sig = await chans.receive_from(i)
         sigs += [sig]
-    chans.send_all(b''.join(sigs))
+    cert = b''.join(sigs)
+    chans.send_all(cert)
 
 async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: List[bytes]) -> None:
     n = len(hostpubkeys)

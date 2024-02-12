@@ -15,7 +15,7 @@ from network import SignerChannel, CoordinatorChannels
 from util import *
 EOF
 
-awk '/### Notation/,/## Background on Equality Check Protocols/ {
+awk '/### Assumed Functions/,/## Background on Equality Check Protocols/ {
     if ($0 ~ /^```python$/) {
         in_python_block = 1;
         print "";
