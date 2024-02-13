@@ -319,9 +319,6 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     assert(x != 0)
     Y = cpoint(enckey)
     Z = point_mul(Y, x)
-    # TODO This assert should be replaced by a proper exception
-    # because enckey may be provided by the attacker.
-    # TODO (jonas): I don't see why. x != 0 and Y != 0 => x*Y != 0
     assert Z is not None
     return int_from_bytes(tagged_hash_bip_dkg("ECDH", cbytes(Z) + context))
 
