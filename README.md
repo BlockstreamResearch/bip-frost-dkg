@@ -361,7 +361,7 @@ def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCom
     ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
     shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
     eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
-    # TODO: for recpedpop this is unnecessary because the hostpubkeys are already
+    # TODO: for chilldkg this is unnecessary because the hostpubkeys are already
     # included in eta via setup_id.
     eta += b''.join(enckeys)
     return eta, dkg_output
@@ -386,7 +386,7 @@ TODO: consider mentioning ROAST
 Generate long-term host keys.
 
 ```python
-def recpedpop_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
+def chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostseckey = kdf(seed, "hostseckey")
     my_hostpubkey = pubkey_gen_plain(my_hostseckey)
     return (my_hostseckey, my_hostpubkey)
@@ -402,7 +402,7 @@ They then compute a setup identifier that includes all participants (including y
 ```python
 Setup = Tuple[List[bytes], int, bytes]
 
-def recpedpop_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
+def chilldkg_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
     if len(hostpubkeys) != len(set(hostpubkeys)):
         raise DuplicateHostpubkeyError
 
@@ -417,10 +417,10 @@ If a participant is presented a setup identifier that does not match the locally
 Only if all other `n-1` setup identifiers are identical to the locally computed setup identifier, the participant proceeds with the protocol.
 
 ```python
-RecPedPopR1State = Tuple[Setup, int, EncPedPopR1State]
+ChillDKGStateR1 = Tuple[Setup, int, EncPedPopR1State]
 
-def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, VSSCommitmentExt, List[Scalar]]:
-    my_hostseckey, my_hostpubkey = recpedpop_hostkey_gen(seed)
+def chilldkg_round1(seed: bytes, setup: Setup) -> Tuple[ChillDKGStateR1, VSSCommitmentExt, List[Scalar]]:
+    my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
     (hostpubkeys, t, setup_id) = setup
     n = len(hostpubkeys)
 
@@ -432,10 +432,10 @@ def recpedpop_round1(seed: bytes, setup: Setup) -> Tuple[RecPedPopR1State, VSSCo
 ```
 
 ```python
-RecPedPopR2State = Tuple[Setup, bytes, DKGOutput]
+ChillDKGStateR2 = Tuple[Setup, bytes, DKGOutput]
 
-def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[RecPedPopR2State, bytes]:
-    (my_hostseckey, _) = recpedpop_hostkey_gen(seed)
+def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[ChillDKGStateR2, bytes]:
+    (my_hostseckey, _) = chilldkg_hostkey_gen(seed)
     (setup, my_idx, enc_state1) = state1
     setup_id = setup[2]
 
@@ -450,14 +450,14 @@ def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, vss_commitments_sum:
     state2 = (setup, eta, dkg_output)
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
-def recpedpop_finalize(state2: RecPedPopR2State, cert: bytes) -> Union[DKGOutput, Literal[False]]:
+def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, Literal[False]]:
     """
     A return value of False means that `cert` is not a valid certificate.
 
     You MUST NOT delete `state2` in this case.
     The reason is that some other participant may have a valid certificate and thus deem the DKG run successful.
     That other participant will rely on us not having deleted `state2`.
-    Once you obtain that valid certificate, you can call `recpedpop_finalize` again with that certificate.
+    Once you obtain that valid certificate, you can call `chilldkg_finalize` again with that certificate.
     """
     (setup, eta, dkg_output) = state2
     hostpubkeys = setup[0]
@@ -467,20 +467,20 @@ def recpedpop_finalize(state2: RecPedPopR2State, cert: bytes) -> Union[DKGOutput
 ```
 
 ```python
-async def recpedpop(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
-    state1, vss_commitment_ext, enc_gen_shares = recpedpop_round1(seed, setup)
+async def chilldkg(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
+    state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, setup)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
     try:
-        state2, eq_round1 = recpedpop_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
+        state2, eq_round1 = chilldkg_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
     except Exception as e:
         print("Exception", repr(e))
         return False
 
     chan.send(eq_round1)
     cert = await chan.receive()
-    dkg_output = recpedpop_finalize(state2, cert)
+    dkg_output = chilldkg_finalize(state2, cert)
     if dkg_output == False:
         return False
 
@@ -520,7 +520,7 @@ async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List
 #### Coordinator
 
 ```python
-async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: List[bytes]) -> None:
+async def chilldkg_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: List[bytes]) -> None:
     n = len(hostpubkeys)
     vss_commitments_ext = []
     all_enc_shares_sum = [0]*n
@@ -533,7 +533,7 @@ async def recpedpop_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: 
     await certifying_eq_coordinate(chans, hostpubkeys)
 ```
 
-![recpedpop diagram](images/recpedpop-sequence.png)
+![chilldkg diagram](images/chilldkg-sequence.png)
 
 #### Backup and Recovery
 Losing the secret share or the shared public key will render the signer incapable of producing signatures.
@@ -546,17 +546,17 @@ On the other hand, DKG transcripts are public and allow to re-run above ChillDKG
 
 ```python
 # Recovery requires the seed and the public transcript
-def recpedpop_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
-    _, my_hostpubkey = recpedpop_hostkey_gen(seed)
+def chilldkg_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
+    _, my_hostpubkey = chilldkg_hostkey_gen(seed)
     setup, vss_commitments_sum, all_enc_shares_sum, cert = transcript
     hostpubkeys, _, _ = setup
     if not my_hostpubkey in hostpubkeys:
         return False
 
-    state1, _, _ = recpedpop_round1(seed, setup)
+    state1, _, _ = chilldkg_round1(seed, setup)
 
-    state2, eta  = recpedpop_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
-    dkg_output = recpedpop_finalize(state2, cert)
+    state2, eta  = chilldkg_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
+    dkg_output = chilldkg_finalize(state2, cert)
     if dkg_output == False:
         return False
     return dkg_output, setup

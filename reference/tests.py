@@ -54,19 +54,19 @@ def simulate_encpedpop(seeds, t):
         dkg_outputs += [encpedpop_pre_finalize(round1_outputs[i][0], vss_commitments_sum, enc_shares_sum)]
     return dkg_outputs
 
-def simulate_recpedpop(seeds, t):
+def simulate_chilldkg(seeds, t):
     n = len(seeds)
 
     hostkeys = []
     for i in range(n):
-        hostkeys += [recpedpop_hostkey_gen(seeds[i])]
+        hostkeys += [chilldkg_hostkey_gen(seeds[i])]
 
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
-    setup, _ = recpedpop_setup_id(hostpubkeys, t, b'')
+    setup, _ = chilldkg_setup_id(hostpubkeys, t, b'')
 
     round1_outputs = []
     for i in range(n):
-        round1_outputs += [recpedpop_round1(seeds[i], setup)]
+        round1_outputs += [chilldkg_round1(seeds[i], setup)]
 
     state1s = [out[0] for out in round1_outputs]
     vss_commitments_ext = [out[1] for out in round1_outputs]
@@ -77,27 +77,27 @@ def simulate_recpedpop(seeds, t):
         all_enc_shares_sum += [scalar_add_multi([out[2][i] for out in round1_outputs])]
     round2_outputs = []
     for i in range(n):
-        round2_outputs += [recpedpop_round2(seeds[i], state1s[i], vss_commitments_sum, all_enc_shares_sum)]
+        round2_outputs += [chilldkg_round2(seeds[i], state1s[i], vss_commitments_sum, all_enc_shares_sum)]
 
     cert = b''.join([out[1] for out in round2_outputs])
     for i in range(n):
-        dkg_outputs += [recpedpop_finalize(round2_outputs[i][0], cert)]
+        dkg_outputs += [chilldkg_finalize(round2_outputs[i][0], cert)]
 
     return dkg_outputs
 
-def simulate_recpedpop_full(seeds, t):
+def simulate_chilldkg_full(seeds, t):
     n = len(seeds)
     hostkeys = []
     for i in range(n):
-        hostkeys += [recpedpop_hostkey_gen(seeds[i])]
+        hostkeys += [chilldkg_hostkey_gen(seeds[i])]
 
-    setup = recpedpop_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')[0]
+    setup = chilldkg_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')[0]
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     async def main():
         coord_chans = CoordinatorChannels(n)
         signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
         coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
-        coroutines = [recpedpop_coordinate(coord_chans, t, hostpubkeys)] + [recpedpop(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
+        coroutines = [chilldkg_coordinate(coord_chans, t, hostpubkeys)] + [chilldkg(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
         return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())
@@ -187,10 +187,10 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     recovered_secret = recover_secret(list(range(1, t+1)), shares[0:t])
     assert(point_mul(G, recovered_secret) == shared_pubkey)
 
-    # test correctness of recpedpop_recover
+    # test correctness of chilldkg_recover
     if len (dkg_outputs[0]) > 3:
         for i in range(n):
-            (shares_sum_, shared_pubkey_, signer_pubkeys_), _ = recpedpop_recover(seeds[i], dkg_outputs[i][3])
+            (shares_sum_, shared_pubkey_, signer_pubkeys_), _ = chilldkg_recover(seeds[i], dkg_outputs[i][3])
             assert(shares_sum_ == shares[i])
             assert(shared_pubkey_ == shared_pubkeys[i])
             assert(signer_pubkeys_ == signer_pubkeys[i])
@@ -202,7 +202,5 @@ for (t, n) in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     dkg_correctness(t, n, simulate_simplpedpop, external_eq)
     dkg_correctness(t, n, simulate_encpedpop, external_eq)
     external_eq = False
-    dkg_correctness(t, n, simulate_recpedpop, external_eq)
-    dkg_correctness(t, n, simulate_recpedpop_full, external_eq)
-
-
+    dkg_correctness(t, n, simulate_chilldkg, external_eq)
+    dkg_correctness(t, n, simulate_chilldkg_full, external_eq)
