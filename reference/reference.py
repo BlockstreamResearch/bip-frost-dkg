@@ -172,7 +172,12 @@ def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: Lis
 
     simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(seed_, t, n, my_idx)
     assert(len(gen_shares) == n)
-    enc_gen_shares = [encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context) for i in range(n)]
+    enc_gen_shares : List[Scalar] = []
+    for i in range(n):
+        try:
+            enc_gen_shares.append(encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context))
+        except ValueError:  # Invalid enckeys[i]
+            raise InvalidContributionError(i, "Participant sent invalid encryption key")
     state1 = (t, my_deckey, enckeys, simpl_state)
     return state1, vss_commitment_ext, enc_gen_shares
 
