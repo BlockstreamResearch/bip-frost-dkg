@@ -99,10 +99,13 @@ def simulate_chilldkg_full(seeds, t):
         coord_chans = CoordinatorChannels(n)
         signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
         coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
-        coroutines = [chilldkg_coordinate(coord_chans, t, hostpubkeys)] + [chilldkg(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
+        coroutines = [chilldkg_coordinate(coord_chans, setup)] + [chilldkg(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
         return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())
+    # Check coordinator output
+    assert(outputs[0][0] == outputs[1][0][1])
+    assert(outputs[0][1] == outputs[1][0][2])
     return [[out[0][0], out[0][1], out[0][2], out[1]] for out in outputs[1:]]
 
 # Adapted from BIP 324

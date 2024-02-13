@@ -19,8 +19,8 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b'') -> bytes:
 # A scalar is represented by an integer modulo GROUP_ORDER
 Scalar = int
 
-# A polynomial of degree t - 1 is represented by a list of t coefficients
-# f(x) = a[0] + ... + a[t] * x^n
+# A polynomial of degree t is represented by a list of t + 1 coefficients
+# f(x) = a[0] + ... + a[t] * x^t
 Polynomial = List[Scalar]
 
 # Evaluates polynomial f at x != 0
@@ -61,16 +61,16 @@ def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) ->
 # An extended VSS Commitment is a VSS commitment with a proof of knowledge
 VSSCommitmentExt = Tuple[VSSCommitment, bytes]
 
-# A VSS Commitment Sum is the sum of multiple VSS Commitment PoKs
-VSSCommitmentSum = Tuple[List[Optional[Point]], List[bytes]]
+# A VSS Commitment Sum is the sum of multiple extended VSS Commitments
+VSSCommitmentSumExt = Tuple[List[Optional[Point]], List[bytes]]
 
-def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSum)-> bytes:
+def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSumExt)-> bytes:
     return b''.join([cbytes_ext(P) for P in vss_commitment_sum[0]]) + b''.join(vss_commitment_sum[1])
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def vss_sum_commitments(vss_commitments: List[VSSCommitmentExt], t: int) -> VSSCommitmentSum:
+def vss_sum_commitments(vss_commitments: List[VSSCommitmentExt], t: int) -> VSSCommitmentSumExt:
     n = len(vss_commitments)
     assert(all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments))
     first_coefficients = [vss_commitments[i][0][0] for i in range(n)]
@@ -78,8 +78,14 @@ def vss_sum_commitments(vss_commitments: List[VSSCommitmentExt], t: int) -> VSSC
     poks = [vss_commitments[i][1] for i in range(n)]
     return (first_coefficients + remaining_coeffs_sum, poks)
 
+def vss_commitments_sum_finalize(vss_commitments_sum: VSSCommitmentSumExt, t: int, n: int)-> VSSCommitment:
+    # Strip the signatures and sum the commitments to the constant coefficients
+    return [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
+
+GroupInfo = Tuple[Optional[Point], List[Optional[Point]]]
+
 # Outputs the shared public key and individual public keys of the participants
-def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> Tuple[Optional[Point], List[Optional[Point]]]:
+def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> GroupInfo:
   pk = vss_commitment[0]
   participant_public_keys = []
   for signer_idx in range(0, n):
@@ -114,7 +120,7 @@ def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplP
 DKGOutput = Tuple[Scalar, Optional[Point], List[Optional[Point]]]
 
 def simplpedpop_pre_finalize(state: SimplPedPopR1State,
-                         vss_commitments_sum: VSSCommitmentSum, shares_sum: Scalar) \
+                         vss_commitments_sum: VSSCommitmentSumExt, shares_sum: Scalar) \
                          -> Tuple[bytes, DKGOutput]:
     """
     Take the messages received from the participants and pre_finalize the DKG
@@ -140,10 +146,10 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
     # TODO: also add t, n to eta? (and/or the polynomial?)
     eta = serialize_vss_commitment_sum(vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
-    vss_commitments_sum_coeffs = [point_add_multi([vss_commitments_sum[0][i] for i in range(n)])] + vss_commitments_sum[0][n:n+t-1]
-    if not vss_verify(my_idx, shares_sum, vss_commitments_sum_coeffs):
+    vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
+    if not vss_verify(my_idx, shares_sum, vss_commitment):
         raise VSSVerifyError()
-    shared_pubkey, signer_pubkeys = derive_group_info(vss_commitments_sum_coeffs, n, t)
+    shared_pubkey, signer_pubkeys = derive_group_info(vss_commitment, n, t)
     return eta, (shares_sum, shared_pubkey, signer_pubkeys)
 
 def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
@@ -181,7 +187,7 @@ def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: Lis
     state1 = (t, my_deckey, enckeys, simpl_state)
     return state1, vss_commitment_ext, enc_gen_shares
 
-def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCommitmentSum, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
+def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCommitmentSumExt, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
     t, my_deckey, enckeys, simpl_state = state1
     n = len(enckeys)
 
@@ -229,7 +235,7 @@ def chilldkg_round1(seed: bytes, setup: Setup) -> Tuple[ChillDKGStateR1, VSSComm
 
 ChillDKGStateR2 = Tuple[Setup, bytes, DKGOutput]
 
-def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCommitmentSum, all_enc_shares_sum: List[Scalar]) -> Tuple[ChillDKGStateR2, bytes]:
+def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCommitmentSumExt, all_enc_shares_sum: List[Scalar]) -> Tuple[ChillDKGStateR2, bytes]:
     (my_hostseckey, _) = chilldkg_hostkey_gen(seed)
     (setup, my_idx, enc_state1) = state1
     setup_id = setup[2]
@@ -294,7 +300,7 @@ def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
 def certifying_eq_finalize(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     return verify_cert(hostpubkeys, x, cert)
 
-async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List[bytes]) -> None:
+async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List[bytes]) -> bytes:
     n = len(hostpubkeys)
     sigs = []
     for i in range(n):
@@ -302,8 +308,10 @@ async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List
         sigs += [sig]
     cert = b''.join(sigs)
     chans.send_all(cert)
+    return cert
 
-async def chilldkg_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: List[bytes]) -> None:
+async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union[GroupInfo, Literal[False]]:
+    (hostpubkeys, t, setup_id) = setup
     n = len(hostpubkeys)
     vss_commitments_ext = []
     all_enc_shares_sum = [0]*n
@@ -313,7 +321,14 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, t: int, hostpubkeys: L
         all_enc_shares_sum = [ (all_enc_shares_sum[j] + enc_shares[j]) % GROUP_ORDER for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     chans.send_all((vss_commitments_sum, all_enc_shares_sum))
-    await certifying_eq_coordinate(chans, hostpubkeys)
+    eta = serialize_vss_commitment_sum(vss_commitments_sum)
+    eta += b''.join(hostpubkeys)
+    eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
+    cert = await certifying_eq_coordinate(chans, hostpubkeys)
+    if not verify_cert(hostpubkeys, eta, cert):
+        return False
+    vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
+    return derive_group_info(vss_commitment, n, t)
 
 # Recovery requires the seed and the public transcript
 def chilldkg_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
