@@ -490,8 +490,6 @@ async def recpedpop(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setu
 
 #### Certifying equality check protocol based on Goldwasser-Lindell Echo Broadcast
 
-TODO The hpk should be the id here... clean this up and write something about setup assumptions
-
 The equality check of ChillDKG is instantiated by the following protocol:
 
 ```python
