@@ -1,10 +1,12 @@
 from random import randint
+from typing import Tuple, List, Optional, Any, Union, Literal
 import secrets
-from crypto_bip340 import n as GROUP_ORDER, point_mul, G
-from crypto_extra import scalar_add_multi
-from reference import *
 import sys
 import asyncio
+
+from crypto_bip340 import n as GROUP_ORDER, point_mul, G
+from crypto_extra import scalar_add_multi, pubkey_gen_plain
+from reference import secret_share_shard, kdf, vss_verify, vss_commit, vss_sum_commitments, simplpedpop_round1, simplpedpop_pre_finalize, encpedpop_round1, encpedpop_pre_finalize, chilldkg_hostkey_gen, chilldkg_setup_id, chilldkg_round1, chilldkg_round2, chilldkg_finalize, chilldkg_recover, CoordinatorChannels, SignerChannel, chilldkg, chilldkg_coordinate, polynomial_evaluate
 
 def test_vss_correctness():
     def rand_polynomial(t):
