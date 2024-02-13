@@ -449,6 +449,14 @@ def recpedpop_round2(seed: bytes, state1: RecPedPopR1State, vss_commitments_sum:
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
 def recpedpop_finalize(state2: RecPedPopR2State, cert: bytes) -> Union[DKGOutput, Literal[False]]:
+    """
+    A return value of False means that `cert` is not a valid certificate.
+
+    You MUST NOT delete `state2` in this case.
+    The reason is that some other participant may have a valid certificate and thus deem the DKG run successful.
+    That other participant will rely on us not having deleted `state2`.
+    Once you obtain that valid certificate, you can call `recpedpop_finalize` again with that certificate.
+    """
     (setup, eta, dkg_output) = state2
     hostpubkeys = setup[0]
     if not certifying_eq_finalize(hostpubkeys, eta, cert):
@@ -494,12 +502,6 @@ def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     if len(cert) != 64*n:
         return False
     is_valid = [schnorr_verify(x, hostpubkeys[i][1:33], cert[i*64:(i+1)*64]) for i in range(n)]
-    # If a signature is invalid, the signer `hpk` is either malicious or an
-    # honest signer whose input is not equal to `x`. This means that there is
-    # some malicious signer or that some messages have been tampered with on the
-    # wire. We must not abort, and we could still output True when receiving a
-    # cert later, but we should indicate to the user (logs?) that something went
-    # wrong.)
     return all(is_valid)
 
 def certifying_eq_finalize(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
