@@ -192,8 +192,8 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     # test correctness of chilldkg_recover
     if len (dkg_outputs[0]) > 3:
         for i in range(n):
-            (shares_sum_, shared_pubkey_, signer_pubkeys_), _ = chilldkg_recover(seeds[i], dkg_outputs[i][3])
-            assert(shares_sum_ == shares[i])
+            (share, shared_pubkey_, signer_pubkeys_), _ = chilldkg_recover(seeds[i], dkg_outputs[i][3])
+            assert(share == shares[i])
             assert(shared_pubkey_ == shared_pubkeys[i])
             assert(signer_pubkeys_ == signer_pubkeys[i])
 

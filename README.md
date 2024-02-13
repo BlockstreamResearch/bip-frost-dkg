@@ -444,8 +444,8 @@ def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: V
     # shares, which in turn ensures that they have the right transcript.
     # TODO This means all parties who hold the "transcript" in the end should
     # participate in Eq?
-    my_enc_shares_sum = all_enc_shares_sum[my_idx]
-    eta, dkg_output = encpedpop_pre_finalize(enc_state1, vss_commitments_sum, my_enc_shares_sum)
+    my_enc_share = all_enc_shares_sum[my_idx]
+    eta, dkg_output = encpedpop_pre_finalize(enc_state1, vss_commitments_sum, my_enc_share)
     eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
     state2 = (setup, eta, dkg_output)
     return state2, certifying_eq_round1(my_hostseckey, eta)
