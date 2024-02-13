@@ -135,17 +135,26 @@ To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive compu
 we omit explicit invocations of an interactive equality check protocol.
 ChillDKG will take care of invoking the equality check protocol.
 
-### Assumed Functions
+### Assumed Functions, Classes and Constants
 
-* The function `chan_send(m)` sends message `m` to the coordinator.
-* The function `chan_receive()` returns the message received by the coordinator.
-* The function `chan_receive_from(i)` returns the message received by participant `i`.
-* The function `chan_send_all(m)` sends message `m` to all participants.
-* The function `point_add_multi(points)` performs the group operation on the given points and returns the result.
+<!-- This should just reflect the imports in reference.py -->
+
+* The constant `GROUP_ORDER` refers to the order of the elliptic curve secp256k1.
+* The constant `G` refers to the base point of secp256k1.
+* The elliptic curve group operation is referred to as addition.
+* The function `point_mul(x, P)`, where `x` is an integer and `P` is a point, multiplies `x` with `G` and returns the result.
+* The function `point_add_multi(Ps)`, where `Ps` is an array of points, adds all `Ps` and returns the result.
 * The function `scalar_add_multi(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
 * The function `pubkey_gen(sk)` is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(m, pk, sig)` is identical to the BIP 340 `Verify` function.
 * The function `sign(m, sk)` is identical to the BIP 340 `Sign` function.
+* The class `SignerChannel` provides the following functions:
+    * The function `send(m)` sends message `m` to the coordinator.
+    * The function `receive()` returns the message received by the coordinator.
+* The class `CoordinatorChannels` provides the following functions:
+    * The function `send_all(m)` sends message `m` to all participants.
+    * The function `receive_from(i)` returns the message received by participant `i`.
+
 
 ```python
 biptag = "BIP DKG: "
@@ -570,7 +579,7 @@ def chilldkg_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Set
 
     state1, _, _ = chilldkg_round1(seed, setup)
 
-    state2, eta  = chilldkg_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
+    state2, _  = chilldkg_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
     dkg_output = chilldkg_finalize(state2, cert)
     if dkg_output == False:
         return False

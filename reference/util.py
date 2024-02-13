@@ -10,8 +10,3 @@ class VSSVerifyError(Exception):
 class DuplicateHostpubkeyError(Exception):
     def __init__(self):
         pass
-
-class BadCoordinatorError(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
