@@ -564,7 +564,9 @@ Losing the secret share or the shared public key will render the signer incapabl
 As these values depend on the contributions of the other signers to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the signer's seed.
 
 To facilitate backups of a DKG run,
-ChillDKG offers the possibility to recover the DKG outputs of a signer from their seed and the DKG transcript of the specific run.
+ChillDKG offers the possibility to recover a signer's outputs of the run from the signer's seed and the DKG transcript of the specific run.
+As a result, a full backup of a signer consists of the seed and the transcripts of all DKGs runs the signer has participated in.
+(TODO Which runs? Probably all runs deemed successful, i.e., the backup should be exported as part of `finalize`.)
 Since the transcript is verifiable and the same for all signers,
 if a signer loses the backup of the transcript of the DKG run,
 they can request it from any other signers.
