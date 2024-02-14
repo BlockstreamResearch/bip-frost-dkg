@@ -572,7 +572,15 @@ Moreover, since the transcript contains secret shares only in encrypted form,
 it can in principle be stored with a third-party backup provider.
 (TODO: But there are privacy implications. The hostpubkeys and shared public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
 
-TODO: consider mentioning that backups are not always necessary
+Note that it may not be an unreasonable strategy in a threshold setup not to perform backups of signers at all,
+and simply hope that `t` honest and working signers will remain available.
+As soon as one or more signers are lost or broken, new DKG run can be performed with the unavailable signers replaced.
+One drawback of this method is that it will result in a change of the shared public key,
+and the application will, therefore, need to transition to the new shared public key
+(e.g., funds stored under the current shared public key need to be transferred to the new key).
+
+Whether to perform backups and how to manage them ultimately depends on the requirements of the application,
+and we believe that a general recommendation is not useful.
 
 ```python
 # Recovery requires the seed and the public transcript
