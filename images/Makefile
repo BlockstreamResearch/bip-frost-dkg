@@ -1,4 +1,4 @@
-all: recpedpop-sequence.png
+all: chilldkg-sequence.png
 
-recpedpop-sequence.png: recpedpop-sequence.txt
-	cat recpedpop-sequence.txt  | plantuml -pipe > recpedpop-sequence.png
+chilldkg-sequence.png: chilldkg-sequence.txt
+	cat chilldkg-sequence.txt  | plantuml -pipe > chilldkg-sequence.png
