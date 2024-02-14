@@ -560,13 +560,19 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union
 ![chilldkg diagram](images/chilldkg-sequence.png)
 
 #### Backup and Recovery
-Losing the secret share or the shared public key will render the signer incapable of producing signatures.
-These values are the output of the DKG and therefore, cannot be derived from a seed - unlike secret keys in BIP 340 or BIP 327.
-TODO: consider mentioning that backups are not always necessary
+Losing the secret share or the shared public key will render the signer incapable of participating in signing sessions.
+As these values depend on the contributions of the other signers to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the signer's seed.
 
-A `ChillDKG` backup consists of the seed and the DKG transcript.
-The seed can be reused for multiple DKGs and must be stored securely.
-On the other hand, DKG transcripts are public and allow to re-run above ChillDKG algorithms to obtain the DKG outputs.
+To facilitate backups of a DKG run,
+ChillDKG offers the possibility to recover the DKG outputs of a signer from their seed and the DKG transcript of the specific run.
+Since the transcript is verifiable and the same for all signers,
+if a signer loses the backup of the transcript of the DKG run,
+they can request it from any other signers.
+Moreover, since the transcript contains secret shares only in encrypted form,
+it can in principle be stored with a third-party backup provider.
+(TODO: But there are privacy implications. The hostpubkeys and shared public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
+
+TODO: consider mentioning that backups are not always necessary
 
 ```python
 # Recovery requires the seed and the public transcript
@@ -585,8 +591,6 @@ def chilldkg_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Set
         return False
     return dkg_output, setup
 ```
-
-In contrast to the encrypted shares backup strategy of `EncPedPop`, all the non-seed data that needs to be backed up is the same for all signers. Hence, if a signer loses the backup of the DKG transcript, they can request it from the other signers.
 
 TODO: make the following a footnote
 There are strategies to recover if the backup is lost and other signers assist in recovering.
