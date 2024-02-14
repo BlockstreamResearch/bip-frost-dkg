@@ -258,6 +258,7 @@ The SimplPedPop scheme has been proposed in
 We make the following modifications as compared to the original proposal:
 - Adding individual's signer public keys to the output of the DKG. This allows partial signature verification.
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
+- The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
 
 ```python
 SimplPedPopR1State = Tuple[int, int, int]
