@@ -58,9 +58,3 @@ def point_add_multi(points: List[Optional[Point]]) -> Optional[Point]:
     for point in points:
         acc = point_add(acc, point)
     return acc
-
-def scalar_add_multi(scalars: List[int]) -> int:
-    acc = 0
-    for scalar in scalars:
-        acc = (acc + scalar) % n
-    return acc

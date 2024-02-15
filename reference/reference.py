@@ -2,7 +2,7 @@
 # reference_py_gen.sh.
 
 from crypto_bip340 import n as GROUP_ORDER, G, point_mul, tagged_hash, int_from_bytes, bytes_from_int, schnorr_sign, schnorr_verify
-from crypto_extra import pubkey_gen_plain, point_add_multi, scalar_add_multi, cpoint, xbytes, cbytes, cbytes_ext
+from crypto_extra import pubkey_gen_plain, point_add_multi, cpoint, xbytes, cbytes, cbytes_ext
 from network import SignerChannel, CoordinatorChannels
 from typing import Tuple, List, Optional, Any, Union, Literal
 # Another type

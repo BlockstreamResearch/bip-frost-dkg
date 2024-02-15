@@ -144,7 +144,6 @@ ChillDKG will take care of invoking the equality check protocol.
 * The elliptic curve group operation is referred to as addition.
 * The function `point_mul(x, P)`, where `x` is an integer and `P` is a point, multiplies `x` with `G` and returns the result.
 * The function `point_add_multi(Ps)`, where `Ps` is an array of points, adds all `Ps` and returns the result.
-* The function `scalar_add_multi(scalars)` sums scalars modulo `GROUP_ORDER` and returns the result.
 * The function `pubkey_gen(sk)` is identical to the BIP 327 `IndividualPubkey` function.
 * The function `verify_sig(m, pk, sig)` is identical to the BIP 340 `Verify` function.
 * The function `sign(m, sk)` is identical to the BIP 340 `Sign` function.
