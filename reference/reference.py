@@ -165,7 +165,14 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 
-# TODO Add `aggregate` and `decrypt` algorithms for better readability/encapsulation.
+def add_encryption(a: Scalar, b: Scalar):
+    return (a + b) % GROUP_ORDER
+
+def decrypt_sum(ciphertext_sum: Scalar, my_deckey: bytes, enckeys: List[bytes], context: bytes) -> Scalar:
+    shares_sum = ciphertext_sum
+    for enckey in enckeys:
+        shares_sum = (shares_sum - ecdh(my_deckey, enckey, context)) % GROUP_ORDER
+    return shares_sum
 
 EncPedPopR1State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
 
@@ -198,8 +205,7 @@ def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCom
     assert(len(vss_commitments_sum[1]) == n)
 
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
-    ecdh_keys = [ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
-    shares_sum = (enc_shares_sum - scalar_add_multi(ecdh_keys)) % GROUP_ORDER
+    shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, enc_context)
     eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
     # TODO: for chilldkg this is unnecessary because the hostpubkeys are already
     # included in eta via setup_id.
@@ -320,7 +326,7 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union
     for i in range(n):
         vss_commitment_ext, enc_shares = await chans.receive_from(i)
         vss_commitments_ext += [vss_commitment_ext]
-        all_enc_shares_sum = [ (all_enc_shares_sum[j] + enc_shares[j]) % GROUP_ORDER for j in range(n) ]
+        all_enc_shares_sum = [ add_encryption(all_enc_shares_sum[j], enc_shares[j]) for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     chans.send_all((vss_commitments_sum, all_enc_shares_sum))
     eta = serialize_vss_commitment_sum(vss_commitments_sum)
