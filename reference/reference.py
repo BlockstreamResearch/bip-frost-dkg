@@ -168,16 +168,14 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
 
-def add_encryption(a: Scalar, b: Scalar):
-    return (a + b) % GROUP_ORDER
-
-def decrypt_sum(ciphertext_sum: Scalar, my_deckey: bytes, enckeys: List[bytes], context: bytes) -> Scalar:
+def decrypt_sum(ciphertext_sum: Scalar, my_deckey: bytes, enckeys: List[bytes], my_idx: int, context: bytes) -> Scalar:
     shares_sum = ciphertext_sum
-    for enckey in enckeys:
-        shares_sum = (shares_sum - ecdh(my_deckey, enckey, context)) % GROUP_ORDER
+    for i in range(len(enckeys)):
+        if i != my_idx:
+            shares_sum = (shares_sum - ecdh(my_deckey, enckeys[i], context)) % GROUP_ORDER
     return shares_sum
 
-EncPedPopR1State = Tuple[int, bytes, List[bytes], SimplPedPopR1State]
+EncPedPopR1State = Tuple[int, bytes, List[bytes], int, Scalar, SimplPedPopR1State]
 
 def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int) -> Tuple[EncPedPopR1State, VSSCommitmentExt, List[Scalar]]:
     assert(t < 2**(4*8))
@@ -192,15 +190,20 @@ def encpedpop_round1(seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: Lis
     assert(len(gen_shares) == n)
     enc_gen_shares : List[Scalar] = []
     for i in range(n):
-        try:
-            enc_gen_shares.append(encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context))
-        except ValueError:  # Invalid enckeys[i]
-            raise InvalidContributionError(i, "Participant sent invalid encryption key")
-    state1 = (t, my_deckey, enckeys, simpl_state)
+        if i == my_idx:
+            # TODO No need to send a constant.
+            enc_gen_shares.append(0)
+        else:
+            try:
+                enc_gen_shares.append(encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context))
+            except ValueError:  # Invalid enckeys[i]
+                raise InvalidContributionError(i, "Participant sent invalid encryption key")
+    self_share = gen_shares[my_idx]
+    state1 = (t, my_deckey, enckeys, my_idx, self_share, simpl_state)
     return state1, vss_commitment_ext, enc_gen_shares
 
 def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCommitmentSumExt, enc_shares_sum: Scalar) -> Tuple[bytes, DKGOutput]:
-    t, my_deckey, enckeys, simpl_state = state1
+    t, my_deckey, enckeys, my_idx, self_share, simpl_state = state1
     n = len(enckeys)
 
     assert(len(vss_commitments_sum) == 2)
@@ -208,7 +211,8 @@ def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCom
     assert(len(vss_commitments_sum[1]) == n)
 
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(enckeys)
-    shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, enc_context)
+    shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
+    shares_sum = (shares_sum + self_share) % GROUP_ORDER
     eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
     # TODO: for chilldkg this is unnecessary because the hostpubkeys are already
     # included in eta via setup_id.
