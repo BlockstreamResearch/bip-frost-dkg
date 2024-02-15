@@ -21,6 +21,9 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b'') -> bytes:
 # A scalar is represented by an integer modulo GROUP_ORDER
 Scalar = int
 
+def scalar_add(x: Scalar, y: Scalar):
+    return (x + y) % GROUP_ORDER
+
 # A polynomial of degree t is represented by a list of t + 1 coefficients
 # f(x) = a[0] + ... + a[t] * x^t
 Polynomial = List[Scalar]
@@ -326,7 +329,7 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union
     for i in range(n):
         vss_commitment_ext, enc_shares = await chans.receive_from(i)
         vss_commitments_ext += [vss_commitment_ext]
-        all_enc_shares_sum = [ add_encryption(all_enc_shares_sum[j], enc_shares[j]) for j in range(n) ]
+        all_enc_shares_sum = [ scalar_add(all_enc_shares_sum[j], enc_shares[j]) for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     chans.send_all((vss_commitments_sum, all_enc_shares_sum))
     eta = serialize_vss_commitment_sum(vss_commitments_sum)
