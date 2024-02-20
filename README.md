@@ -210,6 +210,9 @@ def vss_commit(f: Polynomial) -> VSSCommitment:
         vss_commitment.append(A_i)
     return vss_commitment
 
+def serialize_vss_commitment(vss_commitment: VSSCommitment)-> bytes:
+    return b''.join([cbytes_ext(P) for P in vss_commitment])
+
 def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
     P = point_mul(G, share)
     Q = [point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER) \
@@ -312,12 +315,12 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
             pk_i = xbytes(P_i)
             if not schnorr_verify(VSS_PoK_msg + i.to_bytes(4, byteorder="big"), pk_i, vss_commitments_sum[1][i]):
                 raise InvalidContributionError(i, "Participant sent invalid proof-of-knowledge")
-    # TODO: also add t, n to eta? (and/or the polynomial?)
-    eta = serialize_vss_commitment_sum(vss_commitments_sum)
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
     if not vss_verify(my_idx, shares_sum, vss_commitment):
         raise VSSVerifyError()
+    # TODO: also add t, n to eta? (and/or the polynomial?)
+    eta = t.to_bytes(4, byteorder="big") + serialize_vss_commitment(vss_commitment)
     shared_pubkey, signer_pubkeys = derive_group_info(vss_commitment, n, t)
     return eta, (shares_sum, shared_pubkey, signer_pubkeys)
 ```
@@ -435,7 +438,7 @@ def chilldkg_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -
         raise DuplicateHostpubkeyError
 
     assert(t < 2**(4*8))
-    setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string)
+    setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(2, byteorder="big") + context_string)
     setup = (hostpubkeys, t, setup_id)
     return setup, setup_id
 ```
@@ -465,16 +468,16 @@ ChillDKGStateR2 = Tuple[Setup, bytes, DKGOutput]
 def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCommitmentSumExt, all_enc_shares_sum: List[Scalar]) -> Tuple[ChillDKGStateR2, bytes]:
     (my_hostseckey, _) = chilldkg_hostkey_gen(seed)
     (setup, my_idx, enc_state1) = state1
-    setup_id = setup[2]
 
     # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
-    # shares, which in turn ensures that they have the right transcript.
-    # TODO This means all parties who hold the "transcript" in the end should
+    # shares, which in turn ensures that they have the right backup.
+    # TODO This means all parties who hold the "backup" in the end should
     # participate in Eq?
     my_enc_share = all_enc_shares_sum[my_idx]
+
     eta, dkg_output = encpedpop_pre_finalize(enc_state1, vss_commitments_sum, my_enc_share)
-    eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
+    eta += b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
     state2 = (setup, eta, dkg_output)
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
@@ -495,6 +498,10 @@ def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, 
 ```
 
 ```python
+def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
+    eta = state2[1]
+    return (eta, cert)
+
 async def chilldkg(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
     state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, setup)
     chan.send((vss_commitment_ext, enc_gen_shares))
@@ -512,8 +519,7 @@ async def chilldkg(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup
     if dkg_output == False:
         return False
 
-    transcript = (setup, vss_commitments_sum, all_enc_shares_sum, cert)
-    return (dkg_output, transcript)
+    return (dkg_output, chilldkg_backup(state2, cert))
 ```
 
 #### Certifying equality check protocol based on Goldwasser-Lindell Echo Broadcast
@@ -549,6 +555,12 @@ async def certifying_eq_coordinate(chans: CoordinatorChannels, hostpubkeys: List
 #### Coordinator
 
 ```python
+def serialize_eta(t: int, vss_commit: VSSCommitment, hostpubkeys: List[bytes], all_enc_shares_sum: List[Scalar]) -> bytes:
+    return (t.to_bytes(4, byteorder="big")
+            + serialize_vss_commitment(vss_commit)
+            + b''.join(hostpubkeys)
+            + b''.join([bytes_from_int(share) for share in all_enc_shares_sum]))
+
 async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union[GroupInfo, Literal[False]]:
     (hostpubkeys, t, setup_id) = setup
     n = len(hostpubkeys)
@@ -560,9 +572,7 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union
         all_enc_shares_sum = [ scalar_add(all_enc_shares_sum[j], enc_shares[j]) for j in range(n) ]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     chans.send_all((vss_commitments_sum, all_enc_shares_sum))
-    eta = serialize_vss_commitment_sum(vss_commitments_sum)
-    eta += b''.join(hostpubkeys)
-    eta += setup_id + b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
+    eta = serialize_eta(t, vss_commitments_sum_finalize(vss_commitments_sum, t, n), hostpubkeys, all_enc_shares_sum)
     cert = await certifying_eq_coordinate(chans, hostpubkeys)
     if not verify_cert(hostpubkeys, eta, cert):
         return False
@@ -598,20 +608,46 @@ Whether to perform backups and how to manage them ultimately depends on the requ
 and we believe that a general recommendation is not useful.
 
 ```python
-# Recovery requires the seed and the public transcript
-def chilldkg_recover(seed: bytes, transcript: Any) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
-    _, my_hostpubkey = chilldkg_hostkey_gen(seed)
-    setup, vss_commitments_sum, all_enc_shares_sum, cert = transcript
-    hostpubkeys, _, _ = setup
-    if not my_hostpubkey in hostpubkeys:
-        return False
+def deserialize_eta(eta: bytes) -> Any:
+    # eta      = t (4) + vss_commit (t*33) + enckeys (n*33) + enc_shares (n*32)
+    # len(eta) = 4 + t*33 + n*33 + n*32
+    assert(len(eta) >= 4)
+    t = int.from_bytes(eta[:4], byteorder="big")
+    assert(len(eta) >= 4 + t*33)
+    n = (len(eta) - 4 - t*33) // (33 + 32)
+    assert(len(eta) == 4 + t*33 + n*33 + n*32)
+    cur = 4
+    vss_commit = [cpoint(eta[i:i+33]) for i in range(cur, cur + t*33, 33)]
+    cur += 33*t
+    hostpubkeys = [eta[i:i+33] for i in range(cur, cur + 33*n, 33)]
+    cur += 33*n
+    all_enc_shares_sum = [int_from_bytes(eta[i:i+32]) for i in range(cur, 4 + t*33 + 33*n + 32*n, 32)]
+    return (t, vss_commit, hostpubkeys, all_enc_shares_sum)
 
-    state1, _, _ = chilldkg_round1(seed, setup)
+# Recovery requires the seed and the public backup
+def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
+    (eta, cert) = backup
+    # TODO: deserialize_eta can fail
+    (t, vss_commit, hostpubkeys, all_enc_shares_sum) = deserialize_eta(eta)
+    (setup, setup_id) = chilldkg_setup_id(hostpubkeys, t, context_string)
+    my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
+    seed_ = kdf(seed, "setup", setup_id)
 
-    state2, _  = chilldkg_round2(seed, state1, vss_commitments_sum, all_enc_shares_sum)
-    dkg_output = chilldkg_finalize(state2, cert)
-    if dkg_output == False:
-        return False
+    # verify cert
+    verify_cert(hostpubkeys, eta, cert)
+    # decrypt share
+    enc_context = t.to_bytes(4, byteorder="big") + b''.join(hostpubkeys)
+    my_idx = hostpubkeys.index(my_hostpubkey)
+    shares_sum = decrypt_sum(all_enc_shares_sum[my_idx], my_hostseckey, hostpubkeys, my_idx, enc_context)
+    # TODO: don't call full round1 function
+    (state1, _, _) = encpedpop_round1(seed_, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx)
+    self_share = state1[4]
+    shares_sum = (shares_sum + self_share) % GROUP_ORDER
+
+    # compute shared & individual pubkeys
+    (shared_pubkey, signer_pubkeys) = derive_group_info(vss_commit, len(hostpubkeys), t)
+    dkg_output = (shares_sum, shared_pubkey, signer_pubkeys)
+
     return dkg_output, setup
 ```
 

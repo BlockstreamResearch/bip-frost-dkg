@@ -172,6 +172,7 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     dkg_outputs = simulate_dkg(seeds, t)
     assert(all([out != False for out in dkg_outputs]))
     if external_eq:
+        # TODO: move into separate function "eta_eq"
         etas = [out[0] for out in dkg_outputs]
         assert(len(etas) == n)
         for i in range(1, n):
@@ -201,7 +202,7 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     # test correctness of chilldkg_recover
     if len (dkg_outputs[0]) > 3:
         for i in range(n):
-            (share, shared_pubkey_, signer_pubkeys_), _ = chilldkg_recover(seeds[i], dkg_outputs[i][3])
+            (share, shared_pubkey_, signer_pubkeys_), _ = chilldkg_recover(seeds[i], dkg_outputs[i][3], b'')
             assert(share == shares[i])
             assert(shared_pubkey_ == shared_pubkeys[i])
             assert(signer_pubkeys_ == signer_pubkeys[i])
