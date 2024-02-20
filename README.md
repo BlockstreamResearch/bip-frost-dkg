@@ -271,13 +271,13 @@ VSS_PoK_msg = (biptag + "VSS PoK").encode()
 
 def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplPedPopR1State, VSSCommitmentExt, List[Scalar]]:
     """
-    Start SimplPedPop by generating messages to send to the other participants.
+    Generate SimplPedPop messages to be sent to the coordinator.
 
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
     :param int n: number of participants
-    :param int my_idx:
-    :return: a state, a VSS commitment and shares
+    :param int my_idx: index of this signer in the participant list
+    :return: the signer's state, the VSS commitment and the generated shares
     """
     assert(t < 2**(4*8))
     coeffs = [int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))) % GROUP_ORDER for i in range(t)]
@@ -295,11 +295,11 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
                          vss_commitments_sum: VSSCommitmentSumExt, shares_sum: Scalar) \
                          -> Tuple[bytes, DKGOutput]:
     """
-    Take the messages received from the participants and pre_finalize the DKG
+    Take the messages received from the coordinator and return eta to be compared and DKG output
 
-    :param List[bytes] vss_commitments_sum: output of running vss_sum_commitments() with vss_commitments from all participants (including this participant) (TODO: not a list of bytes)
-    :param vss_commitments_sum: TODO
-    :param scalar shares_sum: sum of shares received by all participants (including this participant) for this participant mod group order
+    :param SimplPedPopR1State state: the signer's state output by simplpedpop_round1
+    :param VSSCommitmentSumExt vss_commitments_sum: sum of VSS commitments received from the coordinator
+    :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n, my_idx = state
@@ -425,8 +425,9 @@ def chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
 
 To initiate a concrete DKG run,
 the participants send their host pubkey to all other participants and collect received host pubkeys.
-We assume that the participants agree on an assignment of indices `0` to `n-1` to participants.
-(But if they do not agree, the comparison of the setup identifier in the next protocol step will simply fail.)
+We assume that the participants agree on the list of host pubkeys (including their order).
+If they do not agree, the comparison of the setup identifier in the next protocol step will simply fail.
+TODO: Params are the (ordered) list of host pubkeys (representing the signers) and threshold `t`.
 
 They then compute a setup identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
 
@@ -438,7 +439,7 @@ def chilldkg_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -
         raise DuplicateHostpubkeyError
 
     assert(t < 2**(4*8))
-    setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(2, byteorder="big") + context_string)
+    setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string)
     setup = (hostpubkeys, t, setup_id)
     return setup, setup_id
 ```
@@ -633,10 +634,11 @@ def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[T
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
     seed_ = kdf(seed, "setup", setup_id)
 
-    # verify cert
+    # Verify cert
     verify_cert(hostpubkeys, eta, cert)
-    # decrypt share
+    # Decrypt share
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(hostpubkeys)
+    # TODO: this may fail
     my_idx = hostpubkeys.index(my_hostpubkey)
     shares_sum = decrypt_sum(all_enc_shares_sum[my_idx], my_hostseckey, hostpubkeys, my_idx, enc_context)
     # TODO: don't call full round1 function
@@ -644,7 +646,7 @@ def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[T
     self_share = state1[4]
     shares_sum = (shares_sum + self_share) % GROUP_ORDER
 
-    # compute shared & individual pubkeys
+    # Compute shared & individual pubkeys
     (shared_pubkey, signer_pubkeys) = derive_group_info(vss_commit, len(hostpubkeys), t)
     dkg_output = (shares_sum, shared_pubkey, signer_pubkeys)
 
