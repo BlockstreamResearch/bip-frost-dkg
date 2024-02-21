@@ -6,7 +6,7 @@ import asyncio
 
 from crypto_bip340 import n as GROUP_ORDER, point_mul, G
 from crypto_extra import pubkey_gen_plain
-from reference import secret_share_shard, kdf, vss_verify, vss_commit, vss_sum_commitments, simplpedpop_round1, simplpedpop_pre_finalize, encpedpop_round1, encpedpop_pre_finalize, chilldkg_hostkey_gen, chilldkg_setup_id, chilldkg_round1, chilldkg_round2, chilldkg_finalize, chilldkg_recover, CoordinatorChannels, SignerChannel, chilldkg, chilldkg_coordinate, polynomial_evaluate
+from reference import secret_share_shard, kdf, vss_verify, vss_commit, vss_sum_commitments, simplpedpop_round1, simplpedpop_pre_finalize, encpedpop_round1, encpedpop_pre_finalize, chilldkg_hostkey_gen, chilldkg_session_params, chilldkg_round1, chilldkg_round2, chilldkg_finalize, chilldkg_recover, CoordinatorChannels, SignerChannel, chilldkg, chilldkg_coordinate, polynomial_evaluate
 
 def scalar_add_multi(scalars: List[int]) -> int:
     acc = 0
@@ -70,11 +70,11 @@ def simulate_chilldkg(seeds, t):
         hostkeys += [chilldkg_hostkey_gen(seeds[i])]
 
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
-    setup, _ = chilldkg_setup_id(hostpubkeys, t, b'')
+    params, _ = chilldkg_session_params(hostpubkeys, t, b'')
 
     round1_outputs = []
     for i in range(n):
-        round1_outputs += [chilldkg_round1(seeds[i], setup)]
+        round1_outputs += [chilldkg_round1(seeds[i], params)]
 
     state1s = [out[0] for out in round1_outputs]
     vss_commitments_ext = [out[1] for out in round1_outputs]
@@ -99,13 +99,13 @@ def simulate_chilldkg_full(seeds, t):
     for i in range(n):
         hostkeys += [chilldkg_hostkey_gen(seeds[i])]
 
-    setup = chilldkg_setup_id([hostkey[1] for hostkey in hostkeys], t, b'')[0]
+    params= chilldkg_session_params([hostkey[1] for hostkey in hostkeys], t, b'')[0]
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     async def main():
         coord_chans = CoordinatorChannels(n)
         signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
         coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
-        coroutines = [chilldkg_coordinate(coord_chans, setup)] + [chilldkg(signer_chans[i], seeds[i], hostkeys[i][0], setup) for i in range(n)]
+        coroutines = [chilldkg_coordinate(coord_chans, params)] + [chilldkg(signer_chans[i], seeds[i], hostkeys[i][0], params) for i in range(n)]
         return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())

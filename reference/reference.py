@@ -218,7 +218,7 @@ def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCom
     shares_sum = (shares_sum + self_share) % GROUP_ORDER
     eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
     # TODO: for chilldkg this is unnecessary because the hostpubkeys are already
-    # included in eta via setup_id.
+    # included in eta via session_params_id.
     eta += b''.join(enckeys)
     return eta, dkg_output
 
@@ -227,37 +227,37 @@ def chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     my_hostpubkey = pubkey_gen_plain(my_hostseckey)
     return (my_hostseckey, my_hostpubkey)
 
-Setup = Tuple[List[bytes], int, bytes]
+SessionParams = Tuple[List[bytes], int, bytes]
 
-def chilldkg_setup_id(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[Setup, bytes]:
+def chilldkg_session_params(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[SessionParams, bytes]:
     if len(hostpubkeys) != len(set(hostpubkeys)):
         raise DuplicateHostpubkeyError
 
     assert(t < 2**(4*8))
-    setup_id = tagged_hash("setup id", b''.join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string)
-    setup = (hostpubkeys, t, setup_id)
-    return setup, setup_id
+    params_id = tagged_hash("session parameters id", b''.join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string)
+    params = (hostpubkeys, t, params_id)
+    return params, params_id
 
-ChillDKGStateR1 = Tuple[Setup, int, EncPedPopR1State]
+ChillDKGStateR1 = Tuple[SessionParams, int, EncPedPopR1State]
 
-def chilldkg_round1(seed: bytes, setup: Setup) -> Tuple[ChillDKGStateR1, VSSCommitmentExt, List[Scalar]]:
+def chilldkg_round1(seed: bytes, params: SessionParams) -> Tuple[ChillDKGStateR1, VSSCommitmentExt, List[Scalar]]:
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
-    (hostpubkeys, t, setup_id) = setup
+    (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
 
-    seed_ = kdf(seed, "setup", setup_id)
+    seed_ = kdf(seed, "session parameters", params_id)
     my_idx = hostpubkeys.index(my_hostpubkey)
     enc_state1, vss_commitment_ext, enc_gen_shares = encpedpop_round1(seed_, t, n, my_hostseckey, hostpubkeys, my_idx)
-    state1 = (setup, my_idx, enc_state1)
+    state1 = (params, my_idx, enc_state1)
     return state1, vss_commitment_ext, enc_gen_shares
 
-ChillDKGStateR2 = Tuple[Setup, bytes, DKGOutput]
+ChillDKGStateR2 = Tuple[SessionParams, bytes, DKGOutput]
 
 def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCommitmentSumExt, all_enc_shares_sum: List[Scalar]) -> Tuple[ChillDKGStateR2, bytes]:
     (my_hostseckey, _) = chilldkg_hostkey_gen(seed)
-    (setup, my_idx, enc_state1) = state1
+    (params, my_idx, enc_state1) = state1
 
-    # TODO Not sure if we need to include setup_id as eta here. But it won't hurt.
+    # TODO Not sure if we need to include params_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
     # shares, which in turn ensures that they have the right backup.
     # TODO This means all parties who hold the "backup" in the end should
@@ -266,7 +266,7 @@ def chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: V
 
     eta, dkg_output = encpedpop_pre_finalize(enc_state1, vss_commitments_sum, my_enc_share)
     eta += b''.join([bytes_from_int(share) for share in all_enc_shares_sum])
-    state2 = (setup, eta, dkg_output)
+    state2 = (params, eta, dkg_output)
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
 def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, Literal[False]]:
@@ -278,8 +278,8 @@ def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, 
     That other participant will rely on us not having deleted `state2`.
     Once you obtain that valid certificate, you can call `chilldkg_finalize` again with that certificate.
     """
-    (setup, eta, dkg_output) = state2
-    hostpubkeys = setup[0]
+    (params, eta, dkg_output) = state2
+    hostpubkeys = params[0]
     if not certifying_eq_finalize(hostpubkeys, eta, cert):
         return False
     return dkg_output
@@ -288,8 +288,8 @@ def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
     eta = state2[1]
     return (eta, cert)
 
-async def chilldkg(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, setup: Setup) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
-    state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, setup)
+async def chilldkg(chan: SignerChannel, seed: bytes, my_hostseckey: bytes, params: SessionParams) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
+    state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, params)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
@@ -337,8 +337,8 @@ def serialize_eta(t: int, vss_commit: VSSCommitment, hostpubkeys: List[bytes], a
             + b''.join(hostpubkeys)
             + b''.join([bytes_from_int(share) for share in all_enc_shares_sum]))
 
-async def chilldkg_coordinate(chans: CoordinatorChannels, setup: Setup) -> Union[GroupInfo, Literal[False]]:
-    (hostpubkeys, t, setup_id) = setup
+async def chilldkg_coordinate(chans: CoordinatorChannels, params: SessionParams) -> Union[GroupInfo, Literal[False]]:
+    (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
     vss_commitments_ext = []
     all_enc_shares_sum = [0]*n
@@ -372,13 +372,13 @@ def deserialize_eta(eta: bytes) -> Any:
     return (t, vss_commit, hostpubkeys, all_enc_shares_sum)
 
 # Recovery requires the seed and the public backup
-def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[Tuple[DKGOutput, Setup], Literal[False]]:
+def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]:
     (eta, cert) = backup
     # TODO: deserialize_eta can fail
     (t, vss_commit, hostpubkeys, all_enc_shares_sum) = deserialize_eta(eta)
-    (setup, setup_id) = chilldkg_setup_id(hostpubkeys, t, context_string)
+    (params, params_id) = chilldkg_session_params(hostpubkeys, t, context_string)
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
-    seed_ = kdf(seed, "setup", setup_id)
+    seed_ = kdf(seed, "session parameters", params_id)
 
     # Verify cert
     verify_cert(hostpubkeys, eta, cert)
@@ -396,4 +396,4 @@ def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[T
     (shared_pubkey, signer_pubkeys) = derive_group_info(vss_commit, len(hostpubkeys), t)
     dkg_output = (shares_sum, shared_pubkey, signer_pubkeys)
 
-    return dkg_output, setup
+    return dkg_output, params
