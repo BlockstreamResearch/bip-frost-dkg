@@ -23,7 +23,7 @@ This can, in principle, be achieved through a trusted dealer who generates the s
 However, the dealer is a single point of failure:
 if the dealer is malicious or compromised, or the secret key is not deleted correctly and compromised later, an adversary can forge signatures.
 
-An interactive *distributed key generation* (DKG) protocol run by all signers avoids the need for a trusted dealer.
+An interactive *distributed key generation* (DKG) protocol session by all signers avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees.
 Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
 But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication between participants,
@@ -55,14 +55,14 @@ Finally, we add a concrete equality check protocol to EncPedPop to obtain a stan
 
 Our equality check protocol is inspired by the Goldwasser-Lindell echo broadcast [GW05] protocol.
 Crucially, it ensures that
-whenever some participant obtains a threshold public key as output of a successful DKG run,
+whenever some participant obtains a threshold public key as output of a successful DKG session,
 this honest participant will additionally obtain a transferable "success certificate",
 which can convince all other honest participants
 (ultimately at the time of a signing request)
 that the DKG has indeed been successful.
 This is sufficient to exclude the bad scenario described in the previous section. (TODO)
 
-As an additional feature of ChillDKG, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG runs in which the device was involved.
+As an additional feature of ChillDKG, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG sessions in which the device was involved.
 ChillDKG thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
 
 In summary, ChillDKG fits a wide range of usage scenarios,
@@ -102,21 +102,21 @@ Some signers, the coordinator and all network links may be malicious, i.e., cont
 We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.
 (See TODO for a more formal treatment.)
 
-If a run of the DKG protocol returns an output to an (honest) signer,
-then we say that this signer *deems the protocol run successful*.
-In that case, the output returned by the protocol run to the signer is a tuple consisting of a *secret share* (individual to the signer), the *shared public key* (common to all signers), a list of n *individual public keys* for partial signature verification (common to all signers), and a *success certificate* (common to all signers).
+If a session of the DKG protocol returns an output to an (honest) signer,
+then we say that this signer *deems the protocol session successful*.
+In that case, the output returned by the protocol session to the signer is a tuple consisting of a *secret share* (individual to the signer), the *shared public key* (common to all signers), a list of n *individual public keys* for partial signature verification (common to all signers), and a *success certificate* (common to all signers).
 
-If a signer deems a protocol run successful, then this signer is assured that:
+If a signer deems a protocol session successful, then this signer is assured that:
  - A coalition of a malicious coordinator and at most `t - 1` malicious signers cannot forge signatures under that shared public key. (Unforgeability)
- - All (honest) signers who deem the protocol run successful will have correct and consistent protocol outputs.
+ - All (honest) signers who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the shared public key, the list of individual public keys and the success certificate.
    Moreover, any `t` of them have secret shares which are, in principle, sufficient to reconstruct the secret key corresponding to the shared public key.
-   This means that any `t` of have all the necessary inputs to run a successful FROST signing sessions that produce signatures valid under the shared public key.
+   This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the shared public key.
  - The success certificate will, when presented to any other (honest) signer, convince that other signer to deem the protocol successful.
 
-We stress that the mere fact one signer deems a protocol run successful does not imply that other signers deem it successful yet.
+We stress that the mere fact one signer deems a protocol session successful does not imply that other signers deem it successful yet.
 That is exactly why the success certificate is necessary:
-If some signers have deemed the protocol not successful, but others have not (yet) and thus are stuck in the protocol run,
+If some signers have deemed the protocol not successful, but others have not (yet) and thus are stuck in the protocol session,
 e.g., due to failing network links or invalid messages sent by malicious signers,
 the successful signers can eventually make the stuck signers unstuck
 by presenting them a success certificate.
@@ -408,7 +408,7 @@ For each signer, the DKG has three outputs: a secret share, the shared public ke
 The secret share and shared public key are required by a signer to produce signatures and therefore, signers *must* ensure that they are not lost.
 
 TODO: mention that these are properties when using the DKG with FROST
-If a DKG run succeeds from the point of view of an honest signer by outputting a shared public key,
+If a DKG session succeeds from the point of view of an honest signer by outputting a shared public key,
 then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
 TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
 TODO: consider mentioning ROAST
@@ -423,7 +423,7 @@ def chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     return (my_hostseckey, my_hostpubkey)
 ```
 
-To initiate a concrete DKG run,
+To initiate a concrete DKG session,
 the participants send their host pubkey to all other participants and collect received host pubkeys.
 We assume that the participants agree on the list of host pubkeys (including their order).
 If they do not agree, the comparison of the session parameter identifier in the next protocol step will simply fail.
@@ -487,7 +487,7 @@ def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, 
     A return value of False means that `cert` is not a valid certificate.
 
     You MUST NOT delete `state2` in this case.
-    The reason is that some other participant may have a valid certificate and thus deem the DKG run successful.
+    The reason is that some other participant may have a valid certificate and thus deem the DKG session successful.
     That other participant will rely on us not having deleted `state2`.
     Once you obtain that valid certificate, you can call `chilldkg_finalize` again with that certificate.
     """
@@ -587,12 +587,12 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, params: SessionParams)
 Losing the secret share or the shared public key will render the signer incapable of participating in signing sessions.
 As these values depend on the contributions of the other signers to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the signer's seed.
 
-To facilitate backups of a DKG run,
-ChillDKG offers the possibility to recover a signer's outputs of the run from the signer's seed and the DKG transcript of the specific run.
-As a result, a full backup of a signer consists of the seed and the transcripts of all DKGs runs the signer has participated in.
-(TODO Which runs? Probably all runs deemed successful, i.e., the backup should be exported as part of `finalize`.)
+To facilitate backups of a DKG session,
+ChillDKG offers the possibility to recover a signer's outputs of the session from the signer's seed and the DKG transcript of the specific session.
+As a result, a full backup of a signer consists of the seed and the transcripts of all DKGs sessions the signer has participated in.
+(TODO Which sessions? Probably all sessions deemed successful, i.e., the backup should be exported as part of `finalize`.)
 Since the transcript is verifiable and the same for all signers,
-if a signer loses the backup of the transcript of the DKG run,
+if a signer loses the backup of the transcript of the DKG session,
 they can request it from any other signers.
 Moreover, since the transcript contains secret shares only in encrypted form,
 it can in principle be stored with a third-party backup provider.
@@ -600,7 +600,7 @@ it can in principle be stored with a third-party backup provider.
 
 Note that it may not be an unreasonable strategy in a threshold setup not to perform backups of signers at all,
 and simply hope that `t` honest and working signers will remain available.
-As soon as one or more signers are lost or broken, new DKG run can be performed with the unavailable signers replaced.
+As soon as one or more signers are lost or broken, new DKG session can be performed with the unavailable signers replaced.
 One drawback of this method is that it will result in a change of the shared public key,
 and the application will, therefore, need to transition to the new shared public key
 (e.g., funds stored under the current shared public key need to be transferred to the new key).
