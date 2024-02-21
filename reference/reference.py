@@ -155,7 +155,6 @@ def simplpedpop_pre_finalize(state: SimplPedPopR1State,
     vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
     if not vss_verify(my_idx, shares_sum, vss_commitment):
         raise VSSVerifyError()
-    # TODO: also add t, n to eta? (and/or the polynomial?)
     eta = t.to_bytes(4, byteorder="big") + serialize_vss_commitment(vss_commitment)
     shared_pubkey, signer_pubkeys = derive_group_info(vss_commitment, n, t)
     return eta, (shares_sum, shared_pubkey, signer_pubkeys)
@@ -217,8 +216,6 @@ def encpedpop_pre_finalize(state1: EncPedPopR1State, vss_commitments_sum: VSSCom
     shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
     shares_sum = (shares_sum + self_share) % GROUP_ORDER
     eta, dkg_output = simplpedpop_pre_finalize(simpl_state, vss_commitments_sum, shares_sum)
-    # TODO: for chilldkg this is unnecessary because the hostpubkeys are already
-    # included in eta via session_params_id.
     eta += b''.join(enckeys)
     return eta, dkg_output
 
@@ -274,7 +271,7 @@ def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, 
     A return value of False means that `cert` is not a valid certificate.
 
     You MUST NOT delete `state2` in this case.
-    The reason is that some other participant may have a valid certificate and thus deem the DKG run successful.
+    The reason is that some other participant may have a valid certificate and thus deem the DKG session successful.
     That other participant will rely on us not having deleted `state2`.
     Once you obtain that valid certificate, you can call `chilldkg_finalize` again with that certificate.
     """
@@ -356,19 +353,19 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, params: SessionParams)
     return derive_group_info(vss_commitment, n, t)
 
 def deserialize_eta(eta: bytes) -> Any:
-    # eta      = t (4) + vss_commit (t*33) + enckeys (n*33) + enc_shares (n*32)
-    # len(eta) = 4 + t*33 + n*33 + n*32
+    # eta      = t (4) + vss_commit (33*t) + enckeys (33*n) + enc_shares (32*n)
+    # len(eta) = 4 + 33*t + 33*n + 32*n
     assert(len(eta) >= 4)
     t = int.from_bytes(eta[:4], byteorder="big")
-    assert(len(eta) >= 4 + t*33)
-    n = (len(eta) - 4 - t*33) // (33 + 32)
-    assert(len(eta) == 4 + t*33 + n*33 + n*32)
+    assert(len(eta) >= 4 + 33*t)
+    n = (len(eta) - 4 - 33*t) // (33 + 32)
+    assert(len(eta) == 4 + 33*t + 33*n + 32*n)
     cur = 4
-    vss_commit = [cpoint(eta[i:i+33]) for i in range(cur, cur + t*33, 33)]
+    vss_commit = [cpoint(eta[i:i+33]) for i in range(cur, cur + 33*t, 33)]
     cur += 33*t
     hostpubkeys = [eta[i:i+33] for i in range(cur, cur + 33*n, 33)]
     cur += 33*n
-    all_enc_shares_sum = [int_from_bytes(eta[i:i+32]) for i in range(cur, 4 + t*33 + 33*n + 32*n, 32)]
+    all_enc_shares_sum = [int_from_bytes(eta[i:i+32]) for i in range(cur, 4 + 33*t + 33*n + 32*n, 32)]
     return (t, vss_commit, hostpubkeys, all_enc_shares_sum)
 
 # Recovery requires the seed and the public backup
