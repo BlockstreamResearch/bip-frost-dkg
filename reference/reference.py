@@ -242,9 +242,8 @@ def chilldkg_round1(seed: bytes, params: SessionParams) -> Tuple[ChillDKGStateR1
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
 
-    seed_ = kdf(seed, "session parameters", params_id)
     my_idx = hostpubkeys.index(my_hostpubkey)
-    enc_state1, vss_commitment_ext, enc_gen_shares = encpedpop_round1(seed_, t, n, my_hostseckey, hostpubkeys, my_idx)
+    enc_state1, vss_commitment_ext, enc_gen_shares = encpedpop_round1(seed, t, n, my_hostseckey, hostpubkeys, my_idx)
     state1 = (params, my_idx, enc_state1)
     return state1, vss_commitment_ext, enc_gen_shares
 
@@ -375,7 +374,6 @@ def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[T
     (t, vss_commit, hostpubkeys, all_enc_shares_sum) = deserialize_eta(eta)
     (params, params_id) = chilldkg_session_params(hostpubkeys, t, context_string)
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
-    seed_ = kdf(seed, "session parameters", params_id)
 
     # Verify cert
     verify_cert(hostpubkeys, eta, cert)
@@ -385,7 +383,7 @@ def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[T
     my_idx = hostpubkeys.index(my_hostpubkey)
     shares_sum = decrypt_sum(all_enc_shares_sum[my_idx], my_hostseckey, hostpubkeys, my_idx, enc_context)
     # TODO: don't call full round1 function
-    (state1, _, _) = encpedpop_round1(seed_, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx)
+    (state1, _, _) = encpedpop_round1(seed, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx)
     self_share = state1[4]
     shares_sum = (shares_sum + self_share) % GROUP_ORDER
 
