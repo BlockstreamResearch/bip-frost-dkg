@@ -57,8 +57,12 @@ def vss_commit(f: Polynomial) -> VSSCommitment:
         vss_commitment.append(A_i)
     return vss_commitment
 
-def serialize_vss_commitment(vss_commitment: VSSCommitment)-> bytes:
+def serialize_vss_commitment(vss_commitment: VSSCommitment) -> bytes:
     return b''.join([cbytes_ext(P) for P in vss_commitment])
+
+def deserialize_vss_commitment(b: bytes, t: int) -> VSSCommitment:
+    assert(len(b) >= 33*t)
+    return [cpoint(b[i:i+33]) for i in range(0, 33*t, 33)]
 
 def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
     P = point_mul(G, share)
@@ -351,20 +355,26 @@ async def chilldkg_coordinate(chans: CoordinatorChannels, params: SessionParams)
     vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
     return derive_group_info(vss_commitment, n, t)
 
-def deserialize_eta(eta: bytes) -> Any:
-    # eta      = t (4) + vss_commit (33*t) + enckeys (33*n) + enc_shares (32*n)
-    # len(eta) = 4 + 33*t + 33*n + 32*n
-    assert(len(eta) >= 4)
-    t = int.from_bytes(eta[:4], byteorder="big")
-    assert(len(eta) >= 4 + 33*t)
-    n = (len(eta) - 4 - 33*t) // (33 + 32)
-    assert(len(eta) == 4 + 33*t + 33*n + 32*n)
-    cur = 4
-    vss_commit = [cpoint(eta[i:i+33]) for i in range(cur, cur + 33*t, 33)]
-    cur += 33*t
-    hostpubkeys = [eta[i:i+33] for i in range(cur, cur + 33*n, 33)]
-    cur += 33*n
-    all_enc_shares_sum = [int_from_bytes(eta[i:i+32]) for i in range(cur, 4 + 33*t + 33*n + 32*n, 32)]
+def deserialize_eta(b: bytes) -> Any:
+    # eta = t (4) + vss_commit (33*t) + enckeys (33*n) + enc_shares (32*n)
+    rest = b
+
+    assert(len(rest) >= 4)
+    t, rest = int.from_bytes(rest[:4], byteorder="big"), rest[4:]
+
+    assert(len(rest) >= 33*t)
+    vss_commit, rest = deserialize_vss_commitment(rest[:33*t], t), rest[33*t:]
+
+    n, remainder = divmod(len(rest), (33 + 32))
+    assert(remainder == 0)
+
+    assert(len(rest) >= 33*n)
+    hostpubkeys, rest = [rest[i:i+33] for i in range(0, 33*n, 33)], rest[33*n:]
+
+    assert(len(rest) >= 32*n)
+    all_enc_shares_sum, rest = [int_from_bytes(rest[i:i+32]) for i in range(0, 32*n, 32)], rest[32*n:]
+
+    assert(len(rest) == 0)
     return (t, vss_commit, hostpubkeys, all_enc_shares_sum)
 
 # Recovery requires the seed and the public backup
