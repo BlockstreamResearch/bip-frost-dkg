@@ -175,8 +175,8 @@ Scalar = int
 def scalar_add(x: Scalar, y: Scalar):
     return (x + y) % GROUP_ORDER
 
-# A polynomial of degree t is represented by a list of t + 1 coefficients
-# f(x) = a[0] + ... + a[t] * x^t
+# A polynomial of degree t - 1 is represented by a list of t coefficients
+# f(x) = a[0] + ... + a[t-1] * x^(t-1)
 Polynomial = List[Scalar]
 
 # Evaluates polynomial f at x != 0
