@@ -14,7 +14,7 @@ from network import SignerChannel, CoordinatorChannels
 from typing import Tuple, List, Optional, Any, Union, Literal
 # Another type
 from crypto_bip340 import Point
-from util import InvalidContributionError, VSSVerifyError, DuplicateHostpubkeyError
+from util import InvalidContributionError, InvalidBackupError, DeserializationError, VSSVerifyError, DuplicateHostpubkeyError
 EOF
 
 awk '/### Assumed Functions/,/## Background on Equality Check Protocols/ {

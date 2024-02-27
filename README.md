@@ -214,7 +214,8 @@ def serialize_vss_commitment(vss_commitment: VSSCommitment) -> bytes:
     return b''.join([cbytes_ext(P) for P in vss_commitment])
 
 def deserialize_vss_commitment(b: bytes, t: int) -> VSSCommitment:
-    assert(len(b) >= 33*t)
+    if len(b) < 33*t:
+        raise DeserializationError
     return [cpoint(b[i:i+33]) for i in range(0, 33*t, 33)]
 
 def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
@@ -610,32 +611,45 @@ and we believe that a general recommendation is not useful.
 
 ```python
 def deserialize_eta(b: bytes) -> Any:
-    # eta = t (4) + vss_commit (33*t) + enckeys (33*n) + enc_shares (32*n)
     rest = b
 
-    assert(len(rest) >= 4)
+    # Read t (4 bytes)
+    if len(rest) < 4:
+        raise DeserializationError
     t, rest = int.from_bytes(rest[:4], byteorder="big"), rest[4:]
 
-    assert(len(rest) >= 33*t)
+    # Read vss_commit (33*t bytes)
+    if len(rest) < 33*t:
+        raise DeserializationError
     vss_commit, rest = deserialize_vss_commitment(rest[:33*t], t), rest[33*t:]
 
+    # Compute n
     n, remainder = divmod(len(rest), (33 + 32))
-    assert(remainder == 0)
+    if remainder != 0:
+        raise DeserializationError
 
-    assert(len(rest) >= 33*n)
+    # Read hostpubkeys (33*n bytes)
+    if len(rest) < 33*n:
+        raise DeserializationError
     hostpubkeys, rest = [rest[i:i+33] for i in range(0, 33*n, 33)], rest[33*n:]
 
-    assert(len(rest) >= 32*n)
+    # Read all_enc_shares_sum (32*n bytes)
+    if len(rest) < 32*n:
+        raise DeserializationError
     all_enc_shares_sum, rest = [int_from_bytes(rest[i:i+32]) for i in range(0, 32*n, 32)], rest[32*n:]
 
-    assert(len(rest) == 0)
+    if len(rest) != 0:
+        raise DeserializationError
     return (t, vss_commit, hostpubkeys, all_enc_shares_sum)
 
 # Recovery requires the seed and the public backup
 def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]:
     (eta, cert) = backup
-    # TODO: deserialize_eta can fail
-    (t, vss_commit, hostpubkeys, all_enc_shares_sum) = deserialize_eta(eta)
+    try:
+        (t, vss_commit, hostpubkeys, all_enc_shares_sum) = deserialize_eta(eta)
+    except DeserializationError as e:
+        raise InvalidBackupError("Failed to deserialize backup") from e
+
     (params, params_id) = chilldkg_session_params(hostpubkeys, t, context_string)
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
 
@@ -643,8 +657,13 @@ def chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[T
     verify_cert(hostpubkeys, eta, cert)
     # Decrypt share
     enc_context = t.to_bytes(4, byteorder="big") + b''.join(hostpubkeys)
-    # TODO: this may fail
-    my_idx = hostpubkeys.index(my_hostpubkey)
+
+    # Find our hostpubkey
+    try:
+        my_idx = hostpubkeys.index(my_hostpubkey)
+    except ValueError as e:
+        raise InvalidBackupError("Seed and backup don't match") from e
+
     shares_sum = decrypt_sum(all_enc_shares_sum[my_idx], my_hostseckey, hostpubkeys, my_idx, enc_context)
     # TODO: don't call full round1 function
     (state1, _, _) = encpedpop_round1(seed, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx)
