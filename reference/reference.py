@@ -110,6 +110,10 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> GroupInf
 SimplPedPopR1State = Tuple[int, int, int]
 VSS_PoK_msg = (biptag + "VSS PoK").encode()
 
+# To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
+# we omit explicit invocations of an interactive equality check protocol.
+# ChillDKG will take care of invoking the equality check protocol.
+
 def simplpedpop_round1(seed: bytes, t: int, n: int, my_idx: int) -> Tuple[SimplPedPopR1State, VSSCommitmentExt, List[Scalar]]:
     """
     Generate SimplPedPop messages to be sent to the coordinator.
