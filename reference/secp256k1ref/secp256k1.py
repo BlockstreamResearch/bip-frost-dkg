@@ -181,6 +181,10 @@ class GE:
             self.x = fx
             self.y = fy
 
+    def __eq__(self, a):
+        """Compares two group elements."""
+        return self.infinity == a.infinity and self.x == a.x and self.y == self.y
+
     def __add__(self, a):
         """Add two group elements together."""
         # Deal with infinity: a + infinity == infinity + a == a.
@@ -203,6 +207,13 @@ class GE:
         x = lam**2 - (self.x + a.x)
         y = lam * (self.x - x) - self.y
         return GE(x, y)
+
+    @staticmethod
+    def sum(*ps):
+        """Compute the sum of group elements.
+
+        GE.sum(a, b, c, ...) is identical to (GE() + a + b + c + ...)."""
+        return sum(ps, start=GE())
 
     @staticmethod
     def mul(*aps):
@@ -241,6 +252,12 @@ class GE:
         assert not self.infinity
         return bytes([3 - self.y.is_even()]) + self.x.to_bytes()
 
+    def to_bytes_compressed_with_infinity(self):
+        """Convert a group element to 33-byte compressed encoding, mapping infinity to zeros."""
+        if self.infinity:
+            return 33 * b"\x00"
+        return self.to_bytes_compressed()
+
     def to_bytes_uncompressed(self):
         """Convert a non-infinite group element to 65-byte uncompressed encoding."""
         assert not self.infinity
@@ -262,29 +279,41 @@ class GE:
         return GE(x, y)
 
     @staticmethod
+    def from_bytes_compressed(b):
+        """Convert a compressed to a group element."""
+        assert len(b) == 33
+        if b[0] != 2 and b[0] != 3:
+            return None
+        x = FE.from_bytes(b[1:])
+        if x is None:
+            return None
+        r = GE.lift_x(x)
+        if r is None:
+            return None
+        if b[0] == 3:
+            r = -r
+        return r
+
+    @staticmethod
+    def from_bytes_uncompressed(b):
+        """Convert an uncompressed to a group element."""
+        assert len(b) == 65
+        if b[0] != 4:
+            return None
+        x = FE.from_bytes(b[1:33])
+        y = FE.from_bytes(b[33:])
+        if y**2 != x**3 + 7:
+            return None
+        return GE(x, y)
+
+    @staticmethod
     def from_bytes(b):
         """Convert a compressed or uncompressed encoding to a group element."""
         assert len(b) in (33, 65)
         if len(b) == 33:
-            if b[0] != 2 and b[0] != 3:
-                return None
-            x = FE.from_bytes(b[1:])
-            if x is None:
-                return None
-            r = GE.lift_x(x)
-            if r is None:
-                return None
-            if b[0] == 3:
-                r = -r
-            return r
+            return GE.from_bytes_compressed(b)
         else:
-            if b[0] != 4:
-                return None
-            x = FE.from_bytes(b[1:33])
-            y = FE.from_bytes(b[33:])
-            if y**2 != x**3 + 7:
-                return None
-            return GE(x, y)
+            return GE.from_bytes_uncompressed(b)
 
     @staticmethod
     def from_bytes_xonly(b):
@@ -311,6 +340,13 @@ class GE:
         if self.infinity:
             return "GE()"
         return f"GE(0x{int(self.x):x},0x{int(self.y):x})"
+
+    def __hash__(self):
+        """Compute a non-cryptographic hash of the group element."""
+        if self.infinity:
+            return 0  # 0 is not a valid x coordinate
+        return int(self.x)
+
 
 # The secp256k1 generator point
 G = GE.lift_x(0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798)
