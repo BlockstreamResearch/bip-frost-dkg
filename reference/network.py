@@ -1,5 +1,6 @@
 import asyncio
 
+
 class CoordinatorChannels:
     def __init__(self, n):
         self.n = n
@@ -11,13 +12,14 @@ class CoordinatorChannels:
         self.signer_queues = signer_queues
 
     def send_all(self, m):
-        assert(self.signer_queues is not None)
+        assert self.signer_queues is not None
         for i in range(self.n):
             self.signer_queues[i].put_nowait(m)
 
     async def receive_from(self, i):
         item = await self.queues[i].get()
         return item
+
 
 class SignerChannel:
     def __init__(self, coord_queue):
