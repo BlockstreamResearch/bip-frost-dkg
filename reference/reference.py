@@ -2,9 +2,9 @@
 
 from secp256k1ref.secp256k1 import GE, G
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
+from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 
-from crypto_extra import pubkey_gen_plain
 from network import SignerChannel, CoordinatorChannels
 from typing import Tuple, List, Any, Union, Literal
 

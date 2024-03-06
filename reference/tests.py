@@ -5,7 +5,7 @@ import sys
 import asyncio
 
 from secp256k1ref.secp256k1 import GE, G
-from crypto_extra import pubkey_gen_plain
+from secp256k1ref.keys import pubkey_gen_plain
 from reference import (
     secret_share_shard,
     kdf,
