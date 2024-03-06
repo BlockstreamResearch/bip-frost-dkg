@@ -1,10 +1,10 @@
 from random import randint
-from typing import Tuple, List, Optional, Any, Union, Literal
+from typing import Tuple, List
 import secrets
 import sys
 import asyncio
 
-from crypto_bip340 import n as GROUP_ORDER, point_mul, G
+from secp256k1ref.secp256k1 import GE, G
 from crypto_extra import pubkey_gen_plain
 from reference import (
     secret_share_shard,
@@ -33,13 +33,13 @@ from reference import (
 def scalar_add_multi(scalars: List[int]) -> int:
     acc = 0
     for scalar in scalars:
-        acc = (acc + scalar) % GROUP_ORDER
+        acc = (acc + scalar) % GE.ORDER
     return acc
 
 
 def test_vss_correctness():
     def rand_polynomial(t):
-        return [randint(1, GROUP_ORDER - 1) for _ in range(1, t + 1)]
+        return [randint(1, GE.ORDER - 1) for _ in range(1, t + 1)]
 
     for t in range(1, 3):
         for n in range(t, 2 * t + 1):
@@ -165,14 +165,14 @@ def scalar_inv(a: int):
     """Compute the modular inverse of a modulo n using the extended Euclidean
     Algorithm. See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers.
     """
-    a = a % GROUP_ORDER
+    a = a % GE.ORDER
     if a == 0:
         return 0
     if sys.hexversion >= 0x3080000:
         # More efficient version available in Python 3.8.
-        return pow(a, -1, GROUP_ORDER)
+        return pow(a, -1, GE.ORDER)
     t1, t2 = 0, 1
-    r1, r2 = GROUP_ORDER, a
+    r1, r2 = GE.ORDER, a
     while r2 != 0:
         q = r1 // r2
         t1, t2 = t2, t1 - q * t2
@@ -180,7 +180,7 @@ def scalar_inv(a: int):
     if r1 > 1:
         return None
     if t1 < 0:
-        t1 += GROUP_ORDER
+        t1 += GE.ORDER
     return t1
 
 
@@ -192,10 +192,10 @@ def derive_interpolating_value(L, x_i):
     for x_j in L:
         if x_j == x_i:
             continue
-        numerator = (numerator * x_j) % GROUP_ORDER
-        denominator = (denominator * ((x_j - x_i) % GROUP_ORDER)) % GROUP_ORDER
+        numerator = (numerator * x_j) % GE.ORDER
+        denominator = (denominator * ((x_j - x_i) % GE.ORDER)) % GE.ORDER
     denom_inv = scalar_inv(denominator)
-    return (numerator * denom_inv) % GROUP_ORDER
+    return (numerator * denom_inv) % GE.ORDER
 
 
 def recover_secret(signer_indices, shares):
@@ -204,7 +204,7 @@ def recover_secret(signer_indices, shares):
     assert len(signer_indices) == t
     for i in range(t):
         l = derive_interpolating_value(signer_indices, signer_indices[i])
-        interpolated_shares += [(l * shares[i]) % GROUP_ORDER]
+        interpolated_shares += [(l * shares[i]) % GE.ORDER]
     recovered_secret = scalar_add_multi(interpolated_shares)
     return recovered_secret
 
@@ -243,12 +243,12 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
 
     # Check that the share corresponds to the signer_pubkey
     for i in range(n):
-        assert point_mul(G, shares[i]) == signer_pubkeys[0][i]
+        assert shares[i] * G == signer_pubkeys[0][i]
 
     # Check that the first t signers (TODO: should be an arbitrary set) can
     # recover the shared pubkey
     recovered_secret = recover_secret(list(range(1, t + 1)), shares[0:t])
-    assert point_mul(G, recovered_secret) == shared_pubkey
+    assert recovered_secret * G == shared_pubkey
 
     # test correctness of chilldkg_recover
     if len(dkg_outputs[0]) > 3:

@@ -1,28 +1,18 @@
 # Reference implementation of BIP DKG.
 
+from secp256k1ref.secp256k1 import GE, G
 from crypto_bip340 import (
-    n as GROUP_ORDER,
-    G,
-    point_mul,
     tagged_hash,
     int_from_bytes,
     bytes_from_int,
     schnorr_sign,
     schnorr_verify,
 )
-from crypto_extra import (
-    pubkey_gen_plain,
-    point_add_multi,
-    cpoint,
-    xbytes,
-    cbytes,
-    cbytes_ext,
-)
+from crypto_extra import pubkey_gen_plain
 from network import SignerChannel, CoordinatorChannels
-from typing import Tuple, List, Optional, Any, Union, Literal
+from typing import Tuple, List, Any, Union, Literal
 
 # Another type
-from crypto_bip340 import Point
 from util import (
     InvalidContributionError,
     InvalidBackupError,
@@ -43,12 +33,12 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
     return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
 
 
-# A scalar is represented by an integer modulo GROUP_ORDER
+# A scalar is represented by an integer modulo GE.ORDER
 Scalar = int
 
 
 def scalar_add(x: Scalar, y: Scalar):
-    return (x + y) % GROUP_ORDER
+    return (x + y) % GE.ORDER
 
 
 # A polynomial of degree t - 1 is represented by a list of t coefficients
@@ -66,8 +56,8 @@ def polynomial_evaluate(f: Polynomial, x: Scalar) -> Scalar:
     value = 0
     # Reverse coefficients to compute evaluation via Horner's method
     for coeff in f[::-1]:
-        value = (value * x) % GROUP_ORDER
-        value = (value + coeff) % GROUP_ORDER
+        value = (value * x) % GE.ORDER
+        value = (value + coeff) % GE.ORDER
     return value
 
 
@@ -77,48 +67,50 @@ def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
 
 
 # A VSS Commitment is a list of points
-VSSCommitment = List[Optional[Point]]
+VSSCommitment = List[GE]
 
 
 # Returns commitments to the coefficients of f
 def vss_commit(f: Polynomial) -> VSSCommitment:
     vss_commitment = []
     for coeff in f:
-        A_i = point_mul(G, coeff)
+        A_i = coeff * G
         vss_commitment.append(A_i)
     return vss_commitment
 
 
 def serialize_vss_commitment(vss_commitment: VSSCommitment) -> bytes:
-    return b"".join([cbytes_ext(P) for P in vss_commitment])
+    return b"".join([P.to_bytes_compressed_with_infinity() for P in vss_commitment])
 
 
 def deserialize_vss_commitment(b: bytes, t: int) -> VSSCommitment:
     if len(b) < 33 * t:
         raise DeserializationError
-    return [cpoint(b[i : i + 33]) for i in range(0, 33 * t, 33)]
+    return [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
 
 
 def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
-    P = point_mul(G, share)
-    Q = [
-        point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER)
-        for j in range(0, len(vss_commitment))
-    ]
-    return P == point_add_multi(Q)
+    P = share * G
+    Q = GE.mul(
+        *(
+            (pow(signer_idx + 1, j), vss_commitment[j])
+            for j in range(0, len(vss_commitment))
+        )
+    )
+    return P == Q
 
 
 # An extended VSS Commitment is a VSS commitment with a proof of knowledge
 VSSCommitmentExt = Tuple[VSSCommitment, bytes]
 
 # A VSS Commitment Sum is the sum of multiple extended VSS Commitments
-VSSCommitmentSumExt = Tuple[List[Optional[Point]], List[bytes]]
+VSSCommitmentSumExt = Tuple[List[GE], List[bytes]]
 
 
 def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSumExt) -> bytes:
-    return b"".join([cbytes_ext(P) for P in vss_commitment_sum[0]]) + b"".join(
-        vss_commitment_sum[1]
-    )
+    return b"".join(
+        [P.to_bytes_compressed_with_infinity() for P in vss_commitment_sum[0]]
+    ) + b"".join(vss_commitment_sum[1])
 
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
@@ -131,8 +123,7 @@ def vss_sum_commitments(
     assert all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
     first_coefficients = [vss_commitments[i][0][0] for i in range(n)]
     remaining_coeffs_sum = [
-        point_add_multi([vss_commitments[i][0][j] for i in range(n)])
-        for j in range(1, t)
+        GE.sum(*(vss_commitments[i][0][j] for i in range(n))) for j in range(1, t)
     ]
     poks = [vss_commitments[i][1] for i in range(n)]
     return (first_coefficients + remaining_coeffs_sum, poks)
@@ -143,11 +134,11 @@ def vss_commitments_sum_finalize(
 ) -> VSSCommitment:
     # Strip the signatures and sum the commitments to the constant coefficients
     return [
-        point_add_multi([vss_commitments_sum[0][i] for i in range(n)])
+        GE.sum(*(vss_commitments_sum[0][i] for i in range(n)))
     ] + vss_commitments_sum[0][n : n + t - 1]
 
 
-GroupInfo = Tuple[Optional[Point], List[Optional[Point]]]
+GroupInfo = Tuple[GE, List[GE]]
 
 
 # Outputs the shared public key and individual public keys of the participants
@@ -155,11 +146,11 @@ def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> GroupInf
     pk = vss_commitment[0]
     participant_public_keys = []
     for signer_idx in range(0, n):
-        pk_i = point_add_multi(
-            [
-                point_mul(vss_commitment[j], pow(signer_idx + 1, j) % GROUP_ORDER)
+        pk_i = GE.mul(
+            *(
+                (pow(signer_idx + 1, j), vss_commitment[j])
                 for j in range(0, len(vss_commitment))
-            ]
+            )
         )
         participant_public_keys += [pk_i]
     return pk, participant_public_keys
@@ -187,8 +178,7 @@ def simplpedpop_round1(
     """
     assert t < 2 ** (4 * 8)
     coeffs = [
-        int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big")))
-        % GROUP_ORDER
+        int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))) % GE.ORDER
         for i in range(t)
     ]
     assert my_idx < 2 ** (4 * 8)
@@ -204,7 +194,7 @@ def simplpedpop_round1(
     return state, vss_commitment_ext, gen_shares
 
 
-DKGOutput = Tuple[Scalar, Optional[Point], List[Optional[Point]]]
+DKGOutput = Tuple[Scalar, GE, List[GE]]
 
 
 def simplpedpop_pre_finalize(
@@ -227,10 +217,10 @@ def simplpedpop_pre_finalize(
 
     for i in range(n):
         P_i = vss_commitments_sum[0][i]
-        if P_i is None:
+        if P_i.infinity:
             raise InvalidContributionError(i, "Participant sent invalid commitment")
         else:
-            pk_i = xbytes(P_i)
+            pk_i = P_i.to_bytes_xonly()
             if not schnorr_verify(
                 VSS_PoK_msg + i.to_bytes(4, byteorder="big"),
                 pk_i,
@@ -251,14 +241,16 @@ def simplpedpop_pre_finalize(
 def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     x = int_from_bytes(deckey)
     assert x != 0
-    Y = cpoint(enckey)
-    Z = point_mul(Y, x)
-    assert Z is not None
-    return int_from_bytes(tagged_hash_bip_dkg("ECDH", cbytes(Z) + context))
+    Y = GE.from_bytes_compressed(enckey)
+    Z = x * Y
+    assert not Z.infinity
+    return int_from_bytes(
+        tagged_hash_bip_dkg("ECDH", Z.to_bytes_compressed() + context)
+    )
 
 
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    return (share + ecdh(my_deckey, enckey, context)) % GROUP_ORDER
+    return (share + ecdh(my_deckey, enckey, context)) % GE.ORDER
 
 
 def decrypt_sum(
@@ -271,9 +263,7 @@ def decrypt_sum(
     shares_sum = ciphertext_sum
     for i in range(len(enckeys)):
         if i != my_idx:
-            shares_sum = (
-                shares_sum - ecdh(my_deckey, enckeys[i], context)
-            ) % GROUP_ORDER
+            shares_sum = (shares_sum - ecdh(my_deckey, enckeys[i], context)) % GE.ORDER
     return shares_sum
 
 
@@ -328,7 +318,7 @@ def encpedpop_pre_finalize(
 
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
-    shares_sum = (shares_sum + self_share) % GROUP_ORDER
+    shares_sum = (shares_sum + self_share) % GE.ORDER
     eta, dkg_output = simplpedpop_pre_finalize(
         simpl_state, vss_commitments_sum, shares_sum
     )
@@ -595,7 +585,7 @@ def chilldkg_recover(
         seed, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx
     )
     self_share = state1[4]
-    shares_sum = (shares_sum + self_share) % GROUP_ORDER
+    shares_sum = (shares_sum + self_share) % GE.ORDER
 
     # Compute shared & individual pubkeys
     (shared_pubkey, signer_pubkeys) = derive_group_info(vss_commit, len(hostpubkeys), t)
