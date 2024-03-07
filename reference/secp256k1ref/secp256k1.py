@@ -15,29 +15,29 @@ Exports:
 * G: the secp256k1 generator point
 """
 
-
-class FE:
-    """Objects of this class represent elements of the field GF(2**256 - 2**32 - 977).
+# TODO Docstrings of methods still say "field element"
+class APrimeFE:
+    """Objects of this class represent elements of a prime field.
 
     They are represented internally in numerator / denominator form, in order to delay inversions.
     """
 
     # The size of the field (also its modulus and characteristic).
-    SIZE = 2**256 - 2**32 - 977
+    SIZE: int
 
     def __init__(self, a=0, b=1):
         """Initialize a field element a/b; both a and b can be ints or field elements."""
-        if isinstance(a, FE):
+        if isinstance(a, type(self)):
             num = a._num
             den = a._den
         else:
-            num = a % FE.SIZE
+            num = a % self.SIZE
             den = 1
-        if isinstance(b, FE):
-            den = (den * b._num) % FE.SIZE
-            num = (num * b._den) % FE.SIZE
+        if isinstance(b, type(self)):
+            den = (den * b._num) % self.SIZE
+            num = (num * b._den) % self.SIZE
         else:
-            den = (den * b) % FE.SIZE
+            den = (den * b) % self.SIZE
         assert den != 0
         if num == 0:
             den = 1
@@ -46,71 +46,71 @@ class FE:
 
     def __add__(self, a):
         """Compute the sum of two field elements (second may be int)."""
-        if isinstance(a, FE):
-            return FE(self._num * a._den + self._den * a._num, self._den * a._den)
-        return FE(self._num + self._den * a, self._den)
+        if isinstance(a, type(self)):
+            return type(self)(self._num * a._den + self._den * a._num, self._den * a._den)
+        if isinstance(a, int):
+            return type(self)(self._num + self._den * a, self._den)
+        return NotImplemented
 
     def __radd__(self, a):
         """Compute the sum of an integer and a field element."""
-        return FE(a) + self
+        return type(self)(a) + self
+
+    @classmethod
+    def sum(cls, *es):
+        """Compute the sum of field elements.
+
+        sum(a, b, c, ...) is identical to (0 + a + b + c + ...)."""
+        return sum(es, start=cls(0))
 
     def __sub__(self, a):
         """Compute the difference of two field elements (second may be int)."""
-        if isinstance(a, FE):
-            return FE(self._num * a._den - self._den * a._num, self._den * a._den)
-        return FE(self._num - self._den * a, self._den)
+        if isinstance(a, type(self)):
+            return type(self)(self._num * a._den - self._den * a._num, self._den * a._den)
+        if isinstance(a, int):
+            return type(self)(self._num - self._den * a, self._den)
+        return NotImplemented
 
     def __rsub__(self, a):
         """Compute the difference of an integer and a field element."""
-        return FE(a) - self
+        return type(self)(a) - self
 
     def __mul__(self, a):
         """Compute the product of two field elements (second may be int)."""
-        if isinstance(a, FE):
-            return FE(self._num * a._num, self._den * a._den)
-        return FE(self._num * a, self._den)
+        if isinstance(a, type(self)):
+            return type(self)(self._num * a._num, self._den * a._den)
+        if isinstance(a, int):
+            return type(self)(self._num * a, self._den)
+        return NotImplemented
 
     def __rmul__(self, a):
         """Compute the product of an integer with a field element."""
-        return FE(a) * self
+        return type(self)(a) * self
 
     def __truediv__(self, a):
         """Compute the ratio of two field elements (second may be int)."""
-        return FE(self, a)
+        if isinstance(a, type(self)) or isinstance(a, int):
+            return type(self)(self, a)
+        return NotImplemented
 
     def __pow__(self, a):
         """Raise a field element to an integer power."""
-        return FE(pow(self._num, a, FE.SIZE), pow(self._den, a, FE.SIZE))
+        return type(self)(pow(self._num, a, self.SIZE), pow(self._den, a, self.SIZE))
 
     def __neg__(self):
         """Negate a field element."""
-        return FE(-self._num, self._den)
+        return type(self)(-self._num, self._den)
 
     def __int__(self):
-        """Convert a field element to an integer in range 0..p-1. The result is cached."""
+        """Convert a field element to an integer in range 0..SIZE-1. The result is cached."""
         if self._den != 1:
-            self._num = (self._num * pow(self._den, -1, FE.SIZE)) % FE.SIZE
+            self._num = (self._num * pow(self._den, -1, self.SIZE)) % self.SIZE
             self._den = 1
         return self._num
 
     def sqrt(self):
-        """Compute the square root of a field element if it exists (None otherwise).
-
-        Due to the fact that our modulus is of the form (p % 4) == 3, the Tonelli-Shanks
-        algorithm (https://en.wikipedia.org/wiki/Tonelli-Shanks_algorithm) is simply
-        raising the argument to the power (p + 1) / 4.
-
-        To see why: (p-1) % 2 = 0, so 2 divides the order of the multiplicative group,
-        and thus only half of the non-zero field elements are squares. An element a is
-        a (nonzero) square when Euler's criterion, a^((p-1)/2) = 1 (mod p), holds. We're
-        looking for x such that x^2 = a (mod p). Given a^((p-1)/2) = 1, that is equivalent
-        to x^2 = a^(1 + (p-1)/2) mod p. As (1 + (p-1)/2) is even, this is equivalent to
-        x = a^((1 + (p-1)/2)/2) mod p, or x = a^((p+1)/4) mod p."""
-        v = int(self)
-        s = pow(v, (FE.SIZE + 1) // 4, FE.SIZE)
-        if s**2 % FE.SIZE == v:
-            return FE(s)
-        return None
+        """Compute the square root of a field element if it exists (None otherwise)."""
+        raise NotImplementedError
 
     def is_square(self):
         """Determine if this field element has a square root."""
@@ -118,26 +118,26 @@ class FE:
         return self.sqrt() is not None
 
     def is_even(self):
-        """Determine whether this field element, represented as integer in 0..p-1, is even."""
+        """Determine whether this field element, represented as integer in 0..SIZE-1, is even."""
         return int(self) & 1 == 0
 
     def __eq__(self, a):
         """Check whether two field elements are equal (second may be an int)."""
-        if isinstance(a, FE):
-            return (self._num * a._den - self._den * a._num) % FE.SIZE == 0
-        return (self._num - self._den * a) % FE.SIZE == 0
+        if isinstance(a, type(self)):
+            return (self._num * a._den - self._den * a._num) % self.SIZE == 0
+        return (self._num - self._den * a) % self.SIZE == 0
 
     def to_bytes(self):
         """Convert a field element to a 32-byte array (BE byte order)."""
         return int(self).to_bytes(32, 'big')
 
-    @staticmethod
-    def from_bytes(b):
+    @classmethod
+    def from_bytes(cls, b):
         """Convert a 32-byte array to a field element (BE byte order, no overflow allowed)."""
         v = int.from_bytes(b, 'big')
-        if v >= FE.SIZE:
+        if v >= cls.SIZE:
             return None
-        return FE(v)
+        return cls(v)
 
     def __str__(self):
         """Convert this field element to a 64 character hex string."""
@@ -145,7 +145,32 @@ class FE:
 
     def __repr__(self):
         """Get a string representation of this field element."""
-        return f"FE(0x{int(self):x})"
+        return f"{type(self).__qualname__}(0x{int(self):x})"
+
+
+class FE(APrimeFE):
+    SIZE = 2**256 - 2**32 - 977
+
+    def sqrt(self):
+        # Due to the fact that our modulus p is of the form (p % 4) == 3, the Tonelli-Shanks
+        # algorithm (https://en.wikipedia.org/wiki/Tonelli-Shanks_algorithm) is simply
+        # raising the argument to the power (p + 1) / 4.
+
+        # To see why: (p-1) % 2 = 0, so 2 divides the order of the multiplicative group,
+        # and thus only half of the non-zero field elements are squares. An element a is
+        # a (nonzero) square when Euler's criterion, a^((p-1)/2) = 1 (mod p), holds. We're
+        # looking for x such that x^2 = a (mod p). Given a^((p-1)/2) = 1, that is equivalent
+        # to x^2 = a^(1 + (p-1)/2) mod p. As (1 + (p-1)/2) is even, this is equivalent to
+        # x = a^((1 + (p-1)/2)/2) mod p, or x = a^((p+1)/4) mod p."""
+        v = int(self)
+        s = pow(v, (self.SIZE + 1) // 4, self.SIZE)
+        if s**2 % self.SIZE == v:
+            return type(self)(s)
+        return None
+
+
+class Scalar(APrimeFE):
+    SIZE = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 class GE:
@@ -161,7 +186,7 @@ class GE:
     """
 
     # Order of the group (number of points on the curve, plus 1 for infinity)
-    ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+    ORDER = Scalar.SIZE
 
     # Number of valid distinct x coordinates on the curve.
     ORDER_HALF = ORDER // 2
@@ -238,8 +263,8 @@ class GE:
     def __rmul__(self, a):
         """Multiply an integer with a group element."""
         if self == G:
-            return FAST_G.mul(a)
-        return GE.mul((a, self))
+            return FAST_G.mul(int(a))
+        return GE.mul((int(a), self))
 
     def __neg__(self):
         """Compute the negation of a group element."""
