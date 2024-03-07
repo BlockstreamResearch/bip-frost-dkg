@@ -1,6 +1,6 @@
 # Reference implementation of BIP DKG.
 
-from secp256k1ref.secp256k1 import GE, G
+from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
@@ -29,14 +29,6 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
     return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
 
 
-# A scalar is represented by an integer modulo GE.ORDER
-Scalar = int
-
-
-def scalar_add(x: Scalar, y: Scalar):
-    return (x + y) % GE.ORDER
-
-
 # A polynomial of degree t - 1 is represented by a list of t coefficients
 # f(x) = a[0] + ... + a[t-1] * x^(t-1)
 Polynomial = List[Scalar]
@@ -49,17 +41,16 @@ def polynomial_evaluate(f: Polynomial, x: Scalar) -> Scalar:
     # bug, because we'd compute the implicit secret.
     assert x != 0
 
-    value = 0
+    value = Scalar(0)
     # Reverse coefficients to compute evaluation via Horner's method
     for coeff in f[::-1]:
-        value = (value * x) % GE.ORDER
-        value = (value + coeff) % GE.ORDER
+        value = value * x + coeff
     return value
 
 
 # Returns [f(1), ..., f(n)] for polynomial f with coefficients coeffs
 def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
-    return [polynomial_evaluate(f, x_i) for x_i in range(1, n + 1)]
+    return [polynomial_evaluate(f, Scalar(x_i)) for x_i in range(1, n + 1)]
 
 
 # A VSS Commitment is a list of points
@@ -174,14 +165,14 @@ def simplpedpop_round1(
     """
     assert t < 2 ** (4 * 8)
     coeffs = [
-        int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))) % GE.ORDER
+        Scalar(int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))))
         for i in range(t)
     ]
     assert my_idx < 2 ** (4 * 8)
     # TODO: fix aux_rand
     sig = schnorr_sign(
         VSS_PoK_msg + my_idx.to_bytes(4, byteorder="big"),
-        bytes_from_int(coeffs[0]),
+        bytes_from_int(int(coeffs[0])),
         kdf(seed, "VSS PoK"),
     )
     vss_commitment_ext = (vss_commit(coeffs), sig)
@@ -240,13 +231,13 @@ def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
     Y = GE.from_bytes_compressed(enckey)
     Z = x * Y
     assert not Z.infinity
-    return int_from_bytes(
-        tagged_hash_bip_dkg("ECDH", Z.to_bytes_compressed() + context)
+    return Scalar(
+        int_from_bytes(tagged_hash_bip_dkg("ECDH", Z.to_bytes_compressed() + context))
     )
 
 
 def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    return (share + ecdh(my_deckey, enckey, context)) % GE.ORDER
+    return share + ecdh(my_deckey, enckey, context)
 
 
 def decrypt_sum(
@@ -259,7 +250,7 @@ def decrypt_sum(
     shares_sum = ciphertext_sum
     for i in range(len(enckeys)):
         if i != my_idx:
-            shares_sum = (shares_sum - ecdh(my_deckey, enckeys[i], context)) % GE.ORDER
+            shares_sum = shares_sum - ecdh(my_deckey, enckeys[i], context)
     return shares_sum
 
 
@@ -285,7 +276,7 @@ def encpedpop_round1(
     for i in range(n):
         if i == my_idx:
             # TODO No need to send a constant.
-            enc_gen_shares.append(0)
+            enc_gen_shares.append(Scalar(0))
         else:
             try:
                 enc_gen_shares.append(
@@ -314,7 +305,7 @@ def encpedpop_pre_finalize(
 
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
-    shares_sum = (shares_sum + self_share) % GE.ORDER
+    shares_sum += self_share
     eta, dkg_output = simplpedpop_pre_finalize(
         simpl_state, vss_commitments_sum, shares_sum
     )
@@ -386,7 +377,7 @@ def chilldkg_round2(
     eta, dkg_output = encpedpop_pre_finalize(
         enc_state1, vss_commitments_sum, my_enc_share
     )
-    eta += b"".join([bytes_from_int(share) for share in all_enc_shares_sum])
+    eta += b"".join([bytes_from_int(int(share)) for share in all_enc_shares_sum])
     state2 = (params, eta, dkg_output)
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
@@ -476,7 +467,7 @@ def serialize_eta(
         t.to_bytes(4, byteorder="big")
         + serialize_vss_commitment(vss_commit)
         + b"".join(hostpubkeys)
-        + b"".join([bytes_from_int(share) for share in all_enc_shares_sum])
+        + b"".join([bytes_from_int(int(share)) for share in all_enc_shares_sum])
     )
 
 
@@ -486,13 +477,11 @@ async def chilldkg_coordinate(
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
     vss_commitments_ext = []
-    all_enc_shares_sum = [0] * n
+    all_enc_shares_sum = [Scalar(0)] * n
     for i in range(n):
         vss_commitment_ext, enc_shares = await chans.receive_from(i)
         vss_commitments_ext += [vss_commitment_ext]
-        all_enc_shares_sum = [
-            scalar_add(all_enc_shares_sum[j], enc_shares[j]) for j in range(n)
-        ]
+        all_enc_shares_sum = [all_enc_shares_sum[j] + enc_shares[j] for j in range(n)]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     chans.send_all((vss_commitments_sum, all_enc_shares_sum))
     eta = serialize_eta(
@@ -535,7 +524,7 @@ def deserialize_eta(b: bytes) -> Any:
     if len(rest) < 32 * n:
         raise DeserializationError
     all_enc_shares_sum, rest = (
-        [int_from_bytes(rest[i : i + 32]) for i in range(0, 32 * n, 32)],
+        [Scalar(int_from_bytes(rest[i : i + 32])) for i in range(0, 32 * n, 32)],
         rest[32 * n :],
     )
 
@@ -576,7 +565,7 @@ def chilldkg_recover(
         seed, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx
     )
     self_share = state1[4]
-    shares_sum = (shares_sum + self_share) % GE.ORDER
+    shares_sum += self_share
 
     # Compute shared & individual pubkeys
     (shared_pubkey, signer_pubkeys) = derive_group_info(vss_commit, len(hostpubkeys), t)

@@ -1,10 +1,9 @@
 from random import randint
-from typing import Tuple, List
+from typing import Tuple
 import secrets
-import sys
 import asyncio
 
-from secp256k1ref.secp256k1 import GE, G
+from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
 from reference import (
     secret_share_shard,
@@ -30,13 +29,6 @@ from reference import (
 )
 
 
-def scalar_add_multi(scalars: List[int]) -> int:
-    acc = 0
-    for scalar in scalars:
-        acc = (acc + scalar) % GE.ORDER
-    return acc
-
-
 def test_vss_correctness():
     def rand_polynomial(t):
         return [randint(1, GE.ORDER - 1) for _ in range(1, t + 1)]
@@ -58,7 +50,7 @@ def simulate_simplpedpop(seeds, t):
     vss_commitments_ext = [out[1] for out in round1_outputs]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     for i in range(n):
-        shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
+        shares_sum = Scalar.sum(*([out[2][i] for out in round1_outputs]))
         dkg_outputs += [
             simplpedpop_pre_finalize(
                 round1_outputs[i][0], vss_commitments_sum, shares_sum
@@ -89,7 +81,7 @@ def simulate_encpedpop(seeds, t):
     vss_commitments_ext = [out[1] for out in round1_outputs]
     vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
     for i in range(n):
-        enc_shares_sum = scalar_add_multi([out[2][i] for out in round1_outputs])
+        enc_shares_sum = Scalar.sum(*([out[2][i] for out in round1_outputs]))
         dkg_outputs += [
             encpedpop_pre_finalize(
                 round1_outputs[i][0], vss_commitments_sum, enc_shares_sum
@@ -118,7 +110,7 @@ def simulate_chilldkg(seeds, t):
     dkg_outputs = []
     all_enc_shares_sum = []
     for i in range(n):
-        all_enc_shares_sum += [scalar_add_multi([out[2][i] for out in round1_outputs])]
+        all_enc_shares_sum += [Scalar.sum(*([out[2][i] for out in round1_outputs]))]
     round2_outputs = []
     for i in range(n):
         round2_outputs += [
@@ -159,52 +151,27 @@ def simulate_chilldkg_full(seeds, t):
     return [[out[0][0], out[0][1], out[0][2], out[1]] for out in outputs[1:]]
 
 
-# Adapted from BIP 324
-def scalar_inv(a: int):
-    """Compute the modular inverse of a modulo n using the extended Euclidean
-    Algorithm. See https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers.
-    """
-    a = a % GE.ORDER
-    if a == 0:
-        return 0
-    if sys.hexversion >= 0x3080000:
-        # More efficient version available in Python 3.8.
-        return pow(a, -1, GE.ORDER)
-    t1, t2 = 0, 1
-    r1, r2 = GE.ORDER, a
-    while r2 != 0:
-        q = r1 // r2
-        t1, t2 = t2, t1 - q * t2
-        r1, r2 = r2, r1 - q * r2
-    if r1 > 1:
-        return None
-    if t1 < 0:
-        t1 += GE.ORDER
-    return t1
-
-
 def derive_interpolating_value(L, x_i):
     assert x_i in L
     assert all(L.count(x_j) <= 1 for x_j in L)
-    numerator = 1
-    denominator = 1
+    lam = Scalar(1)
     for x_j in L:
+        x_j = Scalar(x_j)
+        x_i = Scalar(x_i)
         if x_j == x_i:
             continue
-        numerator = (numerator * x_j) % GE.ORDER
-        denominator = (denominator * ((x_j - x_i) % GE.ORDER)) % GE.ORDER
-    denom_inv = scalar_inv(denominator)
-    return (numerator * denom_inv) % GE.ORDER
+        lam *= x_j / (x_j - x_i)
+    return lam
 
 
-def recover_secret(signer_indices, shares):
+def recover_secret(signer_indices, shares) -> Scalar:
     interpolated_shares = []
     t = len(shares)
     assert len(signer_indices) == t
     for i in range(t):
         lam = derive_interpolating_value(signer_indices, signer_indices[i])
-        interpolated_shares += [(lam * shares[i]) % GE.ORDER]
-    recovered_secret = scalar_add_multi(interpolated_shares)
+        interpolated_shares += [(lam * shares[i])]
+    recovered_secret = Scalar.sum(*interpolated_shares)
     return recovered_secret
 
 
