@@ -6,7 +6,7 @@ from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 
 from network import SignerChannel, CoordinatorChannels
-from typing import Tuple, List, Any, Union, Literal
+from typing import Tuple, List, Any, Union, Literal, Optional
 
 # Another type
 from util import (
@@ -391,11 +391,9 @@ def chilldkg_round2(
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
 
-def chilldkg_finalize(
-    state2: ChillDKGStateR2, cert: bytes
-) -> Union[DKGOutput, Literal[False]]:
+def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Optional[DKGOutput]:
     """
-    A return value of False means that `cert` is not a valid certificate.
+    A return value of None means that `cert` is not a valid certificate.
 
     You MUST NOT delete `state2` in this case.
     The reason is that some other participant may have a valid certificate and thus deem the DKG session successful.
@@ -405,7 +403,7 @@ def chilldkg_finalize(
     (params, eta, dkg_output) = state2
     hostpubkeys = params[0]
     if not certifying_eq_finalize(hostpubkeys, eta, cert):
-        return False
+        return None
     return dkg_output
 
 
@@ -416,24 +414,21 @@ def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
 
 async def chilldkg(
     chan: SignerChannel, seed: bytes, my_hostseckey: bytes, params: SessionParams
-) -> Union[Tuple[DKGOutput, Any], Literal[False]]:
+) -> Optional[Tuple[DKGOutput, Any]]:
+    # TODO Top-level error handling
     state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, params)
     chan.send((vss_commitment_ext, enc_gen_shares))
     vss_commitments_sum, all_enc_shares_sum = await chan.receive()
 
-    try:
-        state2, eq_round1 = chilldkg_round2(
-            seed, state1, vss_commitments_sum, all_enc_shares_sum
-        )
-    except Exception as e:
-        print("Exception", repr(e))
-        return False
+    state2, eq_round1 = chilldkg_round2(
+        seed, state1, vss_commitments_sum, all_enc_shares_sum
+    )
 
     chan.send(eq_round1)
     cert = await chan.receive()
     dkg_output = chilldkg_finalize(state2, cert)
-    if dkg_output == False:
-        return False
+    if dkg_output is None:
+        return None
 
     return (dkg_output, chilldkg_backup(state2, cert))
 

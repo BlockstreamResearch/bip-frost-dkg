@@ -141,7 +141,6 @@ def simulate_chilldkg_full(seeds, t):
         hostkeys += [chilldkg_hostkey_gen(seeds[i])]
 
     params = chilldkg_session_params([hostkey[1] for hostkey in hostkeys], t, b"")[0]
-    hostpubkeys = [hostkey[1] for hostkey in hostkeys]
 
     async def main():
         coord_chans = CoordinatorChannels(n)
@@ -203,8 +202,8 @@ def recover_secret(signer_indices, shares):
     t = len(shares)
     assert len(signer_indices) == t
     for i in range(t):
-        l = derive_interpolating_value(signer_indices, signer_indices[i])
-        interpolated_shares += [(l * shares[i]) % GE.ORDER]
+        lam = derive_interpolating_value(signer_indices, signer_indices[i])
+        interpolated_shares += [(lam * shares[i]) % GE.ORDER]
     recovered_secret = scalar_add_multi(interpolated_shares)
     return recovered_secret
 
@@ -221,7 +220,7 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     seeds = [secrets.token_bytes(32) for _ in range(n)]
 
     dkg_outputs = simulate_dkg(seeds, t)
-    assert all([out != False for out in dkg_outputs])
+    assert all([out is not False for out in dkg_outputs])
     if external_eq:
         # TODO: move into separate function "eta_eq"
         etas = [out[0] for out in dkg_outputs]
