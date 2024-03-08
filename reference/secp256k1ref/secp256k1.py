@@ -206,10 +206,6 @@ class GE:
             self.x = fx
             self.y = fy
 
-    def __eq__(self, a):
-        """Compares two group elements."""
-        return self.infinity == a.infinity and self.x == a.x and self.y == self.y
-
     def __add__(self, a):
         """Add two group elements together."""
         # Deal with infinity: a + infinity == infinity + a == a.
@@ -275,6 +271,10 @@ class GE:
     def __sub__(self, a):
         """Subtract a group element from another."""
         return self + (-a)
+
+    def __eq__(self, a):
+        """Check if two group elements are equal."""
+        return (self - a).infinity
 
     def has_even_y(self):
         """Determine whether a non-infinity group element has an even y coordinate."""
