@@ -398,6 +398,9 @@ def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Optional[DKGOutpu
     return dkg_output
 
 
+# TODO Make this a subroutine of chilldkg_finalize, which should output the backup.
+# The backup must be written to permanent storage before using the dkg_output,
+# so it should be coupled with dkg_finalize.
 def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
     eta = state2[1]
     return (eta, cert)
@@ -457,6 +460,8 @@ async def certifying_eq_coordinate(
     return cert
 
 
+# TODO It's a bit confusing to have this function because it's currently
+# only used in the coordinator. Not sure what the best way is to refactor this.
 def serialize_eta(
     t: int,
     vss_commit: VSSCommitment,
