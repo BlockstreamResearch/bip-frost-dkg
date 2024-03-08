@@ -176,6 +176,8 @@ class Scalar(APrimeFE):
 class GE:
     """Objects of this class represent secp256k1 group elements (curve points or infinity)
 
+    GE objects are immutable.
+
     Normal points on the curve have fields:
     * x: the x coordinate (a field element)
     * y: the y coordinate (a field element, satisfying y^2 = x^3 + 7)
@@ -185,26 +187,47 @@ class GE:
     * infinity: True
     """
 
+    # TODO The following two class attributes should probably be just getters as
+    # classmethods to enforce immutability. Unfortunately Python makes it hard
+    # to create "classproperties". `G` could then also be just a classmethod.
+
     # Order of the group (number of points on the curve, plus 1 for infinity)
     ORDER = Scalar.SIZE
 
     # Number of valid distinct x coordinates on the curve.
     ORDER_HALF = ORDER // 2
 
+    @property
+    def infinity(self):
+        """Whether the group element is the point at infinity."""
+        return self._infinity
+
+    @property
+    def x(self):
+        """The x coordinate (a field element) of a non-infinite group element."""
+        assert not self.infinity
+        return self._x
+
+    @property
+    def y(self):
+        """The y coordinate (a field element) of a non-infinite group element."""
+        assert not self.infinity
+        return self._y
+
     def __init__(self, x=None, y=None):
         """Initialize a group element with specified x and y coordinates, or infinity."""
         if x is None:
             # Initialize as infinity.
             assert y is None
-            self.infinity = True
+            self._infinity = True
         else:
             # Initialize as point on the curve (and check that it is).
             fx = FE(x)
             fy = FE(y)
             assert fy**2 == fx**3 + 7
-            self.infinity = False
-            self.x = fx
-            self.y = fy
+            self._infinity = False
+            self._x = fx
+            self._y = fy
 
     def __add__(self, a):
         """Add two group elements together."""
