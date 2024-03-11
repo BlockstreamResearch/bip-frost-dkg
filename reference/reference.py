@@ -1,15 +1,18 @@
 # Reference implementation of BIP DKG.
+from typing import Tuple, List, Any, Union, Literal, Optional, NamedTuple
 
-from secp256k1ref.secp256k1 import GE, G, Scalar
+from secp256k1ref.secp256k1 import GE, Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 
 from network import SignerChannel, CoordinatorChannels
-from typing import Tuple, List, Any, Union, Literal, Optional
 
-# Another type
+from vss import VSS, VSSCommitment, GroupInfo
 from util import (
+    kdf,
+    tagged_hash_bip_dkg,
+    BIP_TAG,
     InvalidContributionError,
     InvalidBackupError,
     DeserializationError,
@@ -17,134 +20,56 @@ from util import (
     DuplicateHostpubkeyError,
 )
 
-biptag = "BIP DKG: "
 
-
-def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
-    return tagged_hash(biptag + tag, msg)
-
-
-def kdf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
-    # TODO: consider different KDF
-    return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
-
-
-# A polynomial of degree t - 1 is represented by a list of t coefficients
-# f(x) = a[0] + ... + a[t-1] * x^(t-1)
-Polynomial = List[Scalar]
-
-
-# Evaluates polynomial f at x != 0
-def polynomial_evaluate(f: Polynomial, x: Scalar) -> Scalar:
-    # From a mathematical point of view, there's nothing wrong with evaluating
-    # at position 0. But if we try this in a DKG, we may have a catastrophic
-    # bug, because we'd compute the implicit secret.
-    assert x != 0
-
-    value = Scalar(0)
-    # Reverse coefficients to compute evaluation via Horner's method
-    for coeff in f[::-1]:
-        value = value * x + coeff
-    return value
-
-
-# Returns [f(1), ..., f(n)] for polynomial f with coefficients coeffs
-def secret_share_shard(f: Polynomial, n: int) -> List[Scalar]:
-    return [polynomial_evaluate(f, Scalar(x_i)) for x_i in range(1, n + 1)]
-
-
-# A VSS Commitment is a list of points
-VSSCommitment = List[GE]
-
-
-# Returns commitments to the coefficients of f
-def vss_commit(f: Polynomial) -> VSSCommitment:
-    vss_commitment = []
-    for coeff in f:
-        A_i = coeff * G
-        vss_commitment.append(A_i)
-    return vss_commitment
-
-
-def serialize_vss_commitment(vss_commitment: VSSCommitment) -> bytes:
-    return b"".join([P.to_bytes_compressed_with_infinity() for P in vss_commitment])
-
-
-def deserialize_vss_commitment(b: bytes, t: int) -> VSSCommitment:
-    if len(b) < 33 * t:
-        raise DeserializationError
-    return [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
-
-
-def vss_verify(signer_idx: int, share: Scalar, vss_commitment: VSSCommitment) -> bool:
-    P = share * G
-    Q = GE.mul(
-        *(
-            (pow(signer_idx + 1, j), vss_commitment[j])
-            for j in range(0, len(vss_commitment))
-        )
-    )
-    return P == Q
+Pop = bytes
 
 
 # An extended VSS Commitment is a VSS commitment with a proof of knowledge
-VSSCommitmentExt = Tuple[VSSCommitment, bytes]
+# TODO This should be called SimplPedPopRound1SignerToCoordinator or similar
+class VSSCommitmentExt(NamedTuple):
+    com: VSSCommitment
+    pop: Pop
+
 
 # A VSS Commitment Sum is the sum of multiple extended VSS Commitments
-VSSCommitmentSumExt = Tuple[List[GE], List[bytes]]
+# TODO This should be called SimplPedPopRound1CoordinatorToSigner or similar
+class VSSCommitmentSumExt(NamedTuple):
+    first_ges: List[GE]
+    remaining_ges: List[GE]
+    pops: List[Pop]
 
-
-def serialize_vss_commitment_sum(vss_commitment_sum: VSSCommitmentSumExt) -> bytes:
-    return b"".join(
-        [P.to_bytes_compressed_with_infinity() for P in vss_commitment_sum[0]]
-    ) + b"".join(vss_commitment_sum[1])
+    def to_bytes(self) -> bytes:
+        return b"".join(
+            [
+                P.to_bytes_compressed_with_infinity()
+                for P in self.first_ges + self.remaining_ges
+            ]
+        ) + b"".join(self.pops)
 
 
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def vss_sum_commitments(
-    vss_commitments: List[VSSCommitmentExt], t: int
-) -> VSSCommitmentSumExt:
-    n = len(vss_commitments)
-    assert all(len(vss_commitment[0]) == t for vss_commitment in vss_commitments)
-    first_coefficients = [vss_commitments[i][0][0] for i in range(n)]
-    remaining_coeffs_sum = [
-        GE.sum(*(vss_commitments[i][0][j] for i in range(n))) for j in range(1, t)
-    ]
-    poks = [vss_commitments[i][1] for i in range(n)]
-    return (first_coefficients + remaining_coeffs_sum, poks)
+def vss_sum_commitments(coms: List[VSSCommitmentExt], t: int) -> VSSCommitmentSumExt:
+    first_ges = [com[0].ges[0] for com in coms]
+    remaining_ges_sum = [GE.sum(*(com[0].ges[j] for com in coms)) for j in range(1, t)]
+    poks = [com[1] for com in coms]
+    return VSSCommitmentSumExt(first_ges, remaining_ges_sum, poks)
 
 
 def vss_commitments_sum_finalize(
     vss_commitments_sum: VSSCommitmentSumExt, t: int, n: int
 ) -> VSSCommitment:
     # Strip the signatures and sum the commitments to the constant coefficients
-    return [
-        GE.sum(*(vss_commitments_sum[0][i] for i in range(n)))
-    ] + vss_commitments_sum[0][n : n + t - 1]
-
-
-GroupInfo = Tuple[GE, List[GE]]
-
-
-# Outputs the shared public key and individual public keys of the participants
-def derive_group_info(vss_commitment: VSSCommitment, n: int, t: int) -> GroupInfo:
-    pk = vss_commitment[0]
-    participant_public_keys = []
-    for signer_idx in range(0, n):
-        pk_i = GE.mul(
-            *(
-                (pow(signer_idx + 1, j), vss_commitment[j])
-                for j in range(0, len(vss_commitment))
-            )
-        )
-        participant_public_keys += [pk_i]
-    return pk, participant_public_keys
+    return VSSCommitment(
+        [GE.sum(*(vss_commitments_sum.first_ges[i] for i in range(n)))]
+        + vss_commitments_sum.remaining_ges
+    )
 
 
 SimplPedPopR1State = Tuple[int, int, int]
-VSS_PoK_msg = (biptag + "VSS PoK").encode()
+
+POP_MSG_TAG = (BIP_TAG + "VSS PoK").encode()
 
 # To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
 # we omit explicit invocations of an interactive equality check protocol.
@@ -164,21 +89,21 @@ def simplpedpop_round1(
     :return: the signer's state, the VSS commitment and the generated shares
     """
     assert t < 2 ** (4 * 8)
-    coeffs = [
-        Scalar(int_from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big"))))
-        for i in range(t)
-    ]
     assert my_idx < 2 ** (4 * 8)
+
+    vss = VSS.generate(seed, t)
+    shares = vss.shares(n)
+
     # TODO: fix aux_rand
     sig = schnorr_sign(
-        VSS_PoK_msg + my_idx.to_bytes(4, byteorder="big"),
-        bytes_from_int(int(coeffs[0])),
+        POP_MSG_TAG + my_idx.to_bytes(4, byteorder="big"),
+        vss.secret().to_bytes(),
         kdf(seed, "VSS PoK"),
     )
-    vss_commitment_ext = (vss_commit(coeffs), sig)
-    gen_shares = secret_share_shard(coeffs, n)
+
+    vss_commitment_ext = VSSCommitmentExt(vss.commit(), sig)
     state = (t, n, my_idx)
-    return state, vss_commitment_ext, gen_shares
+    return state, vss_commitment_ext, shares
 
 
 DKGOutput = Tuple[Scalar, GE, List[GE]]
@@ -198,30 +123,30 @@ def simplpedpop_pre_finalize(
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n, my_idx = state
-    assert len(vss_commitments_sum) == 2
-    assert len(vss_commitments_sum[0]) == n + t - 1
-    assert len(vss_commitments_sum[1]) == n
+    assert len(vss_commitments_sum.first_ges) == n
+    assert len(vss_commitments_sum.remaining_ges) == t - 1
+    assert len(vss_commitments_sum.pops) == n
 
     for i in range(n):
-        P_i = vss_commitments_sum[0][i]
+        P_i = vss_commitments_sum.first_ges[i]
         if P_i.infinity:
             raise InvalidContributionError(i, "Participant sent invalid commitment")
         else:
             pk_i = P_i.to_bytes_xonly()
             if not schnorr_verify(
-                VSS_PoK_msg + i.to_bytes(4, byteorder="big"),
+                POP_MSG_TAG + i.to_bytes(4, byteorder="big"),
                 pk_i,
-                vss_commitments_sum[1][i],
+                vss_commitments_sum.pops[i],
             ):
                 raise InvalidContributionError(
                     i, "Participant sent invalid proof-of-knowledge"
                 )
     # Strip the signatures and sum the commitments to the constant coefficients
     vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
-    if not vss_verify(my_idx, shares_sum, vss_commitment):
+    if not vss_commitment.verify(my_idx, shares_sum):
         raise VSSVerifyError()
-    eta = t.to_bytes(4, byteorder="big") + serialize_vss_commitment(vss_commitment)
-    shared_pubkey, signer_pubkeys = derive_group_info(vss_commitment, n, t)
+    eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
+    shared_pubkey, signer_pubkeys = vss_commitment.group_info(n)
     return eta, (shares_sum, shared_pubkey, signer_pubkeys)
 
 
@@ -299,9 +224,9 @@ def encpedpop_pre_finalize(
     t, my_deckey, enckeys, my_idx, self_share, simpl_state = state1
     n = len(enckeys)
 
-    assert len(vss_commitments_sum) == 2
-    assert len(vss_commitments_sum[0]) == n + t - 1
-    assert len(vss_commitments_sum[1]) == n
+    assert len(vss_commitments_sum.first_ges) == n
+    assert len(vss_commitments_sum.remaining_ges) == t - 1
+    assert len(vss_commitments_sum.pops) == n
 
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
@@ -470,7 +395,7 @@ def serialize_eta(
 ) -> bytes:
     return (
         t.to_bytes(4, byteorder="big")
-        + serialize_vss_commitment(vss_commit)
+        + vss_commit.to_bytes()
         + b"".join(hostpubkeys)
         + b"".join([bytes_from_int(int(share)) for share in all_enc_shares_sum])
     )
@@ -499,7 +424,7 @@ async def chilldkg_coordinate(
     if not verify_cert(hostpubkeys, eta, cert):
         return False
     vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
-    return derive_group_info(vss_commitment, n, t)
+    return vss_commitment.group_info(n)
 
 
 def deserialize_eta(b: bytes) -> Any:
@@ -513,7 +438,7 @@ def deserialize_eta(b: bytes) -> Any:
     # Read vss_commit (33*t bytes)
     if len(rest) < 33 * t:
         raise DeserializationError
-    vss_commit, rest = deserialize_vss_commitment(rest[: 33 * t], t), rest[33 * t :]
+    vss_commit, rest = VSSCommitment.from_bytes_and_t(rest[: 33 * t], t), rest[33 * t :]
 
     # Compute n
     n, remainder = divmod(len(rest), (33 + 32))
@@ -548,6 +473,7 @@ def chilldkg_recover(
     except DeserializationError as e:
         raise InvalidBackupError("Failed to deserialize backup") from e
 
+    n = len(hostpubkeys)
     (params, params_id) = chilldkg_session_params(hostpubkeys, t, context_string)
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
 
@@ -573,7 +499,7 @@ def chilldkg_recover(
     shares_sum += self_share
 
     # Compute shared & individual pubkeys
-    (shared_pubkey, signer_pubkeys) = derive_group_info(vss_commit, len(hostpubkeys), t)
+    (shared_pubkey, signer_pubkeys) = vss_commit.group_info(n)
     dkg_output = (shares_sum, shared_pubkey, signer_pubkeys)
 
     return dkg_output, params

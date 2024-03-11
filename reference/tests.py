@@ -5,11 +5,10 @@ import asyncio
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
+
+from util import kdf
+from vss import Polynomial, VSS
 from reference import (
-    secret_share_shard,
-    kdf,
-    vss_verify,
-    vss_commit,
     vss_sum_commitments,
     simplpedpop_round1,
     simplpedpop_pre_finalize,
@@ -25,20 +24,20 @@ from reference import (
     SignerChannel,
     chilldkg,
     chilldkg_coordinate,
-    polynomial_evaluate,
 )
 
 
 def test_vss_correctness():
     def rand_polynomial(t):
-        return [randint(1, GE.ORDER - 1) for _ in range(1, t + 1)]
+        return Polynomial([randint(1, GE.ORDER - 1) for _ in range(1, t + 1)])
 
     for t in range(1, 3):
         for n in range(t, 2 * t + 1):
             f = rand_polynomial(t)
-            shares = secret_share_shard(f, n)
+            vss = VSS(f)
+            shares = vss.shares(n)
             assert len(shares) == n
-            assert all(vss_verify(i, shares[i], vss_commit(f)) for i in range(n))
+            assert all(vss.commit().verify(i, shares[i]) for i in range(n))
 
 
 def simulate_simplpedpop(seeds, t):
@@ -176,11 +175,11 @@ def recover_secret(signer_indices, shares) -> Scalar:
 
 
 def test_recover_secret():
-    f = [23, 42]
-    shares = [polynomial_evaluate(f, i) for i in [1, 2, 3]]
-    assert recover_secret([1, 2], [shares[0], shares[1]]) == f[0]
-    assert recover_secret([1, 3], [shares[0], shares[2]]) == f[0]
-    assert recover_secret([2, 3], [shares[1], shares[2]]) == f[0]
+    f = Polynomial([23, 42])
+    shares = [f(i) for i in [1, 2, 3]]
+    assert recover_secret([1, 2], [shares[0], shares[1]]) == f.coeffs[0]
+    assert recover_secret([1, 3], [shares[0], shares[2]]) == f.coeffs[0]
+    assert recover_secret([2, 3], [shares[1], shares[2]]) == f.coeffs[0]
 
 
 def dkg_correctness(t, n, simulate_dkg, external_eq):
