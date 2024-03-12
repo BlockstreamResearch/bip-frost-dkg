@@ -37,10 +37,10 @@ class VSSCommitment(NamedTuple):
     def t(self):
         return len(self.ges)
 
-    def verify(self, signer_idx: int, share: Scalar) -> bool:
+    def verify(self, i: int, share: Scalar) -> bool:
         P = share * G
-        Q = GE.mul(
-            *((pow(signer_idx + 1, j), self.ges[j]) for j in range(0, len(self.ges)))
+        Q = GE.batch_mul(
+            *(((i + 1) ** j, self.ges[j]) for j in range(0, len(self.ges)))
         )
         return P == Q
 
@@ -63,12 +63,9 @@ class VSSCommitment(NamedTuple):
         """Returns the shared public key and individual public keys of the participants"""
         pk = self.ges[0]
         participant_public_keys = []
-        for signer_idx in range(0, n):
-            pk_i = GE.mul(
-                *(
-                    (pow(signer_idx + 1, j), self.ges[j])
-                    for j in range(0, len(self.ges))
-                )
+        for i in range(0, n):
+            pk_i = GE.batch_mul(
+                *((Scalar((i + 1) ** j), self.ges[j]) for j in range(0, self.t()))
             )
             participant_public_keys += [pk_i]
         return GroupInfo(pk, participant_public_keys)
@@ -100,11 +97,7 @@ class VSS(NamedTuple):
         return [self.share_for(i) for i in range(0, n)]
 
     def commit(self) -> VSSCommitment:
-        ges = []
-        for coeff in self.f.coeffs:
-            A_i = coeff * G
-            ges.append(A_i)
-        return VSSCommitment(ges)
+        return VSSCommitment([c * G for c in self.f.coeffs])
 
     def secret(self):
         return self.f.coeffs[0]
