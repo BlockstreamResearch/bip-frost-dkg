@@ -282,7 +282,7 @@ class GE:
     def __rmul__(self, a):
         """Multiply an integer with a group element."""
         if self == G:
-            return FAST_G.batch_mul(Scalar(a))
+            return FAST_G.mul(Scalar(a))
         return GE.batch_mul((Scalar(a), self))
 
     def __neg__(self):
@@ -427,7 +427,7 @@ class FastGEMul:
             p = p + p
             self.table.append(p)
 
-    def batch_mul(self, a):
+    def mul(self, a):
         result = GE()
         a = int(a)
         for bit in range(a.bit_length()):
