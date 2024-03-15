@@ -144,13 +144,16 @@ def signer_pre_finalize(
         )
 
     for i in range(n):
-        P_i = first_ges[i]
-        if P_i.infinity:
+        if i == my_idx:
+            # No need to check our own pop.
+            # TODO Should we include a simple bytes comparison as defense-in-depth?
+            continue
+        if first_ges[i].infinity:
             # TODO This branch can go away once we add real serializations.
             # If the serialized pubkey is infinity, pop_verify will simply fail.
             raise InvalidContributionError(i, "Participant sent invalid commitment")
         else:
-            if not pop_verify(pops[i], P_i.to_bytes_xonly(), i):
+            if not pop_verify(pops[i], first_ges[i].to_bytes_xonly(), i):
                 raise InvalidContributionError(
                     i, "Participant sent invalid proof-of-knowledge"
                 )
