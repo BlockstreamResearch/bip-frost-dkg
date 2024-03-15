@@ -78,6 +78,7 @@ class SignerState1(NamedTuple):
     t: int
     n: int
     my_idx: int
+    my_first_ge: GE
 
 
 # TODO This should probably moved somewhere else as its common to all DKGs
@@ -111,8 +112,10 @@ def signer_round1(
     shares = vss.shares(n)
     pop = pop_prove(vss.secret().to_bytes(), my_idx)
 
-    msg = Unicast1(vss.commit(), pop)
-    state = SignerState1(t, n, my_idx)
+    vss_commitment = vss.commit()
+    my_first_ge = vss_commitment.ges[0]
+    msg = Unicast1(vss_commitment, pop)
+    state = SignerState1(t, n, my_idx, my_first_ge)
     return state, msg, shares
 
 
@@ -129,11 +132,16 @@ def signer_pre_finalize(
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
-    t, n, my_idx = state
+    t, n, my_idx, my_first_ge = state
     first_ges, remaining_ges, pops = msg
     assert len(first_ges) == n
     assert len(remaining_ges) == t - 1
     assert len(pops) == n
+
+    if first_ges[my_idx] != my_first_ge:
+        raise InvalidContributionError(
+            None, "Coordinator sent unexpected first group element for local index"
+        )
 
     for i in range(n):
         P_i = first_ges[i]
