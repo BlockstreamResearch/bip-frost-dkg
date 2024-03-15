@@ -3,107 +3,19 @@ from typing import Tuple, List, Any, Union, Literal, Optional
 
 from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
-from secp256k1ref.ecdh import ecdh_raw
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 from network import SignerChannel, CoordinatorChannels
 
 from vss import VSSCommitment, GroupInfo
 import simplpedpop
+import encpedpop
 from util import (
     kdf,
-    tagged_hash_bip_dkg,
-    InvalidContributionError,
     InvalidBackupError,
     DeserializationError,
     DuplicateHostpubkeyError,
 )
-
-
-def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    shared_secret = ecdh_raw(deckey, enckey)
-    return Scalar(
-        int_from_bytes(
-            tagged_hash_bip_dkg("ECDH", shared_secret.to_bytes_compressed() + context)
-        )
-    )
-
-
-def encrypt(share: Scalar, my_deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    return share + ecdh(my_deckey, enckey, context)
-
-
-def decrypt_sum(
-    ciphertext_sum: Scalar,
-    my_deckey: bytes,
-    enckeys: List[bytes],
-    my_idx: int,
-    context: bytes,
-) -> Scalar:
-    shares_sum = ciphertext_sum
-    for i in range(len(enckeys)):
-        if i != my_idx:
-            shares_sum = shares_sum - ecdh(my_deckey, enckeys[i], context)
-    return shares_sum
-
-
-EncPedPopR1State = Tuple[int, bytes, List[bytes], int, Scalar, simplpedpop.SignerState1]
-
-
-def encpedpop_round1(
-    seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int
-) -> Tuple[EncPedPopR1State, simplpedpop.Unicast1, List[Scalar]]:
-    assert t < 2 ** (4 * 8)
-    n = len(enckeys)
-
-    # Protect against reuse of seed in case we previously exported shares
-    # encrypted under wrong enckeys.
-    enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
-
-    simpl_state, vss_commitment_ext, gen_shares = simplpedpop.signer_round1(
-        seed_, t, n, my_idx
-    )
-    assert len(gen_shares) == n
-    enc_gen_shares: List[Scalar] = []
-    for i in range(n):
-        if i == my_idx:
-            # TODO No need to send a constant.
-            enc_gen_shares.append(Scalar(0))
-        else:
-            try:
-                enc_gen_shares.append(
-                    encrypt(gen_shares[i], my_deckey, enckeys[i], enc_context)
-                )
-            except ValueError:  # Invalid enckeys[i]
-                raise InvalidContributionError(
-                    i, "Participant sent invalid encryption key"
-                )
-    self_share = gen_shares[my_idx]
-    state1 = (t, my_deckey, enckeys, my_idx, self_share, simpl_state)
-    return state1, vss_commitment_ext, enc_gen_shares
-
-
-def encpedpop_pre_finalize(
-    state1: EncPedPopR1State,
-    vss_commitments_sum: simplpedpop.Broadcast1,
-    enc_shares_sum: Scalar,
-) -> Tuple[bytes, simplpedpop.DKGOutput]:
-    t, my_deckey, enckeys, my_idx, self_share, simpl_state = state1
-    n = len(enckeys)
-
-    assert len(vss_commitments_sum.first_ges) == n
-    assert len(vss_commitments_sum.remaining_ges) == t - 1
-    assert len(vss_commitments_sum.pops) == n
-
-    enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-    shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
-    shares_sum += self_share
-    eta, dkg_output = simplpedpop.signer_pre_finalize(
-        simpl_state, vss_commitments_sum, shares_sum
-    )
-    eta += b"".join(enckeys)
-    return eta, dkg_output
 
 
 def chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
@@ -130,7 +42,7 @@ def chilldkg_session_params(
     return params, params_id
 
 
-ChillDKGStateR1 = Tuple[SessionParams, int, EncPedPopR1State]
+ChillDKGStateR1 = Tuple[SessionParams, int, encpedpop.SignerState1]
 
 
 def chilldkg_round1(
@@ -141,7 +53,7 @@ def chilldkg_round1(
     n = len(hostpubkeys)
 
     my_idx = hostpubkeys.index(my_hostpubkey)
-    enc_state1, vss_commitment_ext, enc_gen_shares = encpedpop_round1(
+    enc_state1, (vss_commitment_ext, enc_gen_shares) = encpedpop.signer_round1(
         seed, t, n, my_hostseckey, hostpubkeys, my_idx
     )
     state1 = (params, my_idx, enc_state1)
@@ -167,9 +79,8 @@ def chilldkg_round2(
     # participate in Eq?
     my_enc_share = all_enc_shares_sum[my_idx]
 
-    eta, dkg_output = encpedpop_pre_finalize(
-        enc_state1, vss_commitments_sum, my_enc_share
-    )
+    enc_broad1 = encpedpop.Broadcast1(vss_commitments_sum, my_enc_share)
+    eta, dkg_output = encpedpop.signer_pre_finalize(enc_state1, enc_broad1)
     eta += b"".join([bytes_from_int(int(share)) for share in all_enc_shares_sum])
     state2 = (params, eta, dkg_output)
     return state2, certifying_eq_round1(my_hostseckey, eta)
@@ -355,11 +266,11 @@ def chilldkg_recover(
     except ValueError as e:
         raise InvalidBackupError("Seed and backup don't match") from e
 
-    shares_sum = decrypt_sum(
+    shares_sum = encpedpop.decrypt_sum(
         all_enc_shares_sum[my_idx], my_hostseckey, hostpubkeys, my_idx, enc_context
     )
     # TODO: don't call full round1 function
-    (state1, _, _) = encpedpop_round1(
+    (state1, (_, _)) = encpedpop.signer_round1(
         seed, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx
     )
     self_share = state1[4]

@@ -9,9 +9,8 @@ from secp256k1ref.keys import pubkey_gen_plain
 from util import kdf
 from vss import Polynomial, VSS
 import simplpedpop
+import encpedpop
 from reference import (
-    encpedpop_round1,
-    encpedpop_pre_finalize,
     chilldkg_hostkey_gen,
     chilldkg_session_params,
     chilldkg_round1,
@@ -73,15 +72,17 @@ def simulate_encpedpop(seeds, t):
     enckeys = [out[1] for out in round0_outputs]
     for i in range(n):
         my_deckey = round0_outputs[i][0]
-        round1_outputs += [encpedpop_round1(seeds[i], t, n, my_deckey, enckeys, i)]
+        round1_outputs += [
+            encpedpop.signer_round1(seeds[i], t, n, my_deckey, enckeys, i)
+        ]
 
-    simpl_round1_unis = [out[1] for out in round1_outputs]
+    simpl_round1_unis = [out[1][0] for out in round1_outputs]
     simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
     for i in range(n):
-        enc_shares_sum = Scalar.sum(*([out[2][i] for out in round1_outputs]))
+        enc_shares_sum = Scalar.sum(*([out[1][1][i] for out in round1_outputs]))
         dkg_outputs += [
-            encpedpop_pre_finalize(
-                round1_outputs[i][0], simpl_round1_broad, enc_shares_sum
+            encpedpop.signer_pre_finalize(
+                round1_outputs[i][0], (simpl_round1_broad, enc_shares_sum)
             )
         ]
     return dkg_outputs
