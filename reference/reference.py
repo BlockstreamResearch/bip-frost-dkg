@@ -1,8 +1,9 @@
 # Reference implementation of BIP DKG.
 from typing import Tuple, List, Any, Union, Literal, Optional
 
-from secp256k1ref.secp256k1 import GE, Scalar
+from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
+from secp256k1ref.ecdh import ecdh_raw
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 from network import SignerChannel, CoordinatorChannels
@@ -20,13 +21,11 @@ from util import (
 
 
 def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    x = int_from_bytes(deckey)
-    assert x != 0
-    Y = GE.from_bytes_compressed(enckey)
-    Z = x * Y
-    assert not Z.infinity
+    shared_secret = ecdh_raw(deckey, enckey)
     return Scalar(
-        int_from_bytes(tagged_hash_bip_dkg("ECDH", Z.to_bytes_compressed() + context))
+        int_from_bytes(
+            tagged_hash_bip_dkg("ECDH", shared_secret.to_bytes_compressed() + context)
+        )
     )
 
 
