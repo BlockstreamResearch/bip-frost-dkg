@@ -8,10 +8,8 @@ from secp256k1ref.keys import pubkey_gen_plain
 
 from util import kdf
 from vss import Polynomial, VSS
+import simplpedpop
 from reference import (
-    vss_sum_commitments,
-    simplpedpop_round1,
-    simplpedpop_pre_finalize,
     encpedpop_round1,
     encpedpop_pre_finalize,
     chilldkg_hostkey_gen,
@@ -45,14 +43,14 @@ def simulate_simplpedpop(seeds, t):
     round1_outputs = []
     dkg_outputs = []
     for i in range(n):
-        round1_outputs += [simplpedpop_round1(seeds[i], t, n, i)]
-    vss_commitments_ext = [out[1] for out in round1_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
+        round1_outputs += [simplpedpop.signer_round1(seeds[i], t, n, i)]
+    simpl_round1_unis = [out[1] for out in round1_outputs]
+    simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
     for i in range(n):
         shares_sum = Scalar.sum(*([out[2][i] for out in round1_outputs]))
         dkg_outputs += [
-            simplpedpop_pre_finalize(
-                round1_outputs[i][0], vss_commitments_sum, shares_sum
+            simplpedpop.signer_pre_finalize(
+                round1_outputs[i][0], simpl_round1_broad, shares_sum
             )
         ]
     return dkg_outputs
@@ -77,13 +75,13 @@ def simulate_encpedpop(seeds, t):
         my_deckey = round0_outputs[i][0]
         round1_outputs += [encpedpop_round1(seeds[i], t, n, my_deckey, enckeys, i)]
 
-    vss_commitments_ext = [out[1] for out in round1_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
+    simpl_round1_unis = [out[1] for out in round1_outputs]
+    simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
     for i in range(n):
         enc_shares_sum = Scalar.sum(*([out[2][i] for out in round1_outputs]))
         dkg_outputs += [
             encpedpop_pre_finalize(
-                round1_outputs[i][0], vss_commitments_sum, enc_shares_sum
+                round1_outputs[i][0], simpl_round1_broad, enc_shares_sum
             )
         ]
     return dkg_outputs
@@ -104,8 +102,8 @@ def simulate_chilldkg(seeds, t):
         round1_outputs += [chilldkg_round1(seeds[i], params)]
 
     state1s = [out[0] for out in round1_outputs]
-    vss_commitments_ext = [out[1] for out in round1_outputs]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
+    simpl_round1_unis = [out[1] for out in round1_outputs]
+    simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
     dkg_outputs = []
     all_enc_shares_sum = []
     for i in range(n):
@@ -114,7 +112,7 @@ def simulate_chilldkg(seeds, t):
     for i in range(n):
         round2_outputs += [
             chilldkg_round2(
-                seeds[i], state1s[i], vss_commitments_sum, all_enc_shares_sum
+                seeds[i], state1s[i], simpl_round1_broad, all_enc_shares_sum
             )
         ]
 

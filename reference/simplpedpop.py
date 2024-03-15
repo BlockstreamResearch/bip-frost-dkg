@@ -1,30 +1,54 @@
-from typing import Tuple, List, NamedTuple
+from typing import List, NamedTuple, NewType, Tuple
 
-from secp256k1ref.secp256k1 import GE, Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
-
-
-from vss import VSS, VSSCommitment
+from secp256k1ref.secp256k1 import GE, Scalar
 from util import (
-    kdf,
     BIP_TAG,
     InvalidContributionError,
     VSSVerifyError,
 )
+from vss import VSS, VSSCommitment
 
-Pop = bytes
+
+###
+### Proofs of possession (Pops)
+###
 
 
-# An extended VSS Commitment is a VSS commitment with a proof of knowledge
-# TODO This should be called SimplPedPopRound1SignerToCoordinator or similar
-class VSSCommitmentExt(NamedTuple):
+Pop = NewType("Pop", bytes)
+
+POP_MSG_TAG = (BIP_TAG + "pop message").encode()
+
+
+def pop_msg(idx: int):
+    return POP_MSG_TAG + idx.to_bytes(4, byteorder="big")
+
+
+def pop_prove(seckey, my_idx, aux_rand: bytes = 32 * b"\x00"):
+    # TODO: What to do with aux_rand?
+    sig = schnorr_sign(pop_msg(my_idx), seckey, aux_rand)
+    return Pop(sig)
+
+
+def pop_verify(pop: Pop, pubkey: bytes, idx: int):
+    return schnorr_verify(pop_msg(idx), pubkey, pop)
+
+
+###
+### Messages
+###
+
+
+class Unicast1(NamedTuple):
+    """Round 1 message from signer to coordinator"""
+
     com: VSSCommitment
     pop: Pop
 
 
-# A VSS Commitment Sum is the sum of multiple extended VSS Commitments
-# TODO This should be called SimplPedPopRound1CoordinatorToSigner or similar
-class VSSCommitmentSumExt(NamedTuple):
+class Broadcast1(NamedTuple):
+    """Round 1 message from coordinator to all signers"""
+
     first_ges: List[GE]
     remaining_ges: List[GE]
     pops: List[Pop]
@@ -38,38 +62,39 @@ class VSSCommitmentSumExt(NamedTuple):
         ) + b"".join(self.pops)
 
 
-# Sum the commitments to the i-th coefficients from the given vss_commitments
-# for i > 0. This procedure is introduced by Pedersen in section 5.1 of
-# 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def vss_sum_commitments(coms: List[VSSCommitmentExt], t: int) -> VSSCommitmentSumExt:
-    first_ges = [com[0].ges[0] for com in coms]
-    remaining_ges_sum = [GE.sum(*(com[0].ges[j] for com in coms)) for j in range(1, t)]
-    poks = [com[1] for com in coms]
-    return VSSCommitmentSumExt(first_ges, remaining_ges_sum, poks)
-
-
-def vss_commitments_sum_finalize(
-    vss_commitments_sum: VSSCommitmentSumExt, t: int, n: int
+def aggregate_vss_commitments(
+    first_ges: List[GE], remaining_ges: List[GE], t: int, n: int
 ) -> VSSCommitment:
-    # Strip the signatures and sum the commitments to the constant coefficients
-    return VSSCommitment(
-        [GE.sum(*(vss_commitments_sum.first_ges[i] for i in range(n)))]
-        + vss_commitments_sum.remaining_ges
-    )
+    # Sum the commitments to the constant coefficients
+    return VSSCommitment([GE.sum(*(first_ges[i] for i in range(n)))] + remaining_ges)
 
 
-SimplPedPopR1State = Tuple[int, int, int]
+###
+### Signer
+###
 
-POP_MSG_TAG = (BIP_TAG + "VSS PoK").encode()
+
+class SignerState1(NamedTuple):
+    t: int
+    n: int
+    my_idx: int
+
+
+# TODO This should probably moved somewhere else as its common to all DKGs
+class DKGOutput(NamedTuple):
+    share: Scalar
+    shared_pubkey: GE
+    pubkeys: List[GE]
+
 
 # To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
 # we omit explicit invocations of an interactive equality check protocol.
 # ChillDKG will take care of invoking the equality check protocol.
 
 
-def simplpedpop_round1(
+def signer_round1(
     seed: bytes, t: int, n: int, my_idx: int
-) -> Tuple[SimplPedPopR1State, VSSCommitmentExt, List[Scalar]]:
+) -> Tuple[SignerState1, Unicast1, List[Scalar]]:
     """
     Generate SimplPedPop messages to be sent to the coordinator.
 
@@ -84,58 +109,61 @@ def simplpedpop_round1(
 
     vss = VSS.generate(seed, t)
     shares = vss.shares(n)
+    pop = pop_prove(vss.secret().to_bytes(), my_idx)
 
-    # TODO: fix aux_rand
-    sig = schnorr_sign(
-        POP_MSG_TAG + my_idx.to_bytes(4, byteorder="big"),
-        vss.secret().to_bytes(),
-        kdf(seed, "VSS PoK"),
-    )
-
-    vss_commitment_ext = VSSCommitmentExt(vss.commit(), sig)
-    state = (t, n, my_idx)
-    return state, vss_commitment_ext, shares
+    msg = Unicast1(vss.commit(), pop)
+    state = SignerState1(t, n, my_idx)
+    return state, msg, shares
 
 
-DKGOutput = Tuple[Scalar, GE, List[GE]]
-
-
-def simplpedpop_pre_finalize(
-    state: SimplPedPopR1State,
-    vss_commitments_sum: VSSCommitmentSumExt,
+def signer_pre_finalize(
+    state: SignerState1,
+    msg: Broadcast1,
     shares_sum: Scalar,
 ) -> Tuple[bytes, DKGOutput]:
     """
     Take the messages received from the coordinator and return eta to be compared and DKG output
 
-    :param SimplPedPopR1State state: the signer's state output by simplpedpop_round1
-    :param VSSCommitmentSumExt vss_commitments_sum: sum of VSS commitments received from the coordinator
+    :param SignerState state: the signer's state after round 1 (output by signer_round1)
+    :param Broadcast1 msgs: round 1 broadcast message received from the coordinator
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n, my_idx = state
-    assert len(vss_commitments_sum.first_ges) == n
-    assert len(vss_commitments_sum.remaining_ges) == t - 1
-    assert len(vss_commitments_sum.pops) == n
+    first_ges, remaining_ges, pops = msg
+    assert len(first_ges) == n
+    assert len(remaining_ges) == t - 1
+    assert len(pops) == n
 
     for i in range(n):
-        P_i = vss_commitments_sum.first_ges[i]
+        P_i = first_ges[i]
         if P_i.infinity:
+            # TODO This branch can go away once we add real serializations.
+            # If the serialized pubkey is infinity, pop_verify will simply fail.
             raise InvalidContributionError(i, "Participant sent invalid commitment")
         else:
-            pk_i = P_i.to_bytes_xonly()
-            if not schnorr_verify(
-                POP_MSG_TAG + i.to_bytes(4, byteorder="big"),
-                pk_i,
-                vss_commitments_sum.pops[i],
-            ):
+            if not pop_verify(pops[i], P_i.to_bytes_xonly(), i):
                 raise InvalidContributionError(
                     i, "Participant sent invalid proof-of-knowledge"
                 )
-    # Strip the signatures and sum the commitments to the constant coefficients
-    vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
+    vss_commitment = aggregate_vss_commitments(first_ges, remaining_ges, t, n)
     if not vss_commitment.verify(my_idx, shares_sum):
         raise VSSVerifyError()
     eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
     shared_pubkey, signer_pubkeys = vss_commitment.group_info(n)
-    return eta, (shares_sum, shared_pubkey, signer_pubkeys)
+    return eta, DKGOutput(shares_sum, shared_pubkey, signer_pubkeys)
+
+
+###
+### Coordinator
+###
+
+
+# Sum the commitments to the i-th coefficients from the given vss_commitments
+# for i > 0. This procedure is introduced by Pedersen in section 5.1 of
+# 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
+def coordinator_round1(coms: List[Unicast1], t: int) -> Broadcast1:
+    first_ges = [com[0].ges[0] for com in coms]
+    remaining_ges_sum = [GE.sum(*(com[0].ges[j] for com in coms)) for j in range(1, t)]
+    pops = [com[1] for com in coms]
+    return Broadcast1(first_ges, remaining_ges_sum, pops)

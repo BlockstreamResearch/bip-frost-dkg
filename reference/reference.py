@@ -5,20 +5,10 @@ from secp256k1ref.secp256k1 import GE, Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
-
 from network import SignerChannel, CoordinatorChannels
 
 from vss import VSSCommitment, GroupInfo
-from simplpedpop import (
-    SimplPedPopR1State,
-    VSSCommitmentExt,
-    VSSCommitmentSumExt,
-    DKGOutput,
-    simplpedpop_round1,
-    simplpedpop_pre_finalize,
-    vss_sum_commitments,
-    vss_commitments_sum_finalize,
-)
+import simplpedpop
 from util import (
     kdf,
     tagged_hash_bip_dkg,
@@ -58,12 +48,12 @@ def decrypt_sum(
     return shares_sum
 
 
-EncPedPopR1State = Tuple[int, bytes, List[bytes], int, Scalar, SimplPedPopR1State]
+EncPedPopR1State = Tuple[int, bytes, List[bytes], int, Scalar, simplpedpop.SignerState1]
 
 
 def encpedpop_round1(
     seed: bytes, t: int, n: int, my_deckey: bytes, enckeys: List[bytes], my_idx: int
-) -> Tuple[EncPedPopR1State, VSSCommitmentExt, List[Scalar]]:
+) -> Tuple[EncPedPopR1State, simplpedpop.Unicast1, List[Scalar]]:
     assert t < 2 ** (4 * 8)
     n = len(enckeys)
 
@@ -72,7 +62,7 @@ def encpedpop_round1(
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
 
-    simpl_state, vss_commitment_ext, gen_shares = simplpedpop_round1(
+    simpl_state, vss_commitment_ext, gen_shares = simplpedpop.signer_round1(
         seed_, t, n, my_idx
     )
     assert len(gen_shares) == n
@@ -97,9 +87,9 @@ def encpedpop_round1(
 
 def encpedpop_pre_finalize(
     state1: EncPedPopR1State,
-    vss_commitments_sum: VSSCommitmentSumExt,
+    vss_commitments_sum: simplpedpop.Broadcast1,
     enc_shares_sum: Scalar,
-) -> Tuple[bytes, DKGOutput]:
+) -> Tuple[bytes, simplpedpop.DKGOutput]:
     t, my_deckey, enckeys, my_idx, self_share, simpl_state = state1
     n = len(enckeys)
 
@@ -110,7 +100,7 @@ def encpedpop_pre_finalize(
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, my_deckey, enckeys, my_idx, enc_context)
     shares_sum += self_share
-    eta, dkg_output = simplpedpop_pre_finalize(
+    eta, dkg_output = simplpedpop.signer_pre_finalize(
         simpl_state, vss_commitments_sum, shares_sum
     )
     eta += b"".join(enckeys)
@@ -146,7 +136,7 @@ ChillDKGStateR1 = Tuple[SessionParams, int, EncPedPopR1State]
 
 def chilldkg_round1(
     seed: bytes, params: SessionParams
-) -> Tuple[ChillDKGStateR1, VSSCommitmentExt, List[Scalar]]:
+) -> Tuple[ChillDKGStateR1, simplpedpop.Unicast1, List[Scalar]]:
     my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
@@ -159,13 +149,13 @@ def chilldkg_round1(
     return state1, vss_commitment_ext, enc_gen_shares
 
 
-ChillDKGStateR2 = Tuple[SessionParams, bytes, DKGOutput]
+ChillDKGStateR2 = Tuple[SessionParams, bytes, simplpedpop.DKGOutput]
 
 
 def chilldkg_round2(
     seed: bytes,
     state1: ChillDKGStateR1,
-    vss_commitments_sum: VSSCommitmentSumExt,
+    vss_commitments_sum: simplpedpop.Broadcast1,
     all_enc_shares_sum: List[Scalar],
 ) -> Tuple[ChillDKGStateR2, bytes]:
     (my_hostseckey, _) = chilldkg_hostkey_gen(seed)
@@ -186,7 +176,9 @@ def chilldkg_round2(
     return state2, certifying_eq_round1(my_hostseckey, eta)
 
 
-def chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Optional[DKGOutput]:
+def chilldkg_finalize(
+    state2: ChillDKGStateR2, cert: bytes
+) -> Optional[simplpedpop.DKGOutput]:
     """
     A return value of None means that `cert` is not a valid certificate.
 
@@ -212,7 +204,7 @@ def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
 
 async def chilldkg(
     chan: SignerChannel, seed: bytes, my_hostseckey: bytes, params: SessionParams
-) -> Optional[Tuple[DKGOutput, Any]]:
+) -> Optional[Tuple[simplpedpop.DKGOutput, Any]]:
     # TODO Top-level error handling
     state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, params)
     chan.send((vss_commitment_ext, enc_gen_shares))
@@ -285,24 +277,21 @@ async def chilldkg_coordinate(
 ) -> Union[GroupInfo, Literal[False]]:
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
-    vss_commitments_ext = []
+    simpl_round1_ins = []
     all_enc_shares_sum = [Scalar(0)] * n
     for i in range(n):
-        vss_commitment_ext, enc_shares = await chans.receive_from(i)
-        vss_commitments_ext += [vss_commitment_ext]
+        simpl_round1_in, enc_shares = await chans.receive_from(i)
+        simpl_round1_ins += [simpl_round1_in]
         all_enc_shares_sum = [all_enc_shares_sum[j] + enc_shares[j] for j in range(n)]
-    vss_commitments_sum = vss_sum_commitments(vss_commitments_ext, t)
-    chans.send_all((vss_commitments_sum, all_enc_shares_sum))
-    eta = serialize_eta(
-        t,
-        vss_commitments_sum_finalize(vss_commitments_sum, t, n),
-        hostpubkeys,
-        all_enc_shares_sum,
+    simpl_round1_outs = simplpedpop.coordinator_round1(simpl_round1_ins, t)
+    chans.send_all((simpl_round1_outs, all_enc_shares_sum))
+    vss_commitment = simplpedpop.aggregate_vss_commitments(
+        simpl_round1_outs.first_ges, simpl_round1_outs.remaining_ges, t, n
     )
+    eta = serialize_eta(t, vss_commitment, hostpubkeys, all_enc_shares_sum)
     cert = await certifying_eq_coordinate(chans, hostpubkeys)
     if not verify_cert(hostpubkeys, eta, cert):
         return False
-    vss_commitment = vss_commitments_sum_finalize(vss_commitments_sum, t, n)
     return vss_commitment.group_info(n)
 
 
@@ -345,7 +334,7 @@ def deserialize_eta(b: bytes) -> Any:
 # Recovery requires the seed and the public backup
 def chilldkg_recover(
     seed: bytes, backup: Any, context_string: bytes
-) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]:
+) -> Union[Tuple[simplpedpop.DKGOutput, SessionParams], Literal[False]]:
     (eta, cert) = backup
     try:
         (t, vss_commit, hostpubkeys, all_enc_shares_sum) = deserialize_eta(eta)
@@ -379,6 +368,6 @@ def chilldkg_recover(
 
     # Compute shared & individual pubkeys
     (shared_pubkey, signer_pubkeys) = vss_commit.group_info(n)
-    dkg_output = (shares_sum, shared_pubkey, signer_pubkeys)
+    dkg_output = simplpedpop.DKGOutput(shares_sum, shared_pubkey, signer_pubkeys)
 
     return dkg_output, params
