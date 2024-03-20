@@ -195,8 +195,11 @@ async def chilldkg_coordinate(
         all_enc_shares_sum = [all_enc_shares_sum[j] + enc_shares[j] for j in range(n)]
     simpl_round1_outs = simplpedpop.coordinator_round1(simpl_round1_ins, t)
     chans.send_all((simpl_round1_outs, all_enc_shares_sum))
-    vss_commitment = simplpedpop.aggregate_vss_commitments(
-        simpl_round1_outs.first_ges, simpl_round1_outs.remaining_ges, t, n
+    vss_commitment = simplpedpop.assemble_sum_vss_commitment(
+        simpl_round1_outs.coms_to_secrets,
+        simpl_round1_outs.sum_coms_to_nonconst_terms,
+        t,
+        n,
     )
     eta = serialize_eta(t, vss_commitment, hostpubkeys, all_enc_shares_sum)
     cert = await certifying_eq_coordinate(chans, hostpubkeys)

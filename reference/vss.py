@@ -75,6 +75,12 @@ class VSSCommitment(NamedTuple):
             participant_public_keys += [pk_i]
         return GroupInfo(pk, participant_public_keys)
 
+    def commitment_to_secret(self) -> GE:
+        return self.ges[0]
+
+    def commitment_to_nonconst_terms(self) -> List[GE]:
+        return self.ges[1 : self.t()]
+
 
 class VSS(NamedTuple):
     f: Polynomial
@@ -105,4 +111,7 @@ class VSS(NamedTuple):
         return VSSCommitment([c * G for c in self.f.coeffs])
 
     def secret(self):
+        """Return the secret to be shared.
+
+        This computes f(0)."""
         return self.f.coeffs[0]

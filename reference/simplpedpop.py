@@ -45,24 +45,26 @@ class Unicast1(NamedTuple):
 class Broadcast1(NamedTuple):
     """Round 1 message from coordinator to all signers"""
 
-    first_ges: List[GE]
-    remaining_ges: List[GE]
+    coms_to_secrets: List[GE]
+    sum_coms_to_nonconst_terms: List[GE]
     pops: List[Pop]
 
     def to_bytes(self) -> bytes:
         return b"".join(
             [
                 P.to_bytes_compressed_with_infinity()
-                for P in self.first_ges + self.remaining_ges
+                for P in self.coms_to_secrets + self.sum_coms_to_nonconst_terms
             ]
         ) + b"".join(self.pops)
 
 
-def aggregate_vss_commitments(
-    first_ges: List[GE], remaining_ges: List[GE], t: int, n: int
+def assemble_sum_vss_commitment(
+    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE], t: int, n: int
 ) -> VSSCommitment:
-    # Sum the commitments to the constant coefficients
-    return VSSCommitment([GE.sum(*(first_ges[i] for i in range(n)))] + remaining_ges)
+    # Sum the commitments to the secrets
+    return VSSCommitment(
+        [GE.sum(*(coms_to_secrets[i] for i in range(n)))] + sum_coms_to_nonconst_terms
+    )
 
 
 ###
@@ -74,7 +76,7 @@ class SignerState1(NamedTuple):
     t: int
     n: int
     idx: int
-    first_ge: GE
+    com_to_secret: GE
 
 
 # TODO This should probably moved somewhere else as its common to all DKGs
@@ -109,9 +111,9 @@ def signer_round1(
     pop = pop_prove(vss.secret().to_bytes(), idx)
 
     vss_commitment = vss.commit()
-    first_ge = vss_commitment.ges[0]
+    com_to_secret = vss_commitment.commitment_to_secret()
     msg = Unicast1(vss_commitment, pop)
-    state = SignerState1(t, n, idx, first_ge)
+    state = SignerState1(t, n, idx, com_to_secret)
     return state, msg, shares
 
 
@@ -128,13 +130,13 @@ def signer_pre_finalize(
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
-    t, n, idx, first_ge = state
-    first_ges, remaining_ges, pops = msg
-    assert len(first_ges) == n
-    assert len(remaining_ges) == t - 1
+    t, n, idx, com_to_secret = state
+    coms_to_secrets, coms_to_nonconst_terms, pops = msg
+    assert len(coms_to_secrets) == n
+    assert len(coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
 
-    if first_ges[idx] != first_ge:
+    if coms_to_secrets[idx] != com_to_secret:
         raise InvalidContributionError(
             None, "Coordinator sent unexpected first group element for local index"
         )
@@ -144,16 +146,16 @@ def signer_pre_finalize(
             # No need to check our own pop.
             # TODO Should we include a simple bytes comparison as defense-in-depth?
             continue
-        if first_ges[i].infinity:
+        if coms_to_secrets[i].infinity:
             # TODO This branch can go away once we add real serializations.
             # If the serialized pubkey is infinity, pop_verify will simply fail.
             raise InvalidContributionError(i, "Participant sent invalid commitment")
         else:
-            if not pop_verify(pops[i], first_ges[i].to_bytes_xonly(), i):
+            if not pop_verify(pops[i], coms_to_secrets[i].to_bytes_xonly(), i):
                 raise InvalidContributionError(
                     i, "Participant sent invalid proof-of-knowledge"
                 )
-    vss_commitment = aggregate_vss_commitments(first_ges, remaining_ges, t, n)
+    vss_commitment = assemble_sum_vss_commitment(coms_to_secrets, coms_to_nonconst_terms, t, n)
     if not vss_commitment.verify(idx, shares_sum):
         raise VSSVerifyError()
     eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
@@ -169,8 +171,11 @@ def signer_pre_finalize(
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def coordinator_round1(coms: List[Unicast1], t: int) -> Broadcast1:
-    first_ges = [com[0].ges[0] for com in coms]
-    remaining_ges_sum = [GE.sum(*(com[0].ges[j] for com in coms)) for j in range(1, t)]
-    pops = [com[1] for com in coms]
-    return Broadcast1(first_ges, remaining_ges_sum, pops)
+def coordinator_round1(uni1s: List[Unicast1], t: int) -> Broadcast1:
+    coms_to_secrets = [uni1.com.commitment_to_secret() for uni1 in uni1s]
+    sum_coms_to_nonconst_terms = [
+        GE.sum(*(uni1.com.commitment_to_nonconst_terms()[j] for uni1 in uni1s))
+        for j in range(0, t - 1)
+    ]
+    pops = [uni1.pop for uni1 in uni1s]
+    return Broadcast1(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
