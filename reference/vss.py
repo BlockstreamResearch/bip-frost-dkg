@@ -5,6 +5,11 @@ from secp256k1ref.secp256k1 import GE, G, Scalar
 from util import kdf, DeserializationError
 
 
+class VSSVerifyError(Exception):
+    def __init__(self):
+        pass
+
+
 class Polynomial(NamedTuple):
     """A scalar polynomial.
 
