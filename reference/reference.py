@@ -107,6 +107,7 @@ def chilldkg_finalize(
 # TODO Make this a subroutine of chilldkg_finalize, which should output the backup.
 # The backup must be written to permanent storage before using the dkg_output,
 # so it should be coupled with dkg_finalize.
+# TODO Fix Any type
 def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
     eta = state2[1]
     return (eta, cert)
@@ -127,6 +128,8 @@ async def chilldkg(
     chan.send(eq_round1)
     cert = await chan.receive()
     dkg_output = chilldkg_finalize(state2, cert)
+    # TODO We should probably not just return None here but raise instead.
+    # Raising a specific exception is also better for testing.
     if dkg_output is None:
         return None
 

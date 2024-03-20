@@ -144,17 +144,16 @@ def signer_pre_finalize(
     for i in range(n):
         if i == idx:
             # No need to check our own pop.
-            # TODO Should we include a simple bytes comparison as defense-in-depth?
             continue
         if coms_to_secrets[i].infinity:
-            # TODO This branch can go away once we add real serializations.
-            # If the serialized pubkey is infinity, pop_verify will simply fail.
             raise InvalidContributionError(i, "Participant sent invalid commitment")
-        else:
-            if not pop_verify(pops[i], coms_to_secrets[i].to_bytes_xonly(), i):
-                raise InvalidContributionError(
-                    i, "Participant sent invalid proof-of-knowledge"
-                )
+        # This can be optimized: We serialize the coms_to_secrets[i] here, but
+        # schnorr_verify (inside pop_verify) will need to deserialize it again, which
+        # involves computing a square root to obtain the y coordinate.
+        if not pop_verify(pops[i], coms_to_secrets[i].to_bytes_xonly(), i):
+            raise InvalidContributionError(
+                i, "Participant sent invalid proof-of-knowledge"
+            )
     vss_commitment = assemble_sum_vss_commitment(
         coms_to_secrets, coms_to_nonconst_terms, t, n
     )
