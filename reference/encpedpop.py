@@ -46,7 +46,7 @@ def decrypt_sum(
 
 
 class Unicast1(NamedTuple):
-    simpl_state: simplpedpop.Unicast1
+    simpl_uni1: simplpedpop.Unicast1
     enc_shares: List[Scalar]
 
 
