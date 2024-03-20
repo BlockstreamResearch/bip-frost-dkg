@@ -19,9 +19,9 @@ from util import (
 
 
 def chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
-    my_hostseckey = kdf(seed, "hostseckey")
-    my_hostpubkey = pubkey_gen_plain(my_hostseckey)
-    return (my_hostseckey, my_hostpubkey)
+    hostseckey = kdf(seed, "hostseckey")
+    hostpubkey = pubkey_gen_plain(hostseckey)
+    return (hostseckey, hostpubkey)
 
 
 SessionParams = Tuple[List[bytes], int, bytes]
@@ -48,15 +48,15 @@ ChillDKGStateR1 = Tuple[SessionParams, int, encpedpop.SignerState1]
 def chilldkg_round1(
     seed: bytes, params: SessionParams
 ) -> Tuple[ChillDKGStateR1, simplpedpop.Unicast1, List[Scalar]]:
-    my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
+    hostseckey, hostpubkey = chilldkg_hostkey_gen(seed)
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
 
-    my_idx = hostpubkeys.index(my_hostpubkey)
+    idx = hostpubkeys.index(hostpubkey)
     enc_state1, (vss_commitment_ext, enc_gen_shares) = encpedpop.signer_round1(
-        seed, t, n, my_hostseckey, hostpubkeys, my_idx
+        seed, t, n, hostseckey, hostpubkeys, idx
     )
-    state1 = (params, my_idx, enc_state1)
+    state1 = (params, idx, enc_state1)
     return state1, vss_commitment_ext, enc_gen_shares
 
 
@@ -69,21 +69,21 @@ def chilldkg_round2(
     vss_commitments_sum: simplpedpop.Broadcast1,
     all_enc_shares_sum: List[Scalar],
 ) -> Tuple[ChillDKGStateR2, bytes]:
-    (my_hostseckey, _) = chilldkg_hostkey_gen(seed)
-    (params, my_idx, enc_state1) = state1
+    (hostseckey, _) = chilldkg_hostkey_gen(seed)
+    (params, idx, enc_state1) = state1
 
     # TODO Not sure if we need to include params_id as eta here. But it won't hurt.
     # Include the enc_shares in eta to ensure that participants agree on all
     # shares, which in turn ensures that they have the right backup.
     # TODO This means all parties who hold the "backup" in the end should
     # participate in Eq?
-    my_enc_share = all_enc_shares_sum[my_idx]
+    enc_share = all_enc_shares_sum[idx]
 
-    enc_broad1 = encpedpop.Broadcast1(vss_commitments_sum, my_enc_share)
+    enc_broad1 = encpedpop.Broadcast1(vss_commitments_sum, enc_share)
     eta, dkg_output = encpedpop.signer_pre_finalize(enc_state1, enc_broad1)
     eta += b"".join([bytes_from_int(int(share)) for share in all_enc_shares_sum])
     state2 = (params, eta, dkg_output)
-    return state2, certifying_eq_round1(my_hostseckey, eta)
+    return state2, certifying_eq_round1(hostseckey, eta)
 
 
 def chilldkg_finalize(
@@ -113,7 +113,7 @@ def chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any:
 
 
 async def chilldkg(
-    chan: SignerChannel, seed: bytes, my_hostseckey: bytes, params: SessionParams
+    chan: SignerChannel, seed: bytes, hostseckey: bytes, params: SessionParams
 ) -> Optional[Tuple[simplpedpop.DKGOutput, Any]]:
     # TODO Top-level error handling
     state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, params)
@@ -133,9 +133,9 @@ async def chilldkg(
     return (dkg_output, chilldkg_backup(state2, cert))
 
 
-def certifying_eq_round1(my_hostseckey: bytes, x: bytes) -> bytes:
+def certifying_eq_round1(hostseckey: bytes, x: bytes) -> bytes:
     # TODO: fix aux_rand
-    return schnorr_sign(x, my_hostseckey, b"0" * 32)
+    return schnorr_sign(x, hostseckey, b"0" * 32)
 
 
 def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
@@ -256,7 +256,7 @@ def chilldkg_recover(
 
     n = len(hostpubkeys)
     (params, params_id) = chilldkg_session_params(hostpubkeys, t, context_string)
-    my_hostseckey, my_hostpubkey = chilldkg_hostkey_gen(seed)
+    hostseckey, hostpubkey = chilldkg_hostkey_gen(seed)
 
     # Verify cert
     verify_cert(hostpubkeys, eta, cert)
@@ -265,16 +265,16 @@ def chilldkg_recover(
 
     # Find our hostpubkey
     try:
-        my_idx = hostpubkeys.index(my_hostpubkey)
+        idx = hostpubkeys.index(hostpubkey)
     except ValueError as e:
         raise InvalidBackupError("Seed and backup don't match") from e
 
     shares_sum = encpedpop.decrypt_sum(
-        all_enc_shares_sum[my_idx], my_hostseckey, hostpubkeys, my_idx, enc_context
+        all_enc_shares_sum[idx], hostseckey, hostpubkeys, idx, enc_context
     )
     # TODO: don't call full round1 function
     (state1, (_, _)) = encpedpop.signer_round1(
-        seed, t, len(hostpubkeys), my_hostseckey, hostpubkeys, my_idx
+        seed, t, len(hostpubkeys), hostseckey, hostpubkeys, idx
     )
     self_share = state1[4]
     shares_sum += self_share

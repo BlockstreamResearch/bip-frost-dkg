@@ -56,9 +56,9 @@ def simulate_simplpedpop(seeds, t):
 
 
 def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
-    my_deckey = kdf(seed, "deckey")
-    my_enckey = pubkey_gen_plain(my_deckey)
-    return my_deckey, my_enckey
+    deckey = kdf(seed, "deckey")
+    enckey = pubkey_gen_plain(deckey)
+    return deckey, enckey
 
 
 def simulate_encpedpop(seeds, t):
@@ -71,10 +71,8 @@ def simulate_encpedpop(seeds, t):
 
     enckeys = [out[1] for out in round0_outputs]
     for i in range(n):
-        my_deckey = round0_outputs[i][0]
-        round1_outputs += [
-            encpedpop.signer_round1(seeds[i], t, n, my_deckey, enckeys, i)
-        ]
+        deckey = round0_outputs[i][0]
+        round1_outputs += [encpedpop.signer_round1(seeds[i], t, n, deckey, enckeys, i)]
 
     simpl_round1_unis = [out[1][0] for out in round1_outputs]
     simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
