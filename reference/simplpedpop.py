@@ -20,9 +20,9 @@ def pop_msg(idx: int):
     return POP_MSG_TAG + idx.to_bytes(4, byteorder="big")
 
 
-def pop_prove(seckey, my_idx, aux_rand: bytes = 32 * b"\x00"):
+def pop_prove(seckey, idx, aux_rand: bytes = 32 * b"\x00"):
     # TODO: What to do with aux_rand?
-    sig = schnorr_sign(pop_msg(my_idx), seckey, aux_rand)
+    sig = schnorr_sign(pop_msg(idx), seckey, aux_rand)
     return Pop(sig)
 
 
@@ -73,8 +73,8 @@ def aggregate_vss_commitments(
 class SignerState1(NamedTuple):
     t: int
     n: int
-    my_idx: int
-    my_first_ge: GE
+    idx: int
+    first_ge: GE
 
 
 # TODO This should probably moved somewhere else as its common to all DKGs
@@ -90,7 +90,7 @@ class DKGOutput(NamedTuple):
 
 
 def signer_round1(
-    seed: bytes, t: int, n: int, my_idx: int
+    seed: bytes, t: int, n: int, idx: int
 ) -> Tuple[SignerState1, Unicast1, List[Scalar]]:
     """
     Generate SimplPedPop messages to be sent to the coordinator.
@@ -98,20 +98,20 @@ def signer_round1(
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
     :param int n: number of participants
-    :param int my_idx: index of this signer in the participant list
+    :param int idx: index of this signer in the participant list
     :return: the signer's state, the VSS commitment and the generated shares
     """
     assert t < 2 ** (4 * 8)
-    assert my_idx < 2 ** (4 * 8)
+    assert idx < 2 ** (4 * 8)
 
     vss = VSS.generate(seed, t)
     shares = vss.shares(n)
-    pop = pop_prove(vss.secret().to_bytes(), my_idx)
+    pop = pop_prove(vss.secret().to_bytes(), idx)
 
     vss_commitment = vss.commit()
-    my_first_ge = vss_commitment.ges[0]
+    first_ge = vss_commitment.ges[0]
     msg = Unicast1(vss_commitment, pop)
-    state = SignerState1(t, n, my_idx, my_first_ge)
+    state = SignerState1(t, n, idx, first_ge)
     return state, msg, shares
 
 
@@ -128,19 +128,19 @@ def signer_pre_finalize(
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
-    t, n, my_idx, my_first_ge = state
+    t, n, idx, first_ge = state
     first_ges, remaining_ges, pops = msg
     assert len(first_ges) == n
     assert len(remaining_ges) == t - 1
     assert len(pops) == n
 
-    if first_ges[my_idx] != my_first_ge:
+    if first_ges[idx] != first_ge:
         raise InvalidContributionError(
             None, "Coordinator sent unexpected first group element for local index"
         )
 
     for i in range(n):
-        if i == my_idx:
+        if i == idx:
             # No need to check our own pop.
             # TODO Should we include a simple bytes comparison as defense-in-depth?
             continue
@@ -154,7 +154,7 @@ def signer_pre_finalize(
                     i, "Participant sent invalid proof-of-knowledge"
                 )
     vss_commitment = aggregate_vss_commitments(first_ges, remaining_ges, t, n)
-    if not vss_commitment.verify(my_idx, shares_sum):
+    if not vss_commitment.verify(idx, shares_sum):
         raise VSSVerifyError()
     eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
     shared_pubkey, signer_pubkeys = vss_commitment.group_info(n)
