@@ -45,13 +45,13 @@ def decrypt_sum(
 ###
 
 
-class Unicast1(NamedTuple):
-    simpl_uni1: simplpedpop.Unicast1
+class SignerMsg(NamedTuple):
+    simpl_smsg: simplpedpop.SignerMsg
     enc_shares: List[Scalar]
 
 
-class Broadcast1(NamedTuple):
-    simpl_broad1: simplpedpop.Broadcast1
+class CoordinatorMsg(NamedTuple):
+    simpl_cmsg: simplpedpop.CoordinatorMsg
     enc_shares_sum: Scalar
 
 
@@ -60,18 +60,18 @@ class Broadcast1(NamedTuple):
 ###
 
 
-class SignerState1(NamedTuple):
+class SignerState(NamedTuple):
     t: int  # TODO This can also be found in simpl_state
     deckey: bytes
     enckeys: List[bytes]
     idx: int
     self_share: Scalar
-    simpl_state: simplpedpop.SignerState1  # TODO Move up?
+    simpl_state: simplpedpop.SignerState  # TODO Move up?
 
 
-def signer_round1(
+def signer_step(
     seed: bytes, t: int, n: int, deckey: bytes, enckeys: List[bytes], idx: int
-) -> Tuple[SignerState1, Unicast1]:
+) -> Tuple[SignerState, SignerMsg]:
     assert t < 2 ** (4 * 8)
     n = len(enckeys)
 
@@ -80,7 +80,7 @@ def signer_round1(
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
 
-    simpl_state, simpl_uni1, shares = simplpedpop.signer_round1(seed_, t, n, idx)
+    simpl_state, simpl_smsg, shares = simplpedpop.signer_step(seed_, t, n, idx)
     assert len(shares) == n
     enc_shares: List[Scalar] = []
     for i in range(n):
@@ -95,23 +95,23 @@ def signer_round1(
                     i, "Participant sent invalid encryption key"
                 )
     self_share = shares[idx]
-    uni1 = Unicast1(simpl_uni1, enc_shares)
-    state1 = SignerState1(t, deckey, enckeys, idx, self_share, simpl_state)
-    return state1, uni1
+    smsg = SignerMsg(simpl_smsg, enc_shares)
+    state = SignerState(t, deckey, enckeys, idx, self_share, simpl_state)
+    return state, smsg
 
 
 def signer_pre_finalize(
-    state1: SignerState1,
-    broad1: Broadcast1,
+    state: SignerState,
+    cmsg: CoordinatorMsg,
 ) -> Tuple[bytes, simplpedpop.DKGOutput]:
-    t, deckey, enckeys, idx, self_share, simpl_state = state1
-    simpl_broad1, enc_shares_sum = broad1
+    t, deckey, enckeys, idx, self_share, simpl_state = state
+    simpl_cmsg, enc_shares_sum = cmsg
 
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
     eta, dkg_output = simplpedpop.signer_pre_finalize(
-        simpl_state, simpl_broad1, shares_sum
+        simpl_state, simpl_cmsg, shares_sum
     )
     eta += b"".join(enckeys)
     return eta, dkg_output

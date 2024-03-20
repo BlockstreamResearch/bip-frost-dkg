@@ -42,18 +42,18 @@ def chilldkg_session_params(
     return params, params_id
 
 
-ChillDKGStateR1 = Tuple[SessionParams, int, encpedpop.SignerState1]
+ChillDKGStateR1 = Tuple[SessionParams, int, encpedpop.SignerState]
 
 
 def chilldkg_round1(
     seed: bytes, params: SessionParams
-) -> Tuple[ChillDKGStateR1, simplpedpop.Unicast1, List[Scalar]]:
+) -> Tuple[ChillDKGStateR1, simplpedpop.SignerMsg, List[Scalar]]:
     hostseckey, hostpubkey = chilldkg_hostkey_gen(seed)
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
 
     idx = hostpubkeys.index(hostpubkey)
-    enc_state1, (vss_commitment_ext, enc_gen_shares) = encpedpop.signer_round1(
+    enc_state1, (vss_commitment_ext, enc_gen_shares) = encpedpop.signer_step(
         seed, t, n, hostseckey, hostpubkeys, idx
     )
     state1 = (params, idx, enc_state1)
@@ -66,7 +66,7 @@ ChillDKGStateR2 = Tuple[SessionParams, bytes, simplpedpop.DKGOutput]
 def chilldkg_round2(
     seed: bytes,
     state1: ChillDKGStateR1,
-    vss_commitments_sum: simplpedpop.Broadcast1,
+    vss_commitments_sum: simplpedpop.CoordinatorMsg,
     all_enc_shares_sum: List[Scalar],
 ) -> Tuple[ChillDKGStateR2, bytes]:
     (hostseckey, _) = chilldkg_hostkey_gen(seed)
@@ -79,8 +79,8 @@ def chilldkg_round2(
     # participate in Eq?
     enc_share = all_enc_shares_sum[idx]
 
-    enc_broad1 = encpedpop.Broadcast1(vss_commitments_sum, enc_share)
-    eta, dkg_output = encpedpop.signer_pre_finalize(enc_state1, enc_broad1)
+    enc_cmsg = encpedpop.CoordinatorMsg(vss_commitments_sum, enc_share)
+    eta, dkg_output = encpedpop.signer_pre_finalize(enc_state1, enc_cmsg)
     eta += b"".join([bytes_from_int(int(share)) for share in all_enc_shares_sum])
     state2 = (params, eta, dkg_output)
     return state2, certifying_eq_round1(hostseckey, eta)
@@ -193,7 +193,7 @@ async def chilldkg_coordinate(
         simpl_round1_in, enc_shares = await chans.receive_from(i)
         simpl_round1_ins += [simpl_round1_in]
         all_enc_shares_sum = [all_enc_shares_sum[j] + enc_shares[j] for j in range(n)]
-    simpl_round1_outs = simplpedpop.coordinator_round1(simpl_round1_ins, t)
+    simpl_round1_outs = simplpedpop.coordinator_step(simpl_round1_ins, t)
     chans.send_all((simpl_round1_outs, all_enc_shares_sum))
     vss_commitment = simplpedpop.assemble_sum_vss_commitment(
         simpl_round1_outs.coms_to_secrets,
@@ -273,7 +273,7 @@ def chilldkg_recover(
         all_enc_shares_sum[idx], hostseckey, hostpubkeys, idx, enc_context
     )
     # TODO: don't call full round1 function
-    (state1, (_, _)) = encpedpop.signer_round1(
+    (state1, (_, _)) = encpedpop.signer_step(
         seed, t, len(hostpubkeys), hostseckey, hostpubkeys, idx
     )
     self_share = state1[4]

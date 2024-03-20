@@ -35,14 +35,14 @@ def pop_verify(pop: Pop, pubkey: bytes, idx: int):
 ###
 
 
-class Unicast1(NamedTuple):
+class SignerMsg(NamedTuple):
     """Round 1 message from signer to coordinator"""
 
     com: VSSCommitment
     pop: Pop
 
 
-class Broadcast1(NamedTuple):
+class CoordinatorMsg(NamedTuple):
     """Round 1 message from coordinator to all signers"""
 
     coms_to_secrets: List[GE]
@@ -72,7 +72,7 @@ def assemble_sum_vss_commitment(
 ###
 
 
-class SignerState1(NamedTuple):
+class SignerState(NamedTuple):
     t: int
     n: int
     idx: int
@@ -91,9 +91,9 @@ class DKGOutput(NamedTuple):
 # ChillDKG will take care of invoking the equality check protocol.
 
 
-def signer_round1(
+def signer_step(
     seed: bytes, t: int, n: int, idx: int
-) -> Tuple[SignerState1, Unicast1, List[Scalar]]:
+) -> Tuple[SignerState, SignerMsg, List[Scalar]]:
     """
     Generate SimplPedPop messages to be sent to the coordinator.
 
@@ -112,26 +112,26 @@ def signer_round1(
 
     vss_commitment = vss.commit()
     com_to_secret = vss_commitment.commitment_to_secret()
-    msg = Unicast1(vss_commitment, pop)
-    state = SignerState1(t, n, idx, com_to_secret)
+    msg = SignerMsg(vss_commitment, pop)
+    state = SignerState(t, n, idx, com_to_secret)
     return state, msg, shares
 
 
 def signer_pre_finalize(
-    state: SignerState1,
-    msg: Broadcast1,
+    state: SignerState,
+    cmsg: CoordinatorMsg,
     shares_sum: Scalar,
 ) -> Tuple[bytes, DKGOutput]:
     """
     Take the messages received from the coordinator and return eta to be compared and DKG output
 
     :param SignerState state: the signer's state after round 1 (output by signer_round1)
-    :param Broadcast1 msgs: round 1 broadcast message received from the coordinator
+    :param CoordinatorMsg cmsg: round 1 broadcast message received from the coordinator
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
     t, n, idx, com_to_secret = state
-    coms_to_secrets, coms_to_nonconst_terms, pops = msg
+    coms_to_secrets, coms_to_nonconst_terms, pops = cmsg
     assert len(coms_to_secrets) == n
     assert len(coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
@@ -155,7 +155,9 @@ def signer_pre_finalize(
                 raise InvalidContributionError(
                     i, "Participant sent invalid proof-of-knowledge"
                 )
-    vss_commitment = assemble_sum_vss_commitment(coms_to_secrets, coms_to_nonconst_terms, t, n)
+    vss_commitment = assemble_sum_vss_commitment(
+        coms_to_secrets, coms_to_nonconst_terms, t, n
+    )
     if not vss_commitment.verify(idx, shares_sum):
         raise VSSVerifyError()
     eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
@@ -171,11 +173,11 @@ def signer_pre_finalize(
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def coordinator_round1(uni1s: List[Unicast1], t: int) -> Broadcast1:
-    coms_to_secrets = [uni1.com.commitment_to_secret() for uni1 in uni1s]
+def coordinator_step(smsgs: List[SignerMsg], t: int) -> CoordinatorMsg:
+    coms_to_secrets = [smsg.com.commitment_to_secret() for smsg in smsgs]
     sum_coms_to_nonconst_terms = [
-        GE.sum(*(uni1.com.commitment_to_nonconst_terms()[j] for uni1 in uni1s))
+        GE.sum(*(smsg.com.commitment_to_nonconst_terms()[j] for smsg in smsgs))
         for j in range(0, t - 1)
     ]
-    pops = [uni1.pop for uni1 in uni1s]
-    return Broadcast1(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
+    pops = [smsg.pop for smsg in smsgs]
+    return CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
