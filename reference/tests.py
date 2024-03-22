@@ -39,50 +39,46 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(seeds, t):
     n = len(seeds)
-    round1_outputs = []
+    soutputs = []
     dkg_outputs = []
     for i in range(n):
-        round1_outputs += [simplpedpop.signer_round1(seeds[i], t, n, i)]
-    simpl_round1_unis = [out[1] for out in round1_outputs]
-    simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
+        soutputs += [simplpedpop.signer_step(seeds[i], t, n, i)]
+    smsgs = [out[1] for out in soutputs]
+    cmsgs = simplpedpop.coordinator_step(smsgs, t)
     for i in range(n):
-        shares_sum = Scalar.sum(*([out[2][i] for out in round1_outputs]))
+        shares_sum = Scalar.sum(*([out[2][i] for out in soutputs]))
         dkg_outputs += [
-            simplpedpop.signer_pre_finalize(
-                round1_outputs[i][0], simpl_round1_broad, shares_sum
-            )
+            simplpedpop.signer_pre_finalize(soutputs[i][0], cmsgs, shares_sum)
         ]
     return dkg_outputs
 
 
 def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
-    my_deckey = kdf(seed, "deckey")
-    my_enckey = pubkey_gen_plain(my_deckey)
-    return my_deckey, my_enckey
+    deckey = kdf(seed, "deckey")
+    enckey = pubkey_gen_plain(deckey)
+    return deckey, enckey
 
 
 def simulate_encpedpop(seeds, t):
     n = len(seeds)
-    round0_outputs = []
-    round1_outputs = []
+    enc_soutputs0 = []
+    enc_soutputs1 = []
     dkg_outputs = []
     for i in range(n):
-        round0_outputs += [encpedpop_keys(seeds[i])]
+        enc_soutputs0 += [encpedpop_keys(seeds[i])]
 
-    enckeys = [out[1] for out in round0_outputs]
+    enckeys = [out[1] for out in enc_soutputs0]
     for i in range(n):
-        my_deckey = round0_outputs[i][0]
-        round1_outputs += [
-            encpedpop.signer_round1(seeds[i], t, n, my_deckey, enckeys, i)
-        ]
+        deckey = enc_soutputs0[i][0]
+        enc_soutputs1 += [encpedpop.signer_step(seeds[i], t, n, deckey, enckeys, i)]
 
-    simpl_round1_unis = [out[1][0] for out in round1_outputs]
-    simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
+    simpl_smsgs = [out[1][0] for out in enc_soutputs1]
+    simpl_cmsgs = simplpedpop.coordinator_step(simpl_smsgs, t)
     for i in range(n):
-        enc_shares_sum = Scalar.sum(*([out[1][1][i] for out in round1_outputs]))
+        enc_shares_sum = Scalar.sum(*([out[1][1][i] for out in enc_soutputs1]))
         dkg_outputs += [
             encpedpop.signer_pre_finalize(
-                round1_outputs[i][0], (simpl_round1_broad, enc_shares_sum)
+                enc_soutputs1[i][0], (simpl_cmsgs, enc_shares_sum)
             )
         ]
     return dkg_outputs
@@ -98,22 +94,22 @@ def simulate_chilldkg(seeds, t):
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     params, _ = chilldkg_session_params(hostpubkeys, t, b"")
 
-    round1_outputs = []
+    chill_soutputs1 = []
     for i in range(n):
-        round1_outputs += [chilldkg_round1(seeds[i], params)]
+        chill_soutputs1 += [chilldkg_round1(seeds[i], params)]
 
-    state1s = [out[0] for out in round1_outputs]
-    simpl_round1_unis = [out[1] for out in round1_outputs]
-    simpl_round1_broad = simplpedpop.coordinator_round1(simpl_round1_unis, t)
+    chill_sstate1s = [out[0] for out in chill_soutputs1]
+    simpl_smsgs = [out[1] for out in chill_soutputs1]
+    simpl_cmsgs = simplpedpop.coordinator_step(simpl_smsgs, t)
     dkg_outputs = []
     all_enc_shares_sum = []
     for i in range(n):
-        all_enc_shares_sum += [Scalar.sum(*([out[2][i] for out in round1_outputs]))]
+        all_enc_shares_sum += [Scalar.sum(*([out[2][i] for out in chill_soutputs1]))]
     round2_outputs = []
     for i in range(n):
         round2_outputs += [
             chilldkg_round2(
-                seeds[i], state1s[i], simpl_round1_broad, all_enc_shares_sum
+                seeds[i], chill_sstate1s[i], simpl_cmsgs, all_enc_shares_sum
             )
         ]
 

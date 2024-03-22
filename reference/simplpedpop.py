@@ -2,12 +2,8 @@ from typing import List, NamedTuple, NewType, Tuple
 
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.secp256k1 import GE, Scalar
-from util import (
-    BIP_TAG,
-    InvalidContributionError,
-    VSSVerifyError,
-)
-from vss import VSS, VSSCommitment
+from util import BIP_TAG, InvalidContributionError
+from vss import VSS, VSSCommitment, VSSVerifyError
 
 
 ###
@@ -24,9 +20,9 @@ def pop_msg(idx: int):
     return POP_MSG_TAG + idx.to_bytes(4, byteorder="big")
 
 
-def pop_prove(seckey, my_idx, aux_rand: bytes = 32 * b"\x00"):
+def pop_prove(seckey, idx, aux_rand: bytes = 32 * b"\x00"):
     # TODO: What to do with aux_rand?
-    sig = schnorr_sign(pop_msg(my_idx), seckey, aux_rand)
+    sig = schnorr_sign(pop_msg(idx), seckey, aux_rand)
     return Pop(sig)
 
 
@@ -39,34 +35,36 @@ def pop_verify(pop: Pop, pubkey: bytes, idx: int):
 ###
 
 
-class Unicast1(NamedTuple):
+class SignerMsg(NamedTuple):
     """Round 1 message from signer to coordinator"""
 
     com: VSSCommitment
     pop: Pop
 
 
-class Broadcast1(NamedTuple):
+class CoordinatorMsg(NamedTuple):
     """Round 1 message from coordinator to all signers"""
 
-    first_ges: List[GE]
-    remaining_ges: List[GE]
+    coms_to_secrets: List[GE]
+    sum_coms_to_nonconst_terms: List[GE]
     pops: List[Pop]
 
     def to_bytes(self) -> bytes:
         return b"".join(
             [
                 P.to_bytes_compressed_with_infinity()
-                for P in self.first_ges + self.remaining_ges
+                for P in self.coms_to_secrets + self.sum_coms_to_nonconst_terms
             ]
         ) + b"".join(self.pops)
 
 
-def aggregate_vss_commitments(
-    first_ges: List[GE], remaining_ges: List[GE], t: int, n: int
+def assemble_sum_vss_commitment(
+    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE], t: int, n: int
 ) -> VSSCommitment:
-    # Sum the commitments to the constant coefficients
-    return VSSCommitment([GE.sum(*(first_ges[i] for i in range(n)))] + remaining_ges)
+    # Sum the commitments to the secrets
+    return VSSCommitment(
+        [GE.sum(*(coms_to_secrets[i] for i in range(n)))] + sum_coms_to_nonconst_terms
+    )
 
 
 ###
@@ -74,11 +72,11 @@ def aggregate_vss_commitments(
 ###
 
 
-class SignerState1(NamedTuple):
+class SignerState(NamedTuple):
     t: int
     n: int
-    my_idx: int
-    my_first_ge: GE
+    idx: int
+    com_to_secret: GE
 
 
 # TODO This should probably moved somewhere else as its common to all DKGs
@@ -93,72 +91,73 @@ class DKGOutput(NamedTuple):
 # ChillDKG will take care of invoking the equality check protocol.
 
 
-def signer_round1(
-    seed: bytes, t: int, n: int, my_idx: int
-) -> Tuple[SignerState1, Unicast1, List[Scalar]]:
+def signer_step(
+    seed: bytes, t: int, n: int, idx: int
+) -> Tuple[SignerState, SignerMsg, List[Scalar]]:
     """
     Generate SimplPedPop messages to be sent to the coordinator.
 
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
     :param int n: number of participants
-    :param int my_idx: index of this signer in the participant list
+    :param int idx: index of this signer in the participant list
     :return: the signer's state, the VSS commitment and the generated shares
     """
     assert t < 2 ** (4 * 8)
-    assert my_idx < 2 ** (4 * 8)
+    assert idx < 2 ** (4 * 8)
 
     vss = VSS.generate(seed, t)
     shares = vss.shares(n)
-    pop = pop_prove(vss.secret().to_bytes(), my_idx)
+    pop = pop_prove(vss.secret().to_bytes(), idx)
 
     vss_commitment = vss.commit()
-    my_first_ge = vss_commitment.ges[0]
-    msg = Unicast1(vss_commitment, pop)
-    state = SignerState1(t, n, my_idx, my_first_ge)
+    com_to_secret = vss_commitment.commitment_to_secret()
+    msg = SignerMsg(vss_commitment, pop)
+    state = SignerState(t, n, idx, com_to_secret)
     return state, msg, shares
 
 
 def signer_pre_finalize(
-    state: SignerState1,
-    msg: Broadcast1,
+    state: SignerState,
+    cmsg: CoordinatorMsg,
     shares_sum: Scalar,
 ) -> Tuple[bytes, DKGOutput]:
     """
     Take the messages received from the coordinator and return eta to be compared and DKG output
 
     :param SignerState state: the signer's state after round 1 (output by signer_round1)
-    :param Broadcast1 msgs: round 1 broadcast message received from the coordinator
+    :param CoordinatorMsg cmsg: round 1 broadcast message received from the coordinator
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
     :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
     """
-    t, n, my_idx, my_first_ge = state
-    first_ges, remaining_ges, pops = msg
-    assert len(first_ges) == n
-    assert len(remaining_ges) == t - 1
+    t, n, idx, com_to_secret = state
+    coms_to_secrets, coms_to_nonconst_terms, pops = cmsg
+    assert len(coms_to_secrets) == n
+    assert len(coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
 
-    if first_ges[my_idx] != my_first_ge:
+    if coms_to_secrets[idx] != com_to_secret:
         raise InvalidContributionError(
             None, "Coordinator sent unexpected first group element for local index"
         )
 
     for i in range(n):
-        if i == my_idx:
+        if i == idx:
             # No need to check our own pop.
-            # TODO Should we include a simple bytes comparison as defense-in-depth?
             continue
-        if first_ges[i].infinity:
-            # TODO This branch can go away once we add real serializations.
-            # If the serialized pubkey is infinity, pop_verify will simply fail.
+        if coms_to_secrets[i].infinity:
             raise InvalidContributionError(i, "Participant sent invalid commitment")
-        else:
-            if not pop_verify(pops[i], first_ges[i].to_bytes_xonly(), i):
-                raise InvalidContributionError(
-                    i, "Participant sent invalid proof-of-knowledge"
-                )
-    vss_commitment = aggregate_vss_commitments(first_ges, remaining_ges, t, n)
-    if not vss_commitment.verify(my_idx, shares_sum):
+        # This can be optimized: We serialize the coms_to_secrets[i] here, but
+        # schnorr_verify (inside pop_verify) will need to deserialize it again, which
+        # involves computing a square root to obtain the y coordinate.
+        if not pop_verify(pops[i], coms_to_secrets[i].to_bytes_xonly(), i):
+            raise InvalidContributionError(
+                i, "Participant sent invalid proof-of-knowledge"
+            )
+    vss_commitment = assemble_sum_vss_commitment(
+        coms_to_secrets, coms_to_nonconst_terms, t, n
+    )
+    if not vss_commitment.verify(idx, shares_sum):
         raise VSSVerifyError()
     eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
     shared_pubkey, signer_pubkeys = vss_commitment.group_info(n)
@@ -173,8 +172,11 @@ def signer_pre_finalize(
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def coordinator_round1(coms: List[Unicast1], t: int) -> Broadcast1:
-    first_ges = [com[0].ges[0] for com in coms]
-    remaining_ges_sum = [GE.sum(*(com[0].ges[j] for com in coms)) for j in range(1, t)]
-    pops = [com[1] for com in coms]
-    return Broadcast1(first_ges, remaining_ges_sum, pops)
+def coordinator_step(smsgs: List[SignerMsg], t: int) -> CoordinatorMsg:
+    coms_to_secrets = [smsg.com.commitment_to_secret() for smsg in smsgs]
+    sum_coms_to_nonconst_terms = [
+        GE.sum(*(smsg.com.commitment_to_nonconst_terms()[j] for smsg in smsgs))
+        for j in range(0, t - 1)
+    ]
+    pops = [smsg.pop for smsg in smsgs]
+    return CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
