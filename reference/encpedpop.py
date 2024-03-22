@@ -52,7 +52,9 @@ class SignerMsg(NamedTuple):
 
 class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
-    enc_shares_sum: Scalar
+
+
+# TODO Define a CoordinatorUnicastMsg to imrpove handling of the enc_shares_sums?
 
 
 ###
@@ -103,9 +105,10 @@ def signer_step(
 def signer_pre_finalize(
     state: SignerState,
     cmsg: CoordinatorMsg,
+    enc_shares_sum: Scalar,
 ) -> Tuple[bytes, simplpedpop.DKGOutput]:
     t, deckey, enckeys, idx, self_share, simpl_state = state
-    simpl_cmsg, enc_shares_sum = cmsg
+    simpl_cmsg, = cmsg  # Unpack unary tuple  # fmt: skip
 
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
@@ -115,3 +118,19 @@ def signer_pre_finalize(
     )
     eta += b"".join(enckeys)
     return eta, dkg_output
+
+
+###
+### Coordinator
+###
+
+
+def coordinator_step(
+    smsgs: List[SignerMsg], t: int
+) -> Tuple[CoordinatorMsg, List[Scalar]]:
+    n = len(smsgs)
+    simpl_cmsg = simplpedpop.coordinator_step([smsg.simpl_smsg for smsg in smsgs], t)
+    enc_shares_sums = [
+        Scalar.sum(*([smsg.enc_shares[i] for smsg in smsgs])) for i in range(n)
+    ]
+    return CoordinatorMsg(simpl_cmsg), enc_shares_sums
