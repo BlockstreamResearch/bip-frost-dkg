@@ -44,11 +44,11 @@ def simulate_simplpedpop(seeds, t):
     for i in range(n):
         soutputs += [simplpedpop.signer_step(seeds[i], t, n, i)]
     smsgs = [out[1] for out in soutputs]
-    cmsgs = simplpedpop.coordinator_step(smsgs, t)
+    cmsg = simplpedpop.coordinator_step(smsgs, t)
     for i in range(n):
         shares_sum = Scalar.sum(*([out[2][i] for out in soutputs]))
         dkg_outputs += [
-            simplpedpop.signer_pre_finalize(soutputs[i][0], cmsgs, shares_sum)
+            simplpedpop.signer_pre_finalize(soutputs[i][0], cmsg, shares_sum)
         ]
     return dkg_outputs
 
@@ -73,12 +73,12 @@ def simulate_encpedpop(seeds, t):
         enc_soutputs1 += [encpedpop.signer_step(seeds[i], t, n, deckey, enckeys, i)]
 
     simpl_smsgs = [out[1][0] for out in enc_soutputs1]
-    simpl_cmsgs = simplpedpop.coordinator_step(simpl_smsgs, t)
+    simpl_cmsg = simplpedpop.coordinator_step(simpl_smsgs, t)
     for i in range(n):
         enc_shares_sum = Scalar.sum(*([out[1][1][i] for out in enc_soutputs1]))
         dkg_outputs += [
             encpedpop.signer_pre_finalize(
-                enc_soutputs1[i][0], (simpl_cmsgs, enc_shares_sum)
+                enc_soutputs1[i][0], (simpl_cmsg, enc_shares_sum)
             )
         ]
     return dkg_outputs
@@ -100,7 +100,7 @@ def simulate_chilldkg(seeds, t):
 
     chill_sstate1s = [out[0] for out in chill_soutputs1]
     simpl_smsgs = [out[1] for out in chill_soutputs1]
-    simpl_cmsgs = simplpedpop.coordinator_step(simpl_smsgs, t)
+    simpl_cmsg = simplpedpop.coordinator_step(simpl_smsgs, t)
     dkg_outputs = []
     all_enc_shares_sum = []
     for i in range(n):
@@ -109,7 +109,7 @@ def simulate_chilldkg(seeds, t):
     for i in range(n):
         round2_outputs += [
             chilldkg_round2(
-                seeds[i], chill_sstate1s[i], simpl_cmsgs, all_enc_shares_sum
+                seeds[i], chill_sstate1s[i], simpl_cmsg, all_enc_shares_sum
             )
         ]
 
