@@ -45,7 +45,7 @@ def chilldkg_session_params(
 ChillDKGStateR1 = Tuple[SessionParams, int, encpedpop.SignerState]
 
 
-def chilldkg_round1(
+def chilldkg_step1(
     seed: bytes, params: SessionParams
 ) -> Tuple[ChillDKGStateR1, simplpedpop.SignerMsg, List[Scalar]]:
     hostseckey, hostpubkey = chilldkg_hostkey_gen(seed)
@@ -63,7 +63,7 @@ def chilldkg_round1(
 ChillDKGStateR2 = Tuple[SessionParams, bytes, simplpedpop.DKGOutput]
 
 
-def chilldkg_round2(
+def chilldkg_step2(
     seed: bytes,
     state1: ChillDKGStateR1,
     enc_cmsg: encpedpop.CoordinatorMsg,
@@ -117,11 +117,11 @@ async def chilldkg(
     chan: SignerChannel, seed: bytes, hostseckey: bytes, params: SessionParams
 ) -> Optional[Tuple[simplpedpop.DKGOutput, Any]]:
     # TODO Top-level error handling
-    state1, vss_commitment_ext, enc_gen_shares = chilldkg_round1(seed, params)
+    state1, vss_commitment_ext, enc_gen_shares = chilldkg_step1(seed, params)
     chan.send(encpedpop.SignerMsg(vss_commitment_ext, enc_gen_shares))
     enc_cmsg, enc_shares_sums = await chan.receive()
 
-    state2, eq_round1 = chilldkg_round2(seed, state1, enc_cmsg, enc_shares_sums)
+    state2, eq_round1 = chilldkg_step2(seed, state1, enc_cmsg, enc_shares_sums)
 
     chan.send(eq_round1)
     cert = await chan.receive()

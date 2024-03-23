@@ -13,8 +13,8 @@ import encpedpop
 from reference import (
     chilldkg_hostkey_gen,
     chilldkg_session_params,
-    chilldkg_round1,
-    chilldkg_round2,
+    chilldkg_step1,
+    chilldkg_step2,
     chilldkg_finalize,
     chilldkg_recover,
     CoordinatorChannels,
@@ -94,7 +94,7 @@ def simulate_chilldkg(seeds, t):
 
     chill_soutputs1 = []
     for i in range(n):
-        chill_soutputs1 += [chilldkg_round1(seeds[i], params)]
+        chill_soutputs1 += [chilldkg_step1(seeds[i], params)]
 
     chill_sstate1s = [out[0] for out in chill_soutputs1]
     simpl_smsgs = [out[1] for out in chill_soutputs1]
@@ -108,7 +108,7 @@ def simulate_chilldkg(seeds, t):
     round2_outputs = []
     for i in range(n):
         round2_outputs += [
-            chilldkg_round2(seeds[i], chill_sstate1s[i], enc_cmsg, enc_shares_sums)
+            chilldkg_step2(seeds[i], chill_sstate1s[i], enc_cmsg, enc_shares_sums)
         ]
 
     cert = b"".join([out[1] for out in round2_outputs])
