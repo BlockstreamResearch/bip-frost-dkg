@@ -71,6 +71,12 @@ class SignerState(NamedTuple):
     simpl_state: simplpedpop.SignerState  # TODO Move up?
 
 
+def session_seed(seed, enckeys, t):
+    enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
+    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
+    return seed_, enc_context
+
+
 def signer_step(
     seed: bytes, t: int, n: int, deckey: bytes, enckeys: List[bytes], idx: int
 ) -> Tuple[SignerState, SignerMsg]:
@@ -79,8 +85,7 @@ def signer_step(
 
     # Protect against reuse of seed in case we previously exported shares
     # encrypted under wrong enckeys.
-    enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
+    seed_, enc_context = session_seed(seed, enckeys, t)
 
     simpl_state, simpl_smsg, shares = simplpedpop.signer_step(seed_, t, n, idx)
     assert len(shares) == n

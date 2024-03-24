@@ -7,7 +7,7 @@ from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 from network import SignerChannel, CoordinatorChannels
 
-from vss import VSSCommitment, GroupInfo
+from vss import VSS, VSSCommitment, GroupInfo
 import simplpedpop
 from simplpedpop import DKGOutput
 import encpedpop
@@ -231,33 +231,32 @@ def signer_recover(
 
     n = len(hostpubkeys)
     (params, params_id) = session_params(hostpubkeys, t, context_string)
-    hostseckey, hostpubkey = hostkey_gen(seed)
 
     # Verify cert
     verify_cert(hostpubkeys, eta, cert)
-    # Decrypt share
-    enc_context = t.to_bytes(4, byteorder="big") + b"".join(hostpubkeys)
 
     # Find our hostpubkey
+    hostseckey, hostpubkey = hostkey_gen(seed)
     try:
         idx = hostpubkeys.index(hostpubkey)
     except ValueError as e:
         raise InvalidBackupError("Seed and backup don't match") from e
 
+    # Decrypt share
+    seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)
     shares_sum = encpedpop.decrypt_sum(
         enc_shares_sums[idx], hostseckey, hostpubkeys, idx, enc_context
     )
-    # TODO: don't call full round1 function
-    (state1, (_, _)) = encpedpop.signer_step(
-        seed, t, len(hostpubkeys), hostseckey, hostpubkeys, idx
-    )
-    self_share = state1[4]
+
+    # Derive self_share
+    vss = VSS.generate(seed_, t)
+    self_share = vss.share_for(idx)
     shares_sum += self_share
 
-    # Compute shared & individual pubkeys
+    # Compute shared pubkey and individual pubkeys
     (shared_pubkey, signer_pubkeys) = vss_commit.group_info(n)
-    dkg_output = DKGOutput(shares_sum, shared_pubkey, signer_pubkeys)
 
+    dkg_output = DKGOutput(shares_sum, shared_pubkey, signer_pubkeys)
     return dkg_output, params
 
 
