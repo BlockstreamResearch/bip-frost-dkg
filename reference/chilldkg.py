@@ -20,6 +20,32 @@ from util import (
 
 
 ###
+### Certifying equality check
+###
+
+
+def certifying_eq_signer_step(hostseckey: bytes, x: bytes) -> bytes:
+    # TODO: fix aux_rand
+    return schnorr_sign(x, hostseckey, b"0" * 32)
+
+
+def certifying_eq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
+    n = len(hostpubkeys)
+    if len(cert) != 64 * n:
+        return False
+    is_valid = [
+        schnorr_verify(x, hostpubkeys[i][1:33], cert[i * 64 : (i + 1) * 64])
+        for i in range(n)
+    ]
+    return all(is_valid)
+
+
+def certifying_eq_coordinator_step(sigs: List[bytes]) -> bytes:
+    cert = b"".join(sigs)
+    return cert
+
+
+###
 ### Parameters and Setup
 ###
 
@@ -171,7 +197,7 @@ def signer_step2(
     )
     eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
     state2 = SignerState2(params, eta, dkg_output)
-    return state2, certifying_eq_round1(hostseckey, eta)
+    return state2, certifying_eq_signer_step(hostseckey, eta)
 
 
 def signer_finalize(state2: SignerState2, cert: bytes) -> Optional[DKGOutput]:
@@ -184,7 +210,7 @@ def signer_finalize(state2: SignerState2, cert: bytes) -> Optional[DKGOutput]:
     Once you obtain that valid certificate, you can call `signer_finalize` again with that certificate.
     """
     (params, eta, dkg_output) = state2
-    if not certifying_eq_finalize(params.hostpubkeys, eta, cert):
+    if not certifying_eq_verify(params.hostpubkeys, eta, cert):
         return None
     return dkg_output
 
@@ -233,7 +259,7 @@ def signer_recover(
     (params, params_id) = session_params(hostpubkeys, t, context_string)
 
     # Verify cert
-    verify_cert(hostpubkeys, eta, cert)
+    certifying_eq_verify(hostpubkeys, eta, cert)
 
     # Find our hostpubkey
     hostseckey, hostpubkey = hostkey_gen(seed)
@@ -274,7 +300,7 @@ def coordinator_step(smsgs1: List[SignerMsg1], t: int) -> CoordinatorMsg:
 
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams
-) -> Union[GroupInfo, Literal[False]]:
+) -> Optional[GroupInfo]:
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
     smsgs1: List[SignerMsg1] = []
@@ -292,45 +318,15 @@ async def coordinator(
         n,
     )
     eta = serialize_eta(t, vss_commitment, hostpubkeys, enc_shares_sums)
-    cert = await certifying_eq_coordinate(chans, hostpubkeys)
-    if not verify_cert(hostpubkeys, eta, cert):
-        return False
-    return vss_commitment.group_info(n)
 
-
-###
-### certifying equality check
-###
-
-
-def certifying_eq_round1(hostseckey: bytes, x: bytes) -> bytes:
-    # TODO: fix aux_rand
-    return schnorr_sign(x, hostseckey, b"0" * 32)
-
-
-def verify_cert(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
-    n = len(hostpubkeys)
-    if len(cert) != 64 * n:
-        return False
-    is_valid = [
-        schnorr_verify(x, hostpubkeys[i][1:33], cert[i * 64 : (i + 1) * 64])
-        for i in range(n)
-    ]
-    return all(is_valid)
-
-
-def certifying_eq_finalize(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
-    return verify_cert(hostpubkeys, x, cert)
-
-
-async def certifying_eq_coordinate(
-    chans: CoordinatorChannels, hostpubkeys: List[bytes]
-) -> bytes:
-    n = len(hostpubkeys)
     sigs = []
     for i in range(n):
-        sig = await chans.receive_from(i)
-        sigs += [sig]
-    cert = b"".join(sigs)
+        sigs += [await chans.receive_from(i)]
+    cert = certifying_eq_coordinator_step(sigs)
     chans.send_all(cert)
-    return cert
+
+    # TODO This should probably go to a coordinator_finalize function
+    if not certifying_eq_verify(hostpubkeys, eta, cert):
+        return None
+
+    return vss_commitment.group_info(n)
