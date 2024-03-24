@@ -79,7 +79,8 @@ class SignerState(NamedTuple):
     com_to_secret: GE
 
 
-# TODO This should probably moved somewhere else as its common to all DKGs
+# TODO This should probably moved somewhere else as its common to all DKGs.
+# Hm, moving it to reference.py is difficult due to cylic module dependencies.
 class DKGOutput(NamedTuple):
     share: Scalar
     shared_pubkey: GE

@@ -10,17 +10,18 @@ from util import kdf
 from vss import Polynomial, VSS
 import simplpedpop
 import encpedpop
-from reference import (
-    chilldkg_hostkey_gen,
-    chilldkg_session_params,
-    chilldkg_step1,
-    chilldkg_step2,
-    chilldkg_finalize,
-    chilldkg_recover,
+from chilldkg import (
     CoordinatorChannels,
     SignerChannel,
-    chilldkg,
-    chilldkg_coordinate,
+    hostkey_gen,
+    session_params,
+    signer_step1,
+    signer_step2,
+    signer_finalize,
+    signer_recover,
+    coordinator_step,
+    signer,
+    coordinator,
 )
 
 
@@ -87,33 +88,28 @@ def simulate_chilldkg(seeds, t):
 
     hostkeys = []
     for i in range(n):
-        hostkeys += [chilldkg_hostkey_gen(seeds[i])]
+        hostkeys += [hostkey_gen(seeds[i])]
 
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
-    params, _ = chilldkg_session_params(hostpubkeys, t, b"")
+    params, _ = session_params(hostpubkeys, t, b"")
 
     chill_soutputs1 = []
     for i in range(n):
-        chill_soutputs1 += [chilldkg_step1(seeds[i], params)]
+        chill_soutputs1 += [signer_step1(seeds[i], params)]
 
     chill_sstate1s = [out[0] for out in chill_soutputs1]
-    simpl_smsgs = [out[1] for out in chill_soutputs1]
-    simpl_cmsg = simplpedpop.coordinator_step(simpl_smsgs, t)
-    enc_cmsg = encpedpop.CoordinatorMsg(simpl_cmsg)
+    chill_smsgs = [out[1] for out in chill_soutputs1]
+    chill_cmsg = coordinator_step(chill_smsgs, t)
+
+    chill_soutputs2 = []
+    for i in range(n):
+        chill_soutputs2 += [signer_step2(seeds[i], chill_sstate1s[i], chill_cmsg)]
+
+    cert = b"".join([out[1] for out in chill_soutputs2])
 
     dkg_outputs = []
-    enc_shares_sums = []
     for i in range(n):
-        enc_shares_sums += [Scalar.sum(*([out[2][i] for out in chill_soutputs1]))]
-    round2_outputs = []
-    for i in range(n):
-        round2_outputs += [
-            chilldkg_step2(seeds[i], chill_sstate1s[i], enc_cmsg, enc_shares_sums)
-        ]
-
-    cert = b"".join([out[1] for out in round2_outputs])
-    for i in range(n):
-        dkg_outputs += [chilldkg_finalize(round2_outputs[i][0], cert)]
+        dkg_outputs += [signer_finalize(chill_soutputs2[i][0], cert)]
 
     return dkg_outputs
 
@@ -122,17 +118,16 @@ def simulate_chilldkg_full(seeds, t):
     n = len(seeds)
     hostkeys = []
     for i in range(n):
-        hostkeys += [chilldkg_hostkey_gen(seeds[i])]
+        hostkeys += [hostkey_gen(seeds[i])]
 
-    params = chilldkg_session_params([hostkey[1] for hostkey in hostkeys], t, b"")[0]
+    params = session_params([hostkey[1] for hostkey in hostkeys], t, b"")[0]
 
     async def main():
         coord_chans = CoordinatorChannels(n)
         signer_chans = [SignerChannel(coord_chans.queues[i]) for i in range(n)]
         coord_chans.set_signer_queues([signer_chans[i].queue for i in range(n)])
-        coroutines = [chilldkg_coordinate(coord_chans, params)] + [
-            chilldkg(signer_chans[i], seeds[i], hostkeys[i][0], params)
-            for i in range(n)
+        coroutines = [coordinator(coord_chans, params)] + [
+            signer(signer_chans[i], seeds[i], hostkeys[i][0], params) for i in range(n)
         ]
         return await asyncio.gather(*coroutines)
 
@@ -211,7 +206,7 @@ def dkg_correctness(t, n, simulate_dkg, external_eq):
     # test correctness of chilldkg_recover
     if len(dkg_outputs[0]) > 3:
         for i in range(n):
-            (share, shared_pubkey_, signer_pubkeys_), _ = chilldkg_recover(
+            (share, shared_pubkey_, signer_pubkeys_), _ = signer_recover(
                 seeds[i], dkg_outputs[i][3], b""
             )
             assert share == shares[i]
