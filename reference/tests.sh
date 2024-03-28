@@ -2,7 +2,15 @@
 set -e
 
 # Check that mypy is available
-command -v mypy >/dev/null 2>&1 || { echo >&2 "mypy is required but it's not installed.  Aborting."; exit 1; }
+check_availability() {
+  command -v "$1" > /dev/null 2>&1 || {
+    echo >&2 "$1 is required but it's not installed. Aborting.";
+    exit 1;
+  }
+}
+
+check_availability mypy
+check_availability ruff
 
 cd "$(dirname "$0")"
 
