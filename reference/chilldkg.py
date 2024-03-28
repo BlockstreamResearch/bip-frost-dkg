@@ -111,6 +111,7 @@ def serialize_eta(
     )
 
 
+# TODO: fix Any type
 def deserialize_eta(b: bytes) -> Any:
     rest = b
 
@@ -160,8 +161,13 @@ class SignerState1(NamedTuple):
 
 class SignerState2(NamedTuple):
     params: SessionParams
-    eta: bytes  # TODO Rename to transcript
+    eta: bytes  # TODO Rename to transcript (TODO (Jonas): maybe transcript is confusing too)
     dkg_output: DKGOutput
+
+
+class Backup(NamedTuple):
+    eta: bytes
+    cert: bytes
 
 
 def signer_step1(seed: bytes, params: SessionParams) -> Tuple[SignerState1, SignerMsg1]:
@@ -217,7 +223,7 @@ def signer_finalize(state2: SignerState2, cert: bytes) -> Optional[DKGOutput]:
 
 async def signer(
     chan: SignerChannel, seed: bytes, hostseckey: bytes, params: SessionParams
-) -> Optional[Tuple[DKGOutput, Any]]:
+) -> Optional[Tuple[DKGOutput, Backup]]:
     # TODO Top-level error handling
     state1, smsg1 = signer_step1(seed, params)
     chan.send(smsg1)
@@ -239,15 +245,14 @@ async def signer(
 # TODO Make this a subroutine of signer_finalize, which should output the backup.
 # The backup must be written to permanent storage before using the dkg_output,
 # so it should be coupled with signer_finalize.
-# TODO Fix Any type
-def backup(state2: SignerState2, cert: bytes) -> Any:
+def backup(state2: SignerState2, cert: bytes) -> Backup:
     eta = state2[1]
-    return (eta, cert)
+    return Backup(eta, cert)
 
 
 # Recovery requires the seed and the public backup
 def signer_recover(
-    seed: bytes, backup: Any, context_string: bytes
+    seed: bytes, backup: Backup, context_string: bytes
 ) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]:
     (eta, cert) = backup
     try:
