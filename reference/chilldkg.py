@@ -206,7 +206,9 @@ def signer_step2(
     return state2, certifying_eq_signer_step(hostseckey, eta)
 
 
-def signer_finalize(state2: SignerState2, cert: bytes) -> Optional[DKGOutput]:
+def signer_finalize(
+    state2: SignerState2, cert: bytes
+) -> Optional[Tuple[DKGOutput, Backup]]:
     """
     A return value of None means that `cert` is not a valid certificate.
 
@@ -218,7 +220,7 @@ def signer_finalize(state2: SignerState2, cert: bytes) -> Optional[DKGOutput]:
     (params, eta, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eta, cert):
         return None
-    return dkg_output
+    return dkg_output, Backup(eta, cert)
 
 
 async def signer(
@@ -233,21 +235,11 @@ async def signer(
 
     chan.send(eq_round1)
     cert = await chan.receive()
-    dkg_output = signer_finalize(state2, cert)
-    # TODO We should probably not just return None here but raise instead.
-    # Raising a specific exception is also better for testing.
-    if dkg_output is None:
-        return None
 
-    return (dkg_output, backup(state2, cert))
-
-
-# TODO Make this a subroutine of signer_finalize, which should output the backup.
-# The backup must be written to permanent storage before using the dkg_output,
-# so it should be coupled with signer_finalize.
-def backup(state2: SignerState2, cert: bytes) -> Backup:
-    eta = state2[1]
-    return Backup(eta, cert)
+    # TODO: If signer_finalize fails, we should probably not just return None
+    # but raise instead. Raising a specific exception is also better for
+    # testing.
+    return signer_finalize(state2, cert)
 
 
 # Recovery requires the seed and the public backup
