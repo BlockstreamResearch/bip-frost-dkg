@@ -78,7 +78,7 @@ def session_seed(seed, enckeys, t):
 
 
 def signer_step(
-    seed: bytes, t: int, n: int, deckey: bytes, enckeys: List[bytes], idx: int
+    seed: bytes, t: int, n: int, deckey: bytes, enckeys: List[bytes], signer_idx: int
 ) -> Tuple[SignerState, SignerMsg]:
     assert t < 2 ** (4 * 8)
     n = len(enckeys)
@@ -87,11 +87,11 @@ def signer_step(
     # encrypted under wrong enckeys.
     seed_, enc_context = session_seed(seed, enckeys, t)
 
-    simpl_state, simpl_smsg, shares = simplpedpop.signer_step(seed_, t, n, idx)
+    simpl_state, simpl_smsg, shares = simplpedpop.signer_step(seed_, t, n, signer_idx)
     assert len(shares) == n
     enc_shares: List[Scalar] = []
     for i in range(n):
-        if i == idx:
+        if i == signer_idx:
             # TODO No need to send a constant.
             enc_shares.append(Scalar(0))
         else:
@@ -101,9 +101,9 @@ def signer_step(
                 raise InvalidContributionError(
                     i, "Participant sent invalid encryption key"
                 )
-    self_share = shares[idx]
+    self_share = shares[signer_idx]
     smsg = SignerMsg(simpl_smsg, enc_shares)
-    state = SignerState(t, deckey, enckeys, idx, self_share, simpl_state)
+    state = SignerState(t, deckey, enckeys, signer_idx, self_share, simpl_state)
     return state, smsg
 
 

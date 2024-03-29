@@ -307,10 +307,10 @@ async def coordinator(
     chans.send_all(cmsg)
 
     # TODO What to do with this? is this a second coordinator step?
-    enc_round1_out, enc_shares_sums = cmsg
+    enc_cmsg, enc_shares_sums = cmsg
     vss_commitment = simplpedpop.assemble_sum_vss_commitment(
-        enc_round1_out.simpl_cmsg.coms_to_secrets,
-        enc_round1_out.simpl_cmsg.sum_coms_to_nonconst_terms,
+        enc_cmsg.simpl_cmsg.coms_to_secrets,
+        enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms,
         t,
         n,
     )

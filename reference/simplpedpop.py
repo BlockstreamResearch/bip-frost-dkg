@@ -93,7 +93,7 @@ class DKGOutput(NamedTuple):
 
 
 def signer_step(
-    seed: bytes, t: int, n: int, idx: int
+    seed: bytes, t: int, n: int, signer_idx: int
 ) -> Tuple[SignerState, SignerMsg, List[Scalar]]:
     """
     Generate SimplPedPop messages to be sent to the coordinator.
@@ -101,20 +101,20 @@ def signer_step(
     :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
     :param int t: threshold
     :param int n: number of participants
-    :param int idx: index of this signer in the participant list
+    :param int signer_idx: index of this signer in the participant list
     :return: the signer's state, the VSS commitment and the generated shares
     """
     assert t < 2 ** (4 * 8)
-    assert idx < 2 ** (4 * 8)
+    assert signer_idx < 2 ** (4 * 8)
 
     vss = VSS.generate(seed, t)
     shares = vss.shares(n)
-    pop = pop_prove(vss.secret().to_bytes(), idx)
+    pop = pop_prove(vss.secret().to_bytes(), signer_idx)
 
     vss_commitment = vss.commit()
     com_to_secret = vss_commitment.commitment_to_secret()
     msg = SignerMsg(vss_commitment, pop)
-    state = SignerState(t, n, idx, com_to_secret)
+    state = SignerState(t, n, signer_idx, com_to_secret)
     return state, msg, shares
 
 
