@@ -82,7 +82,7 @@ class SignerState(NamedTuple):
 # TODO This should probably moved somewhere else as its common to all DKGs.
 # Hm, moving it to reference.py is difficult due to cylic module dependencies.
 class DKGOutput(NamedTuple):
-    share: Scalar
+    secshare: Scalar
     threshold_pubkey: GE
     pubshares: List[GE]
 
