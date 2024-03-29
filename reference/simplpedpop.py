@@ -84,7 +84,7 @@ class SignerState(NamedTuple):
 class DKGOutput(NamedTuple):
     share: Scalar
     shared_pubkey: GE
-    pubkeys: List[GE]
+    pubshares: List[GE]
 
 
 # To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
@@ -129,7 +129,7 @@ def signer_pre_finalize(
     :param SignerState state: the signer's state after round 1 (output by signer_round1)
     :param CoordinatorMsg cmsg: round 1 broadcast message received from the coordinator
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
-    :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubkeys
+    :return: the data `eta` that must be input to an equality check protocol, the final share, the shared pubkey, the individual participants' pubshares
     """
     t, n, idx, com_to_secret = state
     coms_to_secrets, coms_to_nonconst_terms, pops = cmsg
@@ -161,8 +161,8 @@ def signer_pre_finalize(
     if not vss_commitment.verify(idx, shares_sum):
         raise VSSVerifyError()
     eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
-    shared_pubkey, signer_pubkeys = vss_commitment.group_info(n)
-    return eta, DKGOutput(shares_sum, shared_pubkey, signer_pubkeys)
+    shared_pubkey, signer_pubshares = vss_commitment.group_info(n)
+    return eta, DKGOutput(shares_sum, shared_pubkey, signer_pubshares)
 
 
 ###
