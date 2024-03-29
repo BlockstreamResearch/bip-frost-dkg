@@ -276,10 +276,10 @@ def signer_recover(
     self_share = vss.share_for(idx)
     shares_sum += self_share
 
-    # Compute shared pubkey and individual pubshares
-    (shared_pubkey, signer_pubshares) = vss_commit.group_info(n)
+    # Compute threshold pubkey and individual pubshares
+    (threshold_pubkey, signer_pubshares) = vss_commit.group_info(n)
 
-    dkg_output = DKGOutput(shares_sum, shared_pubkey, signer_pubshares)
+    dkg_output = DKGOutput(shares_sum, threshold_pubkey, signer_pubshares)
     return dkg_output, params
 
 

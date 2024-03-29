@@ -182,13 +182,14 @@ def test_correctness_internal(t, n, simulate_dkg):
 
 def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
     shares = [out[0] for out in dkg_outputs]
-    shared_pubkeys = [out[1] for out in dkg_outputs]
+    threshold_pubkeys = [out[1] for out in dkg_outputs]
     signer_pubshares = [out[2] for out in dkg_outputs]
 
-    # Check that the shared pubkey and signer_pubshares are the same for all
+    # Check that the threshold pubkey and signer_pubshares are the same for all
     # participants
-    assert len(set(shared_pubkeys)) == 1
-    shared_pubkey = shared_pubkeys[0]
+    assert len(set(threshold_pubkeys)) == 1
+    threshold_pubkey = threshold_pubkeys[0]
+
     for i in range(0, n):
         assert len(signer_pubshares[i]) == n
         assert signer_pubshares[0] == signer_pubshares[i]
@@ -198,9 +199,9 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
         assert shares[i] * G == signer_pubshares[0][i]
 
     # Check that the first t signers (TODO: should be an arbitrary set) can
-    # recover the shared pubkey
+    # recover the threshold pubkey
     recovered_secret = recover_secret(list(range(1, t + 1)), shares[0:t])
-    assert recovered_secret * G == shared_pubkey
+    assert recovered_secret * G == threshold_pubkey
 
 
 def test_correctness_pre_finalize(t, n, simulate_dkg):
@@ -223,11 +224,11 @@ def test_correctness(t, n, simulate_dkg):
     backups = [out[1] for out in outputs]
     # test correctness of chilldkg_recover
     for i in range(n):
-        (share, shared_pubkey, signer_pubshares), _ = chilldkg.signer_recover(
+        (share, threshold_pubkey, signer_pubshares), _ = chilldkg.signer_recover(
             seeds[i], backups[i], b""
         )
         assert share == dkg_outputs[i][0]
-        assert shared_pubkey == dkg_outputs[i][1]
+        assert threshold_pubkey == dkg_outputs[i][1]
         assert signer_pubshares == dkg_outputs[i][2]
 
 
