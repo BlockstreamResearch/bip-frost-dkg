@@ -29,16 +29,16 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
     n = len(seeds)
-    soutputs = []
+    srets = []
     pre_finalize_outputs = []
     for i in range(n):
-        soutputs += [simplpedpop.signer_step(seeds[i], t, n, i)]
-    smsgs = [out[1] for out in soutputs]
+        srets += [simplpedpop.signer_step(seeds[i], t, n, i)]
+    smsgs = [ret[1] for ret in srets]
     cmsg = simplpedpop.coordinator_step(smsgs, t)
     for i in range(n):
-        shares_sum = Scalar.sum(*([out[2][i] for out in soutputs]))
+        shares_sum = Scalar.sum(*([sret[2][i] for sret in srets]))
         pre_finalize_outputs += [
-            simplpedpop.signer_pre_finalize(soutputs[i][0], cmsg, shares_sum)
+            simplpedpop.signer_pre_finalize(srets[i][0], cmsg, shares_sum)
         ]
     return pre_finalize_outputs
 
@@ -51,19 +51,19 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
 
 def simulate_encpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
     n = len(seeds)
-    enc_soutputs0 = []
-    enc_soutputs1 = []
+    enc_srets0 = []
+    enc_srets1 = []
     pre_finalize_outputs = []
     for i in range(n):
-        enc_soutputs0 += [encpedpop_keys(seeds[i])]
+        enc_srets0 += [encpedpop_keys(seeds[i])]
 
-    enckeys = [out[1] for out in enc_soutputs0]
+    enckeys = [sret[1] for sret in enc_srets0]
     for i in range(n):
-        deckey = enc_soutputs0[i][0]
-        enc_soutputs1 += [encpedpop.signer_step(seeds[i], t, deckey, enckeys, i)]
+        deckey = enc_srets0[i][0]
+        enc_srets1 += [encpedpop.signer_step(seeds[i], t, deckey, enckeys, i)]
 
-    smsgs = [smsg for (_, smsg) in enc_soutputs1]
-    sstates = [sstate for (sstate, _) in enc_soutputs1]
+    smsgs = [smsg for (_, smsg) in enc_srets1]
+    sstates = [sstate for (sstate, _) in enc_srets1]
     cmsg, enc_shares_sums = encpedpop.coordinator_step(smsgs, t)
     for i in range(n):
         pre_finalize_outputs += [
@@ -82,25 +82,23 @@ def simulate_chilldkg(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.Ba
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     params, _ = chilldkg.session_params(hostpubkeys, t, b"")
 
-    chill_soutputs1 = []
+    chill_srets1 = []
     for i in range(n):
-        chill_soutputs1 += [chilldkg.signer_step1(seeds[i], params)]
+        chill_srets1 += [chilldkg.signer_step1(seeds[i], params)]
 
-    chill_sstate1s = [out[0] for out in chill_soutputs1]
-    chill_smsgs = [out[1] for out in chill_soutputs1]
+    chill_sstate1s = [sret[0] for sret in chill_srets1]
+    chill_smsgs = [sret[1] for sret in chill_srets1]
     chill_cmsg = chilldkg.coordinator_step(chill_smsgs, t)
 
-    chill_soutputs2 = []
+    chill_srets2 = []
     for i in range(n):
-        chill_soutputs2 += [
-            chilldkg.signer_step2(seeds[i], chill_sstate1s[i], chill_cmsg)
-        ]
+        chill_srets2 += [chilldkg.signer_step2(seeds[i], chill_sstate1s[i], chill_cmsg)]
 
-    cert = b"".join([out[1] for out in chill_soutputs2])
+    cert = b"".join([sret[1] for sret in chill_srets2])
 
     outputs = []
     for i in range(n):
-        out = chilldkg.signer_finalize(chill_soutputs2[i][0], cert)
+        out = chilldkg.signer_finalize(chill_srets2[i][0], cert)
         assert out is not None
         outputs += [out]
 
