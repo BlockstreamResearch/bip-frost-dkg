@@ -27,7 +27,7 @@ def test_vss_correctness():
             assert all(vss.commit().verify(i, shares[i]) for i in range(n))
 
 
-def simulate_simplpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
+def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     srets = []
     pre_finalize_outputs = []
@@ -50,7 +50,7 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
     return deckey, enckey
 
 
-def simulate_encpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
+def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     enc_srets0 = []
     enc_srets1 = []
@@ -206,11 +206,11 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
 def test_correctness_pre_finalize(t, n, simulate_dkg):
     outputs, _ = test_correctness_internal(t, n, simulate_dkg)
 
-    etas = [out[0] for out in outputs]
+    etas = [out[1] for out in outputs]
     for i in range(1, n):
         assert etas[0] == etas[i]
 
-    dkg_outputs = [out[1] for out in outputs]
+    dkg_outputs = [out[0] for out in outputs]
     test_correctness_dkg_output(t, n, dkg_outputs)
 
 

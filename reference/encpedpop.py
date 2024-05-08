@@ -108,18 +108,18 @@ def signer_pre_finalize(
     state: SignerState,
     cmsg: CoordinatorMsg,
     enc_shares_sum: Scalar,
-) -> Tuple[bytes, simplpedpop.DKGOutput]:
+) -> Tuple[simplpedpop.DKGOutput, bytes]:
     t, deckey, enckeys, idx, self_share, simpl_state = state
     simpl_cmsg, = cmsg  # Unpack unary tuple  # fmt: skip
 
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
-    eta, dkg_output = simplpedpop.signer_pre_finalize(
+    dkg_output, eta = simplpedpop.signer_pre_finalize(
         simpl_state, simpl_cmsg, shares_sum
     )
     eta += b"".join(enckeys)
-    return eta, dkg_output
+    return dkg_output, eta
 
 
 ###
@@ -133,7 +133,7 @@ def coordinator_step(
     enckeys: List[bytes],
 ) -> Tuple[CoordinatorMsg, simplpedpop.DKGOutput, bytes, List[Scalar]]:
     n = len(smsgs)
-    simpl_cmsg, output, eta = simplpedpop.coordinator_step(
+    simpl_cmsg, dkg_output, eta = simplpedpop.coordinator_step(
         [smsg.simpl_smsg for smsg in smsgs], t, n
     )
     enc_shares_sums = [
@@ -145,4 +145,4 @@ def coordinator_step(
     # don't include it CoordinatorMsg, but only return it as a side output, so that
     # ChillDKG can pick it up.
     # TODO Define a CoordinatorUnicastMsg type to improve this?
-    return CoordinatorMsg(simpl_cmsg), output, eta, enc_shares_sums
+    return CoordinatorMsg(simpl_cmsg), dkg_output, eta, enc_shares_sums

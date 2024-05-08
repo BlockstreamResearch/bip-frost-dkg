@@ -180,7 +180,7 @@ def signer_step2(
     # TODO This means all parties who hold the "backup" in the end should
     # participate in Eq?
 
-    eta, dkg_output = encpedpop.signer_pre_finalize(
+    dkg_output, eta = encpedpop.signer_pre_finalize(
         enc_state, enc_cmsg, enc_shares_sums[idx]
     )
     eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
@@ -273,11 +273,11 @@ def signer_recover(
 def coordinator_step(
     smsgs1: List[SignerMsg1], params: SessionParams
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
-    enc_cmsg, output, eta, enc_shares_sums = encpedpop.coordinator_step(
+    enc_cmsg, dkg_output, eta, enc_shares_sums = encpedpop.coordinator_step(
         [smsg1.enc_smsg for smsg1 in smsgs1], params.t, params.hostpubkeys
     )
     eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
-    return CoordinatorMsg(enc_cmsg, enc_shares_sums), output, eta
+    return CoordinatorMsg(enc_cmsg, enc_shares_sums), dkg_output, eta
 
 
 async def coordinator(
@@ -288,7 +288,7 @@ async def coordinator(
     smsgs1: List[SignerMsg1] = []
     for i in range(n):
         smsgs1.append(await chans.receive_from(i))
-    cmsg, output, eta = coordinator_step(smsgs1, params)
+    cmsg, dkg_output, eta = coordinator_step(smsgs1, params)
     chans.send_all(cmsg)
 
     # TODO What to do with this? is this a second coordinator step?
@@ -302,4 +302,4 @@ async def coordinator(
     if not certifying_eq_verify(hostpubkeys, eta, cert):
         return None
 
-    return output
+    return dkg_output

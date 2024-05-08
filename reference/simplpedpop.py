@@ -142,7 +142,7 @@ def signer_pre_finalize(
     state: SignerState,
     cmsg: CoordinatorMsg,
     shares_sum: Scalar,
-) -> Tuple[bytes, DKGOutput]:
+) -> Tuple[DKGOutput, bytes]:
     """
     Take the messages received from the coordinator and return eta to be compared and DKG output
 
@@ -180,9 +180,9 @@ def signer_pre_finalize(
     )
     if not sum_vss_commit.verify(idx, shares_sum):
         raise VSSVerifyError()
-    eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
     threshold_pubkey, signer_pubshares = common_dkg_output(sum_vss_commit, n)
-    return eta, DKGOutput(shares_sum, threshold_pubkey, signer_pubshares)
+    eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    return DKGOutput(shares_sum, threshold_pubkey, signer_pubshares), eta
 
 
 ###
@@ -209,10 +209,10 @@ def coordinator_step(
         coms_to_secrets, sum_coms_to_nonconst_terms, n
     )
     threshold_pubkey, signer_pubshares = common_dkg_output(sum_vss_commit, n)
-    output = DKGOutput(None, threshold_pubkey, signer_pubshares)
+    dkg_output = DKGOutput(None, threshold_pubkey, signer_pubshares)
     eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
     return (
         CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops),
-        output,
+        dkg_output,
         eta,
     )
