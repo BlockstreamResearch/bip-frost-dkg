@@ -78,7 +78,7 @@ def session_seed(seed, enckeys, t):
 
 
 def signer_step(
-    seed: bytes, t: int, n: int, deckey: bytes, enckeys: List[bytes], signer_idx: int
+    seed: bytes, t: int, deckey: bytes, enckeys: List[bytes], signer_idx: int
 ) -> Tuple[SignerState, SignerMsg]:
     assert t < 2 ** (4 * 8)
     n = len(enckeys)

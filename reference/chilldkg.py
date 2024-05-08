@@ -173,11 +173,10 @@ class Backup(NamedTuple):
 def signer_step1(seed: bytes, params: SessionParams) -> Tuple[SignerState1, SignerMsg1]:
     hostseckey, hostpubkey = hostkey_gen(seed)
     (hostpubkeys, t, params_id) = params
-    n = len(hostpubkeys)
 
     signer_idx = hostpubkeys.index(hostpubkey)
     enc_state, enc_smsg = encpedpop.signer_step(
-        seed, t, n, hostseckey, hostpubkeys, signer_idx
+        seed, t, hostseckey, hostpubkeys, signer_idx
     )
     state1 = SignerState1(params, signer_idx, enc_state)
     return state1, SignerMsg1(enc_smsg)

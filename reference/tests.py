@@ -60,7 +60,7 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
     enckeys = [out[1] for out in enc_soutputs0]
     for i in range(n):
         deckey = enc_soutputs0[i][0]
-        enc_soutputs1 += [encpedpop.signer_step(seeds[i], t, n, deckey, enckeys, i)]
+        enc_soutputs1 += [encpedpop.signer_step(seeds[i], t, deckey, enckeys, i)]
 
     smsgs = [smsg for (_, smsg) in enc_soutputs1]
     sstates = [sstate for (sstate, _) in enc_soutputs1]
