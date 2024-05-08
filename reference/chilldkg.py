@@ -7,9 +7,8 @@ from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 from network import SignerChannel, CoordinatorChannels
 
-from vss import VSS, VSSCommitment, GroupInfo
-import simplpedpop
-from simplpedpop import DKGOutput
+from vss import VSS, VSSCommitment
+from simplpedpop import DKGOutput, common_dkg_output
 import encpedpop
 from util import (
     kdf,
@@ -92,25 +91,6 @@ class CoordinatorMsg(NamedTuple):
     enc_shares_sums: List[Scalar]
 
 
-# TODO It's a bit confusing to have this function because it's currently
-# only used in the coordinator. The coordinator builds at the transcript only
-# at the top-level in chilldkg, but the signers do it layer by layer starting
-# from simplpedpop up to encpedpop. We should make that consistent, but it's
-# not clear if the one-shot approach or the layered approach makes more sense.
-def serialize_eta(
-    t: int,
-    vss_commit: VSSCommitment,
-    hostpubkeys: List[bytes],
-    enc_shares_sums: List[Scalar],
-) -> bytes:
-    return (
-        t.to_bytes(4, byteorder="big")
-        + vss_commit.to_bytes()
-        + b"".join(hostpubkeys)
-        + b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
-    )
-
-
 # TODO: fix Any type
 def deserialize_eta(b: bytes) -> Any:
     rest = b
@@ -120,10 +100,13 @@ def deserialize_eta(b: bytes) -> Any:
         raise DeserializationError
     t, rest = int.from_bytes(rest[:4], byteorder="big"), rest[4:]
 
-    # Read vss_commit (33*t bytes)
+    # Read sum_vss_commit (33*t bytes)
     if len(rest) < 33 * t:
         raise DeserializationError
-    vss_commit, rest = VSSCommitment.from_bytes_and_t(rest[: 33 * t], t), rest[33 * t :]
+    sum_vss_commit, rest = (
+        VSSCommitment.from_bytes_and_t(rest[: 33 * t], t),
+        rest[33 * t :],
+    )
 
     # Compute n
     n, remainder = divmod(len(rest), (33 + 32))
@@ -145,7 +128,7 @@ def deserialize_eta(b: bytes) -> Any:
 
     if len(rest) != 0:
         raise DeserializationError
-    return (t, vss_commit, hostpubkeys, enc_shares_sums)
+    return (t, sum_vss_commit, hostpubkeys, enc_shares_sums)
 
 
 ###
@@ -247,7 +230,7 @@ def signer_recover(
 ) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]:
     (eta, cert) = backup
     try:
-        (t, vss_commit, hostpubkeys, enc_shares_sums) = deserialize_eta(eta)
+        (t, sum_vss_commit, hostpubkeys, enc_shares_sums) = deserialize_eta(eta)
     except DeserializationError as e:
         raise InvalidBackupError("Failed to deserialize backup") from e
 
@@ -276,7 +259,7 @@ def signer_recover(
     shares_sum += self_share
 
     # Compute threshold pubkey and individual pubshares
-    (threshold_pubkey, signer_pubshares) = vss_commit.group_info(n)
+    (threshold_pubkey, signer_pubshares) = common_dkg_output(sum_vss_commit, n)
 
     dkg_output = DKGOutput(shares_sum, threshold_pubkey, signer_pubshares)
     return dkg_output, params
@@ -287,34 +270,28 @@ def signer_recover(
 ###
 
 
-def coordinator_step(smsgs1: List[SignerMsg1], t: int) -> CoordinatorMsg:
-    enc_cmsg, enc_shares_sums = encpedpop.coordinator_step(
-        [smsg1.enc_smsg for smsg1 in smsgs1], t
+def coordinator_step(
+    smsgs1: List[SignerMsg1], params: SessionParams
+) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+    enc_cmsg, output, eta, enc_shares_sums = encpedpop.coordinator_step(
+        [smsg1.enc_smsg for smsg1 in smsgs1], params.t, params.hostpubkeys
     )
-    return CoordinatorMsg(enc_cmsg, enc_shares_sums)
+    eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
+    return CoordinatorMsg(enc_cmsg, enc_shares_sums), output, eta
 
 
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams
-) -> Optional[GroupInfo]:
+) -> Optional[DKGOutput]:
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
     smsgs1: List[SignerMsg1] = []
     for i in range(n):
         smsgs1.append(await chans.receive_from(i))
-    cmsg = coordinator_step(smsgs1, t)
+    cmsg, output, eta = coordinator_step(smsgs1, params)
     chans.send_all(cmsg)
 
     # TODO What to do with this? is this a second coordinator step?
-    enc_cmsg, enc_shares_sums = cmsg
-    vss_commitment = simplpedpop.assemble_sum_vss_commitment(
-        enc_cmsg.simpl_cmsg.coms_to_secrets,
-        enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms,
-        t,
-        n,
-    )
-    eta = serialize_eta(t, vss_commitment, hostpubkeys, enc_shares_sums)
-
     sigs = []
     for i in range(n):
         sigs += [await chans.receive_from(i)]
@@ -325,4 +302,4 @@ async def coordinator(
     if not certifying_eq_verify(hostpubkeys, eta, cert):
         return None
 
-    return vss_commitment.group_info(n)
+    return output

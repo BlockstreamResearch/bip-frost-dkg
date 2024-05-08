@@ -1,4 +1,4 @@
-from typing import List, NamedTuple, NewType, Tuple
+from typing import List, NamedTuple, NewType, Tuple, Optional
 
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.secp256k1 import GE, Scalar
@@ -58,13 +58,41 @@ class CoordinatorMsg(NamedTuple):
         ) + b"".join(self.pops)
 
 
+###
+### Other common definitions
+###
+
+
+# TODO This should probably moved somewhere else as its common to all DKGs.
+# Hm, moving it to reference.py is difficult due to cylic module dependencies.
+class DKGOutput(NamedTuple):
+    secshare: Optional[Scalar]  # None for coordinator
+    threshold_pubkey: GE
+    pubshares: List[GE]
+
+
 def assemble_sum_vss_commitment(
-    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE], t: int, n: int
+    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE], n: int
 ) -> VSSCommitment:
     # Sum the commitments to the secrets
     return VSSCommitment(
         [GE.sum(*(coms_to_secrets[i] for i in range(n)))] + sum_coms_to_nonconst_terms
     )
+
+
+def common_dkg_output(vss_commit, n: int) -> Tuple[GE, List[GE]]:
+    """Derive the common parts of the DKG output from the sum of all VSS commitments
+
+    The common parts are the threshold public key and the individual public shares of
+    all participants."""
+    threshold_pubkey = vss_commit.ges[0]
+    signer_pubshares = []
+    for i in range(0, n):
+        pk_i = GE.batch_mul(
+            *(((i + 1) ** j, vss_commit.ges[j]) for j in range(0, vss_commit.t()))
+        )
+        signer_pubshares += [pk_i]
+    return threshold_pubkey, signer_pubshares
 
 
 ###
@@ -77,14 +105,6 @@ class SignerState(NamedTuple):
     n: int
     idx: int
     com_to_secret: GE
-
-
-# TODO This should probably moved somewhere else as its common to all DKGs.
-# Hm, moving it to reference.py is difficult due to cylic module dependencies.
-class DKGOutput(NamedTuple):
-    secshare: Scalar
-    threshold_pubkey: GE
-    pubshares: List[GE]
 
 
 # To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
@@ -111,9 +131,9 @@ def signer_step(
     shares = vss.shares(n)
     pop = pop_prove(vss.secret().to_bytes(), signer_idx)
 
-    vss_commitment = vss.commit()
-    com_to_secret = vss_commitment.commitment_to_secret()
-    msg = SignerMsg(vss_commitment, pop)
+    vss_commit = vss.commit()
+    com_to_secret = vss_commit.commitment_to_secret()
+    msg = SignerMsg(vss_commit, pop)
     state = SignerState(t, n, signer_idx, com_to_secret)
     return state, msg, shares
 
@@ -132,9 +152,9 @@ def signer_pre_finalize(
     :return: the data `eta` that must be input to an equality check protocol, the final share, the threshold pubkey, the individual participants' pubshares
     """
     t, n, idx, com_to_secret = state
-    coms_to_secrets, coms_to_nonconst_terms, pops = cmsg
+    coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
     assert len(coms_to_secrets) == n
-    assert len(coms_to_nonconst_terms) == t - 1
+    assert len(sum_coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
 
     if coms_to_secrets[idx] != com_to_secret:
@@ -155,13 +175,13 @@ def signer_pre_finalize(
             raise InvalidContributionError(
                 i, "Participant sent invalid proof-of-knowledge"
             )
-    vss_commitment = assemble_sum_vss_commitment(
-        coms_to_secrets, coms_to_nonconst_terms, t, n
+    sum_vss_commit = assemble_sum_vss_commitment(
+        coms_to_secrets, sum_coms_to_nonconst_terms, n
     )
-    if not vss_commitment.verify(idx, shares_sum):
+    if not sum_vss_commit.verify(idx, shares_sum):
         raise VSSVerifyError()
-    eta = t.to_bytes(4, byteorder="big") + vss_commitment.to_bytes()
-    threshold_pubkey, signer_pubshares = vss_commitment.group_info(n)
+    eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    threshold_pubkey, signer_pubshares = common_dkg_output(sum_vss_commit, n)
     return eta, DKGOutput(shares_sum, threshold_pubkey, signer_pubshares)
 
 
@@ -173,11 +193,26 @@ def signer_pre_finalize(
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
-def coordinator_step(smsgs: List[SignerMsg], t: int) -> CoordinatorMsg:
+def coordinator_step(
+    smsgs: List[SignerMsg], t: int, n: int
+) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+    # We cannot sum the commitments to the secrets because they'll be necessary
+    # to check the PoPs.
     coms_to_secrets = [smsg.com.commitment_to_secret() for smsg in smsgs]
+    # But we can sum the commitments to the non-constant terms.
     sum_coms_to_nonconst_terms = [
         GE.sum(*(smsg.com.commitment_to_nonconst_terms()[j] for smsg in smsgs))
         for j in range(0, t - 1)
     ]
     pops = [smsg.pop for smsg in smsgs]
-    return CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
+    sum_vss_commit = assemble_sum_vss_commitment(
+        coms_to_secrets, sum_coms_to_nonconst_terms, n
+    )
+    threshold_pubkey, signer_pubshares = common_dkg_output(sum_vss_commit, n)
+    output = DKGOutput(None, threshold_pubkey, signer_pubshares)
+    eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    return (
+        CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops),
+        output,
+        eta,
+    )

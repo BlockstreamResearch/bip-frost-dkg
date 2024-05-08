@@ -34,7 +34,8 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
     for i in range(n):
         srets += [simplpedpop.signer_step(seeds[i], t, n, i)]
     smsgs = [ret[1] for ret in srets]
-    cmsg = simplpedpop.coordinator_step(smsgs, t)
+    # TODO Return and check also cout and ceta (also in the other "simulate_" functions)
+    cmsg, cout, ceta = simplpedpop.coordinator_step(smsgs, t, n)
     for i in range(n):
         shares_sum = Scalar.sum(*([sret[2][i] for sret in srets]))
         pre_finalize_outputs += [
@@ -64,7 +65,7 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[bytes, simplpedpop.DKGOutput]]:
 
     smsgs = [smsg for (_, smsg) in enc_srets1]
     sstates = [sstate for (sstate, _) in enc_srets1]
-    cmsg, enc_shares_sums = encpedpop.coordinator_step(smsgs, t)
+    cmsg, cout, ceta, enc_shares_sums = encpedpop.coordinator_step(smsgs, t, enckeys)
     for i in range(n):
         pre_finalize_outputs += [
             encpedpop.signer_pre_finalize(sstates[i], cmsg, enc_shares_sums[i])
@@ -82,23 +83,23 @@ def simulate_chilldkg(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.Ba
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     params, _ = chilldkg.session_params(hostpubkeys, t, b"")
 
-    chill_srets1 = []
+    srets1 = []
     for i in range(n):
-        chill_srets1 += [chilldkg.signer_step1(seeds[i], params)]
+        srets1 += [chilldkg.signer_step1(seeds[i], params)]
 
-    chill_sstate1s = [sret[0] for sret in chill_srets1]
-    chill_smsgs = [sret[1] for sret in chill_srets1]
-    chill_cmsg = chilldkg.coordinator_step(chill_smsgs, t)
+    sstate1s = [sret[0] for sret in srets1]
+    smsgs = [sret[1] for sret in srets1]
+    cmsg, cout, ceta = chilldkg.coordinator_step(smsgs, params)
 
-    chill_srets2 = []
+    srets2 = []
     for i in range(n):
-        chill_srets2 += [chilldkg.signer_step2(seeds[i], chill_sstate1s[i], chill_cmsg)]
+        srets2 += [chilldkg.signer_step2(seeds[i], sstate1s[i], cmsg)]
 
-    cert = b"".join([sret[1] for sret in chill_srets2])
+    cert = b"".join([sret[1] for sret in srets2])
 
     outputs = []
     for i in range(n):
-        out = chilldkg.signer_finalize(chill_srets2[i][0], cert)
+        out = chilldkg.signer_finalize(srets2[i][0], cert)
         assert out is not None
         outputs += [out]
 
@@ -127,8 +128,8 @@ def simulate_chilldkg_full(
 
     outputs = asyncio.run(main())
     # Check coordinator output
-    assert outputs[0][0] == outputs[1][0][1]
-    assert outputs[0][1] == outputs[1][0][2]
+    assert outputs[0][1] == outputs[1][0][1]
+    assert outputs[0][2] == outputs[1][0][2]
     return [
         (
             simplpedpop.DKGOutput(out[0][0], out[0][1], out[0][2]),

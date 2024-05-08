@@ -54,9 +54,6 @@ class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
 
 
-# TODO Define a CoordinatorUnicastMsg to imrpove handling of the enc_shares_sums?
-
-
 ###
 ### Signer
 ###
@@ -131,11 +128,21 @@ def signer_pre_finalize(
 
 
 def coordinator_step(
-    smsgs: List[SignerMsg], t: int
-) -> Tuple[CoordinatorMsg, List[Scalar]]:
+    smsgs: List[SignerMsg],
+    t: int,
+    enckeys: List[bytes],
+) -> Tuple[CoordinatorMsg, simplpedpop.DKGOutput, bytes, List[Scalar]]:
     n = len(smsgs)
-    simpl_cmsg = simplpedpop.coordinator_step([smsg.simpl_smsg for smsg in smsgs], t)
+    simpl_cmsg, output, eta = simplpedpop.coordinator_step(
+        [smsg.simpl_smsg for smsg in smsgs], t, n
+    )
     enc_shares_sums = [
         Scalar.sum(*([smsg.enc_shares[i] for smsg in smsgs])) for i in range(n)
     ]
-    return CoordinatorMsg(simpl_cmsg), enc_shares_sums
+    eta += b"".join(enckeys)
+    # In pure EncPedPop, the coordinator wants to send enc_shares_sums[i] to each
+    # participant i. Broadcasting the entire array to everyone is not necessary, so we
+    # don't include it CoordinatorMsg, but only return it as a side output, so that
+    # ChillDKG can pick it up.
+    # TODO Define a CoordinatorUnicastMsg type to improve this?
+    return CoordinatorMsg(simpl_cmsg), output, eta, enc_shares_sums

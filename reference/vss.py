@@ -31,11 +31,6 @@ class Polynomial(NamedTuple):
         return self.eval(x)
 
 
-class GroupInfo(NamedTuple):
-    shared_pk: GE
-    individual_pks: List[GE]
-
-
 class VSSCommitment(NamedTuple):
     ges: List[GE]
 
@@ -59,21 +54,10 @@ class VSSCommitment(NamedTuple):
 
     @staticmethod
     def from_bytes_and_t(b: bytes, t: int):
-        if len(b) < 33 * t:
+        if len(b) != 33 * t:
             raise DeserializationError
         ges = [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
         return VSSCommitment(ges)
-
-    def group_info(self, n: int) -> GroupInfo:
-        """Returns the shared public key and individual public keys of the participants"""
-        pk = self.ges[0]
-        participant_public_keys = []
-        for i in range(0, n):
-            pk_i = GE.batch_mul(
-                *((Scalar((i + 1) ** j), self.ges[j]) for j in range(0, self.t()))
-            )
-            participant_public_keys += [pk_i]
-        return GroupInfo(pk, participant_public_keys)
 
     def commitment_to_secret(self) -> GE:
         return self.ges[0]
