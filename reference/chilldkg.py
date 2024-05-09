@@ -191,14 +191,19 @@ def signer_step2(
 def signer_finalize(
     state2: SignerState2, cert: bytes
 ) -> Optional[Tuple[DKGOutput, Backup]]:
-    """
-    A return value of None means that `cert` is not a valid certificate.
+    """A return value of None indicates that the DKG session has not completed
+    successfully from our point of view.
 
-    You MUST NOT delete `state2` in this case.
-    The reason is that some other participant may have a valid certificate and thus deem the DKG session successful.
-    That other participant will rely on us not having deleted `state2`.
-    Once you obtain that valid certificate, you can call `signer_finalize` again with that certificate.
-    """
+    WARNING: Even when obtaining a return value of None, you MUST NOT conclude
+    that the DKG session has failed from the point of view of other
+    participants, and as a consequence, you MUST NOT erase your seed.
+
+    The underlying reason is that it is possible that some other participant
+    deems the DKG session successful, and uses the resulting threshold public
+    key (e.g., by sending funds to it.) That other participant can, at any point
+    in the future (e.g., when initiating a signing sessions), convince us of the
+    success of the DKG session by presenting a public backup that is accepted by
+    `signer_recover`."""
     (params, eta, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eta, cert):
         return None
