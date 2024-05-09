@@ -1,3 +1,4 @@
+from itertools import combinations
 from random import randint
 from typing import Tuple, List
 import secrets
@@ -197,10 +198,10 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
     for i in range(n):
         assert secshares[i] * G == signer_pubshares[0][i]
 
-    # Check that the first t signers (TODO: should be an arbitrary set) can
-    # recover the threshold pubkey
-    recovered_secret = recover_secret(list(range(1, t + 1)), secshares[0:t])
-    assert recovered_secret * G == threshold_pubkey
+    # Check that all combinations of t signers can recover the threshold pubkey
+    for tsubset in combinations(range(1, n + 1), t):
+        recovered_secret = recover_secret(tsubset, [secshares[i - 1] for i in tsubset])
+        assert recovered_secret * G == threshold_pubkey
 
 
 def test_correctness_pre_finalize(t, n, simulate_dkg):
