@@ -33,3 +33,7 @@ class DeserializationError(Exception):
 class DuplicateHostpubkeyError(Exception):
     def __init__(self):
         pass
+
+
+class SessionNotFinalizedError(Exception):
+    pass

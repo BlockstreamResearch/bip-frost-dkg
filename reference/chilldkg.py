@@ -1,5 +1,5 @@
 # Reference implementation of BIP DKG.
-from typing import Tuple, List, Optional, NamedTuple, NewType
+from typing import Tuple, List, NamedTuple, NewType
 
 from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
@@ -15,6 +15,7 @@ from util import (
     InvalidRecoveryDataError,
     DeserializationError,
     DuplicateHostpubkeyError,
+    SessionNotFinalizedError,
 )
 
 
@@ -195,29 +196,28 @@ def signer_step2(
 
 def signer_finalize(
     state2: SignerState2, cert: bytes
-) -> Optional[Tuple[DKGOutput, RecoveryData]]:
-    """A return value of None indicates that the DKG session has not completed
-    successfully from our point of view.
+) -> Tuple[DKGOutput, RecoveryData]:
+    """A SessionNotFinalizedError indicates that finalizing the DKG session was
+    not successful from our point of view.
 
-    WARNING: Even when obtaining a return value of None, you MUST NOT conclude
-    that the DKG session has failed from the point of view of other
-    participants, and as a consequence, you MUST NOT erase your seed.
+    WARNING: Even when obtaining this exception, you MUST NOT conclude that the
+    DKG session has failed, and as a consequence, you MUST NOT erase your seed.
 
     The underlying reason is that it is possible that some other participant
     deems the DKG session successful, and uses the resulting threshold public
     key (e.g., by sending funds to it.) That other participant can, at any point
     in the future (e.g., when initiating a signing sessions), convince us of the
-    success of the DKG session by presenting a public backup that is accepted by
-    `signer_recover`."""
+    success of the DKG session by presenting recovery data for which
+    `signer_recover` succeeds and produces the expected session parameters."""
     (params, eta, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eta, cert):
-        return None
+        raise SessionNotFinalizedError
     return dkg_output, RecoveryData(eta + cert)
 
 
 async def signer(
     chan: SignerChannel, seed: bytes, hostseckey: bytes, params: SessionParams
-) -> Optional[Tuple[DKGOutput, RecoveryData]]:
+) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     state1, smsg1 = signer_step1(seed, params)
     chan.send(smsg1)
@@ -228,9 +228,6 @@ async def signer(
     chan.send(eq_round1)
     cert = await chan.receive()
 
-    # TODO: If signer_finalize fails, we should probably not just return None
-    # but raise instead. Raising a specific exception is also better for
-    # testing.
     return signer_finalize(state2, cert)
 
 
@@ -291,9 +288,7 @@ def coordinator_step(
     return CoordinatorMsg(enc_cmsg, enc_shares_sums), dkg_output, eta
 
 
-async def coordinator(
-    chans: CoordinatorChannels, params: SessionParams
-) -> Optional[DKGOutput]:
+async def coordinator(chans: CoordinatorChannels, params: SessionParams) -> DKGOutput:
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
     smsgs1: List[SignerMsg1] = []
@@ -311,6 +306,6 @@ async def coordinator(
 
     # TODO This should probably go to a coordinator_finalize function
     if not certifying_eq_verify(hostpubkeys, eta, cert):
-        return None
+        raise SessionNotFinalizedError
 
     return dkg_output
