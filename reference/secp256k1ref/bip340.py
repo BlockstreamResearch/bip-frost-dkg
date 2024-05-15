@@ -51,10 +51,13 @@ def schnorr_verify(msg: bytes, pubkey: bytes, sig: bytes) -> bool:
         raise ValueError("The public key must be a 32-byte array.")
     if len(sig) != 64:
         raise ValueError("The signature must be a 64-byte array.")
-    P = GE.lift_x(int_from_bytes(pubkey))
+    try:
+        P = GE.lift_x(int_from_bytes(pubkey))
+    except ValueError:
+        return False
     r = int_from_bytes(sig[0:32])
     s = int_from_bytes(sig[32:64])
-    if (P is None) or (r >= FE.SIZE) or (s >= GE.ORDER):
+    if (r >= FE.SIZE) or (s >= GE.ORDER):
         return False
     e = (
         int_from_bytes(tagged_hash("BIP0340/challenge", sig[0:32] + pubkey + msg))

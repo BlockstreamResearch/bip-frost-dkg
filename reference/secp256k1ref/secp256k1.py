@@ -136,7 +136,7 @@ class APrimeFE:
         """Convert a 32-byte array to a field element (BE byte order, no overflow allowed)."""
         v = int.from_bytes(b, 'big')
         if v >= cls.SIZE:
-            return None
+            raise ValueError
         return cls(v)
 
     def __str__(self):
@@ -331,7 +331,7 @@ class GE:
         """Return group element with specified field element as x coordinate (and even y)."""
         y = (FE(x)**3 + 7).sqrt()
         if y is None:
-            return None
+            raise ValueError
         if not y.is_even():
             y = -y
         return GE(x, y)
@@ -341,13 +341,9 @@ class GE:
         """Convert a compressed to a group element."""
         assert len(b) == 33
         if b[0] != 2 and b[0] != 3:
-            return None
+            raise ValueError
         x = FE.from_bytes(b[1:])
-        if x is None:
-            return None
         r = GE.lift_x(x)
-        if r is None:
-            return None
         if b[0] == 3:
             r = -r
         return r
@@ -357,11 +353,11 @@ class GE:
         """Convert an uncompressed to a group element."""
         assert len(b) == 65
         if b[0] != 4:
-            return None
+            raise ValueError
         x = FE.from_bytes(b[1:33])
         y = FE.from_bytes(b[33:])
         if y**2 != x**3 + 7:
-            return None
+            raise ValueError
         return GE(x, y)
 
     @staticmethod
@@ -378,9 +374,8 @@ class GE:
         """Convert a point given in xonly encoding to a group element."""
         assert len(b) == 32
         x = FE.from_bytes(b)
-        if x is None:
-            return None
-        return GE.lift_x(x)
+        r = GE.lift_x(x)
+        return r
 
     @staticmethod
     def is_valid_x(x):
