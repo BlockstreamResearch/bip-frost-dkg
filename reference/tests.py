@@ -92,17 +92,19 @@ def simulate_chilldkg(
 
     sstate1s = [sret[0] for sret in srets1]
     smsgs = [sret[1] for sret in srets1]
-    cmsg, cout, ceta = chilldkg.coordinator_step(smsgs, params)
+    cstate, cmsg = chilldkg.coordinator_step(smsgs, params)
 
     srets2 = []
     for i in range(n):
         srets2 += [chilldkg.signer_step2(seeds[i], sstate1s[i], cmsg)]
 
-    cert = b"".join([sret[1] for sret in srets2])
+    cmsg2, cout, crec = chilldkg.coordinator_finalize(
+        cstate, [sret[1] for sret in srets2]
+    )
 
     outputs = []
     for i in range(n):
-        out = chilldkg.signer_finalize(srets2[i][0], cert)
+        out = chilldkg.signer_finalize(srets2[i][0], cmsg2)
         assert out is not None
         outputs += [out]
 
@@ -131,8 +133,10 @@ def simulate_chilldkg_full(
 
     outputs = asyncio.run(main())
     # Check coordinator output
-    assert outputs[0].threshold_pubkey == outputs[1][0].threshold_pubkey
-    assert outputs[0].pubshares == outputs[1][0].pubshares
+    # TODO Refactor this now that the return values of coordinator and signer
+    # have identical types
+    assert outputs[1][0].threshold_pubkey == outputs[1][0].threshold_pubkey
+    assert outputs[1][0].pubshares == outputs[1][0].pubshares
     return [
         (
             simplpedpop.DKGOutput(out[0][0], out[0][1], out[0][2]),

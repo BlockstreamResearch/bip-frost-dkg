@@ -87,9 +87,17 @@ class SignerMsg1(NamedTuple):
     enc_smsg: encpedpop.SignerMsg
 
 
-class CoordinatorMsg(NamedTuple):
+class SignerMsg2(NamedTuple):
+    sig: bytes
+
+
+class CoordinatorMsg1(NamedTuple):
     enc_cmsg: encpedpop.CoordinatorMsg
     enc_shares_sums: List[Scalar]
+
+
+class CoordinatorMsg2(NamedTuple):
+    cert: bytes
 
 
 # TODO: fix Any type
@@ -174,8 +182,8 @@ def signer_step1(seed: bytes, params: SessionParams) -> Tuple[SignerState1, Sign
 def signer_step2(
     seed: bytes,
     state1: SignerState1,
-    cmsg: CoordinatorMsg,
-) -> Tuple[SignerState2, bytes]:
+    cmsg: CoordinatorMsg1,
+) -> Tuple[SignerState2, SignerMsg2]:
     (hostseckey, _) = hostkey_gen(seed)
     (params, idx, enc_state) = state1
     enc_cmsg, enc_shares_sums = cmsg
@@ -191,11 +199,13 @@ def signer_step2(
     )
     eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
     state2 = SignerState2(params, eta, dkg_output)
-    return state2, certifying_eq_signer_step(hostseckey, eta)
+    sig = certifying_eq_signer_step(hostseckey, eta)
+    smsg2 = SignerMsg2(sig)
+    return state2, smsg2
 
 
 def signer_finalize(
-    state2: SignerState2, cert: bytes
+    state2: SignerState2, cmsg2: CoordinatorMsg2
 ) -> Tuple[DKGOutput, RecoveryData]:
     """A SessionNotFinalizedError indicates that finalizing the DKG session was
     not successful from our point of view.
@@ -210,9 +220,9 @@ def signer_finalize(
     success of the DKG session by presenting recovery data for which
     `signer_recover` succeeds and produces the expected session parameters."""
     (params, eta, dkg_output) = state2
-    if not certifying_eq_verify(params.hostpubkeys, eta, cert):
+    if not certifying_eq_verify(params.hostpubkeys, eta, cmsg2.cert):
         raise SessionNotFinalizedError
-    return dkg_output, RecoveryData(eta + cert)
+    return dkg_output, RecoveryData(eta + cmsg2.cert)
 
 
 async def signer(
@@ -221,14 +231,14 @@ async def signer(
     # TODO Top-level error handling
     state1, smsg1 = signer_step1(seed, params)
     chan.send(smsg1)
-    cmsg = await chan.receive()
+    cmsg1 = await chan.receive()
 
-    state2, eq_round1 = signer_step2(seed, state1, cmsg)
+    state2, eq_round1 = signer_step2(seed, state1, cmsg1)
 
     chan.send(eq_round1)
-    cert = await chan.receive()
+    cmsg2 = await chan.receive()
 
-    return signer_finalize(state2, cert)
+    return signer_finalize(state2, cmsg2)
 
 
 # Recovery requires the seed and the public backup
@@ -278,34 +288,50 @@ def signer_recover(
 ###
 
 
+class CoordinatorState(NamedTuple):
+    params: SessionParams
+    eta: bytes
+    dkg_output: DKGOutput
+
+
 def coordinator_step(
     smsgs1: List[SignerMsg1], params: SessionParams
-) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+) -> Tuple[CoordinatorState, CoordinatorMsg1]:
     enc_cmsg, dkg_output, eta, enc_shares_sums = encpedpop.coordinator_step(
         [smsg1.enc_smsg for smsg1 in smsgs1], params.t, params.hostpubkeys
     )
     eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
-    return CoordinatorMsg(enc_cmsg, enc_shares_sums), dkg_output, eta
+    state = CoordinatorState(params, eta, dkg_output)
+    cmsg1 = CoordinatorMsg1(enc_cmsg, enc_shares_sums)
+    return state, cmsg1
 
 
-async def coordinator(chans: CoordinatorChannels, params: SessionParams) -> DKGOutput:
+def coordinator_finalize(
+    state: CoordinatorState, smsgs2: List[SignerMsg2]
+) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
+    (params, eta, dkg_output) = state
+    cert = certifying_eq_coordinator_step([smsg2.sig for smsg2 in smsgs2])
+    if not certifying_eq_verify(params.hostpubkeys, eta, cert):
+        raise SessionNotFinalizedError
+    return CoordinatorMsg2(cert), dkg_output, RecoveryData(eta + cert)
+
+
+async def coordinator(
+    chans: CoordinatorChannels, params: SessionParams
+) -> Tuple[DKGOutput, RecoveryData]:
     (hostpubkeys, t, params_id) = params
     n = len(hostpubkeys)
+
     smsgs1: List[SignerMsg1] = []
     for i in range(n):
         smsgs1.append(await chans.receive_from(i))
-    cmsg, dkg_output, eta = coordinator_step(smsgs1, params)
-    chans.send_all(cmsg)
+    state, cmsg1 = coordinator_step(smsgs1, params)
+    chans.send_all(cmsg1)
 
-    # TODO What to do with this? is this a second coordinator step?
     sigs = []
     for i in range(n):
         sigs += [await chans.receive_from(i)]
-    cert = certifying_eq_coordinator_step(sigs)
-    chans.send_all(cert)
+    cmsg2, dkg_output, recovery_data = coordinator_finalize(state, sigs)
+    chans.send_all(cmsg2)
 
-    # TODO This should probably go to a coordinator_finalize function
-    if not certifying_eq_verify(hostpubkeys, eta, cert):
-        raise SessionNotFinalizedError
-
-    return dkg_output
+    return dkg_output, recovery_data
