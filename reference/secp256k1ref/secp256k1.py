@@ -161,7 +161,7 @@ class FE(APrimeFE):
         # a (nonzero) square when Euler's criterion, a^((p-1)/2) = 1 (mod p), holds. We're
         # looking for x such that x^2 = a (mod p). Given a^((p-1)/2) = 1, that is equivalent
         # to x^2 = a^(1 + (p-1)/2) mod p. As (1 + (p-1)/2) is even, this is equivalent to
-        # x = a^((1 + (p-1)/2)/2) mod p, or x = a^((p+1)/4) mod p."""
+        # x = a^((1 + (p-1)/2)/2) mod p, or x = a^((p+1)/4) mod p.
         v = int(self)
         s = pow(v, (self.SIZE + 1) // 4, self.SIZE)
         if s**2 % self.SIZE == v:
