@@ -15,7 +15,7 @@ check_availability ruff
 cd "$(dirname "$0")"
 
 # Keep going if a linter fails
-ruff check || true
+ruff check --quiet || true
 ruff format --diff --quiet || true
 mypy --no-error-summary . || true
 
