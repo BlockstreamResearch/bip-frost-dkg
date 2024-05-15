@@ -1,5 +1,5 @@
 # Reference implementation of BIP DKG.
-from typing import Tuple, List, Any, Union, Literal, Optional, NamedTuple
+from typing import Tuple, List, Optional, NamedTuple, NewType
 
 from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
@@ -12,7 +12,7 @@ from simplpedpop import DKGOutput, common_dkg_output
 import encpedpop
 from util import (
     kdf,
-    InvalidBackupError,
+    InvalidRecoveryDataError,
     DeserializationError,
     DuplicateHostpubkeyError,
 )
@@ -92,7 +92,9 @@ class CoordinatorMsg(NamedTuple):
 
 
 # TODO: fix Any type
-def deserialize_eta(b: bytes) -> Any:
+def deserialize_recovery_data(
+    b: bytes,
+) -> Tuple[int, VSSCommitment, List[bytes], List[Scalar], bytes]:
     rest = b
 
     # Read t (4 bytes)
@@ -109,7 +111,7 @@ def deserialize_eta(b: bytes) -> Any:
     )
 
     # Compute n
-    n, remainder = divmod(len(rest), (33 + 32))
+    n, remainder = divmod(len(rest), (33 + 32 + 64))
     if remainder != 0:
         raise DeserializationError
 
@@ -126,9 +128,14 @@ def deserialize_eta(b: bytes) -> Any:
         rest[32 * n :],
     )
 
+    # Read cert (64*n bytes)
+    if len(rest) < 64 * n:
+        raise DeserializationError
+    cert, rest = rest[: 64 * n], rest[64 * n :]
+
     if len(rest) != 0:
         raise DeserializationError
-    return (t, sum_vss_commit, hostpubkeys, enc_shares_sums)
+    return (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert)
 
 
 ###
@@ -148,9 +155,7 @@ class SignerState2(NamedTuple):
     dkg_output: DKGOutput
 
 
-class Backup(NamedTuple):
-    eta: bytes
-    cert: bytes
+RecoveryData = NewType("RecoveryData", bytes)
 
 
 def signer_step1(seed: bytes, params: SessionParams) -> Tuple[SignerState1, SignerMsg1]:
@@ -190,7 +195,7 @@ def signer_step2(
 
 def signer_finalize(
     state2: SignerState2, cert: bytes
-) -> Optional[Tuple[DKGOutput, Backup]]:
+) -> Optional[Tuple[DKGOutput, RecoveryData]]:
     """A return value of None indicates that the DKG session has not completed
     successfully from our point of view.
 
@@ -207,12 +212,12 @@ def signer_finalize(
     (params, eta, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eta, cert):
         return None
-    return dkg_output, Backup(eta, cert)
+    return dkg_output, RecoveryData(eta + cert)
 
 
 async def signer(
     chan: SignerChannel, seed: bytes, hostseckey: bytes, params: SessionParams
-) -> Optional[Tuple[DKGOutput, Backup]]:
+) -> Optional[Tuple[DKGOutput, RecoveryData]]:
     # TODO Top-level error handling
     state1, smsg1 = signer_step1(seed, params)
     chan.send(smsg1)
@@ -231,26 +236,27 @@ async def signer(
 
 # Recovery requires the seed and the public backup
 def signer_recover(
-    seed: bytes, backup: Backup, context_string: bytes
-) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]:
-    (eta, cert) = backup
+    seed: bytes, recovery: RecoveryData, context_string: bytes
+) -> Tuple[DKGOutput, SessionParams]:
     try:
-        (t, sum_vss_commit, hostpubkeys, enc_shares_sums) = deserialize_eta(eta)
+        (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
+            deserialize_recovery_data(recovery)
+        )
     except DeserializationError as e:
-        raise InvalidBackupError("Failed to deserialize backup") from e
+        raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
 
     n = len(hostpubkeys)
     (params, params_id) = session_params(hostpubkeys, t, context_string)
 
     # Verify cert
-    certifying_eq_verify(hostpubkeys, eta, cert)
+    certifying_eq_verify(hostpubkeys, recovery[: 64 * n], cert)
 
     # Find our hostpubkey
     hostseckey, hostpubkey = hostkey_gen(seed)
     try:
         idx = hostpubkeys.index(hostpubkey)
     except ValueError as e:
-        raise InvalidBackupError("Seed and backup don't match") from e
+        raise InvalidRecoveryDataError("Seed and recovery data don't match") from e
 
     # Decrypt share
     seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)

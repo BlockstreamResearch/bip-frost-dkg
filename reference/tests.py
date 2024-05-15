@@ -74,7 +74,9 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     return pre_finalize_outputs
 
 
-def simulate_chilldkg(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.Backup]]:
+def simulate_chilldkg(
+    seeds, t
+) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.RecoveryData]]:
     n = len(seeds)
 
     hostkeys = []
@@ -109,7 +111,7 @@ def simulate_chilldkg(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.Ba
 
 def simulate_chilldkg_full(
     seeds, t
-) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.Backup]]:
+) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.RecoveryData]]:
     n = len(seeds)
     hostkeys = []
     for i in range(n):
@@ -129,12 +131,12 @@ def simulate_chilldkg_full(
 
     outputs = asyncio.run(main())
     # Check coordinator output
-    assert outputs[0][1] == outputs[1][0][1]
-    assert outputs[0][2] == outputs[1][0][2]
+    assert outputs[0].threshold_pubkey == outputs[1][0].threshold_pubkey
+    assert outputs[0].pubshares == outputs[1][0].pubshares
     return [
         (
             simplpedpop.DKGOutput(out[0][0], out[0][1], out[0][2]),
-            chilldkg.Backup(out[1][0], out[1][1]),
+            chilldkg.RecoveryData(out[1]),
         )
         for out in outputs[1:]
     ]

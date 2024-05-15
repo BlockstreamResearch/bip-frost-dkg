@@ -22,7 +22,7 @@ class InvalidContributionError(Exception):
         self.contrib = error
 
 
-class InvalidBackupError(Exception):
+class InvalidRecoveryDataError(Exception):
     pass
 
 
