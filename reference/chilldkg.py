@@ -21,6 +21,7 @@ from util import (
 
 ###
 ### Certifying equality check
+### TODO This is nothing but an aggregate signature scheme
 ###
 
 
@@ -53,7 +54,7 @@ def certifying_eq_coordinator_step(sigs: List[bytes]) -> bytes:
 class SessionParams(NamedTuple):
     hostpubkeys: List[bytes]
     t: int
-    params_id: bytes
+    params_id: bytes  # TODO This should not be part of the tuple.
 
 
 def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
@@ -188,15 +189,13 @@ def signer_step2(
     (params, idx, enc_state) = state1
     enc_cmsg, enc_shares_sums = cmsg
 
-    # TODO Not sure if we need to include params_id as eta here. But it won't hurt.
-    # Include the enc_shares in eta to ensure that participants agree on all
-    # shares, which in turn ensures that they have the right backup.
-    # TODO This means all parties who hold the "backup" in the end should
-    # participate in Eq?
-
     dkg_output, eta = encpedpop.signer_pre_finalize(
         enc_state, enc_cmsg, enc_shares_sums[idx]
     )
+    # TODO Not sure if we need to include params_id in eta here. It contains
+    # the context_string, which is currently not included at all!
+    # Include the enc_shares in eta to ensure that participants agree on all
+    # shares, which in turn ensures that they have the right backup.
     eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
     state2 = SignerState2(params, eta, dkg_output)
     sig = certifying_eq_signer_step(hostseckey, eta)
