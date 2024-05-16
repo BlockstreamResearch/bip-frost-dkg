@@ -175,14 +175,6 @@ def test_recover_secret():
     assert recover_secret([2, 3], [shares[1], shares[2]]) == f.coeffs[0]
 
 
-def test_correctness_internal(t, n, simulate_dkg):
-    seeds = [secrets.token_bytes(32) for _ in range(n)]
-    outputs = simulate_dkg(seeds, t)
-    assert all([out is not False for out in outputs])
-
-    return outputs, seeds
-
-
 def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
     assert len(dkg_outputs) == n + 1
     secshares = [out[0] for out in dkg_outputs]
@@ -211,38 +203,37 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
         assert recovered_secret * G == threshold_pubkey
 
 
-def test_correctness_pre_finalize(t, n, simulate_dkg):
-    outputs, _ = test_correctness_internal(t, n, simulate_dkg)
+def test_correctness(t, n, simulate_dkg, recovery=False):
+    seeds = [secrets.token_bytes(32) for _ in range(n)]
 
-    etas = [out[1] for out in outputs]
+    # rets[0] are the return values from the coordinator
+    # rets[1 : n + 1] are from the participants
+    rets = simulate_dkg(seeds, t)
+    assert len(rets) == n + 1
+
+    dkg_outputs = [ret[0] for ret in rets]
+    test_correctness_dkg_output(t, n, dkg_outputs)
+
+    etas_or_recs = [ret[1] for ret in rets]
     for i in range(1, n + 1):
-        assert etas[0] == etas[i]
+        assert etas_or_recs[0] == etas_or_recs[i]
 
-    dkg_outputs = [out[0] for out in outputs]
-    test_correctness_dkg_output(t, n, dkg_outputs)
-
-
-def test_correctness(t, n, simulate_dkg):
-    outputs, seeds = test_correctness_internal(t, n, simulate_dkg)
-
-    dkg_outputs = [out[0] for out in outputs]
-    test_correctness_dkg_output(t, n, dkg_outputs)
-
-    backups = [out[1] for out in outputs]
-    # test correctness of chilldkg_recover
-    for i in range(n):
-        (secshare, threshold_pubkey, signer_pubshares), _ = chilldkg.signer_recover(
-            seeds[i], backups[i], b""
-        )
-        assert secshare == dkg_outputs[i + 1][0]
-        assert threshold_pubkey == dkg_outputs[i + 1][1]
-        assert signer_pubshares == dkg_outputs[i + 1][2]
+    if recovery:
+        rec = etas_or_recs[0]
+        # test correctness of chilldkg_recover
+        for i in range(1, n + 1):
+            (secshare, threshold_pubkey, signer_pubshares), _ = chilldkg.signer_recover(
+                seeds[i - 1], rec, b""
+            )
+            assert secshare == dkg_outputs[i][0]
+            assert threshold_pubkey == dkg_outputs[i][1]
+            assert signer_pubshares == dkg_outputs[i][2]
 
 
 test_vss_correctness()
 test_recover_secret()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
-    test_correctness_pre_finalize(t, n, simulate_simplpedpop)
-    test_correctness_pre_finalize(t, n, simulate_encpedpop)
-    test_correctness(t, n, simulate_chilldkg)
-    test_correctness(t, n, simulate_chilldkg_full)
+    test_correctness(t, n, simulate_simplpedpop)
+    test_correctness(t, n, simulate_encpedpop)
+    test_correctness(t, n, simulate_chilldkg, recovery=True)
+    test_correctness(t, n, simulate_chilldkg_full, recovery=True)
