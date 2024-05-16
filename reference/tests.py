@@ -183,23 +183,23 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
     assert len(dkg_outputs) == n + 1
     secshares = [out[0] for out in dkg_outputs]
     threshold_pubkeys = [out[1] for out in dkg_outputs]
-    participant_pubshares = [out[2] for out in dkg_outputs]
+    pubshares = [out[2] for out in dkg_outputs]
 
-    # Check that the threshold pubkey and participant_pubshares are the same for the
+    # Check that the threshold pubkey and pubshares are the same for the
     # coordinator (at [0]) and all participants (at [1:n + 1]).
     for i in range(n + 1):
         assert threshold_pubkeys[0] == threshold_pubkeys[i]
-        assert len(participant_pubshares[i]) == n
-        assert participant_pubshares[0] == participant_pubshares[i]
+        assert len(pubshares[i]) == n
+        assert pubshares[0] == pubshares[i]
     threshold_pubkey = threshold_pubkeys[0]
 
     # Check that the coordinator has no secret share
     assert secshares[0] is None
 
-    # Check that each secshare matches the corresponding participant_pubshare
+    # Check that each secshare matches the corresponding pubshare
     # (secshares[1:])
     for i in range(1, n + 1):
-        assert secshares[i] * G == participant_pubshares[0][i - 1]
+        assert secshares[i] * G == pubshares[0][i - 1]
 
     # Check that all combinations of t participants can recover the threshold pubkey
     for tsubset in combinations(range(1, n + 1), t):
@@ -226,12 +226,12 @@ def test_correctness(t, n, simulate_dkg, recovery=False):
         rec = eqs_or_recs[0]
         # test correctness of chilldkg_recover
         for i in range(1, n + 1):
-            (secshare, threshold_pubkey, participant_pubshares), _ = (
-                chilldkg.participant_recover(seeds[i - 1], rec, b"")
+            (secshare, threshold_pubkey, pubshares), _ = chilldkg.participant_recover(
+                seeds[i - 1], rec, b""
             )
             assert secshare == dkg_outputs[i][0]
             assert threshold_pubkey == dkg_outputs[i][1]
-            assert participant_pubshares == dkg_outputs[i][2]
+            assert pubshares == dkg_outputs[i][2]
 
 
 test_vss_correctness()

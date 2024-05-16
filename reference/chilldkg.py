@@ -277,9 +277,9 @@ def participant_recover(
     shares_sum += self_share
 
     # Compute threshold pubkey and individual pubshares
-    (threshold_pubkey, participant_pubshares) = common_dkg_output(sum_vss_commit, n)
+    (threshold_pubkey, pubshares) = common_dkg_output(sum_vss_commit, n)
 
-    dkg_output = DKGOutput(shares_sum, threshold_pubkey, participant_pubshares)
+    dkg_output = DKGOutput(shares_sum, threshold_pubkey, pubshares)
     return dkg_output, params
 
 

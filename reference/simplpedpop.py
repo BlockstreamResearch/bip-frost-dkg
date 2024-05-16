@@ -180,9 +180,9 @@ def participant_pre_finalize(
     )
     if not sum_vss_commit.verify(idx, shares_sum):
         raise VSSVerifyError()
-    threshold_pubkey, participant_pubshares = common_dkg_output(sum_vss_commit, n)
+    threshold_pubkey, pubshares = common_dkg_output(sum_vss_commit, n)
     eq_input = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
-    return DKGOutput(shares_sum, threshold_pubkey, participant_pubshares), eq_input
+    return DKGOutput(shares_sum, threshold_pubkey, pubshares), eq_input
 
 
 ###
@@ -208,8 +208,8 @@ def coordinator_step(
     sum_vss_commit = assemble_sum_vss_commitment(
         coms_to_secrets, sum_coms_to_nonconst_terms, n
     )
-    threshold_pubkey, participant_pubshares = common_dkg_output(sum_vss_commit, n)
-    dkg_output = DKGOutput(None, threshold_pubkey, participant_pubshares)
+    threshold_pubkey, pubshares = common_dkg_output(sum_vss_commit, n)
+    dkg_output = DKGOutput(None, threshold_pubkey, pubshares)
     eq_input = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
     return (
         CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops),
