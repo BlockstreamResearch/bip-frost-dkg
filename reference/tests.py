@@ -31,12 +31,12 @@ def test_vss_correctness():
 def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     srets = []
-    pre_finalize_outputs = []
     for i in range(n):
         srets += [simplpedpop.signer_step(seeds[i], t, n, i)]
     smsgs = [ret[1] for ret in srets]
-    # TODO Return and check also cout and ceta (also in the other "simulate_" functions)
+
     cmsg, cout, ceta = simplpedpop.coordinator_step(smsgs, t, n)
+    pre_finalize_outputs = [(cout, ceta)]
     for i in range(n):
         shares_sum = Scalar.sum(*([sret[2][i] for sret in srets]))
         pre_finalize_outputs += [
@@ -55,7 +55,6 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     enc_srets0 = []
     enc_srets1 = []
-    pre_finalize_outputs = []
     for i in range(n):
         enc_srets0 += [encpedpop_keys(seeds[i])]
 
@@ -66,7 +65,9 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
 
     smsgs = [smsg for (_, smsg) in enc_srets1]
     sstates = [sstate for (sstate, _) in enc_srets1]
+
     cmsg, cout, ceta, enc_shares_sums = encpedpop.coordinator_step(smsgs, t, enckeys)
+    pre_finalize_outputs = [(cout, ceta)]
     for i in range(n):
         pre_finalize_outputs += [
             encpedpop.signer_pre_finalize(sstates[i], cmsg, enc_shares_sums[i])
@@ -101,8 +102,7 @@ def simulate_chilldkg(
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
         cstate, [sret[1] for sret in srets2]
     )
-
-    outputs = []
+    outputs = [(cout, crec)]
     for i in range(n):
         out = chilldkg.signer_finalize(srets2[i][0], cmsg2)
         assert out is not None
@@ -132,17 +132,14 @@ def simulate_chilldkg_full(
         return await asyncio.gather(*coroutines)
 
     outputs = asyncio.run(main())
+
     # Check coordinator output
-    # TODO Refactor this now that the return values of coordinator and signer
-    # have identical types
-    assert outputs[1][0].threshold_pubkey == outputs[1][0].threshold_pubkey
-    assert outputs[1][0].pubshares == outputs[1][0].pubshares
     return [
         (
             simplpedpop.DKGOutput(out[0][0], out[0][1], out[0][2]),
             chilldkg.RecoveryData(out[1]),
         )
-        for out in outputs[1:]
+        for out in outputs
     ]
 
 
@@ -187,26 +184,30 @@ def test_correctness_internal(t, n, simulate_dkg):
 
 
 def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
+    assert len(dkg_outputs) == n + 1
     secshares = [out[0] for out in dkg_outputs]
     threshold_pubkeys = [out[1] for out in dkg_outputs]
     signer_pubshares = [out[2] for out in dkg_outputs]
 
-    # Check that the threshold pubkey and signer_pubshares are the same for all
-    # participants
-    assert len(set(threshold_pubkeys)) == 1
-    threshold_pubkey = threshold_pubkeys[0]
-
-    for i in range(0, n):
+    # Check that the threshold pubkey and signer_pubshares are the same for the
+    # coordinator (at [0]) and all participants (at [1:n + 1]).
+    for i in range(n + 1):
+        assert threshold_pubkeys[0] == threshold_pubkeys[i]
         assert len(signer_pubshares[i]) == n
         assert signer_pubshares[0] == signer_pubshares[i]
+    threshold_pubkey = threshold_pubkeys[0]
 
-    # Check that the share corresponds to the signer_pubshare
-    for i in range(n):
-        assert secshares[i] * G == signer_pubshares[0][i]
+    # Check that the coordinator has no secret share
+    assert secshares[0] is None
+
+    # Check that each secshare matches the corresponding signer_pubshare
+    # (secshares[1:])
+    for i in range(1, n + 1):
+        assert secshares[i] * G == signer_pubshares[0][i - 1]
 
     # Check that all combinations of t signers can recover the threshold pubkey
     for tsubset in combinations(range(1, n + 1), t):
-        recovered_secret = recover_secret(tsubset, [secshares[i - 1] for i in tsubset])
+        recovered_secret = recover_secret(tsubset, [secshares[i] for i in tsubset])
         assert recovered_secret * G == threshold_pubkey
 
 
@@ -214,7 +215,7 @@ def test_correctness_pre_finalize(t, n, simulate_dkg):
     outputs, _ = test_correctness_internal(t, n, simulate_dkg)
 
     etas = [out[1] for out in outputs]
-    for i in range(1, n):
+    for i in range(1, n + 1):
         assert etas[0] == etas[i]
 
     dkg_outputs = [out[0] for out in outputs]
@@ -233,9 +234,9 @@ def test_correctness(t, n, simulate_dkg):
         (secshare, threshold_pubkey, signer_pubshares), _ = chilldkg.signer_recover(
             seeds[i], backups[i], b""
         )
-        assert secshare == dkg_outputs[i][0]
-        assert threshold_pubkey == dkg_outputs[i][1]
-        assert signer_pubshares == dkg_outputs[i][2]
+        assert secshare == dkg_outputs[i + 1][0]
+        assert threshold_pubkey == dkg_outputs[i + 1][1]
+        assert signer_pubshares == dkg_outputs[i + 1][2]
 
 
 test_vss_correctness()
