@@ -8,20 +8,20 @@ class CoordinatorChannels:
         for i in range(n):
             self.queues += [asyncio.Queue()]
 
-    def set_signer_queues(self, signer_queues):
-        self.signer_queues = signer_queues
+    def set_participant_queues(self, participant_queues):
+        self.participant_queues = participant_queues
 
     def send_all(self, m):
-        assert self.signer_queues is not None
+        assert self.participant_queues is not None
         for i in range(self.n):
-            self.signer_queues[i].put_nowait(m)
+            self.participant_queues[i].put_nowait(m)
 
     async def receive_from(self, i):
         item = await self.queues[i].get()
         return item
 
 
-class SignerChannel:
+class ParticipantChannel:
     def __init__(self, coord_queue):
         self.queue = asyncio.Queue()
         self.coord_queue = coord_queue

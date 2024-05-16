@@ -17,8 +17,8 @@ def kdf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
 
 
 class InvalidContributionError(Exception):
-    def __init__(self, signer, error):
-        self.signer = signer
+    def __init__(self, participant, error):
+        self.participant = participant
         self.contrib = error
 
 

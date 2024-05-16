@@ -78,7 +78,7 @@ class VSS(NamedTuple):
         return VSS(Polynomial(coeffs))
 
     def share_for(self, i: int):
-        """Return the secret share to be sent to the signer with index i.
+        """Return the secret share to be sent to the participant with index i.
 
         This computes f(i+1)."""
         x = Scalar(i + 1)
@@ -86,7 +86,7 @@ class VSS(NamedTuple):
         return self.f(x)
 
     def shares(self, n: int) -> List[Scalar]:
-        """Return the secret shares to be sent to signers with indices 0..n-1.
+        """Return the secret shares to be sent to participants with indices 0..n-1.
 
         This computes [f(1), ..., f(n)]."""
         return [self.share_for(i) for i in range(0, n)]

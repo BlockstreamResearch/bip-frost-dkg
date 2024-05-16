@@ -45,8 +45,8 @@ def decrypt_sum(
 ###
 
 
-class SignerMsg(NamedTuple):
-    simpl_smsg: simplpedpop.SignerMsg
+class ParticipantMsg(NamedTuple):
+    simpl_smsg: simplpedpop.ParticipantMsg
     enc_shares: List[Scalar]
 
 
@@ -55,17 +55,17 @@ class CoordinatorMsg(NamedTuple):
 
 
 ###
-### Signer
+### Participant
 ###
 
 
-class SignerState(NamedTuple):
+class ParticipantState(NamedTuple):
     t: int  # TODO This can also be found in simpl_state
     deckey: bytes
     enckeys: List[bytes]
     idx: int
     self_share: Scalar
-    simpl_state: simplpedpop.SignerState  # TODO Move up?
+    simpl_state: simplpedpop.ParticipantState  # TODO Move up?
 
 
 def session_seed(seed, enckeys, t):
@@ -74,9 +74,9 @@ def session_seed(seed, enckeys, t):
     return seed_, enc_context
 
 
-def signer_step(
-    seed: bytes, t: int, deckey: bytes, enckeys: List[bytes], signer_idx: int
-) -> Tuple[SignerState, SignerMsg]:
+def participant_step(
+    seed: bytes, t: int, deckey: bytes, enckeys: List[bytes], participant_idx: int
+) -> Tuple[ParticipantState, ParticipantMsg]:
     assert t < 2 ** (4 * 8)
     n = len(enckeys)
 
@@ -84,11 +84,11 @@ def signer_step(
     # encrypted under wrong enckeys.
     seed_, enc_context = session_seed(seed, enckeys, t)
 
-    simpl_state, simpl_smsg, shares = simplpedpop.signer_step(seed_, t, n, signer_idx)
+    simpl_state, simpl_smsg, shares = simplpedpop.participant_step(seed_, t, n, participant_idx)
     assert len(shares) == n
     enc_shares: List[Scalar] = []
     for i in range(n):
-        if i == signer_idx:
+        if i == participant_idx:
             # TODO No need to send a constant.
             enc_shares.append(Scalar(0))
         else:
@@ -98,14 +98,14 @@ def signer_step(
                 raise InvalidContributionError(
                     i, "Participant sent invalid encryption key"
                 )
-    self_share = shares[signer_idx]
-    smsg = SignerMsg(simpl_smsg, enc_shares)
-    state = SignerState(t, deckey, enckeys, signer_idx, self_share, simpl_state)
+    self_share = shares[participant_idx]
+    smsg = ParticipantMsg(simpl_smsg, enc_shares)
+    state = ParticipantState(t, deckey, enckeys, participant_idx, self_share, simpl_state)
     return state, smsg
 
 
-def signer_pre_finalize(
-    state: SignerState,
+def participant_pre_finalize(
+    state: ParticipantState,
     cmsg: CoordinatorMsg,
     enc_shares_sum: Scalar,
 ) -> Tuple[simplpedpop.DKGOutput, bytes]:
@@ -115,7 +115,7 @@ def signer_pre_finalize(
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
-    dkg_output, eq_input = simplpedpop.signer_pre_finalize(
+    dkg_output, eq_input = simplpedpop.participant_pre_finalize(
         simpl_state, simpl_cmsg, shares_sum
     )
     eq_input += b"".join(enckeys)
@@ -128,7 +128,7 @@ def signer_pre_finalize(
 
 
 def coordinator_step(
-    smsgs: List[SignerMsg],
+    smsgs: List[ParticipantMsg],
     t: int,
     enckeys: List[bytes],
 ) -> Tuple[CoordinatorMsg, simplpedpop.DKGOutput, bytes, List[Scalar]]:

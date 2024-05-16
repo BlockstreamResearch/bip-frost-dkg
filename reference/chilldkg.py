@@ -5,7 +5,7 @@ from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
-from network import SignerChannel, CoordinatorChannels
+from network import ParticipantChannel, CoordinatorChannels
 
 from vss import VSS, VSSCommitment
 from simplpedpop import DKGOutput, common_dkg_output
@@ -25,7 +25,7 @@ from util import (
 ###
 
 
-def certifying_eq_signer_step(hostseckey: bytes, x: bytes) -> bytes:
+def certifying_eq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
     # TODO: fix aux_rand
     return schnorr_sign(x, hostseckey, b"0" * 32)
 
@@ -83,11 +83,11 @@ def session_params(
 
 
 # TODO These wrappers of single things may be overkill.
-class SignerMsg1(NamedTuple):
-    enc_smsg: encpedpop.SignerMsg
+class ParticipantMsg1(NamedTuple):
+    enc_smsg: encpedpop.ParticipantMsg
 
 
-class SignerMsg2(NamedTuple):
+class ParticipantMsg2(NamedTuple):
     sig: bytes
 
 
@@ -148,17 +148,17 @@ def deserialize_recovery_data(
 
 
 ###
-### Signer
+### Participant
 ###
 
 
-class SignerState1(NamedTuple):
+class ParticipantState1(NamedTuple):
     params: SessionParams
-    signer_idx: int
-    enc_state: encpedpop.SignerState
+    participant_idx: int
+    enc_state: encpedpop.ParticipantState
 
 
-class SignerState2(NamedTuple):
+class ParticipantState2(NamedTuple):
     params: SessionParams
     eq_input: bytes
     dkg_output: DKGOutput
@@ -167,28 +167,28 @@ class SignerState2(NamedTuple):
 RecoveryData = NewType("RecoveryData", bytes)
 
 
-def signer_step1(seed: bytes, params: SessionParams) -> Tuple[SignerState1, SignerMsg1]:
+def participant_step1(seed: bytes, params: SessionParams) -> Tuple[ParticipantState1, ParticipantMsg1]:
     hostseckey, hostpubkey = hostkey_gen(seed)
     (hostpubkeys, t) = params
 
-    signer_idx = hostpubkeys.index(hostpubkey)
-    enc_state, enc_smsg = encpedpop.signer_step(
-        seed, t, hostseckey, hostpubkeys, signer_idx
+    participant_idx = hostpubkeys.index(hostpubkey)
+    enc_state, enc_smsg = encpedpop.participant_step(
+        seed, t, hostseckey, hostpubkeys, participant_idx
     )
-    state1 = SignerState1(params, signer_idx, enc_state)
-    return state1, SignerMsg1(enc_smsg)
+    state1 = ParticipantState1(params, participant_idx, enc_state)
+    return state1, ParticipantMsg1(enc_smsg)
 
 
-def signer_step2(
+def participant_step2(
     seed: bytes,
-    state1: SignerState1,
+    state1: ParticipantState1,
     cmsg: CoordinatorMsg1,
-) -> Tuple[SignerState2, SignerMsg2]:
+) -> Tuple[ParticipantState2, ParticipantMsg2]:
     (hostseckey, _) = hostkey_gen(seed)
     (params, idx, enc_state) = state1
     enc_cmsg, enc_shares_sums = cmsg
 
-    dkg_output, eq_input = encpedpop.signer_pre_finalize(
+    dkg_output, eq_input = encpedpop.participant_pre_finalize(
         enc_state, enc_cmsg, enc_shares_sums[idx]
     )
     # TODO Not sure if we need to include params_id in eq_input here. It contains
@@ -196,14 +196,14 @@ def signer_step2(
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right backup.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
-    state2 = SignerState2(params, eq_input, dkg_output)
-    sig = certifying_eq_signer_step(hostseckey, eq_input)
-    smsg2 = SignerMsg2(sig)
+    state2 = ParticipantState2(params, eq_input, dkg_output)
+    sig = certifying_eq_participant_step(hostseckey, eq_input)
+    smsg2 = ParticipantMsg2(sig)
     return state2, smsg2
 
 
-def signer_finalize(
-    state2: SignerState2, cmsg2: CoordinatorMsg2
+def participant_finalize(
+    state2: ParticipantState2, cmsg2: CoordinatorMsg2
 ) -> Tuple[DKGOutput, RecoveryData]:
     """A SessionNotFinalizedError indicates that finalizing the DKG session was
     not successful from our point of view.
@@ -216,31 +216,31 @@ def signer_finalize(
     key (e.g., by sending funds to it.) That other participant can, at any point
     in the future (e.g., when initiating a signing sessions), convince us of the
     success of the DKG session by presenting recovery data for which
-    `signer_recover` succeeds and produces the expected session parameters."""
+    `participant_recover` succeeds and produces the expected session parameters."""
     (params, eq_input, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
         raise SessionNotFinalizedError
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
 
-async def signer(
-    chan: SignerChannel, seed: bytes, hostseckey: bytes, params: SessionParams
+async def participant(
+    chan: ParticipantChannel, seed: bytes, hostseckey: bytes, params: SessionParams
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
-    state1, smsg1 = signer_step1(seed, params)
+    state1, smsg1 = participant_step1(seed, params)
     chan.send(smsg1)
     cmsg1 = await chan.receive()
 
-    state2, eq_round1 = signer_step2(seed, state1, cmsg1)
+    state2, eq_round1 = participant_step2(seed, state1, cmsg1)
 
     chan.send(eq_round1)
     cmsg2 = await chan.receive()
 
-    return signer_finalize(state2, cmsg2)
+    return participant_finalize(state2, cmsg2)
 
 
 # Recovery requires the seed and the public backup
-def signer_recover(
+def participant_recover(
     seed: bytes, recovery: RecoveryData, context_string: bytes
 ) -> Tuple[DKGOutput, SessionParams]:
     try:
@@ -275,9 +275,9 @@ def signer_recover(
     shares_sum += self_share
 
     # Compute threshold pubkey and individual pubshares
-    (threshold_pubkey, signer_pubshares) = common_dkg_output(sum_vss_commit, n)
+    (threshold_pubkey, participant_pubshares) = common_dkg_output(sum_vss_commit, n)
 
-    dkg_output = DKGOutput(shares_sum, threshold_pubkey, signer_pubshares)
+    dkg_output = DKGOutput(shares_sum, threshold_pubkey, participant_pubshares)
     return dkg_output, params
 
 
@@ -293,7 +293,7 @@ class CoordinatorState(NamedTuple):
 
 
 def coordinator_step(
-    smsgs1: List[SignerMsg1], params: SessionParams
+    smsgs1: List[ParticipantMsg1], params: SessionParams
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
     enc_cmsg, dkg_output, eq_input, enc_shares_sums = encpedpop.coordinator_step(
         [smsg1.enc_smsg for smsg1 in smsgs1], params.t, params.hostpubkeys
@@ -305,7 +305,7 @@ def coordinator_step(
 
 
 def coordinator_finalize(
-    state: CoordinatorState, smsgs2: List[SignerMsg2]
+    state: CoordinatorState, smsgs2: List[ParticipantMsg2]
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
     (params, eq_input, dkg_output) = state
     cert = certifying_eq_coordinator_step([smsg2.sig for smsg2 in smsgs2])
@@ -320,7 +320,7 @@ async def coordinator(
     (hostpubkeys, t) = params
     n = len(hostpubkeys)
 
-    smsgs1: List[SignerMsg1] = []
+    smsgs1: List[ParticipantMsg1] = []
     for i in range(n):
         smsgs1.append(await chans.receive_from(i))
     state, cmsg1 = coordinator_step(smsgs1, params)
