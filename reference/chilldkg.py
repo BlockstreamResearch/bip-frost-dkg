@@ -84,7 +84,7 @@ def session_params(
 
 # TODO These wrappers of single things may be overkill.
 class ParticipantMsg1(NamedTuple):
-    enc_smsg: encpedpop.ParticipantMsg
+    enc_pmsg: encpedpop.ParticipantMsg
 
 
 class ParticipantMsg2(NamedTuple):
@@ -167,16 +167,18 @@ class ParticipantState2(NamedTuple):
 RecoveryData = NewType("RecoveryData", bytes)
 
 
-def participant_step1(seed: bytes, params: SessionParams) -> Tuple[ParticipantState1, ParticipantMsg1]:
+def participant_step1(
+    seed: bytes, params: SessionParams
+) -> Tuple[ParticipantState1, ParticipantMsg1]:
     hostseckey, hostpubkey = hostkey_gen(seed)
     (hostpubkeys, t) = params
 
     participant_idx = hostpubkeys.index(hostpubkey)
-    enc_state, enc_smsg = encpedpop.participant_step(
+    enc_state, enc_pmsg = encpedpop.participant_step(
         seed, t, hostseckey, hostpubkeys, participant_idx
     )
     state1 = ParticipantState1(params, participant_idx, enc_state)
-    return state1, ParticipantMsg1(enc_smsg)
+    return state1, ParticipantMsg1(enc_pmsg)
 
 
 def participant_step2(
@@ -198,8 +200,8 @@ def participant_step2(
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
     state2 = ParticipantState2(params, eq_input, dkg_output)
     sig = certifying_eq_participant_step(hostseckey, eq_input)
-    smsg2 = ParticipantMsg2(sig)
-    return state2, smsg2
+    pmsg2 = ParticipantMsg2(sig)
+    return state2, pmsg2
 
 
 def participant_finalize(
@@ -227,8 +229,8 @@ async def participant(
     chan: ParticipantChannel, seed: bytes, hostseckey: bytes, params: SessionParams
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
-    state1, smsg1 = participant_step1(seed, params)
-    chan.send(smsg1)
+    state1, pmsg1 = participant_step1(seed, params)
+    chan.send(pmsg1)
     cmsg1 = await chan.receive()
 
     state2, eq_round1 = participant_step2(seed, state1, cmsg1)
@@ -293,10 +295,10 @@ class CoordinatorState(NamedTuple):
 
 
 def coordinator_step(
-    smsgs1: List[ParticipantMsg1], params: SessionParams
+    pmsgs1: List[ParticipantMsg1], params: SessionParams
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
     enc_cmsg, dkg_output, eq_input, enc_shares_sums = encpedpop.coordinator_step(
-        [smsg1.enc_smsg for smsg1 in smsgs1], params.t, params.hostpubkeys
+        [pmsg1.enc_pmsg for pmsg1 in pmsgs1], params.t, params.hostpubkeys
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
     state = CoordinatorState(params, eq_input, dkg_output)
@@ -305,10 +307,10 @@ def coordinator_step(
 
 
 def coordinator_finalize(
-    state: CoordinatorState, smsgs2: List[ParticipantMsg2]
+    state: CoordinatorState, pmsgs2: List[ParticipantMsg2]
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
     (params, eq_input, dkg_output) = state
-    cert = certifying_eq_coordinator_step([smsg2.sig for smsg2 in smsgs2])
+    cert = certifying_eq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     if not certifying_eq_verify(params.hostpubkeys, eq_input, cert):
         raise SessionNotFinalizedError
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
@@ -320,10 +322,10 @@ async def coordinator(
     (hostpubkeys, t) = params
     n = len(hostpubkeys)
 
-    smsgs1: List[ParticipantMsg1] = []
+    pmsgs1: List[ParticipantMsg1] = []
     for i in range(n):
-        smsgs1.append(await chans.receive_from(i))
-    state, cmsg1 = coordinator_step(smsgs1, params)
+        pmsgs1.append(await chans.receive_from(i))
+    state, cmsg1 = coordinator_step(pmsgs1, params)
     chans.send_all(cmsg1)
 
     sigs = []

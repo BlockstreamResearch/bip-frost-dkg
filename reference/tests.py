@@ -30,17 +30,17 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
-    srets = []
+    prets = []
     for i in range(n):
-        srets += [simplpedpop.participant_step(seeds[i], t, n, i)]
-    smsgs = [ret[1] for ret in srets]
+        prets += [simplpedpop.participant_step(seeds[i], t, n, i)]
+    pmsgs = [ret[1] for ret in prets]
 
-    cmsg, cout, ceq = simplpedpop.coordinator_step(smsgs, t, n)
+    cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
     pre_finalize_outputs = [(cout, ceq)]
     for i in range(n):
-        shares_sum = Scalar.sum(*([sret[2][i] for sret in srets]))
+        shares_sum = Scalar.sum(*([pret[2][i] for pret in prets]))
         pre_finalize_outputs += [
-            simplpedpop.participant_pre_finalize(srets[i][0], cmsg, shares_sum)
+            simplpedpop.participant_pre_finalize(prets[i][0], cmsg, shares_sum)
         ]
     return pre_finalize_outputs
 
@@ -53,24 +53,24 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
 
 def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
-    enc_srets0 = []
-    enc_srets1 = []
+    enc_prets0 = []
+    enc_prets1 = []
     for i in range(n):
-        enc_srets0 += [encpedpop_keys(seeds[i])]
+        enc_prets0 += [encpedpop_keys(seeds[i])]
 
-    enckeys = [sret[1] for sret in enc_srets0]
+    enckeys = [pret[1] for pret in enc_prets0]
     for i in range(n):
-        deckey = enc_srets0[i][0]
-        enc_srets1 += [encpedpop.participant_step(seeds[i], t, deckey, enckeys, i)]
+        deckey = enc_prets0[i][0]
+        enc_prets1 += [encpedpop.participant_step(seeds[i], t, deckey, enckeys, i)]
 
-    smsgs = [smsg for (_, smsg) in enc_srets1]
-    sstates = [sstate for (sstate, _) in enc_srets1]
+    pmsgs = [pmsg for (_, pmsg) in enc_prets1]
+    pstates = [pstate for (pstate, _) in enc_prets1]
 
-    cmsg, cout, ceq, enc_shares_sums = encpedpop.coordinator_step(smsgs, t, enckeys)
+    cmsg, cout, ceq, enc_shares_sums = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_outputs = [(cout, ceq)]
     for i in range(n):
         pre_finalize_outputs += [
-            encpedpop.participant_pre_finalize(sstates[i], cmsg, enc_shares_sums[i])
+            encpedpop.participant_pre_finalize(pstates[i], cmsg, enc_shares_sums[i])
         ]
     return pre_finalize_outputs
 
@@ -87,24 +87,24 @@ def simulate_chilldkg(
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     params, _ = chilldkg.session_params(hostpubkeys, t, b"")
 
-    srets1 = []
+    prets1 = []
     for i in range(n):
-        srets1 += [chilldkg.participant_step1(seeds[i], params)]
+        prets1 += [chilldkg.participant_step1(seeds[i], params)]
 
-    sstate1s = [sret[0] for sret in srets1]
-    smsgs = [sret[1] for sret in srets1]
-    cstate, cmsg = chilldkg.coordinator_step(smsgs, params)
+    pstate1s = [pret[0] for pret in prets1]
+    pmsgs = [pret[1] for pret in prets1]
+    cstate, cmsg = chilldkg.coordinator_step(pmsgs, params)
 
-    srets2 = []
+    prets2 = []
     for i in range(n):
-        srets2 += [chilldkg.participant_step2(seeds[i], sstate1s[i], cmsg)]
+        prets2 += [chilldkg.participant_step2(seeds[i], pstate1s[i], cmsg)]
 
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
-        cstate, [sret[1] for sret in srets2]
+        cstate, [pret[1] for pret in prets2]
     )
     outputs = [(cout, crec)]
     for i in range(n):
-        out = chilldkg.participant_finalize(srets2[i][0], cmsg2)
+        out = chilldkg.participant_finalize(prets2[i][0], cmsg2)
         assert out is not None
         outputs += [out]
 
@@ -123,8 +123,12 @@ def simulate_chilldkg_full(
 
     async def main():
         coord_chans = CoordinatorChannels(n)
-        participant_chans = [ParticipantChannel(coord_chans.queues[i]) for i in range(n)]
-        coord_chans.set_participant_queues([participant_chans[i].queue for i in range(n)])
+        participant_chans = [
+            ParticipantChannel(coord_chans.queues[i]) for i in range(n)
+        ]
+        coord_chans.set_participant_queues(
+            [participant_chans[i].queue for i in range(n)]
+        )
         coroutines = [chilldkg.coordinator(coord_chans, params)] + [
             chilldkg.participant(participant_chans[i], seeds[i], hostkeys[i][0], params)
             for i in range(n)
@@ -222,8 +226,8 @@ def test_correctness(t, n, simulate_dkg, recovery=False):
         rec = eqs_or_recs[0]
         # test correctness of chilldkg_recover
         for i in range(1, n + 1):
-            (secshare, threshold_pubkey, participant_pubshares), _ = chilldkg.participant_recover(
-                seeds[i - 1], rec, b""
+            (secshare, threshold_pubkey, participant_pubshares), _ = (
+                chilldkg.participant_recover(seeds[i - 1], rec, b"")
             )
             assert secshare == dkg_outputs[i][0]
             assert threshold_pubkey == dkg_outputs[i][1]

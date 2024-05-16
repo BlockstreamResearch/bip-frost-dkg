@@ -46,7 +46,7 @@ def decrypt_sum(
 
 
 class ParticipantMsg(NamedTuple):
-    simpl_smsg: simplpedpop.ParticipantMsg
+    simpl_pmsg: simplpedpop.ParticipantMsg
     enc_shares: List[Scalar]
 
 
@@ -84,7 +84,9 @@ def participant_step(
     # encrypted under wrong enckeys.
     seed_, enc_context = session_seed(seed, enckeys, t)
 
-    simpl_state, simpl_smsg, shares = simplpedpop.participant_step(seed_, t, n, participant_idx)
+    simpl_state, simpl_pmsg, shares = simplpedpop.participant_step(
+        seed_, t, n, participant_idx
+    )
     assert len(shares) == n
     enc_shares: List[Scalar] = []
     for i in range(n):
@@ -99,9 +101,11 @@ def participant_step(
                     i, "Participant sent invalid encryption key"
                 )
     self_share = shares[participant_idx]
-    smsg = ParticipantMsg(simpl_smsg, enc_shares)
-    state = ParticipantState(t, deckey, enckeys, participant_idx, self_share, simpl_state)
-    return state, smsg
+    pmsg = ParticipantMsg(simpl_pmsg, enc_shares)
+    state = ParticipantState(
+        t, deckey, enckeys, participant_idx, self_share, simpl_state
+    )
+    return state, pmsg
 
 
 def participant_pre_finalize(
@@ -128,16 +132,16 @@ def participant_pre_finalize(
 
 
 def coordinator_step(
-    smsgs: List[ParticipantMsg],
+    pmsgs: List[ParticipantMsg],
     t: int,
     enckeys: List[bytes],
 ) -> Tuple[CoordinatorMsg, simplpedpop.DKGOutput, bytes, List[Scalar]]:
-    n = len(smsgs)
+    n = len(pmsgs)
     simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
-        [smsg.simpl_smsg for smsg in smsgs], t, n
+        [pmsg.simpl_pmsg for pmsg in pmsgs], t, n
     )
     enc_shares_sums = [
-        Scalar.sum(*([smsg.enc_shares[i] for smsg in smsgs])) for i in range(n)
+        Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs])) for i in range(n)
     ]
     eq_input += b"".join(enckeys)
     # In pure EncPedPop, the coordinator wants to send enc_shares_sums[i] to each

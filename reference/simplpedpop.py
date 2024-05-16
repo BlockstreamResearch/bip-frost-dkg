@@ -194,17 +194,17 @@ def participant_pre_finalize(
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
 def coordinator_step(
-    smsgs: List[ParticipantMsg], t: int, n: int
+    pmsgs: List[ParticipantMsg], t: int, n: int
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
     # We cannot sum the commitments to the secrets because they'll be necessary
     # to check the PoPs.
-    coms_to_secrets = [smsg.com.commitment_to_secret() for smsg in smsgs]
+    coms_to_secrets = [pmsg.com.commitment_to_secret() for pmsg in pmsgs]
     # But we can sum the commitments to the non-constant terms.
     sum_coms_to_nonconst_terms = [
-        GE.sum(*(smsg.com.commitment_to_nonconst_terms()[j] for smsg in smsgs))
+        GE.sum(*(pmsg.com.commitment_to_nonconst_terms()[j] for pmsg in pmsgs))
         for j in range(0, t - 1)
     ]
-    pops = [smsg.pop for smsg in smsgs]
+    pops = [pmsg.pop for pmsg in pmsgs]
     sum_vss_commit = assemble_sum_vss_commitment(
         coms_to_secrets, sum_coms_to_nonconst_terms, n
     )
