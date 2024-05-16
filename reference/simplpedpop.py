@@ -193,6 +193,7 @@ def participant_pre_finalize(
 # Sum the commitments to the i-th coefficients from the given vss_commitments
 # for i > 0. This procedure is introduced by Pedersen in section 5.1 of
 # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
+# TODO Should this be called coordinator_pre_finalize? (same in encpedpop)
 def coordinator_step(
     pmsgs: List[ParticipantMsg], t: int, n: int
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:

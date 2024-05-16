@@ -68,7 +68,7 @@ class ParticipantState(NamedTuple):
     simpl_state: simplpedpop.ParticipantState  # TODO Move up?
 
 
-def session_seed(seed, enckeys, t):
+def session_seed(seed: bytes, enckeys: List[bytes], t: int) -> Tuple[bytes, bytes]:
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
     return seed_, enc_context

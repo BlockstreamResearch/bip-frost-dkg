@@ -199,11 +199,11 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
 
 
 def test_correctness(t, n, simulate_dkg, recovery=False):
-    seeds = [secrets.token_bytes(32) for _ in range(n)]
+    seeds = [None] + [secrets.token_bytes(32) for _ in range(n)]
 
     # rets[0] are the return values from the coordinator
     # rets[1 : n + 1] are from the participants
-    rets = simulate_dkg(seeds, t)
+    rets = simulate_dkg(seeds[1:], t)
     assert len(rets) == n + 1
 
     dkg_outputs = [ret[0] for ret in rets]
@@ -215,10 +215,10 @@ def test_correctness(t, n, simulate_dkg, recovery=False):
 
     if recovery:
         rec = eqs_or_recs[0]
-        # test correctness of chilldkg_recover
-        for i in range(1, n + 1):
-            (secshare, threshold_pubkey, pubshares), _ = chilldkg.participant_recover(
-                seeds[i - 1], rec, b""
+        # Check correctness of chilldkg.recover
+        for i in range(n + 1):
+            (secshare, threshold_pubkey, pubshares), _ = chilldkg.recover(
+                seeds[i], rec, b""
             )
             assert secshare == dkg_outputs[i][0]
             assert threshold_pubkey == dkg_outputs[i][1]

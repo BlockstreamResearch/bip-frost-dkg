@@ -1,5 +1,5 @@
 # Reference implementation of BIP DKG.
-from typing import Tuple, List, NamedTuple, NewType
+from typing import Tuple, List, NamedTuple, NewType, Optional
 
 from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
@@ -241,48 +241,6 @@ async def participant(
     return participant_finalize(state2, cmsg2)
 
 
-# Recovery requires the seed and the public recovery data
-def participant_recover(
-    seed: bytes, recovery: RecoveryData, context_string: bytes
-) -> Tuple[DKGOutput, SessionParams]:
-    try:
-        (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
-            deserialize_recovery_data(recovery)
-        )
-    except DeserializationError as e:
-        raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
-
-    n = len(hostpubkeys)
-    (params, params_id) = session_params(hostpubkeys, t, context_string)
-
-    # Verify cert
-    certifying_eq_verify(hostpubkeys, recovery[: 64 * n], cert)
-
-    # Find our hostpubkey
-    hostseckey, hostpubkey = hostkey_gen(seed)
-    try:
-        idx = hostpubkeys.index(hostpubkey)
-    except ValueError as e:
-        raise InvalidRecoveryDataError("Seed and recovery data don't match") from e
-
-    # Decrypt share
-    seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)
-    shares_sum = encpedpop.decrypt_sum(
-        enc_shares_sums[idx], hostseckey, hostpubkeys, idx, enc_context
-    )
-
-    # Derive self_share
-    vss = VSS.generate(seed_, t)
-    self_share = vss.share_for(idx)
-    shares_sum += self_share
-
-    # Compute threshold pubkey and individual pubshares
-    (threshold_pubkey, pubshares) = common_dkg_output(sum_vss_commit, n)
-
-    dkg_output = DKGOutput(shares_sum, threshold_pubkey, pubshares)
-    return dkg_output, params
-
-
 ###
 ### Coordinator
 ###
@@ -335,3 +293,54 @@ async def coordinator(
     chans.send_all(cmsg2)
 
     return dkg_output, recovery_data
+
+
+###
+### Recovery
+###
+
+
+# Recovery requires the seed (can be None if recovering the coordinator) and the
+# public recovery data
+def recover(
+    seed: Optional[bytes], recovery: RecoveryData, context_string: bytes
+) -> Tuple[DKGOutput, SessionParams]:
+    try:
+        (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
+            deserialize_recovery_data(recovery)
+        )
+    except DeserializationError as e:
+        raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
+
+    n = len(hostpubkeys)
+    (params, params_id) = session_params(hostpubkeys, t, context_string)
+
+    # Verify cert
+    certifying_eq_verify(hostpubkeys, recovery[: 64 * n], cert)
+
+    if seed:
+        # Find our hostpubkey
+        hostseckey, hostpubkey = hostkey_gen(seed)
+        try:
+            idx = hostpubkeys.index(hostpubkey)
+        except ValueError as e:
+            raise InvalidRecoveryDataError("Seed and recovery data don't match") from e
+
+        # Decrypt share
+        seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)
+        shares_sum = encpedpop.decrypt_sum(
+            enc_shares_sums[idx], hostseckey, hostpubkeys, idx, enc_context
+        )
+
+        # Derive self_share
+        vss = VSS.generate(seed_, t)
+        self_share = vss.share_for(idx)
+        shares_sum += self_share
+    else:
+        shares_sum = None
+
+    # Compute threshold pubkey and individual pubshares
+    (threshold_pubkey, pubshares) = common_dkg_output(sum_vss_commit, n)
+
+    dkg_output = DKGOutput(shares_sum, threshold_pubkey, pubshares)
+    return dkg_output, params
