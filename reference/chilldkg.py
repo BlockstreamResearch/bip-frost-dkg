@@ -54,7 +54,6 @@ def certifying_eq_coordinator_step(sigs: List[bytes]) -> bytes:
 class SessionParams(NamedTuple):
     hostpubkeys: List[bytes]
     t: int
-    params_id: bytes  # TODO This should not be part of the tuple.
 
 
 def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
@@ -74,7 +73,7 @@ def session_params(
         "session parameters id",
         b"".join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string,
     )
-    params = SessionParams(hostpubkeys, t, params_id)
+    params = SessionParams(hostpubkeys, t)
     return params, params_id
 
 
@@ -170,7 +169,7 @@ RecoveryData = NewType("RecoveryData", bytes)
 
 def signer_step1(seed: bytes, params: SessionParams) -> Tuple[SignerState1, SignerMsg1]:
     hostseckey, hostpubkey = hostkey_gen(seed)
-    (hostpubkeys, t, params_id) = params
+    (hostpubkeys, t) = params
 
     signer_idx = hostpubkeys.index(hostpubkey)
     enc_state, enc_smsg = encpedpop.signer_step(
@@ -318,7 +317,7 @@ def coordinator_finalize(
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams
 ) -> Tuple[DKGOutput, RecoveryData]:
-    (hostpubkeys, t, params_id) = params
+    (hostpubkeys, t) = params
     n = len(hostpubkeys)
 
     smsgs1: List[SignerMsg1] = []
