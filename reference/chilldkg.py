@@ -196,7 +196,7 @@ def participant_step2(
     # TODO Not sure if we need to include params_id in eq_input here. It contains
     # the context_string, which is currently not included at all!
     # Include the enc_shares in eq_input to ensure that participants agree on all
-    # shares, which in turn ensures that they have the right backup.
+    # shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
     state2 = ParticipantState2(params, eq_input, dkg_output)
     sig = certifying_eq_participant_step(hostseckey, eq_input)
@@ -241,7 +241,7 @@ async def participant(
     return participant_finalize(state2, cmsg2)
 
 
-# Recovery requires the seed and the public backup
+# Recovery requires the seed and the public recovery data
 def participant_recover(
     seed: bytes, recovery: RecoveryData, context_string: bytes
 ) -> Tuple[DKGOutput, SessionParams]:
