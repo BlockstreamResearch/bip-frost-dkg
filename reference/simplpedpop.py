@@ -144,12 +144,12 @@ def signer_pre_finalize(
     shares_sum: Scalar,
 ) -> Tuple[DKGOutput, bytes]:
     """
-    Take the messages received from the coordinator and return eta to be compared and DKG output
+    Take the messages received from the coordinator and return eq_input to be compared and DKG output
 
     :param SignerState state: the signer's state after round 1 (output by signer_round1)
     :param CoordinatorMsg cmsg: round 1 broadcast message received from the coordinator
     :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
-    :return: the data `eta` that must be input to an equality check protocol, the final share, the threshold pubkey, the individual participants' pubshares
+    :return: the data `eq_input` that must be input to an equality check protocol, the final share, the threshold pubkey, the individual participants' pubshares
     """
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
@@ -181,8 +181,8 @@ def signer_pre_finalize(
     if not sum_vss_commit.verify(idx, shares_sum):
         raise VSSVerifyError()
     threshold_pubkey, signer_pubshares = common_dkg_output(sum_vss_commit, n)
-    eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
-    return DKGOutput(shares_sum, threshold_pubkey, signer_pubshares), eta
+    eq_input = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    return DKGOutput(shares_sum, threshold_pubkey, signer_pubshares), eq_input
 
 
 ###
@@ -210,9 +210,9 @@ def coordinator_step(
     )
     threshold_pubkey, signer_pubshares = common_dkg_output(sum_vss_commit, n)
     dkg_output = DKGOutput(None, threshold_pubkey, signer_pubshares)
-    eta = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    eq_input = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
     return (
         CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops),
         dkg_output,
-        eta,
+        eq_input,
     )

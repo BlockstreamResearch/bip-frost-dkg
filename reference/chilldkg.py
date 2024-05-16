@@ -161,7 +161,7 @@ class SignerState1(NamedTuple):
 
 class SignerState2(NamedTuple):
     params: SessionParams
-    eta: bytes  # TODO Rename to transcript (TODO (Jonas): maybe transcript is confusing too)
+    eq_input: bytes
     dkg_output: DKGOutput
 
 
@@ -189,16 +189,16 @@ def signer_step2(
     (params, idx, enc_state) = state1
     enc_cmsg, enc_shares_sums = cmsg
 
-    dkg_output, eta = encpedpop.signer_pre_finalize(
+    dkg_output, eq_input = encpedpop.signer_pre_finalize(
         enc_state, enc_cmsg, enc_shares_sums[idx]
     )
-    # TODO Not sure if we need to include params_id in eta here. It contains
+    # TODO Not sure if we need to include params_id in eq_input here. It contains
     # the context_string, which is currently not included at all!
-    # Include the enc_shares in eta to ensure that participants agree on all
+    # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right backup.
-    eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
-    state2 = SignerState2(params, eta, dkg_output)
-    sig = certifying_eq_signer_step(hostseckey, eta)
+    eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
+    state2 = SignerState2(params, eq_input, dkg_output)
+    sig = certifying_eq_signer_step(hostseckey, eq_input)
     smsg2 = SignerMsg2(sig)
     return state2, smsg2
 
@@ -218,10 +218,10 @@ def signer_finalize(
     in the future (e.g., when initiating a signing sessions), convince us of the
     success of the DKG session by presenting recovery data for which
     `signer_recover` succeeds and produces the expected session parameters."""
-    (params, eta, dkg_output) = state2
-    if not certifying_eq_verify(params.hostpubkeys, eta, cmsg2.cert):
+    (params, eq_input, dkg_output) = state2
+    if not certifying_eq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
         raise SessionNotFinalizedError
-    return dkg_output, RecoveryData(eta + cmsg2.cert)
+    return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
 
 async def signer(
@@ -289,18 +289,18 @@ def signer_recover(
 
 class CoordinatorState(NamedTuple):
     params: SessionParams
-    eta: bytes
+    eq_input: bytes
     dkg_output: DKGOutput
 
 
 def coordinator_step(
     smsgs1: List[SignerMsg1], params: SessionParams
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
-    enc_cmsg, dkg_output, eta, enc_shares_sums = encpedpop.coordinator_step(
+    enc_cmsg, dkg_output, eq_input, enc_shares_sums = encpedpop.coordinator_step(
         [smsg1.enc_smsg for smsg1 in smsgs1], params.t, params.hostpubkeys
     )
-    eta += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
-    state = CoordinatorState(params, eta, dkg_output)
+    eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
+    state = CoordinatorState(params, eq_input, dkg_output)
     cmsg1 = CoordinatorMsg1(enc_cmsg, enc_shares_sums)
     return state, cmsg1
 
@@ -308,11 +308,11 @@ def coordinator_step(
 def coordinator_finalize(
     state: CoordinatorState, smsgs2: List[SignerMsg2]
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
-    (params, eta, dkg_output) = state
+    (params, eq_input, dkg_output) = state
     cert = certifying_eq_coordinator_step([smsg2.sig for smsg2 in smsgs2])
-    if not certifying_eq_verify(params.hostpubkeys, eta, cert):
+    if not certifying_eq_verify(params.hostpubkeys, eq_input, cert):
         raise SessionNotFinalizedError
-    return CoordinatorMsg2(cert), dkg_output, RecoveryData(eta + cert)
+    return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
 
 
 async def coordinator(

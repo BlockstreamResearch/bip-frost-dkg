@@ -35,8 +35,8 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
         srets += [simplpedpop.signer_step(seeds[i], t, n, i)]
     smsgs = [ret[1] for ret in srets]
 
-    cmsg, cout, ceta = simplpedpop.coordinator_step(smsgs, t, n)
-    pre_finalize_outputs = [(cout, ceta)]
+    cmsg, cout, ceq = simplpedpop.coordinator_step(smsgs, t, n)
+    pre_finalize_outputs = [(cout, ceq)]
     for i in range(n):
         shares_sum = Scalar.sum(*([sret[2][i] for sret in srets]))
         pre_finalize_outputs += [
@@ -66,8 +66,8 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     smsgs = [smsg for (_, smsg) in enc_srets1]
     sstates = [sstate for (sstate, _) in enc_srets1]
 
-    cmsg, cout, ceta, enc_shares_sums = encpedpop.coordinator_step(smsgs, t, enckeys)
-    pre_finalize_outputs = [(cout, ceta)]
+    cmsg, cout, ceq, enc_shares_sums = encpedpop.coordinator_step(smsgs, t, enckeys)
+    pre_finalize_outputs = [(cout, ceq)]
     for i in range(n):
         pre_finalize_outputs += [
             encpedpop.signer_pre_finalize(sstates[i], cmsg, enc_shares_sums[i])
@@ -214,12 +214,12 @@ def test_correctness(t, n, simulate_dkg, recovery=False):
     dkg_outputs = [ret[0] for ret in rets]
     test_correctness_dkg_output(t, n, dkg_outputs)
 
-    etas_or_recs = [ret[1] for ret in rets]
+    eqs_or_recs = [ret[1] for ret in rets]
     for i in range(1, n + 1):
-        assert etas_or_recs[0] == etas_or_recs[i]
+        assert eqs_or_recs[0] == eqs_or_recs[i]
 
     if recovery:
-        rec = etas_or_recs[0]
+        rec = eqs_or_recs[0]
         # test correctness of chilldkg_recover
         for i in range(1, n + 1):
             (secshare, threshold_pubkey, signer_pubshares), _ = chilldkg.signer_recover(

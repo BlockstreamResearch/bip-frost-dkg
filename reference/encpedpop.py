@@ -115,11 +115,11 @@ def signer_pre_finalize(
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
-    dkg_output, eta = simplpedpop.signer_pre_finalize(
+    dkg_output, eq_input = simplpedpop.signer_pre_finalize(
         simpl_state, simpl_cmsg, shares_sum
     )
-    eta += b"".join(enckeys)
-    return dkg_output, eta
+    eq_input += b"".join(enckeys)
+    return dkg_output, eq_input
 
 
 ###
@@ -133,16 +133,16 @@ def coordinator_step(
     enckeys: List[bytes],
 ) -> Tuple[CoordinatorMsg, simplpedpop.DKGOutput, bytes, List[Scalar]]:
     n = len(smsgs)
-    simpl_cmsg, dkg_output, eta = simplpedpop.coordinator_step(
+    simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
         [smsg.simpl_smsg for smsg in smsgs], t, n
     )
     enc_shares_sums = [
         Scalar.sum(*([smsg.enc_shares[i] for smsg in smsgs])) for i in range(n)
     ]
-    eta += b"".join(enckeys)
+    eq_input += b"".join(enckeys)
     # In pure EncPedPop, the coordinator wants to send enc_shares_sums[i] to each
     # participant i. Broadcasting the entire array to everyone is not necessary, so we
     # don't include it CoordinatorMsg, but only return it as a side output, so that
     # ChillDKG can pick it up.
     # TODO Define a CoordinatorUnicastMsg type to improve this?
-    return CoordinatorMsg(simpl_cmsg), dkg_output, eta, enc_shares_sums
+    return CoordinatorMsg(simpl_cmsg), dkg_output, eq_input, enc_shares_sums
