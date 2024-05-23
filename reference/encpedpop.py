@@ -89,10 +89,7 @@ def participant_step1(
     assert len(shares) == n
     enc_shares: List[Scalar] = []
     for i in range(n):
-        if i == participant_idx:
-            # TODO No need to send a constant.
-            enc_shares.append(Scalar(0))
-        else:
+        if i != participant_idx:  # No need to encrypt to ourselves
             try:
                 enc_shares.append(encrypt(shares[i], deckey, enckeys[i], enc_context))
             except ValueError:  # Invalid enckeys[i]
@@ -137,6 +134,11 @@ def coordinator_step(
     simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
         [pmsg.simpl_pmsg for pmsg in pmsgs], t, n
     )
+    for i in range(n):
+        # Participant i implicitly uses a pad of 0 to encrypt to themselves.
+        # Make this pad explicit at the right position.
+        pmsgs[i].enc_shares.insert(i, Scalar(0))
+        assert len(pmsgs[i].enc_shares) == n
     enc_shares_sums = [
         Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs])) for i in range(n)
     ]
