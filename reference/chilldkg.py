@@ -62,16 +62,13 @@ def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
     return (hostseckey, hostpubkey)
 
 
-def session_params(
-    hostpubkeys: List[bytes], t: int, context_string: bytes
-) -> Tuple[SessionParams, bytes]:
+def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]:
     if len(hostpubkeys) != len(set(hostpubkeys)):
         raise DuplicateHostpubkeyError
 
     assert t < 2 ** (4 * 8)
     params_id = tagged_hash(
-        "session parameters id",
-        b"".join(hostpubkeys) + t.to_bytes(4, byteorder="big") + context_string,
+        "session parameters id", b"".join(hostpubkeys) + t.to_bytes(4, byteorder="big")
     )
     params = SessionParams(hostpubkeys, t)
     return params, params_id
@@ -193,8 +190,6 @@ def participant_step2(
     dkg_output, eq_input = encpedpop.participant_pre_finalize(
         enc_state, enc_cmsg, enc_shares_sums[idx]
     )
-    # TODO Not sure if we need to include params_id in eq_input here. It contains
-    # the context_string, which is currently not included at all!
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
@@ -303,7 +298,7 @@ async def coordinator(
 # Recovery requires the seed (can be None if recovering the coordinator) and the
 # public recovery data
 def recover(
-    seed: Optional[bytes], recovery: RecoveryData, context_string: bytes
+    seed: Optional[bytes], recovery: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
     try:
         (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
@@ -313,7 +308,7 @@ def recover(
         raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
 
     n = len(hostpubkeys)
-    (params, params_id) = session_params(hostpubkeys, t, context_string)
+    (params, params_id) = session_params(hostpubkeys, t)
 
     # Verify cert
     certifying_eq_verify(hostpubkeys, recovery[: 64 * n], cert)

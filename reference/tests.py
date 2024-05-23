@@ -85,7 +85,7 @@ def simulate_chilldkg(
         hostkeys += [chilldkg.hostkey_gen(seeds[i])]
 
     hostpubkeys = [hostkey[1] for hostkey in hostkeys]
-    params, _ = chilldkg.session_params(hostpubkeys, t, b"")
+    params, _ = chilldkg.session_params(hostpubkeys, t)
 
     prets1 = []
     for i in range(n):
@@ -119,7 +119,7 @@ def simulate_chilldkg_full(
     for i in range(n):
         hostkeys += [chilldkg.hostkey_gen(seeds[i])]
 
-    params = chilldkg.session_params([hostkey[1] for hostkey in hostkeys], t, b"")[0]
+    params = chilldkg.session_params([hostkey[1] for hostkey in hostkeys], t)[0]
 
     async def main():
         coord_chans = CoordinatorChannels(n)
@@ -217,9 +217,7 @@ def test_correctness(t, n, simulate_dkg, recovery=False):
         rec = eqs_or_recs[0]
         # Check correctness of chilldkg.recover
         for i in range(n + 1):
-            (secshare, threshold_pubkey, pubshares), _ = chilldkg.recover(
-                seeds[i], rec, b""
-            )
+            (secshare, threshold_pubkey, pubshares), _ = chilldkg.recover(seeds[i], rec)
             assert secshare == dkg_outputs[i][0]
             assert threshold_pubkey == dkg_outputs[i][1]
             assert pubshares == dkg_outputs[i][2]
