@@ -30,9 +30,13 @@ def certifying_eq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
     return schnorr_sign(x, hostseckey, aux_rand=random_bytes(32))
 
 
+def certifying_eq_cert_len(n: int) -> int:
+    return 64 * n
+
+
 def certifying_eq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     n = len(hostpubkeys)
-    if len(cert) != 64 * n:
+    if len(cert) != certifying_eq_cert_len(n):
         return False
     is_valid = [
         schnorr_verify(x, hostpubkeys[i][1:33], cert[i * 64 : (i + 1) * 64])
@@ -134,10 +138,11 @@ def deserialize_recovery_data(
         rest[32 * n :],
     )
 
-    # Read cert (64*n bytes)
-    if len(rest) < 64 * n:
+    # Read cert
+    cert_len = certifying_eq_cert_len(n)
+    if len(rest) < cert_len:
         raise DeserializationError
-    cert, rest = rest[: 64 * n], rest[64 * n :]
+    cert, rest = rest[:cert_len], rest[cert_len:]
 
     if len(rest) != 0:
         raise DeserializationError
