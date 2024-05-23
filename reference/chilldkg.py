@@ -27,7 +27,7 @@ from util import (
 
 
 def certifying_eq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
-    return schnorr_sign(x, hostseckey, random_bytes(32))
+    return schnorr_sign(x, hostseckey, aux_rand=random_bytes(32))
 
 
 def certifying_eq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
