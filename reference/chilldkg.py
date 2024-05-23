@@ -1,4 +1,5 @@
 # Reference implementation of BIP DKG.
+from secrets import token_bytes as random_bytes
 from typing import Tuple, List, NamedTuple, NewType, Optional
 
 from secp256k1ref.secp256k1 import Scalar
@@ -26,8 +27,7 @@ from util import (
 
 
 def certifying_eq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
-    # TODO: fix aux_rand
-    return schnorr_sign(x, hostseckey, b"0" * 32)
+    return schnorr_sign(x, hostseckey, random_bytes(32))
 
 
 def certifying_eq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
