@@ -60,12 +60,11 @@ class CoordinatorMsg(NamedTuple):
 
 
 class ParticipantState(NamedTuple):
-    t: int  # TODO This can also be found in simpl_state
+    simpl_state: simplpedpop.ParticipantState
     deckey: bytes
     enckeys: List[bytes]
     idx: int
     self_share: Scalar
-    simpl_state: simplpedpop.ParticipantState  # TODO Move up?
 
 
 def session_seed(seed: bytes, enckeys: List[bytes], t: int) -> Tuple[bytes, bytes]:
@@ -102,9 +101,7 @@ def participant_step(
                 )
     self_share = shares[participant_idx]
     pmsg = ParticipantMsg(simpl_pmsg, enc_shares)
-    state = ParticipantState(
-        t, deckey, enckeys, participant_idx, self_share, simpl_state
-    )
+    state = ParticipantState(simpl_state, deckey, enckeys, participant_idx, self_share)
     return state, pmsg
 
 
@@ -113,10 +110,10 @@ def participant_step2(
     cmsg: CoordinatorMsg,
     enc_shares_sum: Scalar,
 ) -> Tuple[simplpedpop.DKGOutput, bytes]:
-    t, deckey, enckeys, idx, self_share, simpl_state = state
+    simpl_state, deckey, enckeys, idx, self_share = state
     simpl_cmsg, = cmsg  # Unpack unary tuple  # fmt: skip
 
-    enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
+    enc_context = simpl_state.t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
     dkg_output, eq_input = simplpedpop.participant_step2(
