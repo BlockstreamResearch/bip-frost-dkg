@@ -171,7 +171,7 @@ def participant_step1(
     (hostpubkeys, t) = params
 
     participant_idx = hostpubkeys.index(hostpubkey)
-    enc_state, enc_pmsg = encpedpop.participant_step(
+    enc_state, enc_pmsg = encpedpop.participant_step1(
         seed, t, hostseckey, hostpubkeys, participant_idx
     )
     state1 = ParticipantState1(params, participant_idx, enc_state)

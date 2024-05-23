@@ -112,7 +112,7 @@ class ParticipantState(NamedTuple):
 # ChillDKG will take care of invoking the equality check protocol.
 
 
-def participant_step(
+def participant_step1(
     seed: bytes, t: int, n: int, participant_idx: int
 ) -> Tuple[ParticipantState, ParticipantMsg, List[Scalar]]:
     """

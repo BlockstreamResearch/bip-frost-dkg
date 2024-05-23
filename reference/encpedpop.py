@@ -73,7 +73,7 @@ def session_seed(seed: bytes, enckeys: List[bytes], t: int) -> Tuple[bytes, byte
     return seed_, enc_context
 
 
-def participant_step(
+def participant_step1(
     seed: bytes, t: int, deckey: bytes, enckeys: List[bytes], participant_idx: int
 ) -> Tuple[ParticipantState, ParticipantMsg]:
     assert t < 2 ** (4 * 8)
@@ -83,7 +83,7 @@ def participant_step(
     # encrypted under wrong enckeys.
     seed_, enc_context = session_seed(seed, enckeys, t)
 
-    simpl_state, simpl_pmsg, shares = simplpedpop.participant_step(
+    simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
         seed_, t, n, participant_idx
     )
     assert len(shares) == n

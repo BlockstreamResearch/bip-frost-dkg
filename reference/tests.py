@@ -32,7 +32,7 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     prets = []
     for i in range(n):
-        prets += [simplpedpop.participant_step(seeds[i], t, n, i)]
+        prets += [simplpedpop.participant_step1(seeds[i], t, n, i)]
     pmsgs = [ret[1] for ret in prets]
 
     cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
@@ -61,7 +61,7 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     enckeys = [pret[1] for pret in enc_prets0]
     for i in range(n):
         deckey = enc_prets0[i][0]
-        enc_prets1 += [encpedpop.participant_step(seeds[i], t, deckey, enckeys, i)]
+        enc_prets1 += [encpedpop.participant_step1(seeds[i], t, deckey, enckeys, i)]
 
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     pstates = [pstate for (pstate, _) in enc_prets1]
