@@ -187,7 +187,7 @@ def participant_step2(
     (params, idx, enc_state) = state1
     enc_cmsg, enc_shares_sums = cmsg
 
-    dkg_output, eq_input = encpedpop.participant_pre_finalize(
+    dkg_output, eq_input = encpedpop.participant_step2(
         enc_state, enc_cmsg, enc_shares_sums[idx]
     )
     # Include the enc_shares in eq_input to ensure that participants agree on all

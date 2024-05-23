@@ -108,7 +108,7 @@ def participant_step(
     return state, pmsg
 
 
-def participant_pre_finalize(
+def participant_step2(
     state: ParticipantState,
     cmsg: CoordinatorMsg,
     enc_shares_sum: Scalar,
@@ -119,7 +119,7 @@ def participant_pre_finalize(
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
     shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
-    dkg_output, eq_input = simplpedpop.participant_pre_finalize(
+    dkg_output, eq_input = simplpedpop.participant_step2(
         simpl_state, simpl_cmsg, shares_sum
     )
     eq_input += b"".join(enckeys)

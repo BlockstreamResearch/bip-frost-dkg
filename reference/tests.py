@@ -40,7 +40,7 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     for i in range(n):
         shares_sum = Scalar.sum(*([pret[2][i] for pret in prets]))
         pre_finalize_rets += [
-            simplpedpop.participant_pre_finalize(prets[i][0], cmsg, shares_sum)
+            simplpedpop.participant_step2(prets[i][0], cmsg, shares_sum)
         ]
     return pre_finalize_rets
 
@@ -70,7 +70,7 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
         pre_finalize_rets += [
-            encpedpop.participant_pre_finalize(pstates[i], cmsg, enc_shares_sums[i])
+            encpedpop.participant_step2(pstates[i], cmsg, enc_shares_sums[i])
         ]
     return pre_finalize_rets
 
