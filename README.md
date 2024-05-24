@@ -2,7 +2,7 @@
 
 ### Abstract
 
-This document is a work-in-progress Bitcoin Improvement Proposal proposing Distributed Key Generation methods for use in FROST.
+This document is a work-in-progress Bitcoin Improvement Proposal proposing ChillDKG, a distributed key generation protocol (DKG) for use with the FROST threshold signature scheme.
 
 ### Copyright
 
@@ -13,42 +13,60 @@ This document is licensed under the 3-clause BSD license.
 ### Motivation
 
 In the FROST threshold signature scheme [KG20], a threshold `t` of some set of `n` signers is required to produce a signature.
+Notably, FROST supports any choice of `t` long as `1 <= t <= n`.
+TODO Footnote: but t=1 and t=n are not clever
 FROST remains unforgeable as long as at most `t-1` signers are compromised,
 and remains functional as long as `t` honest signers do not lose their secret key material.
 
 As a result, threshold signatures increase both security and availability,
 enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
-Before being able to create signatures, the FROST signers need to obtain a shared public key and individual key shares that allow to sign for the shared public key.
-This can, in principle, be achieved through a trusted dealer who generates the shared public key and distributes shares of the corresponding secret key to the FROST signers.
-However, the dealer is a single point of failure:
-if the dealer is malicious or compromised, or the secret key is not deleted correctly and compromised later, an adversary can forge signatures.
+Before being able to create signatures, the signers need to generate a shared *threshold public key* (representing the entire group with its `t`-of-`n` policy),
+together with `n` corresponding *secret shares* (held by the `n` signers) that allow to sign under the threshold public key.
+This key generation can, in principle, be performed by a trusted dealer who takes care of generating the threshold public key as well as all `n` secret shares, 
+which are then distributed to the `n` signers via secure channels.
+However, the trusted dealer constitutes a single point of failure:
+a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all signers avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees.
-Most suitably for the use with FROST is the PedPop DKG (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
+Most suitably for the use with FROST is the PedPop DKG protocol (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
 But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication between participants,
-which make it difficult to deploy PedPop in practice.
-It assumes that signers have secure (i.e., authenticated and encrypted) channels between each other to deliver secret shares to individual signers,
-and it assumes that signers have access to a secure broadcast mechanism.
- - TODO Explain how funds are lost if broadcast doesn't work.
+which make it difficult to deploy in practice:
+First, it assumes that signers have secure (i.e., authenticated and encrypted) channels between each other,
+which is necessary to avoid man-in-the-middle attacks and to ensure confidentiality of secret shares when delivering them to individual signers.
+Second, PedPop assumes that signers have access to a secure broadcast mechanism, which ensures that all `n` signers eventually reach agreement over the results of the DKG,
+which include not only parameters such as the generated threshold public key,
+but also whether the DKG has succeeded at all.
 
-The aim of this document is to describe *ChillDKG*, a variant of PedPop with "batteries included",
+To understand the necessity of reaching agreement,
+consider the example of a DKG to establish `2`-of-`3` Bitcoin wallet,
+in which two signers are honest, but the third signer is malicious and forces disagreement among the honest signers.
+In more detail, the malicious signer sends invalid secret shares to the first honest signer, but valid shares to the second honest signer.
+While the first honest signer will abort the DKG,
+the second honest signer will believe that the DKG has finished successfully,
+and thus may be willing to send funds to the resulting threshold public key.
+But this constitutes a catastrophic failure:
+Those funds will be lost irrevocably, because the single remaining secret share of the second signer will not be sufficient to produce a signature (without the help of the malicious signer).
+
+TODO Footnote (A very similar attack has been observed in the implementation of a resharing scheme~\cite[Chapter 3]{EPRINT:AumShl20}.)
+
+To overcome these issues, we describe *ChillDKG* in this document.
+ChillDKG is a variant of PedPop with "batteries included",
 i.e., it incorporates minimal but sufficient implementations of secure channels and secure broadcast
 and thus is easy to deploy in practice.
 
 ### Design
 
-The basic building block of our DKG protocol is the SimplPedPop protocol, which has been proven to be secure when combined with FROST [CGRS23].
-The variant of SimplPedPop considered here is tailored for scenarios involving an untrusted coordinator, which enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
+We assume a network setup in which signers have point-to-point connections to an untrusted coordinator.
+This will enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 
-TODO: Say something about dishonest majority here, not only in the list below.
-
+The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [CGRS23].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
-The equality check protocol serves an abstraction of a secure broadcast mechanism with limited functionality (TODO: this may be a confusing way to introduce the realtionship between equality check and broadcast. E.g., it doesn't only have limited functionality, it has more functionality as in broadcast only a single party broadcasts):
+The equality check protocol serves an abstraction of a secure broadcast mechanism:
 Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
 
 Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies.
-We follow a modular approach that removes one dependency at a time.
+We then follow a modular approach that removes one dependency at a time.
 First, we take care of secure channels by wrapping SimplPedPop in a protocol EncPedPop,
 which relies on pairwise ECDH key exchanges between the participants to encrypt secret shares.
 Finally, we add a concrete equality check protocol to EncPedPop to obtain a standalone DKG protocol ChillDKG.
@@ -56,16 +74,24 @@ Finally, we add a concrete equality check protocol to EncPedPop to obtain a stan
 Our equality check protocol is inspired by the Goldwasser-Lindell echo broadcast [GW05] protocol.
 Crucially, it ensures that
 whenever some participant obtains a threshold public key as output of a successful DKG session,
-this honest participant will additionally obtain a transferable "success certificate",
+this honest participant will additionally obtain a transferable success certificate,
 which can convince all other honest participants
 (ultimately at the time of a signing request)
-that the DKG has indeed been successful.
-This is sufficient to exclude the bad scenario described in the previous section. (TODO)
+that the DKG session has indeed been successful.
+This is sufficient to exclude the catastrophic failure described in the previous section.
+Under the hood, a success certificate is simply a collection of signatures from all `n` signers.
+TODO This can be optimized using a multi-signature.
 
-As an additional feature of ChillDKG, the state of any signing device can be fully recovered from a backup of a single secret per-device seed and the full public transcripts of all the DKG sessions in which the device was involved.
-ChillDKG thus incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
+TODO Call this restore instead of recovery?
+As an additional feature of ChillDKG, the state of any signing device can be fully recovered from a backup of a single secret per-device seed,
+and of the (essential parts) of the public transcripts of all the DKG sessions in which the device was involved, including the success certificates.
+To simplify the interface, we combine the transcript data and the session certificate into a single byte string called the *recovery data*,
+which is common to all participants and does not need to be kept confidential.
+Recovering a device that has participated in a DKG session then requires just the device seed and the recovery data,
+the latter of which can be obtained from any cooperative participant (or the coordinator), or from an untrusted backup provider.
 
-In summary, ChillDKG fits a wide range of usage scenarios,
+In summary, ChillDKG incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
+As a result, it fits a wide range of usage scenarios,
 and due to its low overhead, we recommend ChillDKG even for applications which already incorporate secure channels or an existing broadcast mechanism such as a BFT protocol.
 
 
@@ -80,18 +106,22 @@ In summary, we aim for the following design goals:
 - **Support for Coordinator**: Like the FROST signing protocol, ChillDKG supports a coordinator who can relay messages between the participants. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 - **DKG outputs per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
-As a consequence of these design goals, ChillDKG inherit the following limitations:
+As a consequence of these design goals, ChillDKG inherits the following limitations:
 
 - **No robustness**: Misbehaving signers can prevent the protocol from completing successfully. In such cases it is not possible to identify who of the signers misbehaved (unless they misbehave in certain trivial ways).
 - **Communication complexity not optimal in all scenarios**: While ChillDKG is optimized for bandwidth efficiency and number of rounds under the premise of flexibility, there are conceivable scenarios where specialized protocols may have better communication complexity, e.g., when setting up multiple signing devices in a single location.
 
+### Structure of this Document
+
+TODO say here that we only give high-level descriptions and that the code is the spec
+
 ## Building Blocks
 
-We give a brief overview of the low-level building block of ChillDKG, namely the DKG protocols SimplPedPop and EncPedPod.
+We give a brief overview of the low-level building blocks of ChillDKG, namely the DKG protocols SimplPedPop and EncPedPod.
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols.**
 While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism),
 this requires careful further consideration, which is not in the scope of this document.
-Consequently, we recommend implementations not to expose the algorithms of the building blocks as part of a high-level API targeted towards developers who are not cryptographic experts. (TODO Is this too arrogant? )
+Consequently, we implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
 Detailed specifications of SimplPedPop and EncPedPop are provided in the form of a Python implementation.
 
