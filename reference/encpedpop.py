@@ -143,9 +143,13 @@ def coordinator_step(
         Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs])) for i in range(n)
     ]
     eq_input += b"".join(enckeys)
-    # In pure EncPedPop, the coordinator wants to send enc_shares_sums[i] to each
-    # participant i. Broadcasting the entire array to everyone is not necessary, so we
-    # don't include it CoordinatorMsg, but only return it as a side output, so that
-    # ChillDKG can pick it up.
-    # TODO Define a CoordinatorUnicastMsg type to improve this?
+    # In ChillDKG, the coordinator needs to broadcast the entire enc_shares_sums
+    # array to all participants. But in pure EncPedPop, the coordinator needs to
+    # send to each participant i only their entry enc_shares_sums[i].
+    #
+    # Since broadcasting the entire array is not necessary, we don't include it
+    # in encpedpop.CoordinatorMsg, but only return it as a side output, so that
+    # chilldkg.coordinator_step can pick it up. Implementations of pure
+    # EncPedPop will need to decide how to transmit enc_shares_sums[i] to
+    # participant i; we leave this unspecified.
     return CoordinatorMsg(simpl_cmsg), dkg_output, eq_input, enc_shares_sums
