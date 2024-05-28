@@ -1,3 +1,5 @@
+TODO BIP Header
+
 # Distributed Key Generation for FROST (BIP draft)
 
 ### Abstract
@@ -29,7 +31,7 @@ a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all signers avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees.
-Most suitably for the use with FROST is the PedPop DKG protocol (``Pedersen DKG with proofs of possession'') [KG20, CKM21, CGRS23].
+Most suitably for the use with FROST is the PedPop DKG protocol ("Pedersen DKG with proofs of possession") [KG20, CKM21, CGRS23].
 But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication between participants,
 which make it difficult to deploy in practice:
 First, it assumes that signers have secure (i.e., authenticated and encrypted) channels between each other,
@@ -40,9 +42,9 @@ but also whether the DKG has succeeded at all.
 
 To understand the necessity of reaching agreement,
 consider the example of a DKG to establish `2`-of-`3` Bitcoin wallet,
-in which two signers are honest, but the third signer is malicious and forces disagreement among the honest signers.
-In more detail, the malicious signer sends invalid secret shares to the first honest signer, but valid shares to the second honest signer.
-While the first honest signer will abort the DKG,
+in which two signers are honest, but the third signer is malicious.
+The malicious signer sends invalid secret shares to the first honest signer, but valid shares to the second honest signer.
+While the first honest signer cannot finish the DKG,
 the second honest signer will believe that the DKG has finished successfully,
 and thus may be willing to send funds to the resulting threshold public key.
 But this constitutes a catastrophic failure:
@@ -58,7 +60,7 @@ and thus is easy to deploy in practice.
 ### Design
 
 We assume a network setup in which signers have point-to-point connections to an untrusted coordinator.
-This will enables bandwidth optimizations and is common also in implementations of the signing stage of FROST.
+This will enable bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 
 The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [CGRS23].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
@@ -71,7 +73,7 @@ First, we take care of secure channels by wrapping SimplPedPop in a protocol Enc
 which relies on pairwise ECDH key exchanges between the participants to encrypt secret shares.
 Finally, we add a concrete equality check protocol to EncPedPop to obtain a standalone DKG protocol ChillDKG.
 
-Our equality check protocol is inspired by the Goldwasser-Lindell echo broadcast [GW05] protocol.
+Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [GW05] protocol with digital signatures.
 Crucially, it ensures that
 whenever some participant obtains a threshold public key as output of a successful DKG session,
 this honest participant will additionally obtain a transferable success certificate,
@@ -83,8 +85,10 @@ Under the hood, a success certificate is simply a collection of signatures from 
 TODO This can be optimized using a multi-signature.
 
 TODO Call this restore instead of recovery?
-As an additional feature of ChillDKG, the state of any signing device can be fully recovered from a backup of a single secret per-device seed,
-and of the (essential parts) of the public transcripts of all the DKG sessions in which the device was involved, including the success certificates.
+As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
+a backup of a single secret per-device seed,
+the (essential parts) of the public transcripts of the DKG sessions,
+and the corresponding success certificates.
 To simplify the interface, we combine the transcript data and the session certificate into a single byte string called the *recovery data*,
 which is common to all participants and does not need to be kept confidential.
 Recovering a device that has participated in a DKG session then requires just the device seed and the recovery data,
@@ -94,22 +98,20 @@ In summary, ChillDKG incorporates solutions for both secure channels and broadca
 As a result, it fits a wide range of usage scenarios,
 and due to its low overhead, we recommend ChillDKG even for applications which already incorporate secure channels or an existing broadcast mechanism such as a BFT protocol.
 
-
-TODO: We could also mention (conditional) agreement and that it prevents losing coins, because it may not be a property supported by all DKGs. Also could mention "Modularity" since it's possible to wrap SimplPedPop in some other protocol.
-
 In summary, we aim for the following design goals:
 
-- **Standalone**: ChillDKG is fully specified, requiring no pre-existing secure channels or a broadcast mechanism.
-- **Dishonest Majority**:  ChillDKG supports any threshold `t <= n` (including "dishonest majority" `t > n/2`).
-- **Flexibility**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
-- **Simple backups**: The capability of ChillDKG to recover from a static seed and public per-setup data impacts the user experience when backing up threshold-signature wallets. This can enhance the probability of having backups available, preventing users from losing access to their wallets.
-- **Support for Coordinator**: Like the FROST signing protocol, ChillDKG supports a coordinator who can relay messages between the participants. This reduces communication overhead, because the coordinator is able to aggregate some some messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
+- **Standalone**: ChillDKG is fully specified, requiring no external secure channels or a broadcast mechanism.
+- **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
+- **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
+- **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
+- **Simple backups**: The capability of ChillDKG to recover devices from a static seed and public recovery data avoids the need for secret per-session backups, enhancing user experience.
+- **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 - **DKG outputs per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
-As a consequence of these design goals, ChillDKG inherits the following limitations:
+As a consequence of these design goals, ChillDKG has the following limitations:
 
-- **No robustness**: Misbehaving signers can prevent the protocol from completing successfully. In such cases it is not possible to identify who of the signers misbehaved (unless they misbehave in certain trivial ways).
-- **Communication complexity not optimal in all scenarios**: While ChillDKG is optimized for bandwidth efficiency and number of rounds under the premise of flexibility, there are conceivable scenarios where specialized protocols may have better communication complexity, e.g., when setting up multiple signing devices in a single location.
+- **No robustness**: Misbehaving signers can prevent the protocol from completing successfully. In such cases it is not possible to identify the misbehaving signer (unless they misbehave in certain trivial ways).
+- **Communication overhead not optimal in all scenarios**: Since we aim for ChillDKG to be usable in a wide range of applications, there are scenarios where specialized protocols may need less communication overhead and fewer rounds, e.g., when setting up multiple signing devices in a single location.
 
 ### Structure of this Document
 
