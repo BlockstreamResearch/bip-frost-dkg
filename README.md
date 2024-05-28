@@ -11,11 +11,11 @@ Post-History:
 Comments-URI:
 ```
 
-# Distributed Key Generation for FROST (BIP draft)
+# Distributed Key Generation for FROST
 
 ### Abstract
 
-This document is a work-in-progress Bitcoin Improvement Proposal proposing ChillDKG, a distributed key generation protocol (DKG) for use with the FROST threshold signature scheme.
+This document is a Bitcoin Improvement Proposal proposing ChillDKG, a distributed key generation protocol (DKG) for use with the FROST threshold signature scheme.
 
 ### Copyright
 
@@ -35,7 +35,7 @@ As a result, threshold signatures increase both security and availability,
 enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
 Before being able to create signatures, the signers need to generate a shared *threshold public key* (representing the entire group with its `t`-of-`n` policy),
 together with `n` corresponding *secret shares* (held by the `n` signers) that allow to sign under the threshold public key.
-This key generation can, in principle, be performed by a trusted dealer who takes care of generating the threshold public key as well as all `n` secret shares, 
+This key generation can, in principle, be performed by a trusted dealer who takes care of generating the threshold public key as well as all `n` secret shares,
 which are then distributed to the `n` signers via secure channels.
 However, the trusted dealer constitutes a single point of failure:
 a compromised dealer can forge signatures arbitrarily.
