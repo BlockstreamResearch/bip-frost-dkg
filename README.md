@@ -1,4 +1,15 @@
-TODO BIP Header
+```
+BIP:
+Title: Distributed Key Generation for FROST
+Author: Tim Ruffing <crypto@timruffing.de>
+        Jonas Nick <jonas@n-ck.net>
+Status: Draft
+License: BSD-3-Clause
+Type: Informational
+Created:
+Post-History:
+Comments-URI:
+```
 
 # Distributed Key Generation for FROST (BIP draft)
 
