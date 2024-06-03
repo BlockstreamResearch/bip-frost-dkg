@@ -25,11 +25,16 @@ This document is licensed under the 3-clause BSD license.
 
 ### Motivation
 
-In the FROST threshold signature scheme [KG20], a threshold `t` of some set of `n` signers is required to produce a signature.
-Notably, FROST supports any choice of `t` long as `1 <= t <= n`.
-TODO Footnote: but t=1 and t=n are not clever
+The FROST signature scheme [KG20] enables `t`-of-`n` Schnorr threshold signatures,
+in which a threshold `t` of some set of `n` signers is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` signers are compromised,
 and remains functional as long as `t` honest signers do not lose their secret key material.
+Notably, FROST can be made compatible with BIP340 Schnorr signatures and supports any choice of `t` long as `1 <= t <= n`.[^t]
+
+[^t]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
+In the case `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 (see [BIP327](bip-0327.mediawiki)) instead of FROST avoids the need for an interactive DKG.
+The case `t = 1` can be realized by letting one signer generate an ordinary [BIP340](bip-0340.mediawiki) key pair and transmitting the key pair to every other signer, who can check its consistency and then simply use the ordinary [BIP340](bip-0340.mediawiki) signing algorithm.
+Signers still need to ensure that they agree on key pair. A detailed specification is not in scope of this document.
 
 As a result, threshold signatures increase both security and availability,
 enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
