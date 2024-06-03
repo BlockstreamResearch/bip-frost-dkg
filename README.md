@@ -25,13 +25,13 @@ This document is licensed under the 3-clause BSD license.
 
 ### Motivation
 
-The FROST signature scheme [KG20] enables `t`-of-`n` Schnorr threshold signatures,
+The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852),[CKM21](https://eprint.iacr.org/2021/1375),[BTZ21](https://eprint.iacr.org/2022/833),[CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr threshold signatures,
 in which a threshold `t` of some set of `n` signers is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` signers are compromised,
 and remains functional as long as `t` honest signers do not lose their secret key material.
-Notably, FROST can be made compatible with BIP340 Schnorr signatures and supports any choice of `t` long as `1 <= t <= n`.[^t]
+Notably, FROST can be made compatible with [BIP340](bip-0340.mediawiki) Schnorr signatures and supports any choice of `t` long as `1 <= t <= n`.[^t-edge-cases]
 
-[^t]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
+[^t-edge-cases]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
 In the case `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 (see [BIP327](bip-0327.mediawiki)) instead of FROST avoids the need for an interactive DKG.
 The case `t = 1` can be realized by letting one signer generate an ordinary [BIP340](bip-0340.mediawiki) key pair and transmitting the key pair to every other signer, who can check its consistency and then simply use the ordinary [BIP340](bip-0340.mediawiki) signing algorithm.
 Signers still need to ensure that they agree on key pair. A detailed specification is not in scope of this document.
@@ -47,8 +47,8 @@ a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all signers avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees.
-Most suitably for the use with FROST is the PedPop DKG protocol ("Pedersen DKG with proofs of possession") [KG20, CKM21, CGRS23].
-But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication between participants,
+Most suitably for the use with FROST is the PedPop DKG protocol ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3) with proofs of possession") [[KG20](https://eprint.iacr.org/2020/852),[CKM21](https://eprint.iacr.org/2021/1375),[CGRS23](https://eprint.iacr.org/2023/899)].
+But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication channels between participants,
 which make it difficult to deploy in practice:
 First, it assumes that signers have secure (i.e., authenticated and encrypted) channels between each other,
 which is necessary to avoid man-in-the-middle attacks and to ensure confidentiality of secret shares when delivering them to individual signers.
@@ -64,9 +64,9 @@ While the first honest signer cannot finish the DKG,
 the second honest signer will believe that the DKG has finished successfully,
 and thus may be willing to send funds to the resulting threshold public key.
 But this constitutes a catastrophic failure:
-Those funds will be lost irrevocably, because the single remaining secret share of the second signer will not be sufficient to produce a signature (without the help of the malicious signer).
+Those funds will be lost irrevocably, because the single remaining secret share of the second signer will not be sufficient to produce a signature (without the help of the malicious signer).[^resharing-attack]
 
-TODO Footnote (A very similar attack has been observed in the implementation of a resharing scheme~\cite[Chapter 3]{EPRINT:AumShl20}.)
+[^resharing-attack]: A very similar attack has been observed in the implementation of a resharing scheme [[AS20](https://eprint.iacr.org/2020/1052), Section 3].
 
 To overcome these issues, we describe *ChillDKG* in this document.
 ChillDKG is a variant of PedPop with "batteries included",
@@ -78,7 +78,7 @@ and thus is easy to deploy in practice.
 We assume a network setup in which signers have point-to-point connections to an untrusted coordinator.
 This will enable bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 
-The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [CGRS23].
+The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
 The equality check protocol serves an abstraction of a secure broadcast mechanism:
 Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
@@ -89,7 +89,8 @@ First, we take care of secure channels by wrapping SimplPedPop in a protocol Enc
 which relies on pairwise ECDH key exchanges between the participants to encrypt secret shares.
 Finally, we add a concrete equality check protocol to EncPedPop to obtain a standalone DKG protocol ChillDKG.
 
-Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [GW05] protocol with digital signatures.
+Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [[GW05](https://eprint.iacr.org/2002/040), Protocol 1] protocol with digital signatures. 
+(TODO Alternatively Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 Crucially, it ensures that
 whenever some participant obtains a threshold public key as output of a successful DKG session,
 this honest participant will additionally obtain a transferable success certificate,
