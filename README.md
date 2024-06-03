@@ -15,7 +15,7 @@ Comments-URI:
 
 ### Abstract
 
-This document is a Bitcoin Improvement Proposal proposing ChillDKG, a distributed key generation protocol (DKG) for use with the FROST threshold signature scheme.
+This Bitcoin Improvement Proposal proposes ChillDKG, a distributed key generation protocol (DKG) for use with the FROST Schnorr threshold signature scheme.
 
 ### Copyright
 
