@@ -52,7 +52,9 @@ But similar to most DKG protocols in the literature, PedPop has strong requireme
 which make it difficult to deploy in practice:
 First, it assumes that signers have secure (i.e., authenticated and encrypted) channels between each other,
 which is necessary to avoid man-in-the-middle attacks and to ensure confidentiality of secret shares when delivering them to individual signers.
-Second, PedPop assumes that signers have access to a secure broadcast mechanism, which ensures that all `n` signers eventually reach agreement over the results of the DKG,
+Second, PedPop assumes that all signers have access to some external consensus (or equivalently, broadcast) mechanism
+that enables them to verify that they have an identical view of the protocol messages exchanged during DKG.
+This will in turn ensure that all signers eventually reach agreement over the results of the DKG,
 which include not only parameters such as the generated threshold public key,
 but also whether the DKG has succeeded at all.
 
@@ -70,7 +72,7 @@ Those funds will be lost irrevocably, because the single remaining secret share 
 
 To overcome these issues, we describe *ChillDKG* in this document.
 ChillDKG is a variant of PedPop with "batteries included",
-i.e., it incorporates minimal but sufficient implementations of secure channels and secure broadcast
+i.e., it incorporates minimal but sufficient implementations of secure channels and consensus
 and thus is easy to deploy in practice.
 
 ### Design
@@ -80,7 +82,7 @@ This will enable bandwidth optimizations and is common also in implementations o
 
 The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
-The equality check protocol serves an abstraction of a secure broadcast mechanism:
+The equality check protocol serves an abstraction of a consensus mechanism:
 Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
 
 Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies.
@@ -111,13 +113,12 @@ which is common to all participants and does not need to be kept confidential.
 Recovering a device that has participated in a DKG session then requires just the device seed and the recovery data,
 the latter of which can be obtained from any cooperative participant (or the coordinator), or from an untrusted backup provider.
 
-In summary, ChillDKG incorporates solutions for both secure channels and broadcast, and simplifies backups in practice.
-As a result, it fits a wide range of usage scenarios,
-and due to its low overhead, we recommend ChillDKG even for applications which already incorporate secure channels or an existing broadcast mechanism such as a BFT protocol.
+In summary, ChillDKG incorporates solutions for both secure channels and consensus, and simplifies backups in practice.
+As a result, it fits a wide range of application scenarios,
+and due to its low overhead, we recommend ChillDKG even secure communication channels or a consensus mechanism (e.g., a BFT protocol or a reliable broadcast mechanism) is readily available.
 
 In summary, we aim for the following design goals:
-
-- **Standalone**: ChillDKG is fully specified, requiring no external secure channels or a broadcast mechanism.
+- **Standalone**: ChillDKG is fully specified, requiring no external secure channels or consensus mechanism.
 - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
 - **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
 - **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
@@ -138,7 +139,7 @@ TODO say here that we only give high-level descriptions and that the code is the
 
 We give a brief overview of the low-level building blocks of ChillDKG, namely the DKG protocols SimplPedPop and EncPedPod.
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols.**
-While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a broadcast mechanism),
+While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
 Consequently, we implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
@@ -172,7 +173,7 @@ TODO Write a high-level description of the eq protocol. It's probably a good ide
 ## ChillDKG
 
 ChillDKG is the DKG protocol proposed in this BIP.
-Its main advantages over existing DKG protocols are that it does not require any external secure channel or broadcast mechanism, and recovering a signer is securely possible from a single seed and the full transcript of the protocol.
+Its main advantages over existing DKG protocols are that it does not require any external secure channel or consensus mechanism, and recovering a signer is securely possible from a single seed and the full transcript of the protocol.
 
 TODO It's a wrapper around encpedpop
 
@@ -345,9 +346,9 @@ Then those funds will be lost irrevocably, because, assuming `t > 1`, the single
 
 DKG protocols in the cryptographic literature often abstract away from this problem
 by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
-However, it can be hard or even theoretically impossible to realize a reliable broadcast mechanism depending on the specifics of the application scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
+However, it can be hard or even theoretically impossible to realize reliable broadcast depending on the specifics of the application scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
 
-The DKG protocols described in this document work with a similar but slightly weaker abstraction instead.
+The DKG protocols described in this document work with a similar but different abstraction instead.
 They assume that participants have access to an equality check mechanism "Eq", i.e.,
 a mechanism that asserts that the input values provided to it by all participants are equal.
 
