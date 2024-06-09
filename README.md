@@ -177,7 +177,7 @@ Its main advantages over existing DKG protocols are that it does not require any
 
 TODO It's a wrapper around encpedpop
 
-TODO Say something about the reference code
+TODO Say something about the reference code and link to it somewhere
 
 ### Protocol Roles and Network Setup
 
@@ -212,14 +212,16 @@ If a signer deems a protocol session successful, then this signer is assured tha
    This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the shared public key.
  - The success certificate will, when presented to any other (honest) signer, convince that other signer to deem the protocol successful.
 
+TODO: The following paragraph assumes success certificates, but we don't have success certificates in the API anymore; the certificate is contained in the recovery data.
 We stress that the mere fact one signer deems a protocol session successful does not imply that other signers deem it successful yet.
 That is exactly why the success certificate is necessary:
-If some signers have deemed the protocol not successful, but others have not (yet) and thus are stuck in the protocol session,
+If some signers have deemed the protocol not successful (TODO: remove "not" for the sentence to make sense?), but others have not (yet) and thus are stuck in the protocol session,
 e.g., due to failing network links or invalid messages sent by malicious signers,
 the successful signers can eventually make the stuck signers unstuck
 by presenting them a success certificate.
 The success certificate can, e.g., be attached to a request to initiate a FROST signing session.
 
+TODO: we mention the following above already.
 If a DKG session succeeds from the point of view of an honest signer by outputting a shared public key,
 then unforgeability is guaranteed, i.e., no subset of `t-1` signers can create a signature.
 TODO: Additionally, all honest signers receive correct DKG outputs, i.e., any set of t honest signers is able to create a signature.
@@ -266,6 +268,7 @@ chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCo
 
 A return value of False means that `cert` is not a valid certificate.
 
+TODO: the following isn't necessary anymore, since state2 can be recovered with the recovery data.
 You MUST NOT delete `state2` in this case.
 The reason is that some other participant may have a valid certificate and thus deem the DKG session successful.
 That other participant will rely on us not having deleted `state2`.
@@ -329,7 +332,7 @@ and we believe that a general recommendation is not useful.
 TODO: make the following a footnote
 There are strategies to recover if the backup is lost and other signers assist in recovering.
 In such cases, the recovering signer must be very careful to obtain the correct secret share and shared public key!
-1. If all other signers are cooperative and their seed is backed up (EncPedPop or ChillDKG), it's possible that the other signers can recreate the signer's lost secret share.
+1. If all other signers are cooperative and their seed is backed up (EncPedPop or ChillDKG), it's possible that the other signers can recreate the signer's lost secret share by running the DKG protocol again.
 2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
    This scheme requires no additional backup or storage space for the signers.
 These strategies are out of scope for this document.
@@ -358,10 +361,11 @@ Eq has the following abstract interface:
 Every participant can invoke Eq(x) with an input value x.
 Eq may not return at all to the calling participant, but if it returns, it will return True (indicating success) or False (indicating failure).
  - True means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
- - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted.
+ - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted. TODO: I (Jonas) don't think this is correct anymore: when our Eq returns false, it can happen that some other signer's Eq does return True.
 
 As long as Eq(x) has not returned for some participant, this participant remains uncertain about whether the DKG has been successful or will be successful.
 In particular, such an uncertain participant cannot rule out that other honest participants receive True as a return value and thus conclude that the DKG keys can be used.
+TODO: I (Jonas) think it's fine now to delete the DKG state (but not the seed!) after a timeout: if Eq timeouts for signer S but some other signer considers the DKG successful, they can convince signer S with recovery data.
 As a consequence, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state and the secret key material.
 
 TODO Add a more concrete example with lost funds that demonstrates the risk?
@@ -373,6 +377,9 @@ More formally, Eq must fulfill the following properties:
  - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
  - Conditional Agreement: If some honest participant outputs True and the delivery of messages between honest participants is guaranteed, then all honest participants output True.
 
+TODO: I (Jonas) am not sure if this definition of "conditional agreement" makes a lot of sense anymore for Eq: in our implementation, some honest participants may see their Eq failing, but they will eventually call it again, in recovery, which then succeeds.
+
+TODO: I (Jonas) think that in this case our implemented protocol will terminate with honest participants outputting False, but they should still not remove the seed.
 Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
 To ensure termination in that situation, the protocol requires a stronger property:
  - (Full) Agreement: If the delivery of messages between honest participants is guaranteed, all honest participants will output True or False.
