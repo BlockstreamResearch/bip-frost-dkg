@@ -215,7 +215,7 @@ If a signer deems a protocol session successful, then this signer is assured tha
 TODO: The following paragraph assumes success certificates, but we don't have success certificates in the API anymore; the certificate is contained in the recovery data.
 We stress that the mere fact one signer deems a protocol session successful does not imply that other signers deem it successful yet.
 That is exactly why the success certificate is necessary:
-If some signers have deemed the protocol not successful (TODO: remove "not" for the sentence to make sense?), but others have not (yet) and thus are stuck in the protocol session,
+If some signers have deemed the protocol successful, but others have not (yet) and thus are stuck in the protocol session,
 e.g., due to failing network links or invalid messages sent by malicious signers,
 the successful signers can eventually make the stuck signers unstuck
 by presenting them a success certificate.
