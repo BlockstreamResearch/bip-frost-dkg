@@ -29,7 +29,7 @@ The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852),[CKM21](htt
 in which a threshold `t` of some set of `n` signers is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` signers are compromised,
 and remains functional as long as `t` honest signers do not lose their secret key material.
-Notably, FROST can be made compatible with [BIP340](bip-0340.mediawiki) Schnorr signatures and supports any choice of `t` long as `1 <= t <= n`.[^t-edge-cases]
+Notably, FROST can be made compatible with [BIP340](bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
 
 [^t-edge-cases]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
 In the case `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 (see [BIP327](bip-0327.mediawiki)) instead of FROST avoids the need for an interactive DKG.
@@ -46,14 +46,16 @@ However, the trusted dealer constitutes a single point of failure:
 a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all signers avoids the need for a trusted dealer.
-There exist a number of DKG protocols with different requirements and guarantees.
-Most suitably for the use with FROST is the PedPop DKG protocol ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3) with proofs of possession") [[KG20](https://eprint.iacr.org/2020/852),[CKM21](https://eprint.iacr.org/2021/1375),[CGRS23](https://eprint.iacr.org/2023/899)].
+There exist a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
+Most suitably for the use with FROST is the PedPop DKG protocol ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3) with proofs of possession") [[KG20](https://eprint.iacr.org/2020/852),[CKM21](https://eprint.iacr.org/2021/1375),[CGRS23](https://eprint.iacr.org/2023/899)],
+which, like FROST, does not impose restrictions on the choice of `t` and `n`.
+
 But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication channels between participants,
 which make it difficult to deploy in practice:
 First, it assumes that signers have secure (i.e., authenticated and encrypted) channels between each other,
 which is necessary to avoid man-in-the-middle attacks and to ensure confidentiality of secret shares when delivering them to individual signers.
-Second, PedPop assumes that all signers have access to some external consensus (or equivalently, broadcast) mechanism
-that enables them to verify that they have an identical view of the protocol messages exchanged during DKG.
+Second, PedPop assumes that all signers have access to some external consensus or reliable broadcast mechanism
+that ensures they have an identical view of the protocol messages exchanged during DKG.
 This will in turn ensure that all signers eventually reach agreement over the results of the DKG,
 which include not only parameters such as the generated threshold public key,
 but also whether the DKG has succeeded at all.
@@ -70,10 +72,15 @@ Those funds will be lost irrevocably, because the single remaining secret share 
 
 [^resharing-attack]: A very similar attack has been observed in the implementation of a resharing scheme [[AS20](https://eprint.iacr.org/2020/1052), Section 3].
 
-To overcome these issues, we describe *ChillDKG* in this document.
+To sum up, there is currently no description of PedPop that
+does not assume the availability of external secure channels and consensus
+and thus can be turned into a standalone implementation.
+To overcome these issues, we propose ChillDKG in this BIP.
 ChillDKG is a variant of PedPop with "batteries included",
 i.e., it incorporates minimal but sufficient implementations of secure channels and consensus
-and thus is easy to deploy in practice.
+and thus does not have external dependencies.
+This makes it easy to implement and deploy, and
+we provide detailed algorithmic specifications in form of Python code.
 
 ### Design
 
@@ -157,6 +164,54 @@ We make the following modifications as compared to the original SimplPedPop prop
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
 - The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
 
+#### Equality Check Protocol
+As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of the DKG.
+
+SimplPedPop works with a similar but different abstraction instead:
+The last step of a SimplPedPod session is to run an external *equality check protocol* Eq,
+whose purpose is to verify that all participants have received identical protocol messages during the previous steps.
+
+SimplPedPop assumes that Eq is an interactive protocol with the following abstract interface:
+Every participant can invoke a session of Eq with an input value x (TODO and the identities of other participants?).
+Eq may not return at all to the calling participant.
+But if it returns successfully for some calling participant, then all honest participants agree on the value x
+(but it may be the case that not all of them have established this fact yet).
+This means that the SimplPedPod session was successful and the resulting threshold public key can be returned to the participant, who can use it (e.g., send funds to it).
+
+More formally, Eq must fulfill the following properties:
+ - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values x and x' provided by two honest participants, we have x = x'.
+ - Conditional Agreement: If Eq returns successfully to some honest participant, and all messages between honest participants are delivered eventually, then Eq will eventually return successfully to all honest participants.
+
+Depending on the application scenario, different approaches may be suitable to implement Eq,
+e.g., a consensus protocol already available as part of a federated system,
+or out-of-band communication such as the user comparing screens of multiple signing devices).[^out-of-band-eq]
+
+[^out-of-band-eq]: For example, in a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup,
+every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user.
+The user can manually verify the equality of the values by comparing the values shown on all displays,
+and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
+Similarly, if signing devices are controlled by different organizations in different geographic locations,
+agents of these organizations can meet in a single room and compare the values.
+These "out-of-band" methods can achieve conditional agreement (assuming the involved humans proceed with their tasks eventually)
+but a detailed treatment is out of scope.
+
+For ChillDKG, we will use a more direct approach.
+ChillDKG incorporates an equality check protocol, which is applicable to network-based scenarios where long-term host keys are available.
+TODO Write a high-level description of the eq protocol. It's probably a good idea to steal from the "background" section
+
+This protocol satisfies integrity and conditional agreement.
+Proof. (TODO move to footnote or code comments?)
+Integrity:
+Unless a signature has been forged, if some honest participant with input `x` outputs True,
+then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
+Conditional Agreement:
+If some honest participant with input `x` returns True,
+then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
+Consider any honest participant among these other participants.
+Assuming a reliable network, this honest participant eventually receives `cert`,
+and by integrity, has received `x` as input.
+Thus, this honest participant will accept `cert` and return True.
+
 ### EncPedPop
 
 EncPedPop is a thin wrapper around that SimplPedPop.
@@ -165,10 +220,6 @@ so that they can be sent over insecure channels.
 
 EncPedPod encrypts the shares to a 33-byte public key
 (as generated using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer) algorithm).
-
-### Certifying equality check protocol based on Goldwasser-Lindell Echo Broadcast
-
-TODO Write a high-level description of the eq protocol. It's probably a good idea to steal from the "background" section
 
 ## ChillDKG
 
@@ -336,86 +387,3 @@ In such cases, the recovering signer must be very careful to obtain the correct 
 2. If threshold-many signers are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
    This scheme requires no additional backup or storage space for the signers.
 These strategies are out of scope for this document.
-
-## Background on Equality Check Protocols
-
-TODO: The term agreement is overloaded (used for formal property of Eq and for informal property of DKG). Maybe rename one to consistency? Check the broadcast literature first
-
-A crucial prerequisite for security is that participants reach agreement over the results of the DKG.
-Indeed, disagreement may lead to catastrophic failure:
-For example, assume that all but one participant believe that DKG has failed and therefore delete their secret key material,
-but one participant believes that the DKG has finished successfully and sends funds to the resulting threshold public key.
-Then those funds will be lost irrevocably, because, assuming `t > 1`, the single remaining secret share is not sufficient to produce a signature.
-
-DKG protocols in the cryptographic literature often abstract away from this problem
-by assuming that all participants have access to some kind of ideal "reliable broadcast" mechanism, which guarantees that all participants receive the same protocol messages and thereby ensures agreement.
-However, it can be hard or even theoretically impossible to realize reliable broadcast depending on the specifics of the application scenario, e.g., the guarantees provided by the underlying network, and the minimum number of participants assumed to be honest.
-
-The DKG protocols described in this document work with a similar but different abstraction instead.
-They assume that participants have access to an equality check mechanism "Eq", i.e.,
-a mechanism that asserts that the input values provided to it by all participants are equal.
-
-TODO: Is it really the DKG that is successful here or is it just Eq?
-
-Eq has the following abstract interface:
-Every participant can invoke Eq(x) with an input value x.
-Eq may not return at all to the calling participant, but if it returns, it will return True (indicating success) or False (indicating failure).
- - True means that it is guaranteed that all honest participants agree on the value x (but it may be the case that not all of them have established this fact yet). This means that the DKG was successful and the resulting aggregate key can be used, and the generated secret keys need to be retained.
- - False means that it is guaranteed that no honest participant will output True. In that case, the generated secret keys can safely be deleted. TODO: I (Jonas) don't think this is correct anymore: when our Eq returns false, it can happen that some other signer's Eq does return True.
-
-As long as Eq(x) has not returned for some participant, this participant remains uncertain about whether the DKG has been successful or will be successful.
-In particular, such an uncertain participant cannot rule out that other honest participants receive True as a return value and thus conclude that the DKG keys can be used.
-TODO: I (Jonas) think it's fine now to delete the DKG state (but not the seed!) after a timeout: if Eq timeouts for signer S but some other signer considers the DKG successful, they can convince signer S with recovery data.
-As a consequence, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state and the secret key material.
-
-While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers agreement in the successful cases.
-Under the assumption that network messages eventually arrive (this is often called an "asynchronous network"), we can guarantee that if *some* honest participant determines the DKG to be successful, then *all* other honest participants determine it to be successful eventually.
-
-More formally, Eq must fulfill the following properties:
- - Integrity: If some honest participant outputs True, then for every pair of values x and x' input provided by two honest participants, we have x = x'.
- - Conditional Agreement: If some honest participant outputs True and the delivery of messages between honest participants is guaranteed, then all honest participants output True.
-
-TODO: I (Jonas) am not sure if this definition of "conditional agreement" makes a lot of sense anymore for Eq: in our implementation, some honest participants may see their Eq failing, but they will eventually call it again, in recovery, which then succeeds.
-
-TODO: I (Jonas) think that in this case our implemented protocol will terminate with honest participants outputting False, but they should still not remove the seed.
-Conditional agreement does *not* guarantee that the protocol terminates if two honest participants have `x` and `x'` such that `x != x'`.
-To ensure termination in that situation, the protocol requires a stronger property:
- - (Full) Agreement: If the delivery of messages between honest participants is guaranteed, all honest participants will output True or False.
-
-### Examples
-
-TODO: Expand these scenarios. Relate them to True, False.
-
-Depending on the application scenario, Eq can be implemented by different protocols, some of which involve out-of-band communication:
-
-#### Participants are in a single room
-
-In a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup, every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user. The user can manually verify the equality of the values by comparing the values shown on all displays, and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
-
-TODO add failure case, specify entire protocol
-
-Similarly, if signing devices are controlled by different organizations in different geographic locations, agents of these organizations can meet in a single room and compare the values.
-
-These "out-of-band" methods can achieve agreement (assuming the involved humans proceed with their tasks eventually).
-
-#### Certifying network-based protocol based on Goldwasser-Lindell Echo Broadcast
-
-The [equality check protocol used by ChillDKG](#certifying-equality-check-protocol-based-on-goldwasser-lindell-echo-broadcast) is applicable to network-based scenarios where long-term host keys are available. It satisfies integrity and conditional agreement.
-
-Proof. (TODO for footnote?)
-Integrity:
-Unless a signature has been forged, if some honest participant with input `x` outputs True,
-then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
-Conditional Agreement:
-If some honest participant with input `x` returns True,
-then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
-Consider any honest participant among these other participants.
-Assuming a reliable network, this honest participant eventually receives `cert`,
-and by integrity, has received `x` as input.
-Thus, this honest participant will accept `cert` and return True.
-
-#### Consensus protocol
-
-If the participants run a BFT-style consensus protocol (e.g., as part of a federated protocol), they can use consensus to check whether they agree on `x`.
-
-TODO: Explain more here. This can also achieve agreement but consensus is hard (e.g., honest majority, network assumptions...)
