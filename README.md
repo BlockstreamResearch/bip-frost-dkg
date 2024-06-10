@@ -368,8 +368,6 @@ In particular, such an uncertain participant cannot rule out that other honest p
 TODO: I (Jonas) think it's fine now to delete the DKG state (but not the seed!) after a timeout: if Eq timeouts for signer S but some other signer considers the DKG successful, they can convince signer S with recovery data.
 As a consequence, even if Eq appears to be stuck, the caller must not assume (e.g., after some timeout) that Eq has failed, and, in particular, must not delete the DKG state and the secret key material.
 
-TODO Add a more concrete example with lost funds that demonstrates the risk?
-
 While we cannot guarantee in all application scenarios that Eq() terminates and returns, we can typically achieve a weaker guarantee that covers agreement in the successful cases.
 Under the assumption that network messages eventually arrive (this is often called an "asynchronous network"), we can guarantee that if *some* honest participant determines the DKG to be successful, then *all* other honest participants determine it to be successful eventually.
 
