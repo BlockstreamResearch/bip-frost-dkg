@@ -1,18 +1,18 @@
 @startuml
 title ChillDKG
-participant Signer
+participant Participant
 participant Coordinator
 
-rnote over Signer: chilldkg_hostpubkey
-Signer->Coordinator : my_hostpubkey
-Coordinator->Signer : hostpubkeys
-rnote over Signer: chilldkg_setup_id
-note across: Compare setup_id with other signers out-of-band
+rnote over Participant: chilldkg_hostpubkey
+Participant->Coordinator : my_hostpubkey
+Coordinator->Participant : hostpubkeys
+rnote over Participant: chilldkg_setup_id
+note across: Compare setup_id with other participants out-of-band
 
-rnote over Signer: chilldkg_round1
-Signer->Coordinator : vss_commitment_ext, enc_gen_shares
-Coordinator->Signer : vss_commitments_sum, all_enc_shares_sum
-rnote over Signer: chilldkg_round2
-Signer->Coordinator : eq_round1
-Coordinator->Signer : cert
-rnote over Signer: chilldkg_finalize
+rnote over Participant: chilldkg_round1
+Participant->Coordinator : vss_commitment_ext, enc_gen_shares
+Coordinator->Participant : vss_commitments_sum, all_enc_shares_sum
+rnote over Participant: chilldkg_round2
+Participant->Coordinator : eq_round1
+Coordinator->Participant : cert
+rnote over Participant: chilldkg_finalize
