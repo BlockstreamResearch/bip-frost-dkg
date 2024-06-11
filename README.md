@@ -171,15 +171,15 @@ SimplPedPop works with a similar but different abstraction instead:
 The last step of a SimplPedPod session is to run an external *equality check protocol* Eq,
 whose purpose is to verify that all participants have received identical protocol messages during the previous steps.
 
-SimplPedPop assumes that Eq is an interactive protocol with the following abstract interface:
-Every participant can invoke a session of Eq with an input value x (TODO and the identities of other participants?).
+SimplPedPop assumes that Eq is an interactive protocol between the `n` participants with the following abstract interface:
+Every participant can invoke a session of Eq with an input value `x` (TODO and the identities of other participants?).
 Eq may not return at all to the calling participant.
-But if it returns successfully for some calling participant, then all honest participants agree on the value x
+But if it returns successfully for some calling participant, then all honest participants agree on the value `x`.
 (but it may be the case that not all of them have established this fact yet).
 This means that the SimplPedPod session was successful and the resulting threshold public key can be returned to the participant, who can use it (e.g., send funds to it).
 
 More formally, Eq must fulfill the following properties:
- - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values x and x' provided by two honest participants, we have x = x'.
+ - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values x and x' provided by two honest participants, we have `x = x'`.
  - Conditional Agreement: If Eq returns successfully to some honest participant, and all messages between honest participants are delivered eventually, then Eq will eventually return successfully to all honest participants.
 
 Depending on the application scenario, different approaches may be suitable to implement Eq,
@@ -196,11 +196,36 @@ These "out-of-band" methods can achieve conditional agreement (assuming the invo
 but a detailed treatment is out of scope.
 
 For ChillDKG, we will use a more direct approach.
-ChillDKG incorporates an equality check protocol, which is applicable to network-based scenarios where long-term host keys are available.
-TODO Write a high-level description of the eq protocol. It's probably a good idea to steal from the "background" section
+ChillDKG incorporates an equality check protocol CertEq, which is applicable to network-based scenarios where long-term cryptographic identities of the participants are available.
+Concretely, each participant is assumed to hold a long-term key pair of a signature scheme, called the *host key pair*, the public key of which has been verified out-of-band by all other participants.
 
+The CertEq protocol is straightforward:
+Every participant sends a signature of their input value `x` to every other participant (via the untrusted coordinator),
+and expects to receive valid `x` from all remaining `n-1` participants.
+A participant terminates successfully as soon as the participant has collected signatures from all `n` participants (including themselves),
+which verify under the message `x` and the respective host public key.
+
+This termination rule immediately implies the integrity property:
+Unless a signature has been forged, if some honest participant with input `x` terminates successfully,
+then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
+
+The key insight to ensuring conditional agreement is that any participant terminating successfully can build a *success certificate* consisting of the collected list of all `n` signatures on `x`.
+This certificate will be enough to convince every other honest participant (who, by integrity, has received `x` as input) to terminate successfully
+This works at any time in the future, even if this other honest participant has seen received invalid or no signatures during the actual run of CertEq,
+due to unreliable networks or an unreliable coordinator, or malicious participants signing more than one value.
+
+Thus, the certificate does not need to be sent during a normal run of CertEq,
+but can instead be presented to other participants later,
+e.g., during a request to participate in a FROST signing session.
+
+The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
+any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
+
+TODO Add note about multisigs/aggsigs
+
+(TODO move to footnote or code comments?)
 This protocol satisfies integrity and conditional agreement.
-Proof. (TODO move to footnote or code comments?)
+Proof.
 Integrity:
 Unless a signature has been forged, if some honest participant with input `x` outputs True,
 then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
