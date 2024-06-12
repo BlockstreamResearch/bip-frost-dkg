@@ -87,27 +87,25 @@ we provide detailed algorithmic specifications in form of Python code.
 We assume a network setup in which participants have point-to-point connections to an untrusted coordinator.
 This will enable bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 
+TODO long term keys
+
 The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
 The equality check protocol serves an abstraction of a consensus mechanism:
-Its only purpose is to check that, at the end of SimplPedPod, all participants have established an identical protocol transcript.
+Its only purpose is to check that, at the end of SimplPedPod, all participants have received identical protocol messages.
 
 Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies.
 We then follow a modular approach that removes one dependency at a time.
 First, we take care of secure channels by wrapping SimplPedPop in a protocol EncPedPop,
 which relies on pairwise ECDH key exchanges between the participants to encrypt secret shares.
-Finally, we add a concrete equality check protocol to EncPedPop to obtain a standalone DKG protocol ChillDKG.
+Finally, we add a concrete equality check protocol CertEq to EncPedPop to obtain a standalone DKG protocol ChillDKG.
 
-Our equality check protocol is an extension of the Goldwasser-Lindell echo broadcast [[GW05](https://eprint.iacr.org/2002/040), Protocol 1] protocol with digital signatures. 
-(TODO Alternatively Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
-Crucially, it ensures that
-whenever some participant obtains a threshold public key as output of a successful DKG session,
-this honest participant will additionally obtain a transferable success certificate,
-which can convince all other honest participants
+Our equality check protocol CertEq consists of every participant simply collecting a list of valid signatures on the session transcript from all `n` participants
+before finalizing the DKG session with some threshold public key as output.
+The list of signatures, also called a *success certificate*, can convince any other honest participant
 (ultimately at the time of a signing request)
 that the DKG session has indeed been successful.
 This is sufficient to exclude the catastrophic failure described in the previous section.
-Under the hood, a success certificate is simply a collection of signatures from all `n` participants.
 
 TODO Call this restore instead of recovery?
 As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
@@ -140,12 +138,12 @@ and due to its low overhead, we recommend ChillDKG even secure communication cha
 A direct consequence of the ability to support dishonest majority setups (`t > n/2`) in asynchronous networks is that robustness cannot be guaranteed, i.e., misbehaving participants can prevent the protocol from completing successfully.
 TODO footnote
 Nevertheless, we believe that this is, in fact, desirable:
-A robust DKG that insists on terminating in the presence of malicious or otherwise faulty signers carries the risk of masking faults, possibly preventing users from investigating and resolving them.
+A robust DKG protocol that insists on succeeding in the presence of malicious or otherwise faulty signers carries the risk of masking faults, possibly preventing users from investigating and resolving them.
 
 For example, consider a key generation ceremony for a threshold cold wallet intended store large amounts of Bitcoin.
 If it turns out that one of the devices participating appears non-responsive, e.g., due to a loss of network or a software bug,
-it will typically be desirable to prefer security over progress, and abort instead of forcing the DKG to terminate.
-Note that all a robust DKG could achieve is to consider that device non-responsive and effectively exclude it from DKG, which degrades the setup already from the beginning from `t of n` to `t-1` of `n-1`.
+it will typically be desirable to prefer security over progress, and abort instead of forcing successful termination of the ceremony.
+Note that all a robust DKG protocol could achieve is to consider that device non-responsive and effectively exclude it from the DKG session, which degrades the setup already from the beginning from `t of n` to `t-1` of `n-1`.
 While a warning can be presented to users in this case, it is well known, e.g., from certificate warnings in browsers, that users tend to misunderstand and ignore these.
 
 Even in distributed systems with strict liveness requirements, e.g., a system run by a large federation of nodes of which a majority is trusted, what is typically necessary for the liveness of the system is the continued ability to *produce signatures*.
@@ -162,9 +160,9 @@ TODO say here that we only give high-level descriptions and that the code is the
 
 We give a brief overview of the low-level building blocks of ChillDKG, namely the DKG protocols SimplPedPop and EncPedPod.
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols.**
-While SimplPedPop and EncPedPop may in principle serve as building blocks for other DKG designs (e.g., for applications that already incorporate a consensus mechanism),
+While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
-Consequently, we implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
+Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
 Detailed specifications of SimplPedPop and EncPedPop are provided in the form of a Python implementation.
 
@@ -215,12 +213,14 @@ For ChillDKG, we will use a more direct approach.
 ChillDKG incorporates an equality check protocol CertEq, which is applicable to network-based scenarios where long-term cryptographic identities of the participants are available.
 Concretely, each participant is assumed to hold a long-term key pair of a signature scheme, called the *host key pair*, the public key of which has been verified out-of-band by all other participants.
 
-The CertEq protocol is straightforward:
+The CertEq protocol is straightforward:[^certeq-literature]
 Every participant sends a signature of their input value `x` to every other participant (via the untrusted coordinator),
 and expects to receive valid `x` from all remaining `n-1` participants.
 A participant terminates successfully as soon as the participant has collected signatures from all `n` participants (including themselves),
 which verify under the message `x` and the respective host public key.
 TODO This can be optimized using a multi-signature.
+
+[^certeq:] CertEq can be viewed as signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 
 This termination rule immediately implies the integrity property:
 Unless a signature has been forged, if some honest participant with input `x` terminates successfully,
