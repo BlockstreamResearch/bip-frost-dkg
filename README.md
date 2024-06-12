@@ -138,6 +138,23 @@ As a consequence of these design goals, ChillDKG has the following limitations:
 - **No robustness**: Misbehaving participants can prevent the protocol from completing successfully. In such cases it is not possible to identify the misbehaving participant (unless they misbehave in certain trivial ways).
 - **Communication overhead not optimal in all scenarios**: Since we aim for ChillDKG to be usable in a wide range of applications, there are scenarios where specialized protocols may need less communication overhead and fewer rounds, e.g., when setting up multiple signing devices in a single location.
 
+#### Why Robustness is not a Goal
+A direct consequence of the ability to support dishonest majority setups (`t > n/2`) in asynchronous networks is that robustness cannot be guaranteed, i.e., misbehaving participants can prevent the protocol from completing successfully.
+TODO footnote
+Nevertheless, we believe that this is, in fact, desirable:
+A robust DKG that insists on terminating in the presence of malicious or otherwise faulty signers carries the risk of masking faults, possibly preventing users from investigating and resolving them.
+
+For example, consider a key generation ceremony for a threshold cold wallet intended store large amounts of Bitcoin.
+If it turns out that one of the devices participating appears non-responsive, e.g., due to a loss of network or a software bug,
+it will typically be desirable to prefer security over progress, and abort instead of forcing the DKG to terminate.
+Note that all a robust DKG could achieve is to consider that device non-responsive and effectively exclude it from DKG, which degrades the setup already from the beginning from `t of n` to `t-1` of `n-1`.
+While a warning can be presented to users in this case, it is well known, e.g., from certificate warnings in browsers, that users tend to misunderstand and ignore these.
+
+Even in distributed systems with strict liveness requirements, e.g., a system run by a large federation of nodes of which a majority is trusted, what is typically necessary for the liveness of the system is the continued ability to *produce signatures*.
+However, the setup of keys is typically performed in a one-time ceremony at the inception of the system (and possibly repeated in large time intervals, e.g., every few months).
+In other words, what is primarily required to ensure liveness in these applications is a robust signing protocol (and a solution for FROST exists [[RRJSS22](https://eprint.iacr.org/2022/550)], and not a robust DKG protocol.
+
+
 ### Structure of this Document
 
 TODO say here that we only give high-level descriptions and that the code is the spec
