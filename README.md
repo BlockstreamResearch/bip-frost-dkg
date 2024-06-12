@@ -108,7 +108,6 @@ which can convince all other honest participants
 that the DKG session has indeed been successful.
 This is sufficient to exclude the catastrophic failure described in the previous section.
 Under the hood, a success certificate is simply a collection of signatures from all `n` participants.
-TODO This can be optimized using a multi-signature.
 
 TODO Call this restore instead of recovery?
 As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
@@ -120,9 +119,9 @@ which is common to all participants and does not need to be kept confidential.
 Recovering a device that has participated in a DKG session then requires just the device seed and the recovery data,
 the latter of which can be obtained from any cooperative participant (or the coordinator), or from an untrusted backup provider.
 
-In summary, ChillDKG incorporates solutions for both secure channels and consensus, and simplifies backups in practice.
-As a result, it fits a wide range of application scenarios,
-and due to its low overhead, we recommend ChillDKG even secure communication channels or a consensus mechanism (e.g., a BFT protocol or a reliable broadcast mechanism) is readily available.
+These features make ChillDKG usable in a wide range of applications.
+As a consequence of this broad applicability, there will necessary be scenarios in which specialized protocols need less communication overhead and fewer rounds,
+e.g., when setting up multiple signing devices in a single location.
 
 In summary, we aim for the following design goals:
 - **Standalone**: ChillDKG is fully specified, requiring no external secure channels or consensus mechanism.
@@ -133,10 +132,9 @@ In summary, we aim for the following design goals:
 - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
 - **DKG outputs per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
-As a consequence of these design goals, ChillDKG has the following limitations:
-
-- **No robustness**: Misbehaving participants can prevent the protocol from completing successfully. In such cases it is not possible to identify the misbehaving participant (unless they misbehave in certain trivial ways).
-- **Communication overhead not optimal in all scenarios**: Since we aim for ChillDKG to be usable in a wide range of applications, there are scenarios where specialized protocols may need less communication overhead and fewer rounds, e.g., when setting up multiple signing devices in a single location.
+In summary, ChillDKG incorporates solutions for both secure channels and consensus, and simplifies backups in practice.
+As a result, it fits a wide range of application scenarios,
+and due to its low overhead, we recommend ChillDKG even secure communication channels or a consensus mechanism (e.g., a BFT protocol or a reliable broadcast mechanism) is readily available.
 
 #### Why Robustness is not a Goal
 A direct consequence of the ability to support dishonest majority setups (`t > n/2`) in asynchronous networks is that robustness cannot be guaranteed, i.e., misbehaving participants can prevent the protocol from completing successfully.
@@ -154,6 +152,7 @@ Even in distributed systems with strict liveness requirements, e.g., a system ru
 However, the setup of keys is typically performed in a one-time ceremony at the inception of the system (and possibly repeated in large time intervals, e.g., every few months).
 In other words, what is primarily required to ensure liveness in these applications is a robust signing protocol (and a solution for FROST exists [[RRJSS22](https://eprint.iacr.org/2022/550)], and not a robust DKG protocol.
 
+TODO In such cases it is not possible to identify the misbehaving participant (unless they misbehave in certain trivial ways).
 
 ### Structure of this Document
 
@@ -221,6 +220,7 @@ Every participant sends a signature of their input value `x` to every other part
 and expects to receive valid `x` from all remaining `n-1` participants.
 A participant terminates successfully as soon as the participant has collected signatures from all `n` participants (including themselves),
 which verify under the message `x` and the respective host public key.
+TODO This can be optimized using a multi-signature.
 
 This termination rule immediately implies the integrity property:
 Unless a signature has been forged, if some honest participant with input `x` terminates successfully,
