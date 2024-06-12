@@ -156,41 +156,57 @@ TODO In such cases it is not possible to identify the misbehaving participant (u
 
 TODO say here that we only give high-level descriptions and that the code is the spec
 
-## Building Blocks
+## Overview of the Internals of ChillDKG
 
-We give a brief overview of the low-level building blocks of ChillDKG, namely the DKG protocols SimplPedPop and EncPedPod.
-We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols.**
+To ease understanding of the interface and reference code of ChillDKG,
+we provide a technical overview of the internals ChillDKG, which includes, as building blocks, the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
+The contents of this section are informational and not strictly required to implement or use ChillDKG.
+
+We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols**.
 While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
 Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
-Detailed specifications of SimplPedPop and EncPedPop are provided in the form of a Python implementation.
+Executable specifications of all building blocks are provided as part of the Python reference implementation.
 
 ### SimplPedPop
 
 The SimplPedPop scheme has been proposed in
-[Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf).
-It is an variant of the PedPop protocol [], an extension of Pedersen DKG [].
-As all variants of Pedersen DKG, SimplPedPop relies on Feldman's Verifiable Secret Sharing (VSS).
+[Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
+as an variant PedPop protocol [], an extension of Pedersen DKG [].
+As all variants of Pedersen DKG, SimplPedPop relies on Feldman's Verifiable Secret Sharing (VSS),
+which consist of every participant performing Shamir secret sharing of ...
+TODO explain
+TODO explain that everything is deterministically derived from a seed  (where?)
 
 We make the following modifications as compared to the original SimplPedPop proposal:
 - Adding individual's participant public keys to the output of the DKG. This allows partial signature verification.
 - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
 - The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
 
-#### Equality Check Protocol
-As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of the DKG.
+### EncPedPop
 
-SimplPedPop works with a similar but different abstraction instead:
-The last step of a SimplPedPod session is to run an external *equality check protocol* Eq,
+EncPedPop is a thin wrapper around that SimplPedPop.
+It takes care of encrypting the secret shares,
+so that they can be sent over insecure channels.
+
+EncPedPod encrypts the shares to a 33-byte public key
+(as generated using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-participant) algorithm).
+
+### CertEq
+
+As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of a DKG session.
+EncPedPop (as inherited from SimplPedPop) works with a similar but different abstraction instead:
+The last step of a EncPedPod session is to run an external *equality check protocol* Eq,
 whose purpose is to verify that all participants have received identical protocol messages during the previous steps.
 
-SimplPedPop assumes that Eq is an interactive protocol between the `n` participants with the following abstract interface:
+EncPedPop assumes that Eq is an interactive protocol between the `n` participants with the following abstract interface
+(see also TODO):
 Every participant can invoke a session of Eq with an input value `x` (TODO and the identities of other participants?).
 Eq may not return at all to the calling participant.
 But if it returns successfully for some calling participant, then all honest participants agree on the value `x`.
 (but it may be the case that not all of them have established this fact yet).
-This means that the SimplPedPod session was successful and the resulting threshold public key can be returned to the participant, who can use it (e.g., send funds to it).
+This means that the EncPedPod session was successful and the resulting threshold public key can be returned to the participant, who can use it (e.g., send funds to it).
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values x and x' provided by two honest participants, we have `x = x'`.
@@ -254,21 +270,14 @@ Assuming a reliable network, this honest participant eventually receives `cert`,
 and by integrity, has received `x` as input.
 Thus, this honest participant will accept `cert` and return True.
 
-### EncPedPop
+### Putting it all together: ChillDKG
 
-EncPedPop is a thin wrapper around that SimplPedPop.
-It takes care of encrypting the secret shares,
-so that they can be sent over insecure channels.
+TODO ChillDKG a wrapper around encpedpop, it adds a recovery mechanism
 
-EncPedPod encrypts the shares to a 33-byte public key
-(as generated using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-participant) algorithm).
-
-## ChillDKG
+## Interface and Usage of ChillDKG
 
 ChillDKG is the DKG protocol proposed in this BIP.
 Its main advantages over existing DKG protocols are that it does not require any external secure channel or consensus mechanism, and recovering a participant is securely possible from a single seed and the full transcript of the protocol.
-
-TODO It's a wrapper around encpedpop
 
 TODO Say something about the reference code and link to it somewhere
 
