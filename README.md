@@ -304,44 +304,41 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 (TODO This is like in MuSig, but we explained this differently in BIP327 where we say that the coordinator is optional...)
 
 ### Inputs and Output
-For each participant, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
-The secret share and shared public key are required by a participant to produce signatures and therefore, participants *must* ensure that they are not lost.
 
-
-### Threat Model and Security Goals
-
-Some participants, the coordinator and all network links may be malicious, i.e., controlled by an attacker.
-We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.
-(See TODO for a more formal treatment.)
+TODO inputs
 
 If a session of the DKG protocol returns an output to an (honest) participant,
 then we say that this participant *deems the protocol session successful*.
-In that case, the output returned by the protocol session to the participant is a tuple consisting of a *secret share* (individual to the participant), the *shared public key* (common to all participants), a list of n *individual public keys* for partial signature verification (common to all participants), and a *success certificate* (common to all participants).
+In that case, the output returned by the protocol session to the participant is a tuple consisting of a *secret share* (individual to the participant), the *threshold public key* (common to all participants), a list of n *public shares* for partial signature verification (common to all participants), and *recovery data* (common to all participants).
 
-If a participant deems a protocol session successful, then this participant is assured that:
- - A coalition of a malicious coordinator and at most `t - 1` malicious participants cannot forge signatures under that shared public key. (Unforgeability)
- - All (honest) participants who deem the protocol session successful will have correct and consistent protocol outputs.
-   In particular, they agree on the shared public key, the list of individual public keys and the success certificate.
-   Moreover, any `t` of them have secret shares which are, in principle, sufficient to reconstruct the secret key corresponding to the shared public key.
+### Threat Model and Security Goals
+
+Some participants, the coordinator, and all network links may be malicious, i.e., controlled by an attacker.
+We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.[^formal-treatment]
+
+[^formal-treatment]: See the paper by Chu, Gerhart, Ruffing, Schröder [CGRS23](https://eprint.iacr.org/2023/899) for more formal treatment.
+
+If a participant deems a protocol session successful (see above), then this participant is assured that:
+ - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge signatures under that shared public key. (Unforgeability)
+ - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
+   In particular, they agree the threshold public key, the list of public shares, and the recovery data.
+   Moreover, any `t` of them have secret shares consistent with the threshold public key.[^consistent-secret-shares]
    This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the shared public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
-TODO: The following paragraph assumes success certificates, but we don't have success certificates in the API anymore; the certificate is contained in the recovery data.
-We stress that the mere fact one participant deems a protocol session successful does not imply that other participants deem it successful yet.
-That is exactly why the success certificate is necessary:
-If some participants have deemed the protocol successful, but others have not (yet) and thus are stuck in the protocol session,
-e.g., due to failing network links or invalid messages sent by malicious participants,
-the successful participants can eventually make the stuck participants unstuck
-by presenting them a success certificate.
-The success certificate can, e.g., be attached to a request to initiate a FROST signing session.
+[^consistent-secretshares:] The secret shares of any `t` honest participants are, in principle, sufficient to reconstruct the full secret key corresponding to the threshold public key.
+However, the very purpose of a threshold signature scheme is to avoid the reconstruction of the full secret key in a single place.
 
-TODO: we mention the following above already.
-If a DKG session succeeds from the point of view of an honest participant by outputting a shared public key,
-then unforgeability is guaranteed, i.e., no subset of `t-1` participants can create a signature.
-TODO: Additionally, all honest participants receive correct DKG outputs, i.e., any set of t honest participants is able to create a signature.
+We stress that the mere fact one participant deems a protocol session successful does not imply that other participants deem it successful yet.
+Indeed, due to failing network links or invalid messages sent by malicious participants,
+it is possible that some participants have deemed the ChillDKG session successful, but others have not (yet) and thus are stuck in the ChillDKG session.\
+In that case, the successful participants can eventually make the stuck participants unstuck
+by presenting them the recovery data.
+The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
+
 TODO: consider mentioning ROAST
 
-### Steps of a DKG Session
+### Steps of a ChillDKG Session
 
 Generate long-term host keys.
 
@@ -349,7 +346,7 @@ Generate long-term host keys.
 chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]
 ```
 
-To initiate a concrete DKG session,
+To initiate a ChillDKG session,
 the participants send their host pubkey to all other participants and collect received host pubkeys.
 We assume that the participants agree on the list of host pubkeys (including their order).
 If they do not agree, the comparison of the session parameter identifier in the next protocol step will simply fail.
