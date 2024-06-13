@@ -279,7 +279,10 @@ TODO ChillDKG a wrapper around encpedpop, it adds a recovery mechanism
 The purpose of this section is to provide a high-level overview of the interface and usage of ChillDKG,
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
-TODO Say something about the reference code and link to it somewhere
+We provide a full Python 3 reference implementation of ChillDKG and its building blocks in [reference/chilldkg.py](reference/chilldkg.py).
+Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation.
+Developers, who would like to understand ChillDKG's internals or reference implementation, or implement ChillDKG itself,
+should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ### Protocol Roles and Network Setup
 
