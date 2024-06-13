@@ -156,7 +156,7 @@ TODO In such cases it is not possible to identify the misbehaving participant (u
 
 TODO say here that we only give high-level descriptions and that the code is the spec
 
-## Overview of the Internals of ChillDKG
+## Internals of ChillDKG
 
 To ease understanding of the interface and reference code of ChillDKG,
 we provide a technical overview of the internals ChillDKG, which includes, as building blocks, the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
@@ -274,10 +274,10 @@ Thus, this honest participant will accept `cert` and return True.
 
 TODO ChillDKG a wrapper around encpedpop, it adds a recovery mechanism
 
-## Interface and Usage of ChillDKG
+## Usage of ChillDKG
 
-ChillDKG is the DKG protocol proposed in this BIP.
-Its main advantages over existing DKG protocols are that it does not require any external secure channel or consensus mechanism, and recovering a participant is securely possible from a single seed and the full transcript of the protocol.
+The purpose of this section is to provide a high-level overview of the interface and usage of ChillDKG,
+aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
 TODO Say something about the reference code and link to it somewhere
 
