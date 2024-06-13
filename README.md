@@ -279,6 +279,16 @@ TODO ChillDKG a wrapper around encpedpop, it adds a recovery mechanism
 The purpose of this section is to provide a high-level overview of the interface and usage of ChillDKG,
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
+### Use ChillDKG only for FROST
+ChillDKG is designed for usage with the FROST Schnorr signature scheme,
+and its security depends on specifics of FROST.
+We stress that ChillDKG is not a general-purpose DKG protocol [^no-simulatable-dkg],
+and combining it with other threshold cryptographic schemes,
+e.g., threshold signature schemes other than FROST, or threshold decryption schemes
+requires careful further consideration, which is not endorsed or in the scope of this document.
+
+[^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
+
 We provide a full Python 3 reference implementation of ChillDKG and its building blocks in [reference/chilldkg.py](reference/chilldkg.py).
 Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation.
 Developers, who would like to understand ChillDKG's internals or reference implementation, or implement ChillDKG itself,
@@ -297,7 +307,6 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 For each participant, the DKG has three outputs: a secret share, the shared public key, and individual public keys for partial signature verification.
 The secret share and shared public key are required by a participant to produce signatures and therefore, participants *must* ensure that they are not lost.
 
-TODO: mention that these are properties when using the DKG with FROST
 
 ### Threat Model and Security Goals
 
