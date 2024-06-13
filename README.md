@@ -236,7 +236,7 @@ A participant terminates successfully as soon as the participant has collected s
 which verify under the message `x` and the respective host public key.
 TODO This can be optimized using a multi-signature.
 
-[^certeq:] CertEq can be viewed as signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
+[^certeq-literature]: CertEq can be viewed as signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 
 This termination rule immediately implies the integrity property:
 Unless a signature has been forged, if some honest participant with input `x` terminates successfully,
@@ -326,7 +326,7 @@ If a participant deems a protocol session successful (see above), then this part
    This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the shared public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
-[^consistent-secretshares:] The secret shares of any `t` honest participants are, in principle, sufficient to reconstruct the full secret key corresponding to the threshold public key.
+[^consistent-secret-shares]: The secret shares of any `t` honest participants are, in principle, sufficient to reconstruct the full secret key corresponding to the threshold public key.
 However, the very purpose of a threshold signature scheme is to avoid the reconstruction of the full secret key in a single place.
 
 We stress that the mere fact one participant deems a protocol session successful does not imply that other participants deem it successful yet.
