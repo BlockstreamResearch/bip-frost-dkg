@@ -122,13 +122,14 @@ As a consequence of this broad applicability, there will necessary be scenarios 
 e.g., when setting up multiple signing devices in a single location.
 
 In summary, we aim for the following design goals:
-- **Standalone**: ChillDKG is fully specified, requiring no external secure channels or consensus mechanism.
-- **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
-- **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
-- **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
-- **Simple backups**: The capability of ChillDKG to recover devices from a static seed and public recovery data avoids the need for secret per-session backups, enhancing user experience.
-- **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
-- **DKG outputs per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
+
+ - **Standalone**: ChillDKG is fully specified, requiring no external secure channels or consensus mechanism.
+ - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
+ - **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
+ - **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual, to scenarios where multiple owners manage the devices from distinct locations.
+ - **Simple backups**: The capability of ChillDKG to recover devices from a static seed and public recovery data avoids the need for secret per-session backups, enhancing user experience.
+ - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
+ - **DKG outputs per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
 In summary, ChillDKG incorporates solutions for both secure channels and consensus, and simplifies backups in practice.
 As a result, it fits a wide range of application scenarios,
@@ -160,34 +161,95 @@ TODO say here that we only give high-level descriptions and that the code is the
 
 To ease understanding of the interface and reference code of ChillDKG,
 we provide a technical overview of the internals ChillDKG, which includes, as building blocks, the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
-The contents of this section are informational and not strictly required to implement or use ChillDKG.
+The contents of this section are purely informational and not strictly required to implement or use ChillDKG,
+and they will omit some details present in the normative Python reference implementation.
 
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols**.
 While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
 Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
-Executable specifications of all building blocks are provided as part of the Python reference implementation.
+(TODO include links to the code in every subsection)
 
 ### SimplPedPop
 
 The SimplPedPop scheme has been proposed in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
 as an variant PedPop protocol [], an extension of Pedersen DKG [].
-As all variants of Pedersen DKG, SimplPedPop relies on Feldman's Verifiable Secret Sharing (VSS),
-which consist of every participant performing Shamir secret sharing of ...
-TODO explain
-TODO explain that everything is deterministically derived from a seed  (where?)
 
 We make the following modifications as compared to the original SimplPedPop proposal:
-- Adding individual's participant public keys to the output of the DKG. This allows partial signature verification.
-- The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
-- The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
+
+ - Individual participants' public keys are added to the output of the DKG. This allows partial signature verification.
+ - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
+ - The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
+ - A pseudorandom function (based on SHA256) is used to derived all required random values deterministically from a single secret seed.
+
+The SimplPedPop protocol works as follows:
+
+1.  Every participant `i` creates a `t`-of-`n` sharing of a random secret scalar using Feldman Verifiable Secret Sharing (VSS), a variant of Shamir Secret Sharing.
+    This involves generating random coefficients `a_i[0], ..., a_i[t-1]` of a polynomial `f_i` of degree `t-1` in the scalar group:
+    
+    ```
+    f_i(Z) = a_i[0] + a_i[1] * Z + ... a_i[t-1] * Z^(t-1)
+    ```
+    
+    Here, `f_i(0) = a_i[0]` acts as the secret scalar to be shared.
+    Participant `i` computes a VSS share `shares[j] = f_i(j+1)` for every participant `j` (including `j = i`),
+    which is supposed to sent to participant `j` over a private channel.
+    (This private channel will be instantiated in EncPedPod.)
+
+    Participant `i` then sends a VSS commitment,
+    which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
+    and a BIP340 Schnorr signature `pop` on message `i` with secret key `a_i[0]` to the coordinator.
+    (The Schnorr signature acts as a *proof of possession*,
+    i.e., it proves knowledge of the discrete logarithm of `com[i][0] = a_i[0] * G`.
+    This avoids rogue-key attacks, also known as key cancellation attacks.)
+
+2.  Upon receiving `coms[j] = (coms[j][0], ...,  coms[j][t-1])` and `pops[j]` from every participant `j`, 
+    the coordinator aggregates the commitments
+    by computing the component-wise sum of all `coms[j]` vectors except for their first components `coms[j][0]`,
+    which are simply concatenated (because the participants will need them to verify the proofs of possession):
+    
+    ```
+    sum_coms_to_nonconst_terms = (coms[0][1] + ... + coms[0][t-1], ..., coms[n-1][1] + ... + coms[n-1][t-1])
+    coms_to_secrets = (coms[0][0], ..., com[n-1][0])
+    ```
+    
+    The coordinator sends the vectors `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` to every participant.
+  
+3.  Upon receiving `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` from the coordinator.
+    every participant `i` verifies every signature `pops[j]` using message `j` and public key `coms_to_secret[j]`.
+    If any signature is invalid, participant `i` aborts.
+    
+    Otherwise, participant `i` sums the components of `coms_to_secrets`,
+    and prepends the sum to the `sum_coms_to_nonconst_terms` vector, resulting in a vector `sum_coms`.
+    (Assuming the coordinator performed its computations correctly, 
+    the vector `sum_coms` is now the complete component-wise sum of the `coms[j]` vectors from every participant `j`.
+    It acts as a VSS commitment to the sum `f = f_0 + ... + f_{n-1}` of the polynomials of all participants.)
+    
+    Participant `i` computes the public share of every participant `j` as follows:
+    
+    ```
+    pubshares[j] = (j+1)^0 * sum_coms[0] + ... + (j+1)^(t-1) * sum_coms[t-1]
+    ```
+    
+    Let `shares_sum` be the sum of VSS shares privately obtained from each participant `j`.
+    Participant `i` checks the validity of `shares_sum` against `sum_coms`
+    by checking if the equation `shares_sum * G = pubshares[i]` holds.
+    (Assuming `shares_sum` is the sum of the VSS shares created by other participants, it will be equal to `f(i+1)`.)
+    
+    If the check fails, participant `i` aborts.
+    Otherwise, participant `i` computes the DKG outputs consisting of 
+    this participant's secret share `secshare = shares_sum`,
+    the threshold public key `threshold_pubkey = sum_coms[0]`, and
+    all participants' public shares `pubshares`.
+    
+TODO Mention Eq here briefly.
 
 ### EncPedPop
 
-EncPedPop is a thin wrapper around that SimplPedPop.
-It takes care of encrypting the secret shares,
+EncPedPop is a thin wrapper around SimplPedPop.
+It takes care of encrypting the VSS shares,
 so that they can be sent over insecure channels.
 
 EncPedPod encrypts the shares to a 33-byte public key
@@ -280,6 +342,7 @@ The purpose of this section is to provide a high-level overview of the interface
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
 ### Use ChillDKG only for FROST
+
 ChillDKG is designed for usage with the FROST Schnorr signature scheme,
 and its security depends on specifics of FROST.
 We stress that ChillDKG is not a general-purpose DKG protocol [^no-simulatable-dkg],

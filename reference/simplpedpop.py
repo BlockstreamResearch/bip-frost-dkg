@@ -86,13 +86,17 @@ def common_dkg_output(vss_commit, n: int) -> Tuple[GE, List[GE]]:
     The common parts are the threshold public key and the individual public shares of
     all participants."""
     threshold_pubkey = vss_commit.ges[0]
-    participant_pubshares = []
+    pubshares = []
     for i in range(0, n):
+        # TODO The following computation is the major part of vss_commit.verify(i, ...),
+        # which we have already computed for i. We should 1) extract the major part of
+        # VSSCommitment.verify into a separate method, and 2) avoid that we're computing
+        # it twice here.
         pk_i = GE.batch_mul(
             *(((i + 1) ** j, vss_commit.ges[j]) for j in range(0, vss_commit.t()))
         )
-        participant_pubshares += [pk_i]
-    return threshold_pubkey, participant_pubshares
+        pubshares += [pk_i]
+    return threshold_pubkey, pubshares
 
 
 ###
