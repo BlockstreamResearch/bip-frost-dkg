@@ -13,17 +13,23 @@ from util import tagged_hash_bip_dkg, InvalidContributionError
 ###
 
 
-def ecdh(deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    shared_secret = ecdh_raw(deckey, enckey)
-    return Scalar(
-        int_from_bytes(
-            tagged_hash_bip_dkg("ECDH", shared_secret.to_bytes_compressed() + context)
-        )
-    )
+def ecdh(
+    deckey: bytes, my_enckey: bytes, their_enckey: bytes, context: bytes, sending: bool
+) -> Scalar:
+    data = ecdh_raw(deckey, their_enckey).to_bytes_compressed()
+    if sending:
+        data += my_enckey + their_enckey
+    else:
+        data += their_enckey + my_enckey
+    assert len(data) == 3 * 33
+    data += context
+    return Scalar(int_from_bytes(tagged_hash_bip_dkg("ECDH", data)))
 
 
-def encrypt(share: Scalar, deckey: bytes, enckey: bytes, context: bytes) -> Scalar:
-    return share + ecdh(deckey, enckey, context)
+def encrypt(
+    share: Scalar, deckey: bytes, my_enckey: bytes, their_enckey: bytes, context: bytes
+) -> Scalar:
+    return share + ecdh(deckey, my_enckey, their_enckey, context, sending=True)
 
 
 def decrypt_sum(
@@ -36,7 +42,8 @@ def decrypt_sum(
     shares_sum = ciphertext_sum
     for i in range(len(enckeys)):
         if i != idx:
-            shares_sum = shares_sum - ecdh(deckey, enckeys[i], context)
+            pad = ecdh(deckey, enckeys[idx], enckeys[i], context, sending=False)
+            shares_sum = shares_sum - pad
     return shares_sum
 
 
@@ -91,7 +98,10 @@ def participant_step1(
     for i in range(n):
         if i != participant_idx:  # No need to encrypt to ourselves
             try:
-                enc_shares.append(encrypt(shares[i], deckey, enckeys[i], enc_context))
+                enc_share = encrypt(
+                    shares[i], deckey, enckeys[participant_idx], enckeys[i], enc_context
+                )
+                enc_shares.append(enc_share)
             except ValueError:  # Invalid enckeys[i]
                 raise InvalidContributionError(
                     i, "Participant sent invalid encryption key"
