@@ -179,10 +179,10 @@ as an variant PedPop protocol [], an extension of Pedersen DKG [].
 
 We make the following modifications as compared to the original SimplPedPop proposal:
 
+ - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged SHA256).
  - Individual participants' public keys are added to the output of the DKG. This allows partial signature verification.
  - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
  - The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
- - A pseudorandom function (based on SHA256) is used to derived all required random values deterministically from a single secret seed.
 
 The SimplPedPop protocol works as follows:
 
@@ -195,8 +195,8 @@ The SimplPedPop protocol works as follows:
     
     Here, `f_i(0) = a_i[0]` acts as the secret scalar to be shared.
     Participant `i` computes a VSS share `shares[j] = f_i(j+1)` for every participant `j` (including `j = i`),
-    which is supposed to sent to participant `j` over a private channel.
-    (This private channel will be instantiated in EncPedPod.)
+    which is supposed to sent to participant `j` in private.
+    (This will be realized in EncPedPod using encryption.)
 
     Participant `i` then sends a VSS commitment,
     which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
@@ -248,12 +248,40 @@ TODO Mention Eq here briefly.
 
 ### EncPedPop
 
-EncPedPop is a thin wrapper around SimplPedPop.
-It takes care of encrypting the VSS shares,
-so that they can be sent over insecure channels.
+EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
+so that they can be sent over an insecure communication channel.
 
-EncPedPod encrypts the shares to a 33-byte public key
-(as generated using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-participant) algorithm).
+EncPedPop assumes that every participant holds an ECDH key pair consisting of a secret decryption key and public encryption key,
+and that every participant has an authentic copy of every other participant's encryption key.
+Like in SimplPedPop, every participant is additionally assumed to hold a secret seed.
+Every participant derives a session seed given to SimplPedPop from this seed and the list of encryption keys of all participants.
+This ensures that different sets of participants will have different SimplPedPod sessions.
+
+The encryption relies on a non-interactive ECDH key exchange between the public keys of the participants
+in order to establish a secret pad `pad_ij` for every pair of distinct participants `i` and `j`.
+The derivation of `pad_ij` from the raw ECDH output uses tagged SHA256 and additionally includes, in this order,
+the encryption key of the sender,
+the encryption key of the recipient
+and the list of encryption keys of all participants.
+This ensures that pads are not reused across different SimplPedPop sessions,
+and also that `pad_ij != pad_ji`.
+
+EncPedPop then works like SimplPedPop with the following differences:
+Participant `i` will additionally transmit an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
+as part of the first message to the coordinator.
+The coordinator collects all encrypted VSS shares,
+and computes the sum `enc_shares_sum[j]` of all shares intended for every participant `j`.
+The coordinator sends this sum to participant `j`
+who stores it as `enc_shares_sum` and
+obtains the value `shares_sum = enc_shares_sum - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
+
+[^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
+Note that this emulates a Dining Cryptographer's Network [[Cha88](https://link.springer.com/article/10.1007/BF00206326)],
+though anonymity is an anti-feature in our case:
+If a SimplPedPod participant receives an invalid `shares_sum`,
+it is impossible for this participant to identify another participant who has sent wrong contributions,
+even if the coordinator is trusted.
+This is the price we pay for the communication optimization.
 
 ### CertEq
 
@@ -357,7 +385,7 @@ Detailed interface documentation of the implementation is also provided in form 
 Developers, who would like to understand ChillDKG's internals or reference implementation, or implement ChillDKG itself,
 should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
-### Protocol Roles and Network Setup
+### Protocol Roles, Network Setup
 
 There are `n >= 2` *participants*, `t` of which will be required to produce a signature.
 Each participant has a point-to-point communication link to the *coordinator*
@@ -403,7 +431,8 @@ TODO: consider mentioning ROAST
 
 ### Steps of a ChillDKG Session
 
-Generate long-term host keys.
+Every participant generates a long-term *host secret key* and a corresponding *host public key*
+(using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-participant) algorithm).
 
 ```python
 chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]
