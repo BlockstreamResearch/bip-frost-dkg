@@ -8,9 +8,8 @@ def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
     return tagged_hash(BIP_TAG + tag, msg)
 
 
-def kdf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
-    # TODO: consider different KDF
-    return tagged_hash_bip_dkg(tag + "KDF ", seed + extra_input)
+def prf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
+    return tagged_hash_bip_dkg(tag, seed + extra_input)
 
 
 # TODO Document in all functions what exceptions they can raise

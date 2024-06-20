@@ -7,7 +7,7 @@ import asyncio
 from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
 
-from util import kdf
+from util import prf
 from vss import Polynomial, VSS
 import simplpedpop
 import encpedpop
@@ -46,7 +46,7 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
 
 
 def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
-    deckey = kdf(seed, "deckey")
+    deckey = prf(seed, "encpedpop deckey")
     enckey = pubkey_gen_plain(deckey)
     return deckey, enckey
 

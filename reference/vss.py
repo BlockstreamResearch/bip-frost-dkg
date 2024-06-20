@@ -2,7 +2,7 @@ from typing import List, NamedTuple
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 
-from util import kdf, DeserializationError
+from util import prf, DeserializationError
 
 
 class VSSVerifyError(Exception):
@@ -72,7 +72,7 @@ class VSS(NamedTuple):
     @staticmethod
     def generate(seed, t):
         coeffs = [
-            Scalar.from_bytes(kdf(seed, "coeffs", i.to_bytes(4, byteorder="big")))
+            Scalar.from_bytes(prf(seed, "vss coeffs", i.to_bytes(4, byteorder="big")))
             for i in range(t)
         ]
         return VSS(Polynomial(coeffs))

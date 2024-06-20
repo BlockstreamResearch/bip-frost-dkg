@@ -12,7 +12,7 @@ from vss import VSS, VSSCommitment
 from simplpedpop import DKGOutput, common_dkg_output
 import encpedpop
 from util import (
-    kdf,
+    prf,
     InvalidRecoveryDataError,
     DeserializationError,
     DuplicateHostpubkeyError,
@@ -61,7 +61,7 @@ class SessionParams(NamedTuple):
 
 
 def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
-    hostseckey = kdf(seed, "hostseckey")
+    hostseckey = prf(seed, "chilldkg hostseckey")
     hostpubkey = pubkey_gen_plain(hostseckey)
     return (hostseckey, hostpubkey)
 

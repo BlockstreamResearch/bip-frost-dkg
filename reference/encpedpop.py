@@ -5,7 +5,7 @@ from secp256k1ref.ecdh import ecdh_raw
 from secp256k1ref.util import int_from_bytes
 
 import simplpedpop
-from util import tagged_hash_bip_dkg, InvalidContributionError
+from util import tagged_hash_bip_dkg, prf, InvalidContributionError
 
 
 ###
@@ -23,7 +23,7 @@ def ecdh(
         data += their_enckey + my_enckey
     assert len(data) == 3 * 33
     data += context
-    return Scalar(int_from_bytes(tagged_hash_bip_dkg("ECDH", data)))
+    return Scalar(int_from_bytes(tagged_hash_bip_dkg("encpedpop ecdh", data)))
 
 
 def encrypt(
@@ -76,7 +76,7 @@ class ParticipantState(NamedTuple):
 
 def session_seed(seed: bytes, enckeys: List[bytes], t: int) -> Tuple[bytes, bytes]:
     enc_context = t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-    seed_ = tagged_hash_bip_dkg("EncPedPop seed", seed + enc_context)
+    seed_ = prf(seed, "encpedpop seed", enc_context)
     return seed_, enc_context
 
 
