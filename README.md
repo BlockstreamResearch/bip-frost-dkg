@@ -338,9 +338,10 @@ This termination rule immediately implies the integrity property:
 Unless a signature has been forged, if some honest participant with input `x` terminates successfully,
 then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
 
-The key insight to ensuring conditional agreement is that any participant terminating successfully can build a *success certificate* consisting of the collected list of all `n` signatures on `x`.
-This certificate will be enough to convince every other honest participant (who, by integrity, has received `x` as input) to terminate successfully
-This works at any time in the future, even if this other honest participant has seen received invalid or no signatures during the actual run of CertEq,
+The key insight to ensuring conditional agreement is that any participant terminating successfully
+is able to build a *success certificate* consisting of the collected list of all `n` signatures on `x`.
+This certificate will, by the above termination rule, convince every other honest participant (who, by integrity, has received `x` as input) to terminate successfully.
+Crucially, this other honest participant will be convinced even after having received invalid or no signatures during the actual run of CertEq,
 due to unreliable networks or an unreliable coordinator, or malicious participants signing more than one value.
 
 Thus, the certificate does not need to be sent during a normal run of CertEq,
@@ -349,20 +350,6 @@ e.g., during a request to participate in a FROST signing session.
 
 The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
 any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
-
-(TODO move to footnote or code comments?)
-This protocol satisfies integrity and conditional agreement.
-Proof.
-Integrity:
-Unless a signature has been forged, if some honest participant with input `x` outputs True,
-then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
-Conditional Agreement:
-If some honest participant with input `x` returns True,
-then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
-Consider any honest participant among these other participants.
-Assuming a reliable network, this honest participant eventually receives `cert`,
-and by integrity, has received `x` as input.
-Thus, this honest participant will accept `cert` and return True.
 
 ### Putting it all together: ChillDKG
 

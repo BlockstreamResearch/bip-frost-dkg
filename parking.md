@@ -51,3 +51,17 @@ There are two possible backup strategies for `EncPedPop`:
     ```
     If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.
 
+
+### CertEq proof
+CertEq  satisfies integrity and conditional agreement.
+Proof.
+Integrity:
+Unless a signature has been forged, if some honest participant with input `x` outputs True,
+then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
+Conditional Agreement:
+If some honest participant with input `x` returns True,
+then by construction, this participant sends a list `cert` of valid signatures on `x` to every other participant.
+Consider any honest participant among these other participants.
+Assuming a reliable network, this honest participant eventually receives `cert`,
+and by integrity, has received `x` as input.
+Thus, this honest participant will accept `cert` and return True.
