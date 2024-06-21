@@ -171,7 +171,7 @@ Consequently, implementations should not expose the algorithms of the building b
 
 (TODO include links to the code in every subsection)
 
-### SimplPedPop
+### DKG Protocol SimplPedPop
 
 The SimplPedPop scheme has been proposed in
 [Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
@@ -243,10 +243,16 @@ The SimplPedPop protocol works as follows:
     this participant's secret share `secshare = shares_sum`,
     the threshold public key `threshold_pubkey = sum_coms[0]`, and
     all participants' public shares `pubshares`.
-    
-TODO Mention Eq here briefly.
 
-### EncPedPop
+    As a final step, participant `i` enters a session of an equality check protocol
+    to verify that all participants have received identical protocol messages (except for the VSS shares),
+    and that none of them has aborted the session due to an invalid VSS share or an invalid proof of possesion.
+    Upon the equality protocol returning successfully,
+    participant `i` returns successfully with the DKG outputs as computed above.
+    We will explain the details of the equality check protocol below.
+    (TODO link)
+
+### DKG Protocol EncPedPop
 
 EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
 so that they can be sent over an insecure communication channel.
@@ -283,20 +289,20 @@ it is impossible for this participant to identify another participant who has se
 even if the coordinator is trusted.
 This is the price we pay for the communication optimization.
 
-### CertEq
+### Equality Check Protocol CertEq
 
 As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of a DKG session.
-EncPedPop (as inherited from SimplPedPop) works with a similar but different abstraction instead:
-The last step of a EncPedPod session is to run an external *equality check protocol* Eq,
+SimplPedPop, and consequently also EncPedPop, ensure agreement during the final step of the DKG session by running an external *equality check protocol* Eq,
 whose purpose is to verify that all participants have received identical protocol messages during the previous steps.
 
-EncPedPop assumes that Eq is an interactive protocol between the `n` participants with the following abstract interface
+Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface
 (see also TODO):
 Every participant can invoke a session of Eq with an input value `x` (TODO and the identities of other participants?).
-Eq may not return at all to the calling participant.
-But if it returns successfully for some calling participant, then all honest participants agree on the value `x`.
-(but it may be the case that not all of them have established this fact yet).
-This means that the EncPedPod session was successful and the resulting threshold public key can be returned to the participant, who can use it (e.g., send funds to it).
+Eq may not return at all to the calling participant,
+but if it returns successfully for some calling participant, then all honest participants agree on the value `x`.
+(However, it may be the case that not all honest participants have established this fact yet.)
+This means that the DKG session was successful and the resulting threshold public key can be returned to the participant,
+who can use it, e.g., by sending funds to it.
 
 More formally, Eq must fulfill the following properties:
  - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values x and x' provided by two honest participants, we have `x = x'`.
@@ -343,8 +349,6 @@ e.g., during a request to participate in a FROST signing session.
 
 The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
 any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
-
-TODO Add note about multisigs/aggsigs
 
 (TODO move to footnote or code comments?)
 This protocol satisfies integrity and conditional agreement.
