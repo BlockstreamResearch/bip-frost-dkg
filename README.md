@@ -309,21 +309,22 @@ More formally, Eq must fulfill the following properties:
  - Conditional Agreement: If Eq returns successfully to some honest participant, and all messages between honest participants are delivered eventually, then Eq will eventually return successfully to all honest participants.
 
 Depending on the application scenario, different approaches may be suitable to implement Eq,
-e.g., a consensus protocol already available as part of a federated system,
-or out-of-band communication such as the user comparing screens of multiple signing devices).[^out-of-band-eq]
-
-[^out-of-band-eq]: For example, in a scenario where a single user employs multiple signing devices (e.g., hardware wallets) in the same room to establish a threshold setup,
-every device can simply display its value x (or a hash of x under a collision-resistant hash function) to the user.
+such as a consensus protocol already available as part of a federated system
+or out-of-band communication.
+For example, in a scenario where a single user employs multiple signing devices (e.g., hardware tokens) in the same room to establish a threshold wallet,
+every device can simply display its value `x` (or a hash of `x` under a collision-resistant hash function) to the user.
 The user can manually verify the equality of the values by comparing the values shown on all displays,
 and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
 Similarly, if signing devices are controlled by different organizations in different geographic locations,
 agents of these organizations can meet in a single room and compare the values.
-These "out-of-band" methods can achieve conditional agreement (assuming the involved humans proceed with their tasks eventually)
-but a detailed treatment is out of scope.
+A detailed treatment is these out-of-band methods is out of scope of this document.
 
-For ChillDKG, we will use a more direct approach.
-ChillDKG incorporates an equality check protocol CertEq, which is applicable to network-based scenarios where long-term cryptographic identities of the participants are available.
-Concretely, each participant is assumed to hold a long-term key pair of a signature scheme, called the *host key pair*, the public key of which has been verified out-of-band by all other participants.
+Instead of performing a out-of-band check as the last step of the DKG,
+ChillDKG incorporates a concrete in-band equality check protocol CertEq,
+which assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
+While the list of host public keys still need to be verified out-of-band by all participants,
+this step can happen at any time before the DKG session is finalized, in particular before the DKG session.
+More importantly, the way CertEq is used in ChillDKG will facilitate backups, which we will explain the subsequent subsection.
 
 The CertEq protocol is straightforward:[^certeq-literature]
 Every participant sends a signature of their input value `x` to every other participant (via the untrusted coordinator),
