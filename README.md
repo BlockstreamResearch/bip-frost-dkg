@@ -136,6 +136,7 @@ As a result, it fits a wide range of application scenarios,
 and due to its low overhead, we recommend ChillDKG even secure communication channels or a consensus mechanism (e.g., a BFT protocol or a reliable broadcast mechanism) is readily available.
 
 #### Why Robustness is not a Goal
+
 A direct consequence of the ability to support dishonest majority setups (`t > n/2`) in asynchronous networks is that robustness cannot be guaranteed, i.e., misbehaving participants can prevent the protocol from completing successfully.
 TODO footnote
 Nevertheless, we believe that this is, in fact, desirable:
@@ -162,7 +163,7 @@ TODO say here that we only give high-level descriptions and that the code is the
 To ease understanding of the interface and reference code of ChillDKG,
 we provide a technical overview of the internals ChillDKG, which includes, as building blocks, the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
 The contents of this section are purely informational and not strictly required to implement or use ChillDKG,
-and they will omit some details present in the normative Python reference implementation.
+and some details present in the normative Python reference implementation are omitted.
 
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols**.
 While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
@@ -245,12 +246,15 @@ The SimplPedPop protocol works as follows:
     all participants' public shares `pubshares`.
 
     As a final step, participant `i` enters a session of an equality check protocol
-    to verify that all participants have received identical protocol messages (except for the VSS shares),
-    and that none of them has aborted the session due to an invalid VSS share or an invalid proof of possesion.
+    to verify that all participants agree on the *transcript*, i.e., common data produced during the session,
+    and that none of them has aborted the session due to an invalid VSS share or an invalid proof of possession.
+    The transcript of SimplPedPop, constructed in a variable `eq_input`,
+    is simply the concatenation (of serializations) of `t` and the `sum_coms` vector.
     Upon the equality protocol returning successfully,
     participant `i` returns successfully with the DKG outputs as computed above.
-    We will explain the details of the equality check protocol below.
+    Details of the equality check protocol will be described further below.
     (TODO link)
+
 
 ### DKG Protocol EncPedPop
 
@@ -289,59 +293,72 @@ it is impossible for this participant to identify another participant who has se
 even if the coordinator is trusted.
 This is the price we pay for the communication optimization.
 
-### Equality Check Protocol CertEq
+EncPedPop appends to the transcript `eq_input` of SimplPedPop
+all `n` encryption keys to ensure that the participants agree on their identities.
+This excludes man-in-the-middle attacks if Eq is authenticated, e.g., runs over authenticated channels.
+
+### Background on Equality Checks
 
 As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of a DKG session.
-SimplPedPop, and consequently also EncPedPop, ensure agreement during the final step of the DKG session by running an external *equality check protocol* Eq,
-whose purpose is to verify that all participants have received identical protocol messages during the previous steps.
+SimplPedPop, and consequently also EncPedPop, ensure agreement during the final step of the DKG session by running an external *equality check protocol* Eq.
+The purpose of Eq is to verify that all participants have received an identical *transcript*  which is a byte string constructed by respective DKG protocol.
 
 Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface
 (see also TODO):
-Every participant can invoke a session of Eq with an input value `x` (TODO and the identities of other participants?).
+Every participant can invoke a session of Eq with an input value `eq_input` (TODO and the identities of other participants?).
 Eq may not return at all to the calling participant,
-but if it returns successfully for some calling participant, then all honest participants agree on the value `x`.
+but if it returns successfully for some calling participant, then all honest participants agree on the value `eq_input`.
 (However, it may be the case that not all honest participants have established this fact yet.)
 This means that the DKG session was successful and the resulting threshold public key can be returned to the participant,
 who can use it, e.g., by sending funds to it.
 
 More formally, Eq must fulfill the following properties:
- - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values x and x' provided by two honest participants, we have `x = x'`.
- - Conditional Agreement: If Eq returns successfully to some honest participant, and all messages between honest participants are delivered eventually, then Eq will eventually return successfully to all honest participants.
+ - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values `eq_input` and `eq_input'` provided by two honest participants, we have `eq_input = eq_input'`.
+ - Conditional Agreement: If Eq returns successfully to some honest participant, and all messages between honest participants are delivered eventually, then Eq will eventually return successfully to all honest participants. (TODO there are no messages between honest participants due to the coordinator)
 
 Depending on the application scenario, different approaches may be suitable to implement Eq,
 such as a consensus protocol already available as part of a federated system
 or out-of-band communication.
 For example, in a scenario where a single user employs multiple signing devices (e.g., hardware tokens) in the same room to establish a threshold wallet,
-every device can simply display its value `x` (or a hash of `x` under a collision-resistant hash function) to the user.
+every device can simply display its value `eq_input` (or a hash of `eq_input` under a collision-resistant hash function) to the user.
 The user can manually verify the equality of the values by comparing the values shown on all displays,
 and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
 Similarly, if signing devices are controlled by different organizations in different geographic locations,
 agents of these organizations can meet in a single room and compare the values.
 A detailed treatment is these out-of-band methods is out of scope of this document.
 
+### DKG Protocol ChillDKG
+
+#### Equality Check Protocol EqCert
+
 Instead of performing a out-of-band check as the last step of the DKG,
-ChillDKG incorporates a concrete in-band equality check protocol CertEq,
-which assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
+ChillDKG relies on an more direct approach:
+ChillDKG is a wrapper around EncPedPop,
+which instantiates the required equality check protocol with a concrete in-band CertEq.
+CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
 While the list of host public keys still need to be verified out-of-band by all participants,
 this step can happen at any time before the DKG session is finalized, in particular before the DKG session.
-More importantly, the way CertEq is used in ChillDKG will facilitate backups, which we will explain the subsequent subsection.
+More importantly, the way CertEq is used in ChillDKG will facilitate backups, which we will explain below.
 
 The CertEq protocol is straightforward:[^certeq-literature]
-Every participant sends a signature of their input value `x` to every other participant (via the untrusted coordinator),
-and expects to receive valid `x` from all remaining `n-1` participants.
+Every participant sends a signature of their input value `eq_input` to every other participant (via the untrusted coordinator),
+and expects to receive a valid value `eq_input` from all remaining `n-1` participants.
 A participant terminates successfully as soon as the participant has collected signatures from all `n` participants (including themselves),
-which verify under the message `x` and the respective host public key.
+which verify under the message `eq_input` and the respective host public key.
 TODO This can be optimized using a multi-signature.
+
+FOOTNOTE The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
+any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
 
 [^certeq-literature]: CertEq can be viewed as signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 
 This termination rule immediately implies the integrity property:
-Unless a signature has been forged, if some honest participant with input `x` terminates successfully,
-then by construction, all other honest participants have sent a signature on `x` and thus received `x` as input.
+Unless a signature has been forged, if some honest participant with input `eq_input` terminates successfully,
+then by construction, all other honest participants have sent a signature on `eq_input` and thus received `eq_input` as input.
 
 The key insight to ensuring conditional agreement is that any participant terminating successfully
-is able to build a *success certificate* consisting of the collected list of all `n` signatures on `x`.
-This certificate will, by the above termination rule, convince every other honest participant (who, by integrity, has received `x` as input) to terminate successfully.
+is able to build a *success certificate* `cert` consisting of the collected list of all `n` signatures on `eq_input`.
+This certificate will, by the above termination rule, convince every other honest participant (who, by integrity, has received `eq_input` as input) to terminate successfully.
 Crucially, this other honest participant will be convinced even after having received invalid or no signatures during the actual run of CertEq,
 due to unreliable networks or an unreliable coordinator, or malicious participants signing more than one value.
 
@@ -349,12 +366,38 @@ Thus, the certificate does not need to be sent during a normal run of CertEq,
 but can instead be presented to other participants later,
 e.g., during a request to participate in a FROST signing session.
 
-The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
-any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
+#### Facilitating Backup and Recovery
 
-### Putting it all together: ChillDKG
+ChillDKG constructs a transcript `eq_input` by appending to the transcript of EncPedPop the vector `enc_shares_sum`.
+This ensures that all participants agree on all encrypted shares,
+and as a consequence,
+the entire DKG output of a successful ChillDKG participant can be deterministically reproduced from a secret per-participant seed and the transcript.
 
-TODO ChillDKG a wrapper around encpedpop, it adds a recovery mechanism
+This property is leveraged to offer a backup and recovery functionality:
+ChillDKG outputs a string called *recovery data* which is the concatenation of the transcript `eq_input` and the success certificate `cert`.
+The recovery data, together with the seed, can be used by any participant to recover the full output of the DKG session,
+e.g., after the loss of a participant device.
+
+Since the recovery data is the same for all participants,
+if a participant loses the backup of the recovery data of the DKG session,
+they can request it from any other participants or the coordinator.
+Moreover, since the transcript contains secret shares only in encrypted form,
+it can in principle be stored with a third-party backup provider.
+
+Crucially, the recovery data carries proof that the DKG session took place:
+any recovering participant can re-derive their host key pair from the seed,
+and extract their own valid signature on the transcript from the success certificate.
+This valid signature proves that the participant, or more precisely, their former instance,
+had successfully reached the state at which this signature is sent to the coordinator.
+In particular, this implies that the proofs of possession from all participants,
+which are omitted in recovery data for succinctness,
+had been checked successfully.
+
+In fact, the recovery procedure subsumes the handling of a valid success certificate
+which is presented to the participant only after the session
+(in case an invalid or no certificate was received during the session).
+As a result, ChillDKG does not provide not a dedicated method for providing a success certificate after the session,
+and callers can simply use the recovery functionality instead.
 
 ## Usage of ChillDKG
 
