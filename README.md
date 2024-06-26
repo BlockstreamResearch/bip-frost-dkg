@@ -350,11 +350,16 @@ also assumes that all participants agree on their individual public keys.
 #### Equality Check Protocol EqCert
 
 The CertEq protocol is straightforward:[^certeq-literature]
-Every participant sends a signature of their input value `eq_input` to every other participant (via the untrusted coordinator),
-and expects to receive a valid value `eq_input` from all remaining `n-1` participants.
-A participant terminates successfully as soon as the participant has collected signatures from all `n` participants (including themselves),
-which verify under the message `eq_input` and the respective host public key.
-TODO This can be optimized using a multi-signature.
+Every participant sends a signature on their input value `eq_input` to every other participant (via the untrusted coordinator),
+and expects to receive valid signatures on `eq_input` from the other participants.
+A participant terminates successfully as soon as the participant has collected what we call a *success certificate*,
+i.e., a full list of valid signatures from all `n` participants (including themselves).[^multisig-cert]
+
+[^multisig-cert]: Abstractly, the required primitive is a multi-signature scheme, i.e., `n` participants signing the same message `eq_input`.
+We choose the naive scheme of collecting list of `n` individual signatures for simplicity.
+Other multi-signatures schemes, e.g., MuSig2 (see [BIP327](bip-0327.mediawiki)) or a scheme based on signature half aggregation [TODO],
+could be used instead to reduce the size of the success certificate.
+These methods are out of scope of this document.
 
 FOOTNOTE The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
 any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
@@ -366,7 +371,7 @@ Unless a signature has been forged, if some honest participant with input `eq_in
 then by construction, all other honest participants have sent a signature on `eq_input` and thus received `eq_input` as input.
 
 The key insight to ensuring conditional agreement is that any participant terminating successfully
-is able to build a *success certificate* `cert` consisting of the collected list of all `n` signatures on `eq_input`.
+obtains a *success certificate* `cert` consisting of the collected list of all `n` signatures on `eq_input`.
 This certificate will, by the above termination rule, convince every other honest participant (who, by integrity, has received `eq_input` as input) to terminate successfully.
 Crucially, this other honest participant will be convinced even after having received invalid or no signatures during the actual run of CertEq,
 due to unreliable networks or an unreliable coordinator, or malicious participants signing more than one value.
