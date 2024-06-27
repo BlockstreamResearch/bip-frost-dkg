@@ -470,11 +470,11 @@ We expect ChillDKG to provide the following informal security goals when it is u
 [^formal-treatment]: See the paper by Chu, Gerhart, Ruffing, and Schröder [[CGRS23](https://eprint.iacr.org/2023/899)] for more formal treatment.
 
 If a participant deems a protocol session successful (see above), then this participant is assured that:
- - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge signatures under that shared public key. (Unforgeability)
+ - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge signatures under that threshold public key. (Unforgeability)
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree the threshold public key, the list of public shares, and the recovery data.
    Moreover, any `t` of them have secret shares consistent with the threshold public key.[^consistent-secret-shares]
-   This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the shared public key.
+   This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the threshold public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
 [^consistent-secret-shares]: The secret shares of any `t` honest participants are, in principle, sufficient to reconstruct the full secret key corresponding to the threshold public key.
@@ -557,7 +557,7 @@ chilldkg_coordinate(chans: CoordinatorChannels, params: SessionParams) -> Union[
 
 
 ### Backup and Recovery
-Losing the secret share or the shared public key will render the participant incapable of participating in signing sessions.
+Losing the secret share or the threshold public key will render the participant incapable of participating in signing sessions.
 As these values depend on the contributions of the other participants to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
@@ -569,7 +569,7 @@ if a participant loses the backup of the transcript of the DKG session,
 they can request it from any other participants or the coordinator.
 Moreover, since the transcript contains secret shares only in encrypted form,
 it can in principle be stored with a third-party backup provider.
-(TODO: But there are privacy implications. The hostpubkeys and shared public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
+(TODO: But there are privacy implications. The hostpubkeys and threshold public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
 
 ```python
 chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any
@@ -582,9 +582,9 @@ chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[Tuple
 Note that it may not be an unreasonable strategy in a threshold setup not to perform backups of participants at all,
 and simply hope that `t` honest and working participants will remain available.
 As soon as one or more participants are lost or broken, new DKG session can be performed with the unavailable participants replaced.
-One drawback of this method is that it will result in a change of the shared public key,
-and the application will, therefore, need to transition to the new shared public key
-(e.g., funds stored under the current shared public key need to be transferred to the new key).
+One drawback of this method is that it will result in a change of the threshold public key,
+and the application will, therefore, need to transition to the new threshold public key
+(e.g., funds stored under the current threshold public key need to be transferred to the new key).
 
 Whether to perform backups and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
@@ -592,7 +592,7 @@ and we believe that a general recommendation is not useful.
 
 TODO: make the following a footnote
 There are strategies to recover if the backup is lost and other participants assist in recovering.
-In such cases, the recovering participant must be very careful to obtain the correct secret share and shared public key!
+In such cases, the recovering participant must be very careful to obtain the correct secret share and threshold public key!
 1. If all other participants are cooperative and their seed is backed up (EncPedPop or ChillDKG), it's possible that the other participants can recreate the participant's lost secret share by running the DKG protocol again.
 2. If threshold-many participants are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
    This scheme requires no additional backup or storage space for the participants.
