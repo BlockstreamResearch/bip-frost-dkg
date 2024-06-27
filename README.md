@@ -107,7 +107,7 @@ The list of signatures, also called a *success certificate*, can convince any ot
 that the DKG session has indeed been successful.
 This is sufficient to exclude the catastrophic failure described in the previous section.
 
-TODO Call this restore instead of recovery?
+<!-- TODO Call this restore instead of recovery? -->
 As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
 a backup of a single secret per-device seed,
 the (essential parts) of the public transcripts of the DKG sessions,
@@ -316,18 +316,17 @@ As explained in the "Motivation" section, it is crucial for security that partic
 SimplPedPop, and consequently also EncPedPop, ensure agreement during the final step of the DKG session by running an external *equality check protocol* Eq.
 The purpose of Eq is to verify that all participants have received an identical *transcript*  which is a byte string constructed by respective DKG protocol.
 
-Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface
-(see also TODO):
-Every participant can invoke a session of Eq with an input value `eq_input` (TODO and the identities of other participants?).
+Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface:
+Every participant can invoke a session of Eq with an input value `eq_input`
 Eq may not return at all to the calling participant,
 but if it returns successfully for some calling participant, then all honest participants agree on the value `eq_input`.
 (However, it may be the case that not all honest participants have established this fact yet.)
 This means that the DKG session was successful and the resulting threshold public key can be returned to the participant,
 who can use it, e.g., by sending funds to it.
 
-More formally, Eq must fulfill the following properties:
+More formally, Eq must fulfill the following properties [[CGRS23](https://eprint.iacr.org/2023/899)]:
  - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values `eq_input` and `eq_input'` provided by two honest participants, we have `eq_input = eq_input'`.
- - Conditional Agreement: If Eq returns successfully to some honest participant, and all messages between honest participants are delivered eventually, then Eq will eventually return successfully to all honest participants. (TODO there are no messages between honest participants due to the coordinator)
+ - Conditional Agreement: Assuming the coordinator is honest and all messages between honest participants and the coordinator are delivered eventually, if Eq returns successfully to some honest participant, then Eq will eventually return successfully to all honest participants.
 
 Depending on the application scenario, different approaches may be suitable to implement Eq,
 such as a consensus protocol already available as part of a federated system
