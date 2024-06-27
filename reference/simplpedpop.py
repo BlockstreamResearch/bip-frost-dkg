@@ -111,9 +111,9 @@ class ParticipantState(NamedTuple):
     com_to_secret: GE
 
 
-# To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive computations,
-# we omit explicit invocations of an interactive equality check protocol.
-# ChillDKG will take care of invoking the equality check protocol.
+# To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive
+# computations, we omit explicit invocations of an interactive equality check
+# protocol. ChillDKG will take care of invoking the equality check protocol.
 
 
 def participant_step1(

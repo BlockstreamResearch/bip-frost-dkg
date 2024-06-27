@@ -162,12 +162,20 @@ In other words, what is primarily required to ensure liveness in these applicati
 
 ### Structure of this Document
 
-TODO say here that we only give high-level descriptions and that the code is the spec
+Due to the complexity of ChillDKG, we refrain from providing a pseudocode specification along with a reference implementation.
+Instead, we provide only a normative reference implementation in Python 3.12
+(see [`reference/chilldkg.py`](reference/chilldkg.py)),
+which serves as an executable specification.
+
+To ease understanding of the design and reference code
+we provide a technical overview of the internals of ChillDKG in [Section "Internals of ChillDKG"](#internals-of-chilldkg).
+For those who would like to use a ChillDKG implementation in their applications and systems,
+we explain the external interface and usage considerations of ChillDKG in [Section "Usage of ChillDKG"](#usage-of-chilldkg).
 
 ## Internals of ChillDKG
 
-To ease understanding of the interface and reference code of ChillDKG,
-we provide a technical overview of the internals ChillDKG, which includes, as building blocks, the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
+This section provides a detailed technical overview of internals of ChillDKG,
+which includes as building blocks the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
 The contents of this section are purely informational and not strictly required to implement or use ChillDKG,
 and some details present in the normative Python reference implementation are omitted.
 
@@ -176,9 +184,9 @@ While SimplPedPop and EncPedPop may in principle serve as building blocks of oth
 this requires careful further consideration, which is not in the scope of this document.
 Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
-(TODO include links to the code in every subsection)
-
 ### DKG Protocol SimplPedPop
+
+(See [`reference/simplpedpop.py`](reference/simplpedpop.py).)
 
 The SimplPedPop protocol has been proposed by Chu, Gerhart, Ruffing, and Schröder [Section 4, [CGRS23](https://eprint.iacr.org/2023/899)].
 We make the following modifications as compared to the original SimplPedPop proposal:
@@ -248,18 +256,20 @@ Our variant of the SimplPedPop protocol then works as follows:
     the threshold public key `threshold_pubkey = sum_coms[0]`, and
     all participants' public shares `pubshares`.
 
-    As a final step, participant `i` enters a session of an equality check protocol
+    As a final step, participant `i` enters a session of an external equality check protocol
     to verify that all participants agree on the *transcript*, i.e., common data produced during the session,
     and that none of them has aborted the session due to an invalid VSS share or an invalid proof of possession.
     The transcript of SimplPedPop, constructed in a variable `eq_input`,
     is simply the concatenation (of serializations) of `t` and the `sum_coms` vector.
     Upon the equality protocol returning successfully,
     participant `i` returns successfully with the DKG outputs as computed above.
-    Details of the equality check protocol will be described further below.
-    (TODO link)
+    Details of the interface of the equality check protocol will be described further below in
+    [Subsection "Background on Equality Checks"](#background-on-equality-checks).
 
 
 ### DKG Protocol EncPedPop
+
+(See [`reference/encpedpop.py`](reference/encpedpop.py).)
 
 EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
 so that they can be sent over an insecure communication channel.
@@ -331,6 +341,8 @@ agents of these organizations can meet in a single room and compare the values.
 A detailed treatment is these out-of-band methods is out of scope of this document.
 
 ### DKG Protocol ChillDKG
+
+(See [`reference/chilldkg.py`](reference/chilldkg.py).)
 
 Instead of performing a out-of-band check as the last step of the DKG,
 ChillDKG relies on an more direct approach:
@@ -421,8 +433,8 @@ and callers can simply use the recovery functionality instead.
 The purpose of this section is to provide a high-level overview of the interface and usage of ChillDKG,
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
-We provide a full Python 3 reference implementation of ChillDKG and its building blocks in [reference/chilldkg.py](reference/chilldkg.py).
-Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation.
+Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation
+(see [`reference/chilldkg.py`](reference/chilldkg.py).)
 Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation,
 should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
