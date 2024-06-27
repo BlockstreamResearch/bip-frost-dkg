@@ -465,20 +465,19 @@ In that case, the output returned by the protocol session to the participant is 
 ### Threat Model and Security Goals
 
 Some participants, the coordinator, and all network links may be malicious, i.e., controlled by an attacker.
-We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.[^formal-treatment]
-
-[^formal-treatment]: See the paper by Chu, Gerhart, Ruffing, and Schröder [[CGRS23](https://eprint.iacr.org/2023/899)] for more formal treatment.
+We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.
 
 If a participant deems a protocol session successful (see above), then this participant is assured that:
- - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge signatures under that threshold public key. (Unforgeability)
+ - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m`  for which no signing session with at least honest participant was initiated. (Unforgeability)^[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
-   In particular, they agree the threshold public key, the list of public shares, and the recovery data.
-   Moreover, any `t` of them have secret shares consistent with the threshold public key.[^consistent-secret-shares]
+   In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
+   Moreover, any `t` of them have secret shares consistent with the threshold public key.[^correctness-formal]
    This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the threshold public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
-[^consistent-secret-shares]: The secret shares of any `t` honest participants are, in principle, sufficient to reconstruct the full secret key corresponding to the threshold public key.
-However, the very purpose of a threshold signature scheme is to avoid the reconstruction of the full secret key in a single place.
+[^unforgeability-formal]: See Chu, Gerhart, Ruffing, and Schröder [Defition 3, [CGRS23](https://eprint.iacr.org/2023/899)] for a formal definition.
+
+[^correctness-formal]: See Ruffing, Ronge, Jin, Schneider-Bensch, and Schröder [Definition 2.5, [RRJSS22](https://eprint.iacr.org/2022/550)] for a formal definition.
 
 We stress that the mere fact one participant deems a protocol session successful does not imply that other participants deem it successful yet.
 Indeed, due to failing network links or invalid messages sent by malicious participants,
