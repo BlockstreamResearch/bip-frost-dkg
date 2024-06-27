@@ -88,7 +88,8 @@ We assume a network setup in which participants have point-to-point connections 
 This will enable bandwidth optimizations and is common also in implementations of the signing stage of FROST.
 Participants are identified and authenticated via long-term public keys.
 
-The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
+The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop),
+which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
 The equality check protocol serves an abstraction of a consensus mechanism:
 Its only purpose is to check that, at the end of SimplPedPod, all participants have received identical protocol messages.
@@ -179,18 +180,15 @@ Consequently, implementations should not expose the algorithms of the building b
 
 ### DKG Protocol SimplPedPop
 
-The SimplPedPop scheme has been proposed in
-[Practical Schnorr Threshold Signatures Without the Algebraic Group Model, section 4](https://eprint.iacr.org/2023/899.pdf)
-as an variant PedPop protocol [], an extension of Pedersen DKG [].
-
+The SimplPedPop protocol has been proposed by Chu, Gerhart, Ruffing, and Schröder [Section 4, [CGRS23](https://eprint.iacr.org/2023/899)].
 We make the following modifications as compared to the original SimplPedPop proposal:
 
  - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged SHA256).
  - Individual participants' public keys are added to the output of the DKG. This allows partial signature verification.
  - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication cost.
- - The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.
+ - The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG. <!-- TODO Revisit this once the paper has been updated.-->
 
-The SimplPedPop protocol works as follows:
+Our variant of the SimplPedPop protocol then works as follows:
 
 1.  Every participant `i` creates a `t`-of-`n` sharing of a random secret scalar using Feldman Verifiable Secret Sharing (VSS), a variant of Shamir Secret Sharing.
     This involves generating random coefficients `a_i[0], ..., a_i[t-1]` of a polynomial `f_i` of degree `t-1` in the scalar group:
@@ -425,7 +423,7 @@ aimed at developers who would like to use a ChillDKG implementation in their app
 
 We provide a full Python 3 reference implementation of ChillDKG and its building blocks in [reference/chilldkg.py](reference/chilldkg.py).
 Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation.
-Developers, who would like to understand ChillDKG's internals or reference implementation, or implement ChillDKG itself,
+Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation,
 should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ### Use ChillDKG only for FROST
@@ -461,7 +459,7 @@ In that case, the output returned by the protocol session to the participant is 
 Some participants, the coordinator, and all network links may be malicious, i.e., controlled by an attacker.
 We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.[^formal-treatment]
 
-[^formal-treatment]: See the paper by Chu, Gerhart, Ruffing, Schröder [CGRS23](https://eprint.iacr.org/2023/899) for more formal treatment.
+[^formal-treatment]: See the paper by Chu, Gerhart, Ruffing, and Schröder [[CGRS23](https://eprint.iacr.org/2023/899)] for more formal treatment.
 
 If a participant deems a protocol session successful (see above), then this participant is assured that:
  - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge signatures under that shared public key. (Unforgeability)
@@ -476,7 +474,7 @@ However, the very purpose of a threshold signature scheme is to avoid the recons
 
 We stress that the mere fact one participant deems a protocol session successful does not imply that other participants deem it successful yet.
 Indeed, due to failing network links or invalid messages sent by malicious participants,
-it is possible that some participants have deemed the ChillDKG session successful, but others have not (yet) and thus are stuck in the ChillDKG session.\
+it is possible that some participants have deemed the ChillDKG session successful, but others have not (yet) and thus are stuck in the ChillDKG session.
 In that case, the successful participants can eventually make the stuck participants unstuck
 by presenting them the recovery data.
 The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
