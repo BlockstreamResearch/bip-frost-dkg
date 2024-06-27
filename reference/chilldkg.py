@@ -59,20 +59,60 @@ class SessionParams(NamedTuple):
     t: int
 
 
+# TODO This should be a user-facing function that compute only the pubkey
 def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
+    """Compute the participant's host public key from the seed.
+
+    This is the long-term cryptographic identity of the participant. It is
+    derived deterministically from the secret seed.
+
+    The seed must be 32 bytes of cryptographically secure randomness with
+    sufficient entropy to be unpredictable. All outputs of a successful
+    participant in a session can be recovered from (a backup of) the seed and
+    per-session recovery data.
+
+    The same seed (and thus host public key) can be used in multiple DKG
+    sessions. A host public key can be correlated to the threshold public key
+    resulting from a DKG session only by parties who observed the session,
+    namely the participants, the coordinator (and any eavesdropper).
+
+    :param bytes seed: Participant's long-term secret seed (32 bytes)
+    :return: the host public key
+
+    """
+    if len(seed) != 32:
+        raise ValueError
     hostseckey = prf(seed, "chilldkg hostseckey")
     hostpubkey = pubkey_gen_plain(hostseckey)
     return (hostseckey, hostpubkey)
 
 
 def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]:
+    """Create a SessionParams object along with its params_id.
+
+    A SessionParams object holds the common parameters of a ChillDKG session,
+    namely the list of the host public keys of all participants (including the
+    local participants, if applicable) and the participation threshold t. All
+    participants and the coordinator in a session must be given the same
+    SessionParams object (otherwise the session is guaranteed to fail).
+
+    TODO params_id
+
+    :param hostpubkeys List[bytes]: Ordered list of the host public keys of all participants
+    :param t int: Participation threshold (t participants will be required to sign)
+    :return: the SessionParams object and the params_id, a 32-byte string
+    :raises ValueError: if 1 <= t <= len(hostpubkeys) does not hold
+    :raises OverflowError: if t >= 2^32 (and thus cannot be serialized in 4 bytes)
+    """
     if len(hostpubkeys) != len(set(hostpubkeys)):
         raise DuplicateHostpubkeyError
+    if not (1 <= t <= len(hostpubkeys)):
+        raise ValueError
 
-    assert t < 2 ** (4 * 8)
     params_id = tagged_hash(
         "session parameters id", b"".join(hostpubkeys) + t.to_bytes(4, byteorder="big")
     )
+    assert len(params_id) == 32
     params = SessionParams(hostpubkeys, t)
     return params, params_id
 
@@ -170,6 +210,19 @@ RecoveryData = NewType("RecoveryData", bytes)
 def participant_step1(
     seed: bytes, params: SessionParams
 ) -> Tuple[ParticipantState1, ParticipantMsg1]:
+    """Perform a participant's first step of a ChillDKG session.
+
+    The returned ParticipantState1 should be kept locally, and the returned
+    ParticipantMsg1 should be sent to the coordinator.
+
+    :param bytes seed: Participant's long-term secret seed (32 bytes)
+    :param SessionParams params: Public session parameters
+    :return: the participant's state, and the first message for the coordinator
+    :raises ValueError: if the participant's host public key is not in
+        params.hostpubkeys
+    :raises ValueError: if the length of seed is not 32 bytes
+
+    """
     hostseckey, hostpubkey = hostkey_gen(seed)
     (hostpubkeys, t) = params
 
@@ -184,11 +237,21 @@ def participant_step1(
 def participant_step2(
     seed: bytes,
     state1: ParticipantState1,
-    cmsg: CoordinatorMsg1,
+    cmsg1: CoordinatorMsg1,
 ) -> Tuple[ParticipantState2, ParticipantMsg2]:
+    """Perform a participant's second step of a ChillDKG session.
+
+    The returned ParticipantState2 should be kept locally, and the returned
+    ParticipantMsg2 should be sent to the coordinator.
+
+    :param bytes seed: Participant's long-term secret seed (32 bytes)
+    :param ParticipantState1 state1: Participant's state after the previous step
+    :param cmsg1 CoordinatorMsg1: First message received from the coordinator
+    :return: the participant's state, and the second message for the coordinator
+    """
     (hostseckey, _) = hostkey_gen(seed)
     (params, idx, enc_state) = state1
-    enc_cmsg, enc_shares_sums = cmsg
+    enc_cmsg, enc_shares_sums = cmsg1
 
     dkg_output, eq_input = encpedpop.participant_step2(
         enc_state, enc_cmsg, enc_shares_sums[idx]
@@ -205,18 +268,25 @@ def participant_step2(
 def participant_finalize(
     state2: ParticipantState2, cmsg2: CoordinatorMsg2
 ) -> Tuple[DKGOutput, RecoveryData]:
-    """A SessionNotFinalizedError indicates that finalizing the DKG session was
-    not successful from our point of view.
+    """Perform a participant's final step of a ChillDKG session.
 
-    WARNING: Even when obtaining this exception, you MUST NOT conclude that the
-    DKG session has failed, and as a consequence, you MUST NOT erase your seed.
+    :param ParticipantState2 state2: Participant's state after the previous step
+    :param cmsg2 CoordinatorMsg2: Second message received from the coordinator
+    :return: the DKG output and the recovery data
+    :raises SessionNotFinalizedError: if finalizing the DKG session was not
+        successful from this participant's point of view
 
-    The underlying reason is that it is possible that some other participant
-    deems the DKG session successful, and uses the resulting threshold public
-    key (e.g., by sending funds to it.) That other participant can, at any point
-    in the future (e.g., when initiating a signing sessions), convince us of the
-    success of the DKG session by presenting recovery data for which
-    `participant_recover` succeeds and produces the expected session parameters."""
+    .. warning::
+       Even when obtaining a SessionNotFinalizedError, you MUST NOT conclude
+       that the DKG session has failed, and as a consequence, you MUST NOT erase
+       the seed. The underlying reason is that it is possible that some other
+       participant deems the DKG session successful, and uses the resulting
+       threshold public key (e.g., by sending funds to it). That other
+       participant can, at any point in the future (e.g., when initiating a
+       signing sessions), convince us of the success of the DKG session by
+       presenting recovery data for which `participant_recover` succeeds and
+       produces the expected session parameters.
+    """
     (params, eq_input, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
         raise SessionNotFinalizedError
@@ -253,6 +323,12 @@ class CoordinatorState(NamedTuple):
 def coordinator_step(
     pmsgs1: List[ParticipantMsg1], params: SessionParams
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
+    """Perform the coordinator's first step of a ChillDKG session.
+
+    :param List[ParticipantMsg1] pmsgs1: Participant's state after the previous step
+    :param SessionParams params: Public session parameters
+    :return: the coordinator's state, and the first message for all participants
+    """
     enc_cmsg, dkg_output, eq_input, enc_shares_sums = encpedpop.coordinator_step(
         [pmsg1.enc_pmsg for pmsg1 in pmsgs1], params.t, params.hostpubkeys
     )
@@ -265,6 +341,9 @@ def coordinator_step(
 def coordinator_finalize(
     state: CoordinatorState, pmsgs2: List[ParticipantMsg2]
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
+    """Perform the coordinator's final step of a ChillDKG session.
+    TODO
+    """
     (params, eq_input, dkg_output) = state
     cert = certifying_eq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     if not certifying_eq_verify(params.hostpubkeys, eq_input, cert):
@@ -303,6 +382,7 @@ async def coordinator(
 def recover(
     seed: Optional[bytes], recovery: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
+    """TODO"""
     try:
         (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
             deserialize_recovery_data(recovery)
