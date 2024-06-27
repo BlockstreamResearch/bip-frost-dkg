@@ -376,9 +376,6 @@ Other multi-signatures schemes, e.g., MuSig2 (see [BIP327](bip-0327.mediawiki)) 
 could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
 
-FOOTNOTE The obvious drawback of this simple protocol is that it does not provide robustness, i.e., it does not guarantee termination in the presence of malicious participants.
-any malicious participant (or the coordinator) can, for example, simply refuse to present a signature and stall thereby stall the protocol.
-
 [^certeq-literature]: CertEq can be viewed as signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 
 This termination rule immediately implies the integrity property:
