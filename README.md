@@ -86,8 +86,7 @@ we provide detailed algorithmic specifications in form of Python code.
 
 We assume a network setup in which participants have point-to-point connections to an untrusted coordinator.
 This will enable bandwidth optimizations and is common also in implementations of the signing stage of FROST.
-
-TODO long term keys
+Participants are identified and authenticated via long-term public keys.
 
 The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop), which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
 Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
