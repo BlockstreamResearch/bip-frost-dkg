@@ -325,8 +325,8 @@ This means that the DKG session was successful and the resulting threshold publi
 who can use it, e.g., by sending funds to it.
 
 More formally, Eq must fulfill the following properties [[CGRS23](https://eprint.iacr.org/2023/899)]:
- - Integrity: If Eq returns successfully to some honest participant, then for every pair of input values `eq_input` and `eq_input'` provided by two honest participants, we have `eq_input = eq_input'`.
- - Conditional Agreement: Assuming the coordinator is honest and all messages between honest participants and the coordinator are delivered eventually, if Eq returns successfully to some honest participant, then Eq will eventually return successfully to all honest participants.
+ - **Integrity:** If Eq returns successfully to some honest participant, then for every pair of input values `eq_input` and `eq_input'` provided by two honest participants, we have `eq_input = eq_input'`.
+ - **Conditional Agreement:** Assuming the coordinator is honest and all messages between honest participants and the coordinator are delivered eventually, if Eq returns successfully to some honest participant, then Eq will eventually return successfully to all honest participants.
 
 Depending on the application scenario, different approaches may be suitable to implement Eq,
 such as a consensus protocol already available as part of a federated system
