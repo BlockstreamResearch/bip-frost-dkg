@@ -22,7 +22,6 @@ from util import (
 
 ###
 ### Certifying equality check
-### TODO This is nothing but an aggregate signature scheme
 ###
 
 
@@ -101,7 +100,6 @@ class CoordinatorMsg2(NamedTuple):
     cert: bytes
 
 
-# TODO: fix Any type
 def deserialize_recovery_data(
     b: bytes,
 ) -> Tuple[int, VSSCommitment, List[bytes], List[Scalar], bytes]:
