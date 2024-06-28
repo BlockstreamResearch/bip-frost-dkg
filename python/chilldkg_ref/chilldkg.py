@@ -60,7 +60,7 @@ def certifying_eq_coordinator_step(sigs: List[bytes]) -> bytes:
 
 
 ###
-### Parameters and Setup
+### Parameters and Outputs
 ###
 
 
@@ -125,6 +125,10 @@ def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, byt
     assert len(params_id) == 32
     params = SessionParams(hostpubkeys, t)
     return params, params_id
+
+
+"""TODO Write docstring. Or just remove it and make it bytes"""
+RecoveryData = NewType("RecoveryData", bytes)
 
 
 ###
@@ -212,10 +216,6 @@ class ParticipantState2(NamedTuple):
     params: SessionParams
     eq_input: bytes
     dkg_output: DKGOutput
-
-
-"""TODO Write docstring. Or just remove it and make it bytes"""
-RecoveryData = NewType("RecoveryData", bytes)
 
 
 def participant_step1(

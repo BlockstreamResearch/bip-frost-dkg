@@ -27,8 +27,7 @@ class DeserializationError(Exception):
 
 
 class DuplicateHostpubkeyError(Exception):
-    def __init__(self):
-        pass
+    pass
 
 
 class SessionNotFinalizedError(Exception):
