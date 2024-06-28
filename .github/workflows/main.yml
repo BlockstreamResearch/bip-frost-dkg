@@ -13,5 +13,7 @@ jobs:
         run: pip install mypy
       - name: Install ruff
         run: pip install ruff
-      - name: Run tets
+      - name: Run tests
         run: ./python/tests.sh
+      - name: Run example
+        run: ./python/example.py

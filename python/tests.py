@@ -1,12 +1,11 @@
-#
-# Tests
-#
+#!/usr/bin/env python3
+
+"""Tests for ChillDKG reference implementation"""
 
 from itertools import combinations
 from random import randint
 from typing import Tuple, List
 import secrets
-import asyncio
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
@@ -16,7 +15,8 @@ from chilldkg_ref.vss import Polynomial, VSS
 import chilldkg_ref.simplpedpop as simplpedpop
 import chilldkg_ref.encpedpop as encpedpop
 import chilldkg_ref.chilldkg as chilldkg
-from network import CoordinatorChannels, ParticipantChannel
+
+from example import simulate_chilldkg_full
 
 
 def test_vss_correctness():
@@ -112,34 +112,6 @@ def simulate_chilldkg(
         assert out is not None
         outputs += [out]
 
-    return outputs
-
-
-def simulate_chilldkg_full(
-    seeds, t
-) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.RecoveryData]]:
-    n = len(seeds)
-    hostkeys = []
-    for i in range(n):
-        hostkeys += [chilldkg.hostkey_gen(seeds[i])]
-
-    params = chilldkg.session_params([hostkey[1] for hostkey in hostkeys], t)[0]
-
-    async def main():
-        coord_chans = CoordinatorChannels(n)
-        participant_chans = [
-            ParticipantChannel(coord_chans.queues[i]) for i in range(n)
-        ]
-        coord_chans.set_participant_queues(
-            [participant_chans[i].queue for i in range(n)]
-        )
-        coroutines = [chilldkg.coordinator(coord_chans, params)] + [
-            chilldkg.participant(participant_chans[i], seeds[i], hostkeys[i][0], params)
-            for i in range(n)
-        ]
-        return await asyncio.gather(*coroutines)
-
-    outputs = asyncio.run(main())
     return outputs
 
 

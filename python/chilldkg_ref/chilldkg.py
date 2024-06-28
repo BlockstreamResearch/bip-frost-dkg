@@ -12,7 +12,6 @@ from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
-from network import ParticipantChannel, CoordinatorChannels
 
 from .vss import VSS, VSSCommitment
 from .simplpedpop import DKGOutput, common_dkg_output
@@ -304,22 +303,6 @@ def participant_finalize(
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
 
-async def participant(
-    chan: ParticipantChannel, seed: bytes, hostseckey: bytes, params: SessionParams
-) -> Tuple[DKGOutput, RecoveryData]:
-    # TODO Top-level error handling
-    state1, pmsg1 = participant_step1(seed, params)
-    chan.send(pmsg1)
-    cmsg1 = await chan.receive()
-
-    state2, eq_round1 = participant_step2(seed, state1, cmsg1)
-
-    chan.send(eq_round1)
-    cmsg2 = await chan.receive()
-
-    return participant_finalize(state2, cmsg2)
-
-
 ###
 ### Coordinator
 ###
@@ -360,27 +343,6 @@ def coordinator_finalize(
     if not certifying_eq_verify(params.hostpubkeys, eq_input, cert):
         raise SessionNotFinalizedError
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
-
-
-async def coordinator(
-    chans: CoordinatorChannels, params: SessionParams
-) -> Tuple[DKGOutput, RecoveryData]:
-    (hostpubkeys, t) = params
-    n = len(hostpubkeys)
-
-    pmsgs1: List[ParticipantMsg1] = []
-    for i in range(n):
-        pmsgs1.append(await chans.receive_from(i))
-    state, cmsg1 = coordinator_step(pmsgs1, params)
-    chans.send_all(cmsg1)
-
-    sigs = []
-    for i in range(n):
-        sigs += [await chans.receive_from(i)]
-    cmsg2, dkg_output, recovery_data = coordinator_finalize(state, sigs)
-    chans.send_all(cmsg2)
-
-    return dkg_output, recovery_data
 
 
 ###
