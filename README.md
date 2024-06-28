@@ -164,7 +164,7 @@ In other words, what is primarily required to ensure liveness in these applicati
 
 Due to the complexity of ChillDKG, we refrain from providing a pseudocode specification along with a reference implementation.
 Instead, we provide only a normative reference implementation in Python 3.12
-(see [`reference/chilldkg.py`](reference/chilldkg.py)),
+(see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py)),
 which serves as an executable specification.
 
 To ease understanding of the design and reference code
@@ -186,7 +186,7 @@ Consequently, implementations should not expose the algorithms of the building b
 
 ### DKG Protocol SimplPedPop
 
-(See [`reference/simplpedpop.py`](reference/simplpedpop.py).)
+(See [`python/chilldkg_ref/simplpedpop.py`](python/chilldkg_ref/simplpedpop.py).)
 
 The SimplPedPop protocol has been proposed by Chu, Gerhart, Ruffing, and Schröder [Section 4, [CGRS23](https://eprint.iacr.org/2023/899)].
 We make the following modifications as compared to the original SimplPedPop proposal:
@@ -269,7 +269,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 
 ### DKG Protocol EncPedPop
 
-(See [`reference/encpedpop.py`](reference/encpedpop.py).)
+(See [`python/chilldkg_ref/encpedpop.py`](python/chilldkg_ref/encpedpop.py).)
 
 EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
 so that they can be sent over an insecure communication channel.
@@ -341,7 +341,7 @@ A detailed treatment is these out-of-band methods is out of scope of this docume
 
 ### DKG Protocol ChillDKG
 
-(See [`reference/chilldkg.py`](reference/chilldkg.py).)
+(See [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
 Instead of performing a out-of-band check as the last step of the DKG,
 ChillDKG relies on an more direct approach:
@@ -430,7 +430,7 @@ The purpose of this section is to provide a high-level overview of the interface
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
 Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation
-(see [`reference/chilldkg.py`](reference/chilldkg.py).)
+(see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation,
 should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
