@@ -491,78 +491,20 @@ The recovery data can, e.g., be attached to the first request to initiate a FROS
 Every participant generates a long-term *host secret key* and a corresponding *host public key*
 (using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-participant) algorithm).
 
-```python
-chilldkg_hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]
-```
+TODO Copy over the function signatures including docstrings, perhaps move from things out of the docstring
 
-To initiate a ChillDKG session,
-the participants send their host pubkey to all other participants and collect received host pubkeys.
-We assume that the participants agree on the list of host pubkeys (including their order).
-If they do not agree, the comparison of the session parameter identifier in the next protocol step will simply fail.
-TODO: Params are the (ordered) list of host pubkeys (representing the participants) and threshold `t`.
-
-They then compute a session parameter identifier that includes all participants (including yourself TODO: this is maybe obvious but probably good to stress, in particular for backups).
-
-```python
-SessionParams = Tuple[List[bytes], int, bytes]
-
-chilldkg_session_params(hostpubkeys: List[bytes], t: int, context_string: bytes) -> Tuple[SessionParams, bytes]
-```
-
-The participants compare the session parameters identifier with every other participant out-of-band.
-If a participant is presented a session parameters identifier that does not match the locally computed session parameters identifier, the participant aborts.
-Only if all other `n-1` session parameters identifiers are identical to the locally computed session parameters identifier, the participant proceeds with the protocol.
-
-```python
-ChillDKGStateR1 = Tuple[SessionParams, int, EncPedPopR1State]
-
-chilldkg_round1(seed: bytes, params: SessionParams) -> Tuple[ChillDKGStateR1, VSSCommitmentExt, List[Scalar]]
-```
-
-```python
-ChillDKGStateR2 = Tuple[SessionParams, bytes, DKGOutput]
-
-chilldkg_round2(seed: bytes, state1: ChillDKGStateR1, vss_commitments_sum: VSSCommitmentSumExt, all_enc_shares_sum: List[Scalar]) -> Tuple[ChillDKGStateR2, bytes]
-
-```
-
-A return value of False means that `cert` is not a valid certificate.
-
-TODO: the following isn't necessary anymore, since state2 can be recovered with the recovery data.
-You MUST NOT delete `state2` in this case.
-The reason is that some other participant may have a valid certificate and thus deem the DKG session successful.
-That other participant will rely on us not having deleted `state2`.
-Once you obtain that valid certificate, you can call `chilldkg_finalize` again with that certificate.
-
-```python
-chilldkg_finalize(state2: ChillDKGStateR2, cert: bytes) -> Union[DKGOutput, Literal[False]]
-```
-
-### Full DKG Session
-
+TODO Fix diagram
 ![chilldkg diagram](images/chilldkg-sequence.png)
 
-TODO Write
-
-TODO Does it make sense to keep these function signatures?
-
-``` python
-chilldkg(chan: ParticipantChannel, seed: bytes, my_hostseckey: bytes, params: SessionParams) -> Union[Tuple[DKGOutput, Any], Literal[False]]
-```
-
-```python
-chilldkg_coordinate(chans: CoordinatorChannels, params: SessionParams) -> Union[GroupInfo, Literal[False]]
-```
-
-
 ### Backup and Recovery
+
 Losing the secret share or the threshold public key will render the participant incapable of participating in signing sessions.
 As these values depend on the contributions of the other participants to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
 ChillDKG offers the possibility to recover a participant's outputs of the session from the participant's seed and the DKG transcript of the specific session.
 As a result, a full backup of a participant consists of the seed and the transcripts of all DKGs sessions the participant has participated in.
-(TODO Which sessions? Probably all sessions deemed successful, i.e., the backup should be exported as part of `finalize`.)
+
 Since the transcript is verifiable and the same for all participants,
 if a participant loses the backup of the transcript of the DKG session,
 they can request it from any other participants or the coordinator.
@@ -571,28 +513,37 @@ it can in principle be stored with a third-party backup provider.
 (TODO: But there are privacy implications. The hostpubkeys and threshold public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
 
 ```python
-chilldkg_backup(state2: ChillDKGStateR2, cert: bytes) -> Any
+def recover(
+    seed: Optional[bytes], recovery: RecoveryData
+) -> Tuple[DKGOutput, SessionParams]:
+    """Recover the DKG output of a session from the seed and recovery data.
+
+    This function serves two purposes:
+    1. To recover after a SessionNotFinalizedError after obtaining the recovery
+       data from another participant or the coordinator (see
+       participant_finalize).
+    2. To recover from a backup after data loss (e.g., loss of the device).
+
+    :returns: the DKG output and the parameters of the recovered session
+    :raises InvalidRecoveryDataError: if recovery failed
+    """
 ```
 
-```python
-chilldkg_recover(seed: bytes, backup: Any, context_string: bytes) -> Union[Tuple[DKGOutput, SessionParams], Literal[False]]
-```
-
-Note that it may not be an unreasonable strategy in a threshold setup not to perform backups of participants at all,
+Keeping seed backups accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
+As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of seeds at all,
 and simply hope that `t` honest and working participants will remain available.
-As soon as one or more participants are lost or broken, new DKG session can be performed with the unavailable participants replaced.
+As soon as one or more participants are lost or broken, a new DKG session can be performed with the lost participants replaced.
 One drawback of this method is that it will result in a change of the threshold public key,
 and the application will, therefore, need to transition to the new threshold public key
-(e.g., funds stored under the current threshold public key need to be transferred to the new key).
+(e.g., funds stored under the current threshold public key need to be transferred to the new key).[^advanced-recovery]
 
-Whether to perform backups and how to manage them ultimately depends on the requirements of the application,
+Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
 
-
-TODO: make the following a footnote
-There are strategies to recover if the backup is lost and other participants assist in recovering.
-In such cases, the recovering participant must be very careful to obtain the correct secret share and threshold public key!
-1. If all other participants are cooperative and their seed is backed up (EncPedPop or ChillDKG), it's possible that the other participants can recreate the participant's lost secret share by running the DKG protocol again.
-2. If threshold-many participants are cooperative, they can use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
-   This scheme requires no additional backup or storage space for the participants.
+[^advanced-recovery]:
+(TODO Do we want to kill this? This is so far down with unclear security assumption (semihonest) that I'm not convinced that we want to talk about this at all.)
+In theory, there are advanced strategies to recover even if the seed backup is lost and other participants assist in recovering.
+For example, if threshold-many participants are cooperative, it may be to possible to use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+(TODO proper citation)
+This scheme requires no additional backup or storage space for the participants.
 These strategies are out of scope for this document.
