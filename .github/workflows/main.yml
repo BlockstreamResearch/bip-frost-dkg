@@ -1,10 +1,17 @@
-name: Ruff
+name: Tests
 on: [push, pull_request]
 jobs:
-  ruff:
+  tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          src: "python"
+          python-version: 3.11
+      - name: Install mypy
+        run: pip install mypy
+      - name: Install ruff
+        run: pip install ruff
+      - name: Run tets
+        run: ./python/tests.sh
