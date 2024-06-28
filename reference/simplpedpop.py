@@ -8,7 +8,7 @@ from vss import VSS, VSSCommitment, VSSVerifyError
 
 
 ###
-### Proofs of possession (Pops)
+### Proofs of possession (pops)
 ###
 
 
@@ -36,15 +36,11 @@ def pop_verify(pop: Pop, pubkey: bytes, idx: int):
 
 
 class ParticipantMsg(NamedTuple):
-    """Round 1 message from participant to coordinator"""
-
     com: VSSCommitment
     pop: Pop
 
 
 class CoordinatorMsg(NamedTuple):
-    """Round 1 message from coordinator to all participants"""
-
     coms_to_secrets: List[GE]
     sum_coms_to_nonconst_terms: List[GE]
     pops: List[Pop]
@@ -63,8 +59,6 @@ class CoordinatorMsg(NamedTuple):
 ###
 
 
-# TODO This should probably moved somewhere else as its common to all DKGs.
-# Hm, moving it to reference.py is difficult due to cylic module dependencies.
 class DKGOutput(NamedTuple):
     secshare: Optional[Scalar]  # None for coordinator
     threshold_pubkey: GE
@@ -81,10 +75,10 @@ def assemble_sum_vss_commitment(
 
 
 def common_dkg_output(vss_commit, n: int) -> Tuple[GE, List[GE]]:
-    """Derive the common parts of the DKG output from the sum of all VSS commitments
-
-    The common parts are the threshold public key and the individual public shares of
-    all participants."""
+    # Derive the common parts of the DKG output from the sum of all VSS commitments
+    #
+    # The common parts are the threshold public key and the individual public shares of
+    # all participants.
     threshold_pubkey = vss_commit.ges[0]
     pubshares = []
     for i in range(0, n):
@@ -119,15 +113,6 @@ class ParticipantState(NamedTuple):
 def participant_step1(
     seed: bytes, t: int, n: int, participant_idx: int
 ) -> Tuple[ParticipantState, ParticipantMsg, List[Scalar]]:
-    """
-    Generate SimplPedPop messages to be sent to the coordinator.
-
-    :param bytes seed: FRESH, UNIFORMLY RANDOM 32-byte string
-    :param int t: threshold
-    :param int n: number of participants
-    :param int participant_idx: index of this participant in the participant list
-    :return: the participant's state, the VSS commitment and the generated shares
-    """
     assert t < 2 ** (4 * 8)
     assert participant_idx < 2 ** (4 * 8)
 
@@ -147,14 +132,6 @@ def participant_step2(
     cmsg: CoordinatorMsg,
     shares_sum: Scalar,
 ) -> Tuple[DKGOutput, bytes]:
-    """
-    Take the messages received from the coordinator and return eq_input to be compared and DKG output
-
-    :param ParticipantState state: the participant's state after round 1 (output by participant_round1)
-    :param CoordinatorMsg cmsg: round 1 broadcast message received from the coordinator
-    :param Scalar shares_sum: sum of shares for this participant received from all participants (including this participant)
-    :return: the data `eq_input` that must be input to an equality check protocol, the final share, the threshold pubkey, the individual participants' pubshares
-    """
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
     assert len(coms_to_secrets) == n
@@ -194,15 +171,19 @@ def participant_step2(
 ###
 
 
-# Sum the commitments to the i-th coefficients from the given vss_commitments
-# for i > 0. This procedure is introduced by Pedersen in section 5.1 of
-# 'Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing'.
 def coordinator_step(
     pmsgs: List[ParticipantMsg], t: int, n: int
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
-    # We cannot sum the commitments to the secrets because they'll be necessary
-    # to check the PoPs.
+    # Sum the commitments to the i-th coefficients for i > 0
+    #
+    # This procedure is introduced by Pedersen in Section 5.1 of
+    # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret
+    # Sharing'.
+
+    # We cannot sum the commitments to the secrets (i == 0) because they'll be
+    # necessary to check the pops.
     coms_to_secrets = [pmsg.com.commitment_to_secret() for pmsg in pmsgs]
+
     # But we can sum the commitments to the non-constant terms.
     sum_coms_to_nonconst_terms = [
         GE.sum(*(pmsg.com.commitment_to_nonconst_terms()[j] for pmsg in pmsgs))

@@ -12,9 +12,6 @@ def prf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
     return tagged_hash_bip_dkg(tag, seed + extra_input)
 
 
-# TODO Document in all functions what exceptions they can raise
-
-
 class InvalidContributionError(Exception):
     def __init__(self, participant, error):
         self.participant = participant

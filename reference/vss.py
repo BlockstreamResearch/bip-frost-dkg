@@ -11,15 +11,16 @@ class VSSVerifyError(Exception):
 
 
 class Polynomial(NamedTuple):
-    """A scalar polynomial.
-
-    A polynomial f of degree at most t - 1 is represented by a list `coeffs` of
-    t coefficients, i.e., f(x) = coeffs[0] + ... + coeffs[t-1] * x^(t-1)."""
+    # A scalar polynomial.
+    #
+    # A polynomial f of degree at most t - 1 is represented by a list `coeffs`
+    # of t coefficients, i.e., f(x) = coeffs[0] + ... + coeffs[t-1] *
+    # x^(t-1)."""
 
     coeffs: List[Scalar]
 
     def eval(self, x: Scalar) -> Scalar:
-        """Evaluate a polynomial at position x."""
+        # Evaluate a polynomial at position x.
 
         value = Scalar(0)
         # Reverse coefficients to compute evaluation via Horner's method
@@ -44,8 +45,8 @@ class VSSCommitment(NamedTuple):
         )
         return P == Q
 
-    # Returns commitments to the coefficients of f
     def to_bytes(self) -> bytes:
+        # Return commitments to the coefficients of f.
         return b"".join([P.to_bytes_compressed_with_infinity() for P in self.ges])
 
     def __add__(self, other):
@@ -78,24 +79,26 @@ class VSS(NamedTuple):
         return VSS(Polynomial(coeffs))
 
     def share_for(self, i: int):
-        """Return the secret share to be sent to the participant with index i.
+        # Return the secret share for the participant with index i.
+        #
+        # This computes f(i+1).
 
-        This computes f(i+1)."""
         x = Scalar(i + 1)
-        assert x != Scalar(0)  # Ensure we don't compute f(0), which is the secret.
+        # Ensure we don't compute f(0), which is the secret.
+        assert x != Scalar(0)
         return self.f(x)
 
     def shares(self, n: int) -> List[Scalar]:
-        """Return the secret shares to be sent to participants with indices 0..n-1.
-
-        This computes [f(1), ..., f(n)]."""
+        # Return the secret shares for the participants with indices 0..n-1.
+        #
+        # This computes [f(1), ..., f(n)].
         return [self.share_for(i) for i in range(0, n)]
 
     def commit(self) -> VSSCommitment:
         return VSSCommitment([c * G for c in self.f.coeffs])
 
     def secret(self):
-        """Return the secret to be shared.
-
-        This computes f(0)."""
+        # Return the secret to be shared.
+        #
+        # This computes f(0).
         return self.f.coeffs[0]

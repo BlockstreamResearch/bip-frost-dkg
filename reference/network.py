@@ -1,3 +1,7 @@
+#
+# Network mocks to simulate full DKG sessions
+#
+
 import asyncio
 
 

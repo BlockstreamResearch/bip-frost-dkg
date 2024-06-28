@@ -1,4 +1,10 @@
-# Reference implementation of BIP DKG.
+"""Reference implementation of ChillDKG.
+
+The public API consists of all functions with docstrings, including the types in
+their arguments and return values, and the exceptions they raise). All other
+definitions are internal.
+"""
+
 from secrets import token_bytes as random_bytes
 from typing import Tuple, List, NamedTuple, NewType, Optional
 
@@ -19,6 +25,11 @@ from util import (
     SessionNotFinalizedError,
 )
 
+# TODO
+# __all__ = []
+
+# TODO Document in all public functions what exceptions they can raise
+# TODO What about DKGOutput? It should be here.
 
 ###
 ### Certifying equality check
@@ -204,6 +215,7 @@ class ParticipantState2(NamedTuple):
     dkg_output: DKGOutput
 
 
+"""TODO Write docstring. Or just remove it and make it bytes"""
 RecoveryData = NewType("RecoveryData", bytes)
 
 
@@ -221,7 +233,6 @@ def participant_step1(
     :raises ValueError: if the participant's host public key is not in
         params.hostpubkeys
     :raises ValueError: if the length of seed is not 32 bytes
-
     """
     hostseckey, hostpubkey = hostkey_gen(seed)
     (hostpubkeys, t) = params
@@ -377,12 +388,13 @@ async def coordinator(
 ###
 
 
-# Recovery requires the seed (can be None if recovering the coordinator) and the
-# public recovery data
 def recover(
     seed: Optional[bytes], recovery: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
-    """TODO"""
+    """TODO
+    Recovery requires the seed (can be None if recovering the coordinator) and
+    the public recovery data
+    """
     try:
         (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
             deserialize_recovery_data(recovery)
