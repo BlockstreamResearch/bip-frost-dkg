@@ -11,12 +11,12 @@ import asyncio
 from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
 
-from util import prf
-from vss import Polynomial, VSS
-import simplpedpop
-import encpedpop
-import chilldkg
-from chilldkg import CoordinatorChannels, ParticipantChannel
+from chilldkg_ref.util import prf
+from chilldkg_ref.vss import Polynomial, VSS
+import chilldkg_ref.simplpedpop as simplpedpop
+import chilldkg_ref.encpedpop as encpedpop
+import chilldkg_ref.chilldkg as chilldkg
+from network import CoordinatorChannels, ParticipantChannel
 
 
 def test_vss_correctness():

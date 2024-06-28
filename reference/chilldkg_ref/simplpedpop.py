@@ -3,8 +3,8 @@ from typing import List, NamedTuple, NewType, Tuple, Optional
 
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.secp256k1 import GE, Scalar
-from util import BIP_TAG, InvalidContributionError
-from vss import VSS, VSSCommitment, VSSVerifyError
+from .util import BIP_TAG, InvalidContributionError
+from .vss import VSS, VSSCommitment, VSSVerifyError
 
 
 ###

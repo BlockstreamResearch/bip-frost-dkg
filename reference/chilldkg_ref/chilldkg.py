@@ -14,10 +14,10 @@ from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 from network import ParticipantChannel, CoordinatorChannels
 
-from vss import VSS, VSSCommitment
-from simplpedpop import DKGOutput, common_dkg_output
-import encpedpop
-from util import (
+from .vss import VSS, VSSCommitment
+from .simplpedpop import DKGOutput, common_dkg_output
+from . import encpedpop
+from .util import (
     prf,
     InvalidRecoveryDataError,
     DeserializationError,

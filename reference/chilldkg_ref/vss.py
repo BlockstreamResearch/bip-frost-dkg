@@ -2,7 +2,7 @@ from typing import List, NamedTuple
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 
-from util import prf, DeserializationError
+from .util import prf, DeserializationError
 
 
 class VSSVerifyError(Exception):

@@ -4,8 +4,8 @@ from secp256k1ref.secp256k1 import Scalar
 from secp256k1ref.ecdh import ecdh_raw
 from secp256k1ref.util import int_from_bytes
 
-import simplpedpop
-from util import tagged_hash_bip_dkg, prf, InvalidContributionError
+from . import simplpedpop
+from .util import tagged_hash_bip_dkg, prf, InvalidContributionError
 
 
 ###
