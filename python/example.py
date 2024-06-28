@@ -9,7 +9,7 @@ import secrets
 import pprint
 
 from chilldkg_ref.chilldkg import (
-    hostkey_gen,
+    hostpubkey,
     session_params,
     participant_step1,
     participant_step2,
@@ -66,7 +66,7 @@ class ParticipantChannel:
 
 
 async def participant(
-    chan: ParticipantChannel, seed: bytes, hostseckey: bytes, params: SessionParams
+    chan: ParticipantChannel, seed: bytes, params: SessionParams
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     state1, pmsg1 = participant_step1(seed, params)
@@ -110,11 +110,11 @@ async def coordinator(
 def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
     # Generate common inputs for all participants and coordinator
     n = len(seeds)
-    hostkeys = []
+    hostpubkeys = []
     for i in range(n):
-        hostkeys += [hostkey_gen(seeds[i])]
+        hostpubkeys += [hostpubkey(seeds[i])]
 
-    params = session_params([hostkey[1] for hostkey in hostkeys], t)[0]
+    params = session_params(hostpubkeys, t)[0]
 
     async def session():
         coord_chans = CoordinatorChannels(n)
@@ -125,8 +125,7 @@ def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
             [participant_chans[i].queue for i in range(n)]
         )
         coroutines = [coordinator(coord_chans, params)] + [
-            participant(participant_chans[i], seeds[i], hostkeys[i][0], params)
-            for i in range(n)
+            participant(participant_chans[i], seeds[i], params) for i in range(n)
         ]
         return await asyncio.gather(*coroutines)
 

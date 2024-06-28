@@ -28,7 +28,6 @@ from .util import (
 # __all__ = []
 
 # TODO Document in all public functions what exceptions they can raise
-# TODO What about DKGOutput? It should be here.
 
 ###
 ### Certifying equality check
@@ -60,7 +59,7 @@ def certifying_eq_coordinator_step(sigs: List[bytes]) -> bytes:
 
 
 ###
-### Parameters and Outputs
+### Session input and outputs
 ###
 
 
@@ -69,8 +68,19 @@ class SessionParams(NamedTuple):
     t: int
 
 
-# TODO This should be a user-facing function that compute only the pubkey
-def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
+def hostseckey(seed: bytes) -> bytes:
+    return prf(seed, "chilldkg hostseckey")
+
+
+def hostkeypair(seed: bytes) -> Tuple[bytes, bytes]:
+    if len(seed) != 32:
+        raise ValueError
+    seckey = hostseckey(seed)
+    pubkey = pubkey_gen_plain(seckey)
+    return (seckey, pubkey)
+
+
+def hostpubkey(seed: bytes) -> bytes:
     """Compute the participant's host public key from the seed.
 
     This is the long-term cryptographic identity of the participant. It is
@@ -88,13 +98,9 @@ def hostkey_gen(seed: bytes) -> Tuple[bytes, bytes]:
 
     :param bytes seed: Participant's long-term secret seed (32 bytes)
     :return: the host public key
-
+    :raises ValueError: if the length of seed is not 32 bytes
     """
-    if len(seed) != 32:
-        raise ValueError
-    hostseckey = prf(seed, "chilldkg hostseckey")
-    hostpubkey = pubkey_gen_plain(hostseckey)
-    return (hostseckey, hostpubkey)
+    return hostkeypair(seed)[1]
 
 
 def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]:
@@ -129,6 +135,8 @@ def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, byt
 
 """TODO Write docstring. Or just remove it and make it bytes"""
 RecoveryData = NewType("RecoveryData", bytes)
+
+# TODO What about DKGOutput? It should be here.
 
 
 ###
@@ -233,7 +241,7 @@ def participant_step1(
         params.hostpubkeys
     :raises ValueError: if the length of seed is not 32 bytes
     """
-    hostseckey, hostpubkey = hostkey_gen(seed)
+    hostseckey, hostpubkey = hostkeypair(seed)
     (hostpubkeys, t) = params
 
     participant_idx = hostpubkeys.index(hostpubkey)
@@ -259,7 +267,7 @@ def participant_step2(
     :param cmsg1 CoordinatorMsg1: First message received from the coordinator
     :return: the participant's state, and the second message for the coordinator
     """
-    (hostseckey, _) = hostkey_gen(seed)
+    (hostseckey, _) = hostkeypair(seed)
     (params, idx, enc_state) = state1
     enc_cmsg, enc_shares_sums = cmsg1
 
@@ -372,7 +380,7 @@ def recover(
 
     if seed:
         # Find our hostpubkey
-        hostseckey, hostpubkey = hostkey_gen(seed)
+        hostseckey, hostpubkey = hostkeypair(seed)
         try:
             idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:

@@ -84,11 +84,10 @@ def simulate_chilldkg(
 ) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.RecoveryData]]:
     n = len(seeds)
 
-    hostkeys = []
+    hostpubkeys = []
     for i in range(n):
-        hostkeys += [chilldkg.hostkey_gen(seeds[i])]
+        hostpubkeys += [chilldkg.hostpubkey(seeds[i])]
 
-    hostpubkeys = [hostkey[1] for hostkey in hostkeys]
     params, _ = chilldkg.session_params(hostpubkeys, t)
 
     prets1 = []
