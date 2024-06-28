@@ -106,15 +106,38 @@ def hostpubkey(seed: bytes) -> bytes:
 def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]:
     """Create a SessionParams object along with its params_id.
 
-    A SessionParams object holds the common parameters of a ChillDKG session,
-    namely the list of the host public keys of all participants (including the
-    local participants, if applicable) and the participation threshold t. All
-    participants and the coordinator in a session must be given the same
-    SessionParams object (otherwise the session is guaranteed to fail).
+    A SessionParams object holds the common session parameters of a ChillDKG
+    session, namely the list of the host public keys of all participants
+    (including the local participants, if applicable) and the participation
+    threshold t. All participants and the coordinator in a session must be given
+    the same SessionParams object.
 
-    TODO params_id
+    TODO Say something about order and sorting, possibly steal from BIP327.
 
-    :param hostpubkeys List[bytes]: Ordered list of the host public keys of all participants
+    Participants must ensure that they have obtained authentic host public keys
+    of all the other participants in the session to make sure that they run the
+    DKG and generate a threshold public key with the intended set of
+    participants. This is analogous to traditional threshold signatures (known
+    as "multisig" in the Bitcoin community, see BIP350), where the participants
+    need to obtain authentic extended public keys ("xpubs") from the other
+    participants to generate multisig addresses, or MuSig2 (see BIP327), where
+    the participants need to obtain authentic individual public keys of the
+    other participants to generate an aggregated public key.
+
+    In the common scenario that the participants obtain host public keys from
+    the other participants over channels that do not provide end-to-end
+    authentication of the sending participant (e.g., if the participants simply
+    send their unauthenticaed host public keys to the coordinator who is
+    supposed to relay them to all participants), the params_id serves as a
+    convenient way to perform an out-of-band comparison of all host public keys.
+    It is a collision-resistant cryptographic hash of the SessionParams object.
+    As a result, if all participants present an identical params_id (as can be
+    verified out-of-band), then they all agree on all host public keys and the
+    threshold t, and in particular, all participants have obtained authentic
+    public host keys.
+
+    :param hostpubkeys List[bytes]: Ordered list of the host public keys of all
+        participants
     :param t int: Participation threshold (t participants will be required to sign)
     :return: the SessionParams object and the params_id, a 32-byte string
     :raises ValueError: if 1 <= t <= len(hostpubkeys) does not hold
@@ -133,7 +156,6 @@ def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, byt
     return params, params_id
 
 
-"""TODO Write docstring. Or just remove it and make it bytes"""
 RecoveryData = NewType("RecoveryData", bytes)
 
 # TODO What about DKGOutput? It should be here.
@@ -144,7 +166,6 @@ RecoveryData = NewType("RecoveryData", bytes)
 ###
 
 
-# TODO These wrappers of single things may be overkill.
 class ParticipantMsg1(NamedTuple):
     enc_pmsg: encpedpop.ParticipantMsg
 
@@ -235,7 +256,7 @@ def participant_step1(
     ParticipantMsg1 should be sent to the coordinator.
 
     :param bytes seed: Participant's long-term secret seed (32 bytes)
-    :param SessionParams params: Public session parameters
+    :param SessionParams params: Common session parameters
     :return: the participant's state, and the first message for the coordinator
     :raises ValueError: if the participant's host public key is not in
         params.hostpubkeys
@@ -294,16 +315,25 @@ def participant_finalize(
     :raises SessionNotFinalizedError: if finalizing the DKG session was not
         successful from this participant's point of view
 
+    If this functions returns properly (without an exception), then this
+    participant deems the DKG session successful. It is, however, possible that
+    other participants have received a cmsg2 from the coordinator that made them
+    raise a SessionNotFinalizedError instead, or that they have not received a
+    cmsg2 from the coordinator at all. These participants can, at any point in
+    time in the future (e.g., when initiating a signing session), be convinced
+    to deem the session successful by presenting them the recovery data, from
+    which they can recover the DKG outputs using the participant_recover
+    function.
+
     .. warning::
-       Even when obtaining a SessionNotFinalizedError, you MUST NOT conclude
-       that the DKG session has failed, and as a consequence, you MUST NOT erase
-       the seed. The underlying reason is that it is possible that some other
-       participant deems the DKG session successful, and uses the resulting
-       threshold public key (e.g., by sending funds to it). That other
-       participant can, at any point in the future (e.g., when initiating a
-       signing sessions), convince us of the success of the DKG session by
-       presenting recovery data for which `participant_recover` succeeds and
-       produces the expected session parameters.
+       Changing perspectives, this implies that even when obtaining a
+       SessionNotFinalizedError, you MUST NOT conclude that the DKG session has
+       failed, and as a consequence, you MUST NOT erase the seed. The underlying
+       reason is that it is possible that some other participant deems the DKG
+       session successful, and uses the resulting threshold public key (e.g., by
+       sending funds to it). That other participant can, at any point in the
+       future, wish to convince us of the success of the DKG session by
+       presenting us recovery data.
     """
     (params, eq_input, dkg_output) = state2
     if not certifying_eq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
@@ -327,8 +357,12 @@ def coordinator_step(
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
     """Perform the coordinator's first step of a ChillDKG session.
 
-    :param List[ParticipantMsg1] pmsgs1: Participant's state after the previous step
-    :param SessionParams params: Public session parameters
+    The returned CoordinatorState should be kept locally, and the returned
+    CoordinatorMsg1 should be sent to all participants.
+
+    :param List[ParticipantMsg1] pmsgs1: List of first messages received from
+        the participants
+    :param SessionParams params: Common session parameters
     :return: the coordinator's state, and the first message for all participants
     """
     enc_cmsg, dkg_output, eq_input, enc_shares_sums = encpedpop.coordinator_step(
@@ -344,7 +378,20 @@ def coordinator_finalize(
     state: CoordinatorState, pmsgs2: List[ParticipantMsg2]
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
     """Perform the coordinator's final step of a ChillDKG session.
-    TODO
+
+    The returned CoordinatorMsg2 should be sent to all participants.
+
+    Since the coordinator does not have a secret shares, the DKG output will
+    have the secshare field set to None.
+
+    :param CoordinatorState state: Coordinator's state after the previous step
+    :param List[ParticipantMsg2] pmsgs2: List of second messages received from
+        the participants
+    :return: the second message for all participants, the DKG output, and the
+        recovry data
+    :raises SessionNotFinalizedError: if finalizing the DKG session was not
+        successful from the point of view of the coordinator (TODO does it make
+        sense to recover the coordinator then?)
     """
     (params, eq_input, dkg_output) = state
     cert = certifying_eq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
@@ -361,9 +408,16 @@ def coordinator_finalize(
 def recover(
     seed: Optional[bytes], recovery: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
-    """TODO
-    Recovery requires the seed (can be None if recovering the coordinator) and
-    the public recovery data
+    """Recover the DKG output of a session from the seed and recovery data.
+
+    This function serves two purposes:
+    1. To recover after a SessionNotFinalizedError after obtaining the recovery
+       data from another participant or the coordinator (see
+       participant_finalize).
+    2. To recover from a backup after data loss (e.g., loss of the device).
+
+    :returns: the DKG output and the parameters of the recovered session
+    :raises InvalidRecoveryDataError: if recovery failed
     """
     try:
         (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
