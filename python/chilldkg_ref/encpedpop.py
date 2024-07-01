@@ -39,12 +39,12 @@ def decrypt_sum(
     idx: int,
     context: bytes,
 ) -> Scalar:
-    shares_sum = ciphertext_sum
+    secshare = ciphertext_sum
     for i in range(len(enckeys)):
         if i != idx:
             pad = ecdh(deckey, enckeys[idx], enckeys[i], context, sending=False)
-            shares_sum = shares_sum - pad
-    return shares_sum
+            secshare = secshare - pad
+    return secshare
 
 
 ###
@@ -121,10 +121,10 @@ def participant_step2(
     simpl_cmsg, = cmsg  # Unpack unary tuple  # fmt: skip
 
     enc_context = simpl_state.t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-    shares_sum = decrypt_sum(enc_secshare, deckey, enckeys, idx, enc_context)
-    shares_sum += self_share
+    secshare = decrypt_sum(enc_secshare, deckey, enckeys, idx, enc_context)
+    secshare += self_share
     dkg_output, eq_input = simplpedpop.participant_step2(
-        simpl_state, simpl_cmsg, shares_sum
+        simpl_state, simpl_cmsg, secshare
     )
     eq_input += b"".join(enckeys)
     return dkg_output, eq_input

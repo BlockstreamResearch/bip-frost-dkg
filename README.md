@@ -245,14 +245,14 @@ Our variant of the SimplPedPop protocol then works as follows:
     pubshares[j] = (j+1)^0 * sum_coms[0] + ... + (j+1)^(t-1) * sum_coms[t-1]
     ```
     
-    Let `shares_sum` be the sum of VSS shares privately obtained from each participant `j`.
-    Participant `i` checks the validity of `shares_sum` against `sum_coms`
-    by checking if the equation `shares_sum * G = pubshares[i]` holds.
-    (Assuming `shares_sum` is the sum of the VSS shares created by other participants, it will be equal to `f(i+1)`.)
+    Let `secshare` be the sum of VSS shares privately obtained from each participant `j`.
+    Participant `i` checks the validity of `secshare` against `sum_coms`
+    by checking if the equation `secshare * G = pubshares[i]` holds.
+    (Assuming `secshare` is the sum of the VSS shares created by other participants, it will be equal to `f(i+1)`.)
     
     If the check fails, participant `i` aborts.
-    Otherwise, participant `i` computes the DKG outputs consisting of 
-    this participant's secret share `secshare = shares_sum`,
+    Otherwise, participant `i` sets the DKG output consisting of
+    this participant's secret share `secshare`,
     the threshold public key `threshold_pubkey = sum_coms[0]`, and
     all participants' public shares `pubshares`.
 
@@ -296,12 +296,12 @@ The coordinator collects all encrypted VSS shares,
 and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
 The coordinator sends this sum to participant `j`
 who stores it as `enc_secshare` and
-obtains the value `shares_sum = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
+obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
 
 [^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
 Note that this emulates a Dining Cryptographer's Network [[Cha88](https://link.springer.com/article/10.1007/BF00206326)],
 though anonymity is an anti-feature in our case:
-If a SimplPedPod participant receives an invalid `shares_sum`,
+If a SimplPedPod participant receives an invalid `secshare`,
 it is impossible for this participant to identify another participant who has sent wrong contributions,
 even if the coordinator is trusted.
 This is the price we pay for the communication optimization.

@@ -442,19 +442,19 @@ def recover(
 
         # Decrypt share
         seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)
-        shares_sum = encpedpop.decrypt_sum(
+        secshare = encpedpop.decrypt_sum(
             enc_secshares[idx], hostseckey, hostpubkeys, idx, enc_context
         )
 
         # Derive self_share
         vss = VSS.generate(seed_, t)
         self_share = vss.share_for(idx)
-        shares_sum += self_share
+        secshare += self_share
     else:
-        shares_sum = None
+        secshare = None
 
     # Compute threshold pubkey and individual pubshares
     (threshold_pubkey, pubshares) = common_dkg_output(sum_coms, n)
 
-    dkg_output = DKGOutput(shares_sum, threshold_pubkey, pubshares)
+    dkg_output = DKGOutput(secshare, threshold_pubkey, pubshares)
     return dkg_output, params

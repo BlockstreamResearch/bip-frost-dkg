@@ -128,7 +128,7 @@ def participant_step1(
 def participant_step2(
     state: ParticipantState,
     cmsg: CoordinatorMsg,
-    shares_sum: Scalar,
+    secshare: Scalar,
 ) -> Tuple[DKGOutput, bytes]:
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
@@ -155,11 +155,11 @@ def participant_step2(
                 i, "Participant sent invalid proof-of-knowledge"
             )
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
-    if not sum_coms.verify(idx, shares_sum):
+    if not sum_coms.verify(idx, secshare):
         raise VSSVerifyError()
     threshold_pubkey, pubshares = common_dkg_output(sum_coms, n)
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return DKGOutput(shares_sum, threshold_pubkey, pubshares), eq_input
+    return DKGOutput(secshare, threshold_pubkey, pubshares), eq_input
 
 
 ###

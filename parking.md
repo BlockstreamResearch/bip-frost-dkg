@@ -42,8 +42,8 @@ There are two possible backup strategies for `EncPedPop`:
     def encpedpop_recover(seed, enc_secshare, t, enckeys, shared_pubkey, signer_pubkeys):
         my_deckey = kdf(seed, "deckey")
         enc_context = hash([t] + enckeys)
-        shares_sum = enc_secshare - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
-        return shares_sum, shared_pubkey, signer_pubkeys
+        secshare = enc_secshare - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
+        return secshare, shared_pubkey, signer_pubkeys
 
     # my_idx is required for signing
     def encpedpop_recover_my_idx(seed, enc_secshare, t, enckeys, shared_pubkey, signer_pubkeys):
