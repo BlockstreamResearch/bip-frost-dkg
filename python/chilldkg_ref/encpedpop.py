@@ -33,13 +33,13 @@ def encrypt(
 
 
 def decrypt_sum(
-    ciphertext_sum: Scalar,
+    sum_ciphertexts: Scalar,
     deckey: bytes,
     enckeys: List[bytes],
     idx: int,
     context: bytes,
 ) -> Scalar:
-    secshare = ciphertext_sum
+    secshare = sum_ciphertexts
     for i in range(len(enckeys)):
         if i != idx:
             pad = ecdh(deckey, enckeys[idx], enckeys[i], context, sending=False)
