@@ -30,21 +30,21 @@ from .util import (
 # TODO Document in all public functions what exceptions they can raise
 
 ###
-### Certifying equality check
+### Equality check protocol CertEq
 ###
 
 
-def certifying_eq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
+def certeq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
     return schnorr_sign(x, hostseckey, aux_rand=random_bytes(32))
 
 
-def certifying_eq_cert_len(n: int) -> int:
+def certeq_cert_len(n: int) -> int:
     return 64 * n
 
 
-def certifying_eq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
+def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     n = len(hostpubkeys)
-    if len(cert) != certifying_eq_cert_len(n):
+    if len(cert) != certeq_cert_len(n):
         return False
     is_valid = [
         schnorr_verify(x, hostpubkeys[i][1:33], cert[i * 64 : (i + 1) * 64])
@@ -53,7 +53,7 @@ def certifying_eq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> boo
     return all(is_valid)
 
 
-def certifying_eq_coordinator_step(sigs: List[bytes]) -> bytes:
+def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
     cert = b"".join(sigs)
     return cert
 
@@ -220,7 +220,7 @@ def deserialize_recovery_data(
     )
 
     # Read cert
-    cert_len = certifying_eq_cert_len(n)
+    cert_len = certeq_cert_len(n)
     if len(rest) < cert_len:
         raise DeserializationError
     cert, rest = rest[:cert_len], rest[cert_len:]
@@ -299,7 +299,7 @@ def participant_step2(
     # shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     state2 = ParticipantState2(params, eq_input, dkg_output)
-    sig = certifying_eq_participant_step(hostseckey, eq_input)
+    sig = certeq_participant_step(hostseckey, eq_input)
     pmsg2 = ParticipantMsg2(sig)
     return state2, pmsg2
 
@@ -336,7 +336,7 @@ def participant_finalize(
        presenting us recovery data.
     """
     (params, eq_input, dkg_output) = state2
-    if not certifying_eq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
+    if not certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
         raise SessionNotFinalizedError
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
@@ -394,8 +394,8 @@ def coordinator_finalize(
         sense to recover the coordinator then?)
     """
     (params, eq_input, dkg_output) = state
-    cert = certifying_eq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
-    if not certifying_eq_verify(params.hostpubkeys, eq_input, cert):
+    cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
+    if not certeq_verify(params.hostpubkeys, eq_input, cert):
         raise SessionNotFinalizedError
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
 
@@ -430,7 +430,7 @@ def recover(
     (params, params_id) = session_params(hostpubkeys, t)
 
     # Verify cert
-    certifying_eq_verify(hostpubkeys, recovery[: 64 * n], cert)
+    certeq_verify(hostpubkeys, recovery[: 64 * n], cert)
 
     if seed:
         # Find our hostpubkey
