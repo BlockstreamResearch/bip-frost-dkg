@@ -176,7 +176,7 @@ class ParticipantMsg2(NamedTuple):
 
 class CoordinatorMsg1(NamedTuple):
     enc_cmsg: encpedpop.CoordinatorMsg
-    enc_shares_sums: List[Scalar]
+    enc_secshares: List[Scalar]
 
 
 class CoordinatorMsg2(NamedTuple):
@@ -211,10 +211,10 @@ def deserialize_recovery_data(
         raise DeserializationError
     hostpubkeys, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
 
-    # Read enc_shares_sums (32*n bytes)
+    # Read enc_secshares (32*n bytes)
     if len(rest) < 32 * n:
         raise DeserializationError
-    enc_shares_sums, rest = (
+    enc_secshares, rest = (
         [Scalar(int_from_bytes(rest[i : i + 32])) for i in range(0, 32 * n, 32)],
         rest[32 * n :],
     )
@@ -227,7 +227,7 @@ def deserialize_recovery_data(
 
     if len(rest) != 0:
         raise DeserializationError
-    return (t, sum_coms, hostpubkeys, enc_shares_sums, cert)
+    return (t, sum_coms, hostpubkeys, enc_secshares, cert)
 
 
 ###
@@ -290,14 +290,14 @@ def participant_step2(
     """
     (hostseckey, _) = hostkeypair(seed)
     (params, idx, enc_state) = state1
-    enc_cmsg, enc_shares_sums = cmsg1
+    enc_cmsg, enc_secshares = cmsg1
 
     dkg_output, eq_input = encpedpop.participant_step2(
-        enc_state, enc_cmsg, enc_shares_sums[idx]
+        enc_state, enc_cmsg, enc_secshares[idx]
     )
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
-    eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
+    eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     state2 = ParticipantState2(params, eq_input, dkg_output)
     sig = certifying_eq_participant_step(hostseckey, eq_input)
     pmsg2 = ParticipantMsg2(sig)
@@ -365,12 +365,12 @@ def coordinator_step(
     :param SessionParams params: Common session parameters
     :return: the coordinator's state, and the first message for all participants
     """
-    enc_cmsg, dkg_output, eq_input, enc_shares_sums = encpedpop.coordinator_step(
+    enc_cmsg, dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
         [pmsg1.enc_pmsg for pmsg1 in pmsgs1], params.t, params.hostpubkeys
     )
-    eq_input += b"".join([bytes_from_int(int(share)) for share in enc_shares_sums])
+    eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     state = CoordinatorState(params, eq_input, dkg_output)
-    cmsg1 = CoordinatorMsg1(enc_cmsg, enc_shares_sums)
+    cmsg1 = CoordinatorMsg1(enc_cmsg, enc_secshares)
     return state, cmsg1
 
 
@@ -420,7 +420,7 @@ def recover(
     :raises InvalidRecoveryDataError: if recovery failed
     """
     try:
-        (t, sum_coms, hostpubkeys, enc_shares_sums, cert) = deserialize_recovery_data(
+        (t, sum_coms, hostpubkeys, enc_secshares, cert) = deserialize_recovery_data(
             recovery
         )
     except DeserializationError as e:
@@ -443,7 +443,7 @@ def recover(
         # Decrypt share
         seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)
         shares_sum = encpedpop.decrypt_sum(
-            enc_shares_sums[idx], hostseckey, hostpubkeys, idx, enc_context
+            enc_secshares[idx], hostseckey, hostpubkeys, idx, enc_context
         )
 
         # Derive self_share

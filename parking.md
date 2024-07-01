@@ -39,14 +39,14 @@ There are two possible backup strategies for `EncPedPop`:
     ```python
     # All inputs of this function are required to be backed up for full recovery
     # With the exception of seed, they are public data
-    def encpedpop_recover(seed, enc_shares_sum, t, enckeys, shared_pubkey, signer_pubkeys):
+    def encpedpop_recover(seed, enc_secshare, t, enckeys, shared_pubkey, signer_pubkeys):
         my_deckey = kdf(seed, "deckey")
         enc_context = hash([t] + enckeys)
-        shares_sum = enc_shares_sum - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
+        shares_sum = enc_secshare - sum_scalar([ecdh(my_deckey, enckeys[i], enc_context) for i in range(n)]
         return shares_sum, shared_pubkey, signer_pubkeys
 
     # my_idx is required for signing
-    def encpedpop_recover_my_idx(seed, enc_shares_sum, t, enckeys, shared_pubkey, signer_pubkeys):
+    def encpedpop_recover_my_idx(seed, enc_secshare, t, enckeys, shared_pubkey, signer_pubkeys):
         return enckeys.index(my_enckey)
     ```
     If the encrypted shares are lost and all other signers are cooperative and have seed backups, then there is also the possibility to re-run the DKG.

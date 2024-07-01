@@ -293,10 +293,10 @@ EncPedPop then works like SimplPedPop with the following differences:
 Participant `i` will additionally transmit an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
-and computes the sum `enc_shares_sum[j]` of all shares intended for every participant `j`.
+and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
 The coordinator sends this sum to participant `j`
-who stores it as `enc_shares_sum` and
-obtains the value `shares_sum = enc_shares_sum - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
+who stores it as `enc_secshare` and
+obtains the value `shares_sum = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
 
 [^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
 Note that this emulates a Dining Cryptographer's Network [[Cha88](https://link.springer.com/article/10.1007/BF00206326)],
@@ -393,7 +393,7 @@ e.g., during a request to participate in a FROST signing session.
 
 #### Facilitating Backup and Recovery
 
-ChillDKG constructs a transcript `eq_input` by appending to the transcript of EncPedPop the vector `enc_shares_sum`.
+ChillDKG constructs a transcript `eq_input` by appending to the transcript of EncPedPop the vector `enc_secshare`.
 This ensures that all participants agree on all encrypted shares,
 and as a consequence,
 the entire DKG output of a successful ChillDKG participant can be deterministically reproduced from a secret per-participant seed and the transcript.
@@ -488,8 +488,30 @@ The recovery data can, e.g., be attached to the first request to initiate a FROS
 
 ### Steps of a ChillDKG Session
 
-Every participant generates a long-term *host secret key* and a corresponding *host public key*
-(using [BIP 327's IndividualPubkey](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-participant) algorithm).
+Every participant generates a *host public key* from their seed.
+
+```python
+def hostpubkey(seed: bytes) -> bytes:
+    """Compute the participant's host public key from the seed.
+
+    This is the long-term cryptographic identity of the participant. It is
+    derived deterministically from the secret seed.
+
+    The seed must be 32 bytes of cryptographically secure randomness with
+    sufficient entropy to be unpredictable. All outputs of a successful
+    participant in a session can be recovered from (a backup of) the seed and
+    per-session recovery data.
+
+    The same seed (and thus host public key) can be used in multiple DKG
+    sessions. A host public key can be correlated to the threshold public key
+    resulting from a DKG session only by parties who observed the session,
+    namely the participants, the coordinator (and any eavesdropper).
+
+    :param bytes seed: Participant's long-term secret seed (32 bytes)
+    :return: the host public key
+    :raises ValueError: if the length of seed is not 32 bytes
+    """
+```
 
 TODO Copy over the function signatures including docstrings, perhaps move from things out of the docstring
 

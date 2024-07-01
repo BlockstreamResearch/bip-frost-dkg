@@ -70,11 +70,11 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     pstates = [pstate for (pstate, _) in enc_prets1]
 
-    cmsg, cout, ceq, enc_shares_sums = encpedpop.coordinator_step(pmsgs, t, enckeys)
+    cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
         pre_finalize_rets += [
-            encpedpop.participant_step2(pstates[i], cmsg, enc_shares_sums[i])
+            encpedpop.participant_step2(pstates[i], cmsg, enc_secshares[i])
         ]
     return pre_finalize_rets
 

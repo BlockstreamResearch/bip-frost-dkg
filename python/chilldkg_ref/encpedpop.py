@@ -115,13 +115,13 @@ def participant_step1(
 def participant_step2(
     state: ParticipantState,
     cmsg: CoordinatorMsg,
-    enc_shares_sum: Scalar,
+    enc_secshare: Scalar,
 ) -> Tuple[simplpedpop.DKGOutput, bytes]:
     simpl_state, deckey, enckeys, idx, self_share = state
     simpl_cmsg, = cmsg  # Unpack unary tuple  # fmt: skip
 
     enc_context = simpl_state.t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-    shares_sum = decrypt_sum(enc_shares_sum, deckey, enckeys, idx, enc_context)
+    shares_sum = decrypt_sum(enc_secshare, deckey, enckeys, idx, enc_context)
     shares_sum += self_share
     dkg_output, eq_input = simplpedpop.participant_step2(
         simpl_state, simpl_cmsg, shares_sum
@@ -149,17 +149,17 @@ def coordinator_step(
         # Make this pad explicit at the right position.
         pmsgs[i].enc_shares.insert(i, Scalar(0))
         assert len(pmsgs[i].enc_shares) == n
-    enc_shares_sums = [
+    enc_secshares = [
         Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs])) for i in range(n)
     ]
     eq_input += b"".join(enckeys)
-    # In ChillDKG, the coordinator needs to broadcast the entire enc_shares_sums
+    # In ChillDKG, the coordinator needs to broadcast the entire enc_secshares
     # array to all participants. But in pure EncPedPop, the coordinator needs to
-    # send to each participant i only their entry enc_shares_sums[i].
+    # send to each participant i only their entry enc_secshares[i].
     #
     # Since broadcasting the entire array is not necessary, we don't include it
     # in encpedpop.CoordinatorMsg, but only return it as a side output, so that
     # chilldkg.coordinator_step can pick it up. Implementations of pure
-    # EncPedPop will need to decide how to transmit enc_shares_sums[i] to
+    # EncPedPop will need to decide how to transmit enc_secshares[i] to
     # participant i; we leave this unspecified.
-    return CoordinatorMsg(simpl_cmsg), dkg_output, eq_input, enc_shares_sums
+    return CoordinatorMsg(simpl_cmsg), dkg_output, eq_input, enc_secshares
