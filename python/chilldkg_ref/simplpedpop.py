@@ -74,21 +74,19 @@ def assemble_sum_coms(
     )
 
 
-def common_dkg_output(vss_commit, n: int) -> Tuple[GE, List[GE]]:
+def common_dkg_output(com, n: int) -> Tuple[GE, List[GE]]:
     # Derive the common parts of the DKG output from the sum of all VSS commitments
     #
     # The common parts are the threshold public key and the individual public shares of
     # all participants.
-    threshold_pubkey = vss_commit.ges[0]
+    threshold_pubkey = com.ges[0]
     pubshares = []
     for i in range(0, n):
-        # TODO The following computation is the major part of vss_commit.verify(i, ...),
+        # TODO The following computation is the major part of com.verify(i, ...),
         # which we have already computed for i. We should 1) extract the major part of
         # VSSCommitment.verify into a separate method, and 2) avoid that we're computing
         # it twice here.
-        pk_i = GE.batch_mul(
-            *(((i + 1) ** j, vss_commit.ges[j]) for j in range(0, vss_commit.t()))
-        )
+        pk_i = GE.batch_mul(*(((i + 1) ** j, com.ges[j]) for j in range(0, com.t())))
         pubshares += [pk_i]
     return threshold_pubkey, pubshares
 
@@ -120,9 +118,9 @@ def participant_step1(
     shares = vss.shares(n)
     pop = pop_prove(vss.secret().to_bytes(), participant_idx)
 
-    vss_commit = vss.commit()
-    com_to_secret = vss_commit.commitment_to_secret()
-    msg = ParticipantMsg(vss_commit, pop)
+    com = vss.commit()
+    com_to_secret = com.commitment_to_secret()
+    msg = ParticipantMsg(com, pop)
     state = ParticipantState(t, n, participant_idx, com_to_secret)
     return state, msg, shares
 
