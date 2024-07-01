@@ -193,10 +193,10 @@ def deserialize_recovery_data(
         raise DeserializationError
     t, rest = int.from_bytes(rest[:4], byteorder="big"), rest[4:]
 
-    # Read sum_vss_commit (33*t bytes)
+    # Read sum_coms (33*t bytes)
     if len(rest) < 33 * t:
         raise DeserializationError
-    sum_vss_commit, rest = (
+    sum_coms, rest = (
         VSSCommitment.from_bytes_and_t(rest[: 33 * t], t),
         rest[33 * t :],
     )
@@ -227,7 +227,7 @@ def deserialize_recovery_data(
 
     if len(rest) != 0:
         raise DeserializationError
-    return (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert)
+    return (t, sum_coms, hostpubkeys, enc_shares_sums, cert)
 
 
 ###
@@ -420,8 +420,8 @@ def recover(
     :raises InvalidRecoveryDataError: if recovery failed
     """
     try:
-        (t, sum_vss_commit, hostpubkeys, enc_shares_sums, cert) = (
-            deserialize_recovery_data(recovery)
+        (t, sum_coms, hostpubkeys, enc_shares_sums, cert) = deserialize_recovery_data(
+            recovery
         )
     except DeserializationError as e:
         raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
@@ -454,7 +454,7 @@ def recover(
         shares_sum = None
 
     # Compute threshold pubkey and individual pubshares
-    (threshold_pubkey, pubshares) = common_dkg_output(sum_vss_commit, n)
+    (threshold_pubkey, pubshares) = common_dkg_output(sum_coms, n)
 
     dkg_output = DKGOutput(shares_sum, threshold_pubkey, pubshares)
     return dkg_output, params

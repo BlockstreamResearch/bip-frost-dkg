@@ -65,7 +65,7 @@ class DKGOutput(NamedTuple):
     pubshares: List[GE]
 
 
-def assemble_sum_vss_commitment(
+def assemble_sum_coms(
     coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE], n: int
 ) -> VSSCommitment:
     # Sum the commitments to the secrets
@@ -156,13 +156,11 @@ def participant_step2(
             raise InvalidContributionError(
                 i, "Participant sent invalid proof-of-knowledge"
             )
-    sum_vss_commit = assemble_sum_vss_commitment(
-        coms_to_secrets, sum_coms_to_nonconst_terms, n
-    )
-    if not sum_vss_commit.verify(idx, shares_sum):
+    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
+    if not sum_coms.verify(idx, shares_sum):
         raise VSSVerifyError()
-    threshold_pubkey, pubshares = common_dkg_output(sum_vss_commit, n)
-    eq_input = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    threshold_pubkey, pubshares = common_dkg_output(sum_coms, n)
+    eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
     return DKGOutput(shares_sum, threshold_pubkey, pubshares), eq_input
 
 
@@ -190,12 +188,10 @@ def coordinator_step(
         for j in range(0, t - 1)
     ]
     pops = [pmsg.pop for pmsg in pmsgs]
-    sum_vss_commit = assemble_sum_vss_commitment(
-        coms_to_secrets, sum_coms_to_nonconst_terms, n
-    )
-    threshold_pubkey, pubshares = common_dkg_output(sum_vss_commit, n)
+    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
+    threshold_pubkey, pubshares = common_dkg_output(sum_coms, n)
     dkg_output = DKGOutput(None, threshold_pubkey, pubshares)
-    eq_input = t.to_bytes(4, byteorder="big") + sum_vss_commit.to_bytes()
+    eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
     return (
         CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops),
         dkg_output,
