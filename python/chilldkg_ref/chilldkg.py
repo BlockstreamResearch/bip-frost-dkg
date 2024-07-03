@@ -469,6 +469,7 @@ def recover(
             their_pubnonces,
             enc_secshares[idx],
             enc_context,
+            idx,
         )
 
         # Derive my_share

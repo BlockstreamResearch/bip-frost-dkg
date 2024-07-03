@@ -28,30 +28,65 @@ def ecdh(
     return Scalar(int_from_bytes(tagged_hash_bip_dkg("encpedpop ecdh", data)))
 
 
+def encaps_multi(
+    secnonce: bytes, pubnonce: bytes, enckeys: List[bytes], context: bytes, skip: int
+) -> List[Scalar]:
+    # This is effectively the "Hashed ElGamal" multi-recipient KEM described in
+    # Section 5 of "Multi-recipient encryption, revisited" by Alexandre Pinto,
+    # Bertram Poettering, Jacob C. N. Schuldt (AsiaCCS 2014). Its crucial
+    # feature is to feed the index of the enckey to the hash function. The only
+    # differences are that we skip our own index (because we don't need to
+    # encrypt to ourselves) and that we feed also the pubnonce and context data
+    # into the hash function.
+    if skip >= len(enckeys):
+        raise IndexError
+    keys = [
+        ecdh(
+            secnonce,
+            pubnonce,
+            enckey,
+            i.to_bytes(4, byteorder="big") + context,
+            sending=True,
+        )
+        for i, enckey in enumerate(enckeys)
+        if i != skip
+    ]
+    return keys
+
+
 def encrypt_multi(
     secnonce: bytes,
     pubnonce: bytes,
     enckeys: List[bytes],
     messages: List[Scalar],
     context: bytes,
+    skip: int,
 ) -> List[Scalar]:
+    keys = encaps_multi(secnonce, pubnonce, enckeys, context, skip)
+    their_messages = messages[:skip] + messages[skip + 1 :]
     ciphertexts = [
-        message + ecdh(secnonce, pubnonce, enckey, context, sending=True)
-        for message, enckey in zip(messages, enckeys, strict=True)
+        message + key for message, key in zip(their_messages, keys, strict=True)
     ]
     return ciphertexts
 
 
 def decrypt_sum(
     deckey: bytes,
-    pubkey: bytes,
+    enckey: bytes,
     pubnonces: List[bytes],
     sum_ciphertexts: Scalar,
     context: bytes,
+    idx: int,
 ) -> Scalar:
     secshare = sum_ciphertexts
     for pubnonce in pubnonces:
-        pad = ecdh(deckey, pubkey, pubnonce, context, sending=False)
+        pad = ecdh(
+            deckey,
+            enckey,
+            pubnonce,
+            idx.to_bytes(4, byteorder="big") + context,
+            sending=False,
+        )
         secshare = secshare - pad
     return secshare
 
@@ -86,6 +121,8 @@ class ParticipantState(NamedTuple):
 
 
 def serialize_enc_context(t, enckeys):
+    # TODO Consider hashing the result here because the string can be long, and
+    # we'll feed it into hashes on multiple occasions
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
 
 
@@ -121,16 +158,14 @@ def participant_step1(
     assert len(shares) == n
 
     # Encrypt shares, no need to encrypt to ourselves
-    their_shares = shares.copy()
-    my_share = their_shares.pop(participant_idx)
-    their_enckeys = enckeys.copy()
-    _ = their_enckeys.pop(participant_idx)
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, their_enckeys, their_shares, enc_context
+        secnonce, pubnonce, enckeys, shares, enc_context, skip=participant_idx
     )
 
     pmsg = ParticipantMsg(simpl_pmsg, pubnonce, enc_shares)
-    state = ParticipantState(simpl_state, pubnonce, enckeys, participant_idx, my_share)
+    state = ParticipantState(
+        simpl_state, pubnonce, enckeys, participant_idx, shares[participant_idx]
+    )
     return state, pmsg
 
 
@@ -150,7 +185,7 @@ def participant_step2(
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
     secshare = decrypt_sum(
-        deckey, enckeys[idx], their_pubnonces, enc_secshare, enc_context
+        deckey, enckeys[idx], their_pubnonces, enc_secshare, enc_context, idx
     )
     secshare += self_share
     dkg_output, eq_input = simplpedpop.participant_step2(
