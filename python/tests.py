@@ -5,7 +5,7 @@
 from itertools import combinations
 from random import randint
 from typing import Tuple, List
-import secrets
+from secrets import token_bytes as random_bytes
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
@@ -64,8 +64,8 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
 
     enckeys = [pret[1] for pret in enc_prets0]
     for i in range(n):
-        deckey = enc_prets0[i][0]
-        enc_prets1 += [encpedpop.participant_step1(seeds[i], t, deckey, enckeys, i)]
+        random = random_bytes(32)
+        enc_prets1 += [encpedpop.participant_step1(seeds[i], t, enckeys, i, random)]
 
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     pstates = [pstate for (pstate, _) in enc_prets1]
@@ -73,8 +73,9 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
+        deckey = enc_prets0[i][0]
         pre_finalize_rets += [
-            encpedpop.participant_step2(pstates[i], cmsg, enc_secshares[i])
+            encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
         ]
     return pre_finalize_rets
 
@@ -92,7 +93,8 @@ def simulate_chilldkg(
 
     prets1 = []
     for i in range(n):
-        prets1 += [chilldkg.participant_step1(seeds[i], params)]
+        random = random_bytes(32)
+        prets1 += [chilldkg.participant_step1(seeds[i], params, random)]
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
@@ -174,7 +176,7 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
 
 
 def test_correctness(t, n, simulate_dkg, recovery=False):
-    seeds = [None] + [secrets.token_bytes(32) for _ in range(n)]
+    seeds = [None] + [random_bytes(32) for _ in range(n)]
 
     # rets[0] are the return values from the coordinator
     # rets[1 : n + 1] are from the participants

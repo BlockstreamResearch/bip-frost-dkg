@@ -195,7 +195,7 @@ class CoordinatorMsg2(NamedTuple):
 
 def deserialize_recovery_data(
     b: bytes,
-) -> Tuple[int, VSSCommitment, List[bytes], List[Scalar], bytes]:
+) -> Tuple[int, VSSCommitment, List[bytes], List[bytes], List[Scalar], bytes]:
     rest = b
 
     # Read t (4 bytes)
@@ -212,7 +212,7 @@ def deserialize_recovery_data(
     )
 
     # Compute n
-    n, remainder = divmod(len(rest), (33 + 32 + 64))
+    n, remainder = divmod(len(rest), (33 + 33 + 32 + 64))
     if remainder != 0:
         raise DeserializationError
 
@@ -220,6 +220,11 @@ def deserialize_recovery_data(
     if len(rest) < 33 * n:
         raise DeserializationError
     hostpubkeys, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
+
+    # Read pubnonces (33*n bytes)
+    if len(rest) < 33 * n:
+        raise DeserializationError
+    pubnonces, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
 
     # Read enc_secshares (32*n bytes)
     if len(rest) < 32 * n:
@@ -237,7 +242,7 @@ def deserialize_recovery_data(
 
     if len(rest) != 0:
         raise DeserializationError
-    return (t, sum_coms, hostpubkeys, enc_secshares, cert)
+    return (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert)
 
 
 ###
@@ -258,7 +263,7 @@ class ParticipantState2(NamedTuple):
 
 
 def participant_step1(
-    seed: bytes, params: SessionParams
+    seed: bytes, params: SessionParams, random: bytes
 ) -> Tuple[ParticipantState1, ParticipantMsg1]:
     """Perform a participant's first step of a ChillDKG session.
 
@@ -267,6 +272,7 @@ def participant_step1(
 
     :param bytes seed: Participant's long-term secret seed (32 bytes)
     :param SessionParams params: Common session parameters
+    :param bytes random: FRESH random byte string (32 bytes)
     :return: the participant's state, and the first message for the coordinator
     :raises ValueError: if the participant's host public key is not in
         params.hostpubkeys
@@ -277,7 +283,7 @@ def participant_step1(
 
     participant_idx = hostpubkeys.index(hostpubkey)
     enc_state, enc_pmsg = encpedpop.participant_step1(
-        seed, t, hostseckey, hostpubkeys, participant_idx
+        seed, t, hostpubkeys, participant_idx, random
     )
     state1 = ParticipantState1(params, participant_idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
@@ -303,7 +309,7 @@ def participant_step2(
     enc_cmsg, enc_secshares = cmsg1
 
     dkg_output, eq_input = encpedpop.participant_step2(
-        enc_state, enc_cmsg, enc_secshares[idx]
+        enc_state, hostseckey, enc_cmsg, enc_secshares[idx]
     )
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
@@ -420,6 +426,8 @@ def recover(
 ) -> Tuple[DKGOutput, SessionParams]:
     """Recover the DKG output of a session from the seed and recovery data.
 
+    TODO seed can be None
+
     This function serves two purposes:
     1. To recover after a SessionNotFinalizedError after obtaining the recovery
        data from another participant or the coordinator (see
@@ -430,8 +438,8 @@ def recover(
     :raises InvalidRecoveryDataError: if recovery failed
     """
     try:
-        (t, sum_coms, hostpubkeys, enc_secshares, cert) = deserialize_recovery_data(
-            recovery
+        (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
+            deserialize_recovery_data(recovery)
         )
     except DeserializationError as e:
         raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
@@ -451,15 +459,22 @@ def recover(
             raise InvalidRecoveryDataError("Seed and recovery data don't match") from e
 
         # Decrypt share
-        seed_, enc_context = encpedpop.session_seed(seed, hostpubkeys, t)
+        enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
+        their_pubnonces = pubnonces.copy()
+        pubnonce = their_pubnonces.pop(idx)
+        session_seed = encpedpop.derive_session_seed(seed, pubnonce, enc_context)
         secshare = encpedpop.decrypt_sum(
-            enc_secshares[idx], hostseckey, hostpubkeys, idx, enc_context
+            hostseckey,
+            hostpubkeys[idx],
+            their_pubnonces,
+            enc_secshares[idx],
+            enc_context,
         )
 
-        # Derive self_share
-        vss = VSS.generate(seed_, t)
-        self_share = vss.share_for(idx)
-        secshare += self_share
+        # Derive my_share
+        vss = VSS.generate(session_seed, t)
+        my_share = vss.share_for(idx)
+        secshare += my_share
     else:
         secshare = None
 

@@ -4,9 +4,9 @@
 
 from typing import Tuple, List
 import asyncio
-import sys
-import secrets
 import pprint
+from secrets import token_bytes as random_bytes
+import sys
 
 from chilldkg_ref.chilldkg import (
     hostpubkey,
@@ -69,7 +69,8 @@ async def participant(
     chan: ParticipantChannel, seed: bytes, params: SessionParams
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
-    state1, pmsg1 = participant_step1(seed, params)
+    random = random_bytes(32)
+    state1, pmsg1 = participant_step1(seed, params, random)
     chan.send(pmsg1)
     cmsg1 = await chan.receive()
 
@@ -137,7 +138,7 @@ def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
 def main():
     n = 5
     t = 3
-    seeds = [secrets.token_bytes(32) for _ in range(n)]
+    seeds = [random_bytes(32) for _ in range(n)]
 
     # TODO Move more steps into the async methods. It's not an issue for the
     # tests to have prints in the async methods, we can suppress them, see
