@@ -8,7 +8,7 @@ definitions are internal.
 from secrets import token_bytes as random_bytes
 from typing import Tuple, List, NamedTuple, NewType, Optional
 
-from secp256k1ref.secp256k1 import Scalar
+from secp256k1ref.secp256k1 import Scalar, GE
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
@@ -18,6 +18,7 @@ from .simplpedpop import DKGOutput, common_dkg_output
 from . import encpedpop
 from .util import (
     prf,
+    InvalidContributionError,
     InvalidRecoveryDataError,
     DeserializationError,
     DuplicateHostpubkeyError,
@@ -147,6 +148,15 @@ def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, byt
         raise DuplicateHostpubkeyError
     if not (1 <= t <= len(hostpubkeys)):
         raise ValueError
+
+    # Check if hostpubkeys are valid
+    for i, hostpubkey in enumerate(hostpubkeys):
+        try:
+            _ = GE.from_bytes_compressed(hostpubkey)
+        except ValueError as e:
+            raise InvalidContributionError(
+                i, "Participant has provided invalid encryption key"
+            ) from e
 
     params_id = tagged_hash(
         "session parameters id", b"".join(hostpubkeys) + t.to_bytes(4, byteorder="big")
