@@ -90,9 +90,9 @@ Participants are identified and authenticated via long-term public keys.
 
 The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop),
 which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
-Besides external secure channels, SimplPedPod depends on an external *equality check protocol*.
+Besides external secure channels, SimplPedPop depends on an external *equality check protocol*.
 The equality check protocol serves an abstraction of a consensus mechanism:
-Its only purpose is to check that, at the end of SimplPedPod, all participants have received identical protocol messages.
+Its only purpose is to check that, at the end of SimplPedPop, all participants have received identical protocol messages.
 
 Our goal is to turn SimplPedPop into a standalone DKG protocol without external dependencies.
 We then follow a modular approach that removes one dependency at a time.
@@ -175,11 +175,11 @@ we explain the external interface and usage considerations of ChillDKG in [Secti
 ## Internals of ChillDKG
 
 This section provides a detailed technical overview of internals of ChillDKG,
-which includes as building blocks the DKG protocols SimplPedPop and EncPedPod, and the equality check protocol CertEq.
+which includes as building blocks the DKG protocols SimplPedPop and EncPedPop, and the equality check protocol CertEq.
 The contents of this section are purely informational and not strictly required to implement or use ChillDKG,
 and some details present in the normative Python reference implementation are omitted.
 
-We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPod as DKG protocols**.
+We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPop as DKG protocols**.
 While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
 Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
@@ -208,13 +208,13 @@ Our variant of the SimplPedPop protocol then works as follows:
     Here, `f_i(0) = a_i[0]` acts as the secret scalar to be shared.
     Participant `i` computes a VSS share `shares[j] = f_i(j+1)` for every participant `j` (including `j = i`),
     which is supposed to sent to participant `j` in private.
-    (This will be realized in EncPedPod using encryption.)
+    (This will be realized in EncPedPop using encryption.)
 
     Participant `i` then sends a VSS commitment,
     which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
     and a BIP340 Schnorr signature `pop` on message `i` with secret key `a_i[0]` to the coordinator.
     (The Schnorr signature acts as a *proof of possession*,
-    i.e., it proves knowledge of the discrete logarithm of `com[i][0] = a_i[0] * G`.
+    i.e., it proves knowledge of the discrete logarithm of `com[0] = a_i[0] * G`.
     This avoids rogue-key attacks, also known as key cancellation attacks.)
 
 2.  Upon receiving `coms[j] = (coms[j][0], ...,  coms[j][t-1])` and `pops[j]` from every participant `j`, 
@@ -245,7 +245,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     pubshares[j] = (j+1)^0 * sum_coms[0] + ... + (j+1)^(t-1) * sum_coms[t-1]
     ```
     
-    Let `secshare` be the sum of VSS shares privately obtained from each participant `j`.
+    Let `secshare` be the sum of VSS shares privately obtained from each participant.
     Participant `i` checks the validity of `secshare` against `sum_coms`
     by checking if the equation `secshare * G = pubshares[i]` holds.
     (Assuming `secshare` is the sum of the VSS shares created by other participants, it will be equal to `f(i+1)`.)
@@ -278,7 +278,7 @@ EncPedPop assumes that every participant holds an ECDH key pair consisting of a 
 and that every participant has an authentic copy of every other participant's encryption key.
 Like in SimplPedPop, every participant is additionally assumed to hold a secret seed.
 Every participant derives a session seed given to SimplPedPop from this seed and the list of encryption keys of all participants.
-This ensures that different sets of participants will have different SimplPedPod sessions.
+This ensures that different sets of participants will have different SimplPedPop sessions.
 
 The encryption relies on a non-interactive ECDH key exchange between the public keys of the participants
 in order to establish a secret pad `pad_ij` for every pair of distinct participants `i` and `j`.
@@ -301,7 +301,7 @@ obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required b
 [^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
 Note that this emulates a Dining Cryptographer's Network [[Cha88](https://link.springer.com/article/10.1007/BF00206326)],
 though anonymity is an anti-feature in our case:
-If a SimplPedPod participant receives an invalid `secshare`,
+If a SimplPedPop participant receives an invalid `secshare`,
 it is impossible for this participant to identify another participant who has sent wrong contributions,
 even if the coordinator is trusted.
 This is the price we pay for the communication optimization.
@@ -314,10 +314,10 @@ This excludes man-in-the-middle attacks if Eq is authenticated, e.g., runs over 
 
 As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of a DKG session.
 SimplPedPop, and consequently also EncPedPop, ensure agreement during the final step of the DKG session by running an external *equality check protocol* Eq.
-The purpose of Eq is to verify that all participants have received an identical *transcript*  which is a byte string constructed by respective DKG protocol.
+The purpose of Eq is to verify that all participants have received an identical *transcript*  which is a byte string constructed by the respective DKG protocol.
 
 Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface:
-Every participant can invoke a session of Eq with an input value `eq_input`
+Every participant can invoke a session of Eq with an input value `eq_input`.
 Eq may not return at all to the calling participant,
 but if it returns successfully for some calling participant, then all honest participants agree on the value `eq_input`.
 (However, it may be the case that not all honest participants have established this fact yet.)
@@ -361,7 +361,7 @@ For example, setting up a multi-signature wallet via non-interactive key aggrega
 also assumes that all participants agree on their individual public keys.
 <!-- TODO Should this (foot)note be moved to the usage section? -->
 
-#### Equality Check Protocol EqCert
+#### Equality Check Protocol CertEq
 
 The CertEq protocol is straightforward:[^certeq-literature]
 Every participant sends a signature on their input value `eq_input` to every other participant (via the untrusted coordinator),
@@ -421,7 +421,7 @@ had been checked successfully.
 In fact, the recovery procedure subsumes the handling of a valid success certificate
 which is presented to the participant only after the session
 (in case an invalid or no certificate was received during the session).
-As a result, ChillDKG does not provide not a dedicated method for providing a success certificate after the session,
+As a result, ChillDKG does not provide a dedicated method for providing a success certificate after the session,
 and callers can simply use the recovery functionality instead.
 
 ## Usage of ChillDKG
@@ -468,11 +468,11 @@ Some participants, the coordinator, and all network links may be malicious, i.e.
 We expect ChillDKG to provide the following informal security goals when it is used to setup keys for the FROST threshold signature scheme.
 
 If a participant deems a protocol session successful (see above), then this participant is assured that:
- - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m`  for which no signing session with at least honest participant was initiated. (Unforgeability)^[^unforgeability-formal]
+ - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m`  for which no signing session with at least honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
    Moreover, any `t` of them have secret shares consistent with the threshold public key.[^correctness-formal]
-   This means that any `t` of have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the threshold public key.
+   This means that any `t` participants have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the threshold public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
 [^unforgeability-formal]: See Chu, Gerhart, Ruffing, and Schröder [Defition 3, [CGRS23](https://eprint.iacr.org/2023/899)] for a formal definition.
