@@ -111,19 +111,19 @@ class ParticipantState(NamedTuple):
 
 
 def participant_step1(
-    seed: bytes, t: int, n: int, participant_idx: int
+    seed: bytes, t: int, n: int, idx: int
 ) -> Tuple[ParticipantState, ParticipantMsg, List[Scalar]]:
     assert t < 2 ** (4 * 8)
-    assert participant_idx < 2 ** (4 * 8)
+    assert idx < 2 ** (4 * 8)
 
     vss = VSS.generate(seed, t)
     shares = vss.shares(n)
-    pop = pop_prove(vss.secret().to_bytes(), participant_idx)
+    pop = pop_prove(vss.secret().to_bytes(), idx)
 
     com = vss.commit()
     com_to_secret = com.commitment_to_secret()
     msg = ParticipantMsg(com, pop)
-    state = ParticipantState(t, n, participant_idx, com_to_secret)
+    state = ParticipantState(t, n, idx, com_to_secret)
     return state, msg, shares
 
 

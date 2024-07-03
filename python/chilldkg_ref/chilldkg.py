@@ -252,7 +252,7 @@ def deserialize_recovery_data(
 
 class ParticipantState1(NamedTuple):
     params: SessionParams
-    participant_idx: int
+    idx: int
     enc_state: encpedpop.ParticipantState
 
 
@@ -281,11 +281,9 @@ def participant_step1(
     hostseckey, hostpubkey = hostkeypair(seed)
     (hostpubkeys, t) = params
 
-    participant_idx = hostpubkeys.index(hostpubkey)
-    enc_state, enc_pmsg = encpedpop.participant_step1(
-        seed, t, hostpubkeys, participant_idx, random
-    )
-    state1 = ParticipantState1(params, participant_idx, enc_state)
+    idx = hostpubkeys.index(hostpubkey)
+    enc_state, enc_pmsg = encpedpop.participant_step1(seed, t, hostpubkeys, idx, random)
+    state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
 
 

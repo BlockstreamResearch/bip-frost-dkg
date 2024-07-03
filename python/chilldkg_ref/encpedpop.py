@@ -134,7 +134,7 @@ def participant_step1(
     seed: bytes,
     t: int,
     enckeys: List[bytes],
-    participant_idx: int,
+    idx: int,
     random: bytes,
 ) -> Tuple[ParticipantState, ParticipantMsg]:
     assert t < 2 ** (4 * 8)
@@ -153,19 +153,17 @@ def participant_step1(
     session_seed = derive_session_seed(seed, pubnonce, enc_context)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
-        session_seed, t, n, participant_idx
+        session_seed, t, n, idx
     )
     assert len(shares) == n
 
     # Encrypt shares, no need to encrypt to ourselves
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, enckeys, shares, enc_context, skip=participant_idx
+        secnonce, pubnonce, enckeys, shares, enc_context, skip=idx
     )
 
     pmsg = ParticipantMsg(simpl_pmsg, pubnonce, enc_shares)
-    state = ParticipantState(
-        simpl_state, pubnonce, enckeys, participant_idx, shares[participant_idx]
-    )
+    state = ParticipantState(simpl_state, pubnonce, enckeys, idx, shares[idx])
     return state, pmsg
 
 
@@ -185,7 +183,12 @@ def participant_step2(
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
     secshare = decrypt_sum(
-        deckey, enckeys[idx], their_pubnonces, enc_secshare, enc_context, idx
+        deckey,
+        enckeys[idx],
+        their_pubnonces,
+        enc_secshare,
+        enc_context,
+        idx,
     )
     secshare += self_share
     dkg_output, eq_input = simplpedpop.participant_step2(
