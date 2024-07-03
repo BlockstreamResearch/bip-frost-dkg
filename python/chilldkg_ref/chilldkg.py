@@ -420,24 +420,27 @@ def coordinator_finalize(
 
 
 def recover(
-    seed: Optional[bytes], recovery: RecoveryData
+    seed: Optional[bytes], recovery_data: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
     """Recover the DKG output of a session from the seed and recovery data.
-
-    TODO seed can be None
 
     This function serves two purposes:
     1. To recover after a SessionNotFinalizedError after obtaining the recovery
        data from another participant or the coordinator (see
        participant_finalize).
-    2. To recover from a backup after data loss (e.g., loss of the device).
+    2. To reproduce the DKG outputs on a new device, e.g., to recover from a
+       backup after data loss, or to clone a participant or the coordinator to
+       a second device.
 
+    :param seed Optional[bytes]: Participant's long-term secret seed (32 bytes)
+        or None if recovering the coordinator
+    :param recovery_data RecoveryData: Recovery data from a successful session
     :returns: the DKG output and the parameters of the recovered session
     :raises InvalidRecoveryDataError: if recovery failed
     """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
-            deserialize_recovery_data(recovery)
+            deserialize_recovery_data(recovery_data)
         )
     except DeserializationError as e:
         raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
@@ -446,7 +449,7 @@ def recover(
     (params, params_id) = session_params(hostpubkeys, t)
 
     # Verify cert
-    certeq_verify(hostpubkeys, recovery[: 64 * n], cert)
+    certeq_verify(hostpubkeys, recovery_data[: 64 * n], cert)
 
     if seed:
         # Find our hostpubkey
