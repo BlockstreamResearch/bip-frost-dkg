@@ -14,7 +14,9 @@ def pubkey_gen(seckey: bytes) -> bytes:
     return P.to_bytes_xonly()
 
 
-def schnorr_sign(msg: bytes, seckey: bytes, aux_rand: bytes) -> bytes:
+def schnorr_sign(
+    msg: bytes, seckey: bytes, aux_rand: bytes, challenge_tag: str = "BIP0340/challenge"
+) -> bytes:
     d0 = int_from_bytes(seckey)
     if not (1 <= d0 <= GE.ORDER - 1):
         raise ValueError("The secret key must be an integer in the range 1..n-1.")
@@ -35,18 +37,18 @@ def schnorr_sign(msg: bytes, seckey: bytes, aux_rand: bytes) -> bytes:
     k = k0 if R.has_even_y() else GE.ORDER - k0
     e = (
         int_from_bytes(
-            tagged_hash(
-                "BIP0340/challenge", R.to_bytes_xonly() + P.to_bytes_xonly() + msg
-            )
+            tagged_hash(challenge_tag, R.to_bytes_xonly() + P.to_bytes_xonly() + msg)
         )
         % GE.ORDER
     )
     sig = R.to_bytes_xonly() + bytes_from_int((k + e * d) % GE.ORDER)
-    assert schnorr_verify(msg, P.to_bytes_xonly(), sig)
+    assert schnorr_verify(msg, P.to_bytes_xonly(), sig, challenge_tag=challenge_tag)
     return sig
 
 
-def schnorr_verify(msg: bytes, pubkey: bytes, sig: bytes) -> bool:
+def schnorr_verify(
+    msg: bytes, pubkey: bytes, sig: bytes, challenge_tag: str = "BIP0340/challenge"
+) -> bool:
     if len(pubkey) != 32:
         raise ValueError("The public key must be a 32-byte array.")
     if len(sig) != 64:
@@ -59,10 +61,7 @@ def schnorr_verify(msg: bytes, pubkey: bytes, sig: bytes) -> bool:
     s = int_from_bytes(sig[32:64])
     if (r >= FE.SIZE) or (s >= GE.ORDER):
         return False
-    e = (
-        int_from_bytes(tagged_hash("BIP0340/challenge", sig[0:32] + pubkey + msg))
-        % GE.ORDER
-    )
+    e = int_from_bytes(tagged_hash(challenge_tag, sig[0:32] + pubkey + msg)) % GE.ORDER
     R = s * G - e * P
     if R.infinity or (not R.has_even_y()) or (R.x != r):
         return False
