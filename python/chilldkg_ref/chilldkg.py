@@ -398,14 +398,19 @@ def coordinator_finalize(
     Since the coordinator does not have a secret shares, the DKG output will
     have the secshare field set to None.
 
+    If this function raises a SessionNotFinalizedError, it is, in principle,
+    possible to recover the DKG outputs of the coordinator using the recovery
+    data from a successful participant, should one exist. Any such successful
+    participant would need to have received messages from other participants via
+    communication channel beside the coordinator (or be malicious).
+
     :param CoordinatorState state: Coordinator's state after the previous step
     :param List[ParticipantMsg2] pmsgs2: List of second messages received from
         the participants
     :return: the second message for all participants, the DKG output, and the
-        recovry data
+        recovery data
     :raises SessionNotFinalizedError: if finalizing the DKG session was not
-        successful from the point of view of the coordinator (TODO does it make
-        sense to recover the coordinator then?)
+        successful from the point of view of the coordinator
     """
     (params, eq_input, dkg_output) = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
