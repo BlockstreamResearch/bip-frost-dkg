@@ -114,7 +114,8 @@ def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
     for i in range(n):
         hostpubkeys += [hostpubkey(seeds[i])]
 
-    params = session_params(hostpubkeys, t)[0]
+    # TODO also print params_id
+    params, _ = session_params(hostpubkeys, t)
 
     async def session():
         coord_chans = CoordinatorChannels(n)
@@ -164,8 +165,8 @@ def main():
 
     # Check that all RecoveryData of all parties is identical
     assert len(set([rets[i][1] for i in range(n + 1)])) == 1
-    print("=== Common RecoveryData ===")
     recovery_data = rets[0][1]
+    print(f"=== Common RecoveryData ({len(recovery_data)} bytes)===")
     print(recovery_data.hex())
 
 
