@@ -14,20 +14,22 @@ from .vss import VSS, VSSCommitment, VSSVerifyError
 
 Pop = NewType("Pop", bytes)
 
-POP_MSG_TAG = (BIP_TAG + "pop message").encode()
+POP_MSG_TAG = BIP_TAG + "pop message"
 
 
 def pop_msg(idx: int):
-    return POP_MSG_TAG + idx.to_bytes(4, byteorder="big")
+    return idx.to_bytes(4, byteorder="big")
 
 
 def pop_prove(seckey, idx, aux_rand: bytes = 32 * b"\x00"):
-    sig = schnorr_sign(pop_msg(idx), seckey, aux_rand=random_bytes(32))
+    sig = schnorr_sign(
+        pop_msg(idx), seckey, aux_rand=random_bytes(32), challenge_tag=POP_MSG_TAG
+    )
     return Pop(sig)
 
 
 def pop_verify(pop: Pop, pubkey: bytes, idx: int):
-    return schnorr_verify(pop_msg(idx), pubkey, pop)
+    return schnorr_verify(pop_msg(idx), pubkey, pop, challenge_tag=POP_MSG_TAG)
 
 
 ###

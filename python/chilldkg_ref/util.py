@@ -1,7 +1,7 @@
 from secp256k1ref.util import tagged_hash
 
 
-BIP_TAG = "BIP DKG: "
+BIP_TAG = "BIP DKG/"
 
 
 def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
