@@ -162,8 +162,8 @@ In other words, what is primarily required to ensure liveness in these applicati
 
 ### Structure of this Document
 
-Due to the complexity of ChillDKG, we refrain from providing a pseudocode specification along with a reference implementation.
-Instead, we provide only a normative reference implementation in Python 3.12
+Due to the complexity of ChillDKG, we do not provide both a pseudocode specification and a reference implementation.
+Instead, the BIP includes only a normative reference implementation in Python 3.12
 (see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py)),
 which serves as an executable specification.
 
