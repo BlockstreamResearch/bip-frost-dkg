@@ -269,6 +269,8 @@ Our variant of the SimplPedPop protocol then works as follows:
 
 ### DKG Protocol EncPedPop
 
+TODO Update this to reflect the ephemeral keys
+
 (See [`python/chilldkg_ref/encpedpop.py`](python/chilldkg_ref/encpedpop.py).)
 
 EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
