@@ -114,7 +114,7 @@ def hostpubkey(seed: bytes) -> bytes:
     resulting from a DKG session only by parties who observed the session,
     namely the participants, the coordinator (and any eavesdropper).
 
-    :param bytes seed: Participant's long-term secret seed (32 bytes)
+    :param seed bytes: Participant's long-term secret seed (32 bytes)
     :return: the host public key
     :raises ValueError: if the length of seed is not 32 bytes
     """
