@@ -169,12 +169,11 @@ def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, byt
             sure that they run the DKG and generate a threshold public key with
             the intended set of participants. This is analogous to traditional
             threshold signatures (known as "multisig" in the Bitcoin community,
-            see
-            [BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)),
+            [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
             where the participants need to obtain authentic extended public keys
             ("xpubs") from the other participants to generate multisig
-            addresses, or MuSig2 (see
-            [BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)),
+            addresses, or MuSig2
+            [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
             where the participants need to obtain authentic individual public
             keys of the other participants to generate an aggregated public key.
 

@@ -458,7 +458,7 @@ Moreover, all parties obtain *recovery data* (common to all participants and the
 
 Losing the secret share or the threshold public key, e.g., after the loss of a participant device, will render the participant incapable of participating in signing sessions.
 As these values depend on the contributions of the other participants to the DKG session, they can,
-unlike deterministcally derived secret keys [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) as typically used for single-signer Schnorr signatures [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) or MuSig [BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki),
+unlike deterministcally derived secret keys [[BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)] as typically used for single-signer Schnorr signatures [[BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)] or MuSig [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
 not be rederived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
@@ -580,12 +580,11 @@ TODO Say something about order and sorting, possibly steal from BIP327.
   sure that they run the DKG and generate a threshold public key with
   the intended set of participants. This is analogous to traditional
   threshold signatures (known as "multisig" in the Bitcoin community,
-  see
-  [BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)),
+  [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
   where the participants need to obtain authentic extended public keys
   ("xpubs") from the other participants to generate multisig
-  addresses, or MuSig2 (see
-  [BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)),
+  addresses, or MuSig2
+  [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
   where the participants need to obtain authentic individual public
   keys of the other participants to generate an aggregated public key.
   
