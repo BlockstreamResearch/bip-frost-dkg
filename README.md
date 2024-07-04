@@ -485,7 +485,15 @@ e.g., funds stored under the current threshold public key need to be transferred
 Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
 
-TODO Explain second purpose of recovery data, say that participants are responsible for convincing others
+### Recovering Stuck Participants
+
+The mere fact that one participant deems a protocol session successful does not imply that other participants deem it successful yet.
+Indeed, due to failing network links or invalid messages sent by malicious participants,
+it is possible that some participants have deemed the ChillDKG session successful, but others have not (yet) and thus are stuck in the ChillDKG session.
+In that case, the successful participants can eventually make the stuck participants unstuck by presenting them the recovery data.
+The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
+
+TODO explain that participants are responsible for convincing others
 
 ### Threat Model and Security Goals
 
@@ -503,13 +511,6 @@ If a participant deems a protocol session successful (see above), then this part
 [^unforgeability-formal]: See Chu, Gerhart, Ruffing, and Schröder [Definition 3, [CGRS23](https://eprint.iacr.org/2023/899)] for a formal definition.
 
 [^correctness-formal]: See Ruffing, Ronge, Jin, Schneider-Bensch, and Schröder [Definition 2.5, [RRJSS22](https://eprint.iacr.org/2022/550)] for a formal definition.
-
-We stress that the mere fact one participant deems a protocol session successful does not imply that other participants deem it successful yet.
-Indeed, due to failing network links or invalid messages sent by malicious participants,
-it is possible that some participants have deemed the ChillDKG session successful, but others have not (yet) and thus are stuck in the ChillDKG session.
-In that case, the successful participants can eventually make the stuck participants unstuck
-by presenting them the recovery data.
-The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
 
 ### Overview of a ChillDKG Session
 
