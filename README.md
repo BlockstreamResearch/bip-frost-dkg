@@ -801,6 +801,8 @@ a second device.
 
 ### Backup and Recovery
 
+TODO Overhaul and maybe move
+
 Losing the secret share or the threshold public key will render the participant incapable of participating in signing sessions.
 As these values depend on the contributions of the other participants to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the participant's seed.
 
@@ -814,23 +816,6 @@ they can request it from any other participants or the coordinator.
 Moreover, since the transcript contains secret shares only in encrypted form,
 it can in principle be stored with a third-party backup provider.
 (TODO: But there are privacy implications. The hostpubkeys and threshold public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
-
-```python
-def recover(
-    seed: Optional[bytes], recovery: RecoveryData
-) -> Tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of a session from the seed and recovery data.
-
-    This function serves two purposes:
-    1. To recover after a SessionNotFinalizedError after obtaining the recovery
-       data from another participant or the coordinator (see
-       participant_finalize).
-    2. To recover from a backup after data loss (e.g., loss of the device).
-
-    :returns: the DKG output and the parameters of the recovered session
-    :raises InvalidRecoveryDataError: if recovery failed
-    """
-```
 
 Keeping seed backups accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
 As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of seeds at all,
