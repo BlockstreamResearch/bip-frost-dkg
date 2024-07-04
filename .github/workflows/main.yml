@@ -13,7 +13,11 @@ jobs:
         run: pip install mypy
       - name: Install ruff
         run: pip install ruff
+      - name: Install pydoc-markdown
+        run: pip install pydoc-markdown
       - name: Run tests
         run: ./python/tests.sh
       - name: Run example
         run: ./python/example.py
+      - name: Check if README.md has latest pydoc export
+        run: ./update-pydoc.sh && git diff --exit-code
