@@ -17,6 +17,7 @@ from .vss import VSS, VSSCommitment
 from .simplpedpop import DKGOutput, common_dkg_output
 from . import encpedpop
 from .util import (
+    BIP_TAG,
     prf,
     InvalidContributionError,
     InvalidRecoveryDataError,
@@ -35,8 +36,13 @@ from .util import (
 ###
 
 
+CERTEQ_MSG_TAG = BIP_TAG + "certeq message"
+
+
 def certeq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
-    return schnorr_sign(x, hostseckey, aux_rand=random_bytes(32))
+    return schnorr_sign(
+        x, hostseckey, aux_rand=random_bytes(32), challenge_tag=CERTEQ_MSG_TAG
+    )
 
 
 def certeq_cert_len(n: int) -> int:
@@ -47,11 +53,16 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     n = len(hostpubkeys)
     if len(cert) != certeq_cert_len(n):
         return False
-    is_valid = [
-        schnorr_verify(x, hostpubkeys[i][1:33], cert[i * 64 : (i + 1) * 64])
-        for i in range(n)
-    ]
-    return all(is_valid)
+    for i in range(n):
+        valid = schnorr_verify(
+            x,
+            hostpubkeys[i][1:33],
+            cert[i * 64 : (i + 1) * 64],
+            challenge_tag=CERTEQ_MSG_TAG,
+        )
+        if not valid:
+            return False
+    return True
 
 
 def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
