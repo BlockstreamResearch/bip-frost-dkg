@@ -1,5 +1,4 @@
 @startuml
-title ChillDKG
 participant Participant
 participant Coordinator
 
@@ -10,11 +9,11 @@ end
 
 group Session
 Coordinator->Participant: hostpubkeys, t
-rnote over Participant: partcipant_step1(...)
+rnote over Participant: participant_step1(...)
 Participant->Coordinator: pmsg1
 rnote over Coordinator: coordinator_step(...)
 Coordinator->Participant: cmsg1
-rnote over Participant: partcipant_step2(...)
+rnote over Participant: participant_step2(...)
 Participant->Coordinator: pmsg2
 rnote over Coordinator: coordinator_finalize(...)
 Coordinator->Participant: cmsg2

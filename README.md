@@ -511,9 +511,25 @@ If a participant deems a protocol session successful (see above), then this part
 
 ### Overview of a ChillDKG Session
 
-TODO Write
+The following figure shows an execution of the participants and the coordinator.
+Arrows indicate network messages between the participants.
+For simplicity, only one participant is depicted;
+all participants run the identical code and send messages at the same steps.
 
-![chilldkg diagram](images/chilldkg-sequence.png)
+![The diagram shows the message flow between participant and a coordinator.
+The first of two phases "Generation of host public keys" involves the participant invokes the function hostpubkey with parameter seed and sends the returned hostpubkey to the coordinator.
+The second phase "Session" is initiated by the coordinator sending hostpubkeys and t to the participant.
+The participant invokes participant_step1 and sends the returned pmsg1 to the coordinator.
+The coordinator invokes coordinator_step and sends the returned cmsg1 to the participant.
+The participant invokes participant_step2 and sends the returned pmsg2 to the coordinator.
+The coordinator invokes coordinator_finalize and sends the returned cmsg2 to the participant.
+The participant invokes participant_finalizes, which ends the second phase.
+](images/chilldkg-sequence.png "ChillDKG")
+
+A participant can more than one session with the same host public key,
+and multiple sessions may be run concurrently.
+
+Whenever a function call fails, the corresponding party will not continue the session.
 
 ### API Documentation
 
