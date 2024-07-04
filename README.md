@@ -61,7 +61,7 @@ which include not only parameters such as the generated threshold public key,
 but also whether the DKG has succeeded at all.
 
 To understand the necessity of reaching agreement,
-consider the example of a DKG to establish `2`-of-`3` Bitcoin wallet,
+consider the example of a DKG to establish 2-of-3 Bitcoin wallet,
 in which two participants are honest, but the third participant is malicious.
 The malicious participant sends invalid secret shares to the first honest participant, but valid shares to the second honest participant.
 While the first honest participant cannot finish the DKG,
@@ -152,7 +152,7 @@ we believe, trading robustness for non-exclusion is desirable in many settings:
 For example, consider a key generation ceremony for a threshold cold wallet intended store large amounts of Bitcoin.
 If it turns out that one of the devices participating appears non-responsive, e.g., due to a loss of network or a software bug,
 it will typically be desirable to prefer security over progress, and abort instead of forcing successful termination of the ceremony.
-Note that all a robust DKG protocol could achieve is to consider that device non-responsive and effectively exclude it from the DKG session, which degrades the setup already from the beginning from `t of n` to `t-1` of `n-1`.
+Note that all a robust DKG protocol could achieve is to consider that device non-responsive and effectively exclude it from the DKG session, which degrades the setup already from the beginning from `t`-of-`n` to `(t-1)`-of-`(n-1)`.
 While a warning can be presented to users in this case, it is well known, e.g., from certificate warnings in browsers, that users tend to misunderstand and ignore these.
 
 Even in distributed systems with strict liveness requirements, e.g., a system run by a large federation of nodes of which a majority is trusted, what is typically necessary for the liveness of the system is the continued ability to *produce signatures*.
