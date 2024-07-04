@@ -420,8 +420,7 @@ and callers can simply use the recovery functionality instead.
 The purpose of this section is to provide a high-level overview of the interface and usage of ChillDKG,
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
-Detailed interface documentation of the implementation is also provided in form of Python docstrings in the reference implementation
-(see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
+Detailed API documentation of the reference implementation is provided in [Subsection "API Documentation"](#api-documentation).
 Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation,
 should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
@@ -518,7 +517,8 @@ TODO Write
 
 ### API Documentation
 
-TODO Write
+This subsection is an export of the API documentation generated from the docstrings in the reference implementation
+(see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
 <!--pydoc.md-->
 #### hostpubkey
