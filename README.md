@@ -500,27 +500,28 @@ Compute the participant's host public key from the seed.
 This is the long-term cryptographic identity of the participant. It is
 derived deterministically from the secret seed.
 
-The seed must be 32 bytes of cryptographically secure randomness with
-sufficient entropy to be unpredictable. All outputs of a successful
-participant in a session can be recovered from (a backup of) the seed and
-per-session recovery data.
-
-The same seed (and thus host public key) can be used in multiple DKG
-sessions. A host public key can be correlated to the threshold public key
-resulting from a DKG session only by parties who observed the session,
-namely the participants, the coordinator (and any eavesdropper).
-
 *Arguments*:
 
-- `bytes` (`seed`): Participant's long-term secret seed (32 bytes)
-
-*Raises*:
-
-- `ValueError`: if the length of seed is not 32 bytes
+- `seed` - This participant's long-term secret seed (32 bytes).
+  The seed must be 32 bytes of cryptographically secure randomness
+  with sufficient entropy to be unpredictable. All outputs of a
+  successful participant in a session can be recovered from (a backup
+  of) the seed and per-session recovery data.
+  
+  The same seed (and thus host public key) can be used in multiple DKG
+  sessions. A host public key can be correlated to the threshold
+  public key resulting from a DKG session only by parties who observed
+  the session, namely the participants, the coordinator (and any
+  
 
 *Returns*:
 
-the host public key
+  The host public key.
+  
+
+*Raises*:
+
+- `ValueError` - If the length of `seed` is not 32 bytes.
 
 #### session\_params
 
@@ -529,52 +530,60 @@ def session_params(hostpubkeys: List[bytes],
                    t: int) -> Tuple[SessionParams, bytes]
 ```
 
-Create a SessionParams object along with its params_id.
+Create a `SessionParams` object along with its `params_id`.
 
-A SessionParams object holds the common session parameters of a ChillDKG
+A `SessionParams` object holds the common session parameters of a ChillDKG
 session, namely the list of the host public keys of all participants
-(including the local participants, if applicable) and the participation
-threshold t. All participants and the coordinator in a session must be given
-the same SessionParams object.
+(including the local participant, if applicable) and the participation
+threshold `t`. All participants and the coordinator in a session must be
+given the same `SessionParams` object.
 
 TODO Say something about order and sorting, possibly steal from BIP327.
 
-Participants must ensure that they have obtained authentic host public keys
-of all the other participants in the session to make sure that they run the
-DKG and generate a threshold public key with the intended set of
-participants. This is analogous to traditional threshold signatures (known
-as "multisig" in the Bitcoin community, see BIP350), where the participants
-need to obtain authentic extended public keys ("xpubs") from the other
-participants to generate multisig addresses, or MuSig2 (see BIP327), where
-the participants need to obtain authentic individual public keys of the
-other participants to generate an aggregated public key.
-
-In the common scenario that the participants obtain host public keys from
-the other participants over channels that do not provide end-to-end
-authentication of the sending participant (e.g., if the participants simply
-send their unauthenticaed host public keys to the coordinator who is
-supposed to relay them to all participants), the params_id serves as a
-convenient way to perform an out-of-band comparison of all host public keys.
-It is a collision-resistant cryptographic hash of the SessionParams object.
-As a result, if all participants present an identical params_id (as can be
-verified out-of-band), then they all agree on all host public keys and the
-threshold t, and in particular, all participants have obtained authentic
-public host keys.
-
 *Arguments*:
 
-- `List[bytes]` (`hostpubkeys`): Ordered list of the host public keys of all
-participants
-- `int` (`t`): Participation threshold (t participants will be required to sign)
-
-*Raises*:
-
-- `ValueError`: if 1 <= t <= len(hostpubkeys) does not hold
-- `OverflowError`: if t >= 2^32 (and thus cannot be serialized in 4 bytes)
+- `hostpubkeys` - Ordered list of the host public keys of all participants.
+  Participants must ensure that they have obtained authentic host
+  public keys of all the other participants in the session to make
+  sure that they run the DKG and generate a threshold public key with
+  the intended set of participants. This is analogous to traditional
+  threshold signatures (known as "multisig" in the Bitcoin community,
+  see
+  [BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)),
+  where the participants need to obtain authentic extended public keys
+  ("xpubs") from the other participants to generate multisig
+  addresses, or MuSig2 (see
+  [BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)),
+  where the participants need to obtain authentic individual public
+  keys of the other participants to generate an aggregated public key.
+  
+  In the common scenario that the participants obtain host public keys
+  from the other participants over channels that do not provide
+  end-to-end authentication of the sending participant (e.g., if the
+  participants simply send their unauthenticaed host public keys to
+  the coordinator who is supposed to relay them to all participants),
+  the `params_id` serves as a convenient way to perform an out-of-band
+  comparison of all host public keys. It is a collision-resistant
+  cryptographic hash of the `SessionParams` object. As a result, if
+  all participants present an identical `params_id` (as can be
+  verified out-of-band), then they all agree on all host public keys
+  and the threshold `t`, and in particular, all participants have
+  obtained authentic public host keys.
+- `t` - The participation threshold `t`.
+  This is the number of participants that will be required to sign.
+  
 
 *Returns*:
 
-the SessionParams object and the params_id, a 32-byte string
+- `SessionParams` - The `SessionParams` object.
+- `bytes` - The `params_id`, a 32-byte string.
+  
+
+*Raises*:
+
+- `ValueError` - If the length of `seed` is not 32 bytes.
+- `ValueError` - If `1 <= t <= len(hostpubkeys)` does not hold.
+- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
 
 #### participant\_step1
 
@@ -586,24 +595,27 @@ def participant_step1(
 
 Perform a participant's first step of a ChillDKG session.
 
-The returned ParticipantState1 should be kept locally, and the returned
-ParticipantMsg1 should be sent to the coordinator.
+The returned `ParticipantState1` should be kept locally, and the returned
+`ParticipantMsg1` should be sent to the coordinator.
 
 *Arguments*:
 
-- `seed` (`bytes`): Participant's long-term secret seed (32 bytes)
-- `params` (`SessionParams`): Common session parameters
-- `random` (`bytes`): FRESH random byte string (32 bytes)
-
-*Raises*:
-
-- `ValueError`: if the participant's host public key is not in
-params.hostpubkeys
-- `ValueError`: if the length of seed is not 32 bytes
+- `seed` - Participant's long-term secret seed (32 bytes).
+- `params` - Common session parameters.
+- `random` - FRESH random byte string (32 bytes).
+  
 
 *Returns*:
 
-the participant's state, and the first message for the coordinator
+- `ParticipantState1` - The participant's state after this step.
+- `ParticipantMsg1` - The first message for the coordinator.
+  
+
+*Raises*:
+
+- `ValueError` - If the participant's host public key is not in argument
+  `hostpubkeys`.
+- `ValueError` - If the length of `seed` is not 32 bytes.
 
 #### participant\_step2
 
@@ -615,18 +627,25 @@ def participant_step2(
 
 Perform a participant's second step of a ChillDKG session.
 
-The returned ParticipantState2 should be kept locally, and the returned
-ParticipantMsg2 should be sent to the coordinator.
+The returned `ParticipantState2` should be kept locally, and the returned
+`ParticipantMsg2` should be sent to the coordinator.
 
 *Arguments*:
 
-- `seed` (`bytes`): Participant's long-term secret seed (32 bytes)
-- `state1` (`ParticipantState1`): Participant's state after the previous step
-- `CoordinatorMsg1` (`cmsg1`): First message received from the coordinator
+- `seed` - Participant's long-term secret seed (32 bytes).
+- `state1` - The participant's state after the previous step.
+- `cmsg1` - The first message received from the coordinator.
+  
 
 *Returns*:
 
-the participant's state, and the second message for the coordinator
+- `ParticipantState2` - The participant's state after this step.
+- `ParticipantMsg2` - The second message for the coordinator.
+  
+
+*Raises*:
+
+  TODO
 
 #### participant\_finalize
 
@@ -638,39 +657,41 @@ def participant_finalize(
 
 Perform a participant's final step of a ChillDKG session.
 
-*Arguments*:
-
-- `state2` (`ParticipantState2`): Participant's state after the previous step
-- `CoordinatorMsg2` (`cmsg2`): Second message received from the coordinator
-
-*Raises*:
-
-- `SessionNotFinalizedError`: if finalizing the DKG session was not
-successful from this participant's point of view
-
 If this functions returns properly (without an exception), then this
 participant deems the DKG session successful. It is, however, possible that
-other participants have received a cmsg2 from the coordinator that made them
-raise a SessionNotFinalizedError instead, or that they have not received a
-cmsg2 from the coordinator at all. These participants can, at any point in
-time in the future (e.g., when initiating a signing session), be convinced
-to deem the session successful by presenting them the recovery data, from
-which they can recover the DKG outputs using the participant_recover
+other participants have received a `cmsg2` from the coordinator that made
+them raise a `SessionNotFinalizedError` instead, or that they have not
+received a `cmsg2` from the coordinator at all. These participants can, at
+any point in time in the future (e.g., when initiating a signing session),
+be convinced to deem the session successful by presenting them the recovery
+data, from which they can recover the DKG outputs using the `recover`
 function.
 
-.. warning::
-   Changing perspectives, this implies that even when obtaining a
-   SessionNotFinalizedError, you MUST NOT conclude that the DKG session has
-   failed, and as a consequence, you MUST NOT erase the seed. The underlying
-   reason is that it is possible that some other participant deems the DKG
-   session successful, and uses the resulting threshold public key (e.g., by
-   sending funds to it). That other participant can, at any point in the
-   future, wish to convince us of the success of the DKG session by
-   presenting us recovery data.
+*Warning:*
+Changing perspectives, this implies that even when obtaining a
+`SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
+failed, and as a consequence, you MUST NOT erase the seed. The underlying
+reason is that it is possible that some other participant deems the DKG
+session successful, and uses the resulting threshold public key (e.g., by
+sending funds to it). That other participant can, at any point in the
+future, wish to convince us of the success of the DKG session by presenting
+us recovery data.
+
+*Arguments*:
+
+- `state2` - Participant's state after the previous step.
+  
 
 *Returns*:
 
-the DKG output and the recovery data
+- `DKGOutput` - The DKG output.
+- `bytes` - The serialized recovery data.
+  
+
+*Raises*:
+
+- `SessionNotFinalizedError` - If finalizing the DKG session was not
+  successful from this participant's point of view (see above).
 
 #### coordinator\_step
 
@@ -682,18 +703,19 @@ def coordinator_step(
 
 Perform the coordinator's first step of a ChillDKG session.
 
-The returned CoordinatorState should be kept locally, and the returned
-CoordinatorMsg1 should be sent to all participants.
+The returned `CoordinatorState` should be kept locally, and the returned
+`CoordinatorMsg1` should be sent to all participants.
 
 *Arguments*:
 
-- `pmsgs1` (`List[ParticipantMsg1]`): List of first messages received from
-the participants
-- `params` (`SessionParams`): Common session parameters
+- `pmsgs1` - List of first messages received from the participants.
+- `params` - Common session parameters.
+  
 
 *Returns*:
 
-the coordinator's state, and the first message for all participants
+- `CoordinatorState` - The coordinator's state after this step.
+- `CoordinatorMsg1` - The first message for all participants.
 
 #### coordinator\_finalize
 
@@ -705,32 +727,33 @@ def coordinator_finalize(
 
 Perform the coordinator's final step of a ChillDKG session.
 
-The returned CoordinatorMsg2 should be sent to all participants.
+The returned `CoordinatorMsg2` should be sent to all participants.
 
 Since the coordinator does not have a secret shares, the DKG output will
-have the secshare field set to None.
-
-If this function raises a SessionNotFinalizedError, it is, in principle,
-possible to recover the DKG outputs of the coordinator using the recovery
-data from a successful participant, should one exist. Any such successful
-participant would need to have received messages from other participants via
-communication channel beside the coordinator (or be malicious).
+have the `secshare` field set to `None`.
 
 *Arguments*:
 
-- `state` (`CoordinatorState`): Coordinator's state after the previous step
-- `pmsgs2` (`List[ParticipantMsg2]`): List of second messages received from
-the participants
-
-*Raises*:
-
-- `SessionNotFinalizedError`: if finalizing the DKG session was not
-successful from the point of view of the coordinator
+- `state` - Coordinator's state after the previous step.
+- `pmsgs2` - List of second messages received from the participants.
+  
 
 *Returns*:
 
-the second message for all participants, the DKG output, and the
-recovery data
+- `CoordinatorMsg2` - The second message for all participants
+- `DKGOutput` - The DKG output.
+- `bytes` - The serialized recovery data.
+  
+
+*Raises*:
+
+- `SessionNotFinalizedError` - If finalizing the DKG session was not
+  successful from the point of view of the coordinator. In this case,
+  it is, in principle, possible to recover the DKG outputs of the
+  coordinator using the recovery data from a successful participant,
+  should one exist. Any such successful participant would need to have
+  received messages from other participants via communication channel
+  beside the coordinator (or be malicious).
 
 #### recover
 
@@ -741,27 +764,31 @@ def recover(seed: Optional[bytes],
 
 Recover the DKG output of a session from the seed and recovery data.
 
-This function serves two purposes:
-1. To recover after a SessionNotFinalizedError after obtaining the recovery
-   data from another participant or the coordinator (see
-   participant_finalize).
+This function serves two different purposes:
+1. To recover from a `SessionNotFinalizedError` after obtaining the recovery
+data from another participant or the coordinator (see
+`participant_finalize`).
 2. To reproduce the DKG outputs on a new device, e.g., to recover from a
-   backup after data loss, or to clone a participant or the coordinator to
-   a second device.
+backup after data loss, or to clone a participant or the coordinator to
+a second device.
 
 *Arguments*:
 
-- `Optional[bytes]` (`seed`): Participant's long-term secret seed (32 bytes)
-or None if recovering the coordinator
-- `RecoveryData` (`recovery_data`): Recovery data from a successful session
-
-*Raises*:
-
-- `InvalidRecoveryDataError`: if recovery failed
+- `seed` - This participant's long-term secret seed (32 bytes) or `None` if
+  recovering the coordinator.
+- `recovery_data` - Recovery data from a successful session.
+  
 
 *Returns*:
 
-the DKG output and the parameters of the recovered session
+- `DKGOutput` - The recovered DKG output.
+- `SessionParams` - The common parameters of the recovered session.
+  
+
+*Raises*:
+
+- `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
+  data or recovery data that does not match the provided seed.
 <!--end of pydoc.md-->
 
 TODO Fix diagram
