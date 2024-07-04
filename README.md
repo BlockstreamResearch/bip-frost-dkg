@@ -350,15 +350,14 @@ which instantiates the required equality check protocol with a concrete in-band 
 CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
 ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to EncPedPop.
 
-While ChillDKG still assumes that all participants to verify that they have authentic host public keys of the other participants,[^trust-anchor]
+While ChillDKG still assumes that all participants to verify that they have authentic copies of the host public keys of the other participants,[^trust-anchor]
 it suffices to perform pairwise comparisons involving every pair of participants,
 and these comparisons can happen at any time before the DKG session is finalized, in particular before the DKG session.
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this assumption is implicit in other schemes as well.
-For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 (see [BIP327](bip-0327.mediawiki))
-also assumes that all participants agree on their individual public keys.
-<!-- TODO Should this (foot)note be moved to the usage section? -->
+For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP327](bip-0327.mediawiki)]
+also requires the assumption that all participants have authentic copies of each others' individual public keys.
 
 #### Equality Check Protocol CertEq
 
@@ -370,7 +369,7 @@ i.e., a full list of valid signatures from all `n` participants (including thems
 
 [^multisig-cert]: Abstractly, the required primitive is a multi-signature scheme, i.e., `n` participants signing the same message `eq_input`.
 We choose the naive scheme of collecting list of `n` individual signatures for simplicity.
-Other multi-signatures schemes, e.g., MuSig2 (see [BIP327](bip-0327.mediawiki)) or a scheme based on signature half aggregation [TODO],
+Other multi-signatures schemes, e.g., MuSig2 [[BIP327](bip-0327.mediawiki)] or a scheme based on signature half aggregation [TODO],
 could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
 
