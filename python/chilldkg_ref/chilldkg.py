@@ -1,8 +1,8 @@
 """Reference implementation of ChillDKG.
 
 The public API consists of all functions with docstrings, including the types in
-their arguments and return values, and the exceptions they raise). All other
-definitions are internal.
+their arguments and return values, and the exceptions they raise; see also the
+`__all__` list. All other definitions are internal.
 """
 
 from secrets import token_bytes as random_bytes
@@ -26,8 +26,34 @@ from .util import (
     SessionNotFinalizedError,
 )
 
-# TODO
-# __all__ = []
+__all__ = [
+    # Functions
+    "hostpubkey",
+    "session_params",
+    "participant_step1",
+    "participant_step2",
+    "participant_finalize",
+    "coordinator_step",
+    "coordinator_finalize",
+    "recover",
+    # Exceptions
+    "InvalidContributionError",
+    "InvalidRecoveryDataError",
+    "DeserializationError",
+    "DuplicateHostpubkeyError",
+    "SessionNotFinalizedError",
+    # Types
+    "SessionParams",
+    "DKGOutput",
+    "ParticipantMsg1",
+    "ParticipantMsg2",
+    "ParticipantState1",
+    "ParticipantState2",
+    "CoordinatorMsg1",
+    "CoordinatorMsg2",
+    "CoordinatorState",
+    "RecoveryData",
+]
 
 # TODO Document in all public functions what exceptions they can raise
 
