@@ -39,9 +39,14 @@ from .util import (
 CERTEQ_MSG_TAG = BIP_TAG + "certeq message"
 
 
-def certeq_participant_step(hostseckey: bytes, x: bytes) -> bytes:
+def certeq_message(x: bytes, idx: int):
+    return idx.to_bytes(4, "big")
+
+
+def certeq_participant_step(hostseckey: bytes, idx: int, x: bytes) -> bytes:
+    msg = certeq_message(x, idx)
     return schnorr_sign(
-        x, hostseckey, aux_rand=random_bytes(32), challenge_tag=CERTEQ_MSG_TAG
+        msg, hostseckey, aux_rand=random_bytes(32), challenge_tag=CERTEQ_MSG_TAG
     )
 
 
@@ -54,8 +59,9 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
     if len(cert) != certeq_cert_len(n):
         return False
     for i in range(n):
+        msg = certeq_message(x, i)
         valid = schnorr_verify(
-            x,
+            msg,
             hostpubkeys[i][1:33],
             cert[i * 64 : (i + 1) * 64],
             challenge_tag=CERTEQ_MSG_TAG,
@@ -324,7 +330,7 @@ def participant_step2(
     # shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     state2 = ParticipantState2(params, eq_input, dkg_output)
-    sig = certeq_participant_step(hostseckey, eq_input)
+    sig = certeq_participant_step(hostseckey, idx, eq_input)
     pmsg2 = ParticipantMsg2(sig)
     return state2, pmsg2
 
