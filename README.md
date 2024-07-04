@@ -400,14 +400,7 @@ the entire DKG output of a successful ChillDKG participant can be deterministica
 
 This property is leveraged to offer a backup and recovery functionality:
 ChillDKG outputs a string called *recovery data* which is the concatenation of the transcript `eq_input` and the success certificate `cert`.
-The recovery data, together with the seed, can be used by any participant to recover the full output of the DKG session,
-e.g., after the loss of a participant device.
-
-Since the recovery data is the same for all participants,
-if a participant loses the backup of the recovery data of the DKG session,
-they can request it from any other participants or the coordinator.
-Moreover, since the transcript contains secret shares only in encrypted form,
-it can in principle be stored with a third-party backup provider.
+The recovery data, which is the same for every participant, can be used by any participant together with the seed to recover the full output of the DKG session.
 
 Crucially, the recovery data carries proof that the DKG session took place:
 any recovering participant can re-derive their host key pair from the seed,
@@ -438,14 +431,14 @@ should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ChillDKG is designed for usage with the FROST Schnorr signature scheme,
 and its security depends on specifics of FROST.
-We stress that ChillDKG is not a general-purpose DKG protocol [^no-simulatable-dkg],
+We stress that ChillDKG is not a general-purpose DKG protocol,[^no-simulatable-dkg]
 and combining it with other threshold cryptographic schemes,
 e.g., threshold signature schemes other than FROST, or threshold decryption schemes
 requires careful further consideration, which is not endorsed or in the scope of this document.
 
 [^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
 
-### Protocol Roles, Network Setup
+### Protocol Parties and Network Setup
 
 There are `n >= 2` *participants*, `t` of which will be required to produce a signature.
 Each participant has a point-to-point communication link to the *coordinator*
@@ -458,9 +451,48 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 
 TODO inputs
 
-If a session of the DKG protocol returns an output to an (honest) participant,
-then we say that this participant *deems the protocol session successful*.
-In that case, the output returned by the protocol session to the participant is a tuple consisting of a *secret share* (individual to the participant), the *threshold public key* (common to all participants), a list of n *public shares* for partial signature verification (common to all participants), and *recovery data* (common to all participants).
+If a session ChillDKG returns an output to a participant or the coordinator,
+then we say that this party *deems the protocol session successful*.
+In that case, the DKG output is a triple consisting of a *secret share* (individual to each participant, not returned to the coordinator), the *threshold public key* (common to all participants and the coordinator), and a list of n *public shares* for partial signature verification (common to all participants and the coordinator).
+Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
+
+### Backup and Recovery
+
+Losing the secret share or the threshold public key, e.g., after the loss of a participant device, will render the participant incapable of participating in signing sessions.
+As these values depend on the contributions of the other participants to the DKG session, they can,
+unlike deterministcally derived secret keys [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) as typically used for single-signer Schnorr signatures [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) or MuSig [BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki),
+not be rederived solely from the participant's seed.
+
+To facilitate backups of a DKG session,
+ChillDKG offers the possibility to recover a participant's DKG output from the participant's seed and the recovery data of the specific session,
+As a result, a full backup of a participant consists of the seed as well as the recovery data of all DKG sessions the participant has successfully participated in.
+
+Since the recovery data is the same for all participants,
+if a participant loses the backup of the recovery data of the DKG session,
+they can request it from any other participants or the coordinator.
+Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating,
+so that it can, in principle, be stored with an untrusted third-party backup provider.
+Users should, however, be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
+
+Keeping seed backups accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
+As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of seeds at all,
+and simply hope that `t` honest and working participants will remain available.
+As soon as one or more participants are lost or broken, a new DKG session can be performed with the lost participants replaced.
+The obvious drawback of this method is that it will result in a change of the threshold public key,
+and the application will, therefore, need to transition to the new threshold public key,
+e.g., funds stored under the current threshold public key need to be transferred to the new key.[^advanced-recovery]
+
+Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
+and we believe that a general recommendation is not useful.
+
+TODO Explain second purpose of recovery data, say that participants are responsible for convincing others
+
+[^advanced-recovery]: (TODO Do we want to kill this? This is so far down the road with unclear security assumption (semihonest) that I'm not convinced that we want to talk about this at all.)
+In theory, there are advanced strategies to recover the secret share of a participant with the help of other participants, even if the seed is lost.
+For example, if threshold-many participants are cooperative, it may be to possible to use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
+(TODO proper citation)
+This scheme requires no additional backup or storage space for the participants.
+These strategies are out of scope for this document.
 
 ### Threat Model and Security Goals
 
@@ -475,7 +507,7 @@ If a participant deems a protocol session successful (see above), then this part
    This means that any `t` participants have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the threshold public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
-[^unforgeability-formal]: See Chu, Gerhart, Ruffing, and Schröder [Defition 3, [CGRS23](https://eprint.iacr.org/2023/899)] for a formal definition.
+[^unforgeability-formal]: See Chu, Gerhart, Ruffing, and Schröder [Definition 3, [CGRS23](https://eprint.iacr.org/2023/899)] for a formal definition.
 
 [^correctness-formal]: See Ruffing, Ronge, Jin, Schneider-Bensch, and Schröder [Definition 2.5, [RRJSS22](https://eprint.iacr.org/2022/550)] for a formal definition.
 
@@ -799,38 +831,3 @@ a second device.
   data or recovery data that does not match the provided seed.
 <!--end of pydoc.md-->
 
-### Backup and Recovery
-
-TODO Overhaul and maybe move
-
-Losing the secret share or the threshold public key will render the participant incapable of participating in signing sessions.
-As these values depend on the contributions of the other participants to the DKG, they can, unlike secret keys in BIP 340 or BIP 327, not be derived solely from the participant's seed.
-
-To facilitate backups of a DKG session,
-ChillDKG offers the possibility to recover a participant's outputs of the session from the participant's seed and the DKG transcript of the specific session.
-As a result, a full backup of a participant consists of the seed and the transcripts of all DKGs sessions the participant has participated in.
-
-Since the transcript is verifiable and the same for all participants,
-if a participant loses the backup of the transcript of the DKG session,
-they can request it from any other participants or the coordinator.
-Moreover, since the transcript contains secret shares only in encrypted form,
-it can in principle be stored with a third-party backup provider.
-(TODO: But there are privacy implications. The hostpubkeys and threshold public key can be inferred from the transcript. We could encrypt the full transcript to everyone... We'd only need to encrypt a symmetric key to everyone.)
-
-Keeping seed backups accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
-As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of seeds at all,
-and simply hope that `t` honest and working participants will remain available.
-As soon as one or more participants are lost or broken, a new DKG session can be performed with the lost participants replaced.
-One drawback of this method is that it will result in a change of the threshold public key,
-and the application will, therefore, need to transition to the new threshold public key
-(e.g., funds stored under the current threshold public key need to be transferred to the new key).[^advanced-recovery]
-
-Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
-and we believe that a general recommendation is not useful.
-
-[^advanced-recovery]: (TODO Do we want to kill this? This is so far down with unclear security assumption (semihonest) that I'm not convinced that we want to talk about this at all.)
-In theory, there are advanced strategies to recover even if the seed backup is lost and other participants assist in recovering.
-For example, if threshold-many participants are cooperative, it may be to possible to use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
-(TODO proper citation)
-This scheme requires no additional backup or storage space for the participants.
-These strategies are out of scope for this document.
