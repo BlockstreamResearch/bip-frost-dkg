@@ -486,7 +486,15 @@ In that case, the successful participants can eventually make the stuck particip
 by presenting them the recovery data.
 The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
 
-### Steps of a ChillDKG Session
+### Overview of a ChillDKG Session
+
+TODO Write
+
+![chilldkg diagram](images/chilldkg-sequence.png)
+
+### API Documentation
+
+TODO Write
 
 <!--pydoc.md-->
 #### hostpubkey
@@ -790,9 +798,6 @@ a second device.
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
   data or recovery data that does not match the provided seed.
 <!--end of pydoc.md-->
-
-TODO Fix diagram
-![chilldkg diagram](images/chilldkg-sequence.png)
 
 ### Backup and Recovery
 

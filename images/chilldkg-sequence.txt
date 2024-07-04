@@ -3,16 +3,20 @@ title ChillDKG
 participant Participant
 participant Coordinator
 
-rnote over Participant: chilldkg_hostpubkey
-Participant->Coordinator : my_hostpubkey
-Coordinator->Participant : hostpubkeys
-rnote over Participant: chilldkg_setup_id
-note across: Compare setup_id with other participants out-of-band
+group Generation of host public keys
+rnote over Participant: hostpubkey(seed)
+Participant->Coordinator: hostpubkey
+end
 
-rnote over Participant: chilldkg_round1
-Participant->Coordinator : vss_commitment_ext, enc_gen_shares
-Coordinator->Participant : vss_commitments_sum, all_enc_shares_sum
-rnote over Participant: chilldkg_round2
-Participant->Coordinator : eq_round1
-Coordinator->Participant : cert
-rnote over Participant: chilldkg_finalize
+group Session
+Coordinator->Participant: hostpubkeys, t
+rnote over Participant: partcipant_step1(...)
+Participant->Coordinator: pmsg1
+rnote over Coordinator: coordinator_step(...)
+Coordinator->Participant: cmsg1
+rnote over Participant: partcipant_step2(...)
+Participant->Coordinator: pmsg2
+rnote over Coordinator: coordinator_finalize(...)
+Coordinator->Participant: cmsg2
+rnote over Participant: participant_finalize(...)
+end
