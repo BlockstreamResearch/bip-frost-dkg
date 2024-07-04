@@ -98,7 +98,7 @@ def simulate_chilldkg(
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
-    cstate, cmsg = chilldkg.coordinator_step(pmsgs, params)
+    cstate, cmsg = chilldkg.coordinator_step1(pmsgs, params)
 
     prets2 = []
     for i in range(n):

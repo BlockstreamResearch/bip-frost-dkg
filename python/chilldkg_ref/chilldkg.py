@@ -33,7 +33,7 @@ __all__ = [
     "participant_step1",
     "participant_step2",
     "participant_finalize",
-    "coordinator_step",
+    "coordinator_step1",
     "coordinator_finalize",
     "recover",
     # Exceptions
@@ -441,7 +441,7 @@ class CoordinatorState(NamedTuple):
     dkg_output: DKGOutput
 
 
-def coordinator_step(
+def coordinator_step1(
     pmsgs1: List[ParticipantMsg1], params: SessionParams
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
     """Perform the coordinator's first step of a ChillDKG session.

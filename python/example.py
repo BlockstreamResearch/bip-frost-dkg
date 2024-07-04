@@ -14,7 +14,7 @@ from chilldkg_ref.chilldkg import (
     participant_step1,
     participant_step2,
     participant_finalize,
-    coordinator_step,
+    coordinator_step1,
     coordinator_finalize,
     SessionParams,
     DKGOutput,
@@ -91,7 +91,7 @@ async def coordinator(
     pmsgs1 = []
     for i in range(n):
         pmsgs1.append(await chans.receive_from(i))
-    state, cmsg1 = coordinator_step(pmsgs1, params)
+    state, cmsg1 = coordinator_step1(pmsgs1, params)
     chans.send_all(cmsg1)
 
     sigs = []

@@ -11,7 +11,7 @@ group Session
 Coordinator->Participant: hostpubkeys, t
 rnote over Participant: participant_step1(...)
 Participant->Coordinator: pmsg1
-rnote over Coordinator: coordinator_step(...)
+rnote over Coordinator: coordinator_step1(...)
 Coordinator->Participant: cmsg1
 rnote over Participant: participant_step2(...)
 Participant->Coordinator: pmsg2
