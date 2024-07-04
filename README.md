@@ -480,19 +480,12 @@ and simply hope that `t` honest and working participants will remain available.
 As soon as one or more participants are lost or broken, a new DKG session can be performed with the lost participants replaced.
 The obvious drawback of this method is that it will result in a change of the threshold public key,
 and the application will, therefore, need to transition to the new threshold public key,
-e.g., funds stored under the current threshold public key need to be transferred to the new key.[^advanced-recovery]
+e.g., funds stored under the current threshold public key need to be transferred to the new key.
 
 Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
 
 TODO Explain second purpose of recovery data, say that participants are responsible for convincing others
-
-[^advanced-recovery]: (TODO Do we want to kill this? This is so far down the road with unclear security assumption (semihonest) that I'm not convinced that we want to talk about this at all.)
-In theory, there are advanced strategies to recover the secret share of a participant with the help of other participants, even if the seed is lost.
-For example, if threshold-many participants are cooperative, it may be to possible to use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
-(TODO proper citation)
-This scheme requires no additional backup or storage space for the participants.
-These strategies are out of scope for this document.
 
 ### Threat Model and Security Goals
 
