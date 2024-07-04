@@ -352,7 +352,6 @@ ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to
 
 While ChillDKG still assumes that all participants to verify that they have authentic host public keys of the other participants,[^trust-anchor]
 it suffices to perform pairwise comparisons involving every pair of participants,
-<!-- TODO This is a bit inconsistent with our idea of comparing the session id.  -->
 and these comparisons can happen at any time before the DKG session is finalized, in particular before the DKG session.
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
