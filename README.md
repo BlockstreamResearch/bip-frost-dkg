@@ -811,8 +811,7 @@ and the application will, therefore, need to transition to the new threshold pub
 Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
 
-[^advanced-recovery]:
-(TODO Do we want to kill this? This is so far down with unclear security assumption (semihonest) that I'm not convinced that we want to talk about this at all.)
+[^advanced-recovery]: (TODO Do we want to kill this? This is so far down with unclear security assumption (semihonest) that I'm not convinced that we want to talk about this at all.)
 In theory, there are advanced strategies to recover even if the seed backup is lost and other participants assist in recovering.
 For example, if threshold-many participants are cooperative, it may be to possible to use the "Enrolment Repairable Threshold Scheme" described in [these slides](https://github.com/chelseakomlo/talks/blob/master/2019-combinatorial-schemes/A_Survey_and_Refinement_of_Repairable_Threshold_Schemes.pdf).
 (TODO proper citation)
