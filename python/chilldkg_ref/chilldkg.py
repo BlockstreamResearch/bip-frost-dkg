@@ -20,10 +20,6 @@ from .util import (
     BIP_TAG,
     prf,
     InvalidContributionError,
-    InvalidRecoveryDataError,
-    DeserializationError,
-    DuplicateHostpubkeyError,
-    SessionNotFinalizedError,
 )
 
 __all__ = [
@@ -39,7 +35,6 @@ __all__ = [
     # Exceptions
     "InvalidContributionError",
     "InvalidRecoveryDataError",
-    "DeserializationError",
     "DuplicateHostpubkeyError",
     "SessionNotFinalizedError",
     # Types
@@ -55,7 +50,24 @@ __all__ = [
     "RecoveryData",
 ]
 
+
+###
+### Exceptions
+###
 # TODO Document in all public functions what exceptions they can raise
+
+
+class DuplicateHostpubkeyError(Exception):
+    pass
+
+
+class SessionNotFinalizedError(Exception):
+    pass
+
+
+class InvalidRecoveryDataError(Exception):
+    pass
+
 
 ###
 ### Equality check protocol CertEq
@@ -265,12 +277,12 @@ def deserialize_recovery_data(
 
     # Read t (4 bytes)
     if len(rest) < 4:
-        raise DeserializationError
+        raise ValueError
     t, rest = int.from_bytes(rest[:4], byteorder="big"), rest[4:]
 
     # Read sum_coms (33*t bytes)
     if len(rest) < 33 * t:
-        raise DeserializationError
+        raise ValueError
     sum_coms, rest = (
         VSSCommitment.from_bytes_and_t(rest[: 33 * t], t),
         rest[33 * t :],
@@ -279,21 +291,21 @@ def deserialize_recovery_data(
     # Compute n
     n, remainder = divmod(len(rest), (33 + 33 + 32 + 64))
     if remainder != 0:
-        raise DeserializationError
+        raise ValueError
 
     # Read hostpubkeys (33*n bytes)
     if len(rest) < 33 * n:
-        raise DeserializationError
+        raise ValueError
     hostpubkeys, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
 
     # Read pubnonces (33*n bytes)
     if len(rest) < 33 * n:
-        raise DeserializationError
+        raise ValueError
     pubnonces, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
 
     # Read enc_secshares (32*n bytes)
     if len(rest) < 32 * n:
-        raise DeserializationError
+        raise ValueError
     enc_secshares, rest = (
         [Scalar(int_from_bytes(rest[i : i + 32])) for i in range(0, 32 * n, 32)],
         rest[32 * n :],
@@ -302,11 +314,11 @@ def deserialize_recovery_data(
     # Read cert
     cert_len = certeq_cert_len(n)
     if len(rest) < cert_len:
-        raise DeserializationError
+        raise ValueError
     cert, rest = rest[:cert_len], rest[cert_len:]
 
     if len(rest) != 0:
-        raise DeserializationError
+        raise ValueError
     return (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert)
 
 
@@ -544,7 +556,7 @@ def recover(
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
             deserialize_recovery_data(recovery_data)
         )
-    except DeserializationError as e:
+    except Exception as e:
         raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
 
     n = len(hostpubkeys)

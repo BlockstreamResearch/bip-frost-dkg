@@ -15,22 +15,8 @@ def prf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
 
 
 class InvalidContributionError(Exception):
+    """TODO"""
+
     def __init__(self, participant: Optional[int], error: str) -> None:
         self.participant = participant
         self.contrib = error
-
-
-class InvalidRecoveryDataError(Exception):
-    pass
-
-
-class DeserializationError(Exception):
-    pass
-
-
-class DuplicateHostpubkeyError(Exception):
-    pass
-
-
-class SessionNotFinalizedError(Exception):
-    pass

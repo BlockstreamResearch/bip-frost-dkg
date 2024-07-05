@@ -4,7 +4,7 @@ from typing import List
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 
-from .util import prf, DeserializationError
+from .util import prf
 
 
 class Polynomial:
@@ -64,7 +64,7 @@ class VSSCommitment:
     @staticmethod
     def from_bytes_and_t(b: bytes, t: int) -> VSSCommitment:
         if len(b) != 33 * t:
-            raise DeserializationError
+            raise ValueError
         ges = [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
         return VSSCommitment(ges)
 
