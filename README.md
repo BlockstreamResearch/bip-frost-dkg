@@ -522,10 +522,10 @@ all participants run the identical code and send messages at the same steps.
 The first of two phases "Generation of host public keys" involves the participant invokes the function hostpubkey with parameter seed and sends the returned hostpubkey to the coordinator.
 The second phase "Session" is initiated by the coordinator sending hostpubkeys and t to the participant.
 The participant invokes participant_step1 and sends the returned pmsg1 to the coordinator.
-The coordinator invokes coordinator_step and sends the returned cmsg1 to the participant.
+The coordinator invokes coordinator_step1 and sends the returned cmsg1 to the participant.
 The participant invokes participant_step2 and sends the returned pmsg2 to the coordinator.
 The coordinator invokes coordinator_finalize and sends the returned cmsg2 to the participant.
-The participant invokes participant_finalizes, which ends the second phase.
+The participant invokes participant_finalize, which ends the second phase.
 ](images/chilldkg-sequence.png "ChillDKG")
 
 A participant can more than one session with the same host public key,
@@ -742,10 +742,10 @@ us recovery data.
 - `SessionNotFinalizedError` - If finalizing the DKG session was not
   successful from this participant's point of view (see above).
 
-#### coordinator\_step
+#### coordinator\_step1
 
 ```python
-def coordinator_step(
+def coordinator_step1(
         pmsgs1: List[ParticipantMsg1],
         params: SessionParams) -> Tuple[CoordinatorState, CoordinatorMsg1]
 ```
