@@ -4,7 +4,7 @@ from typing import List, NamedTuple, NewType, Tuple, Optional
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.secp256k1 import GE, Scalar
 from .util import BIP_TAG, InvalidContributionError
-from .vss import VSS, VSSCommitment, VSSVerifyError
+from .vss import VSS, VSSCommitment
 
 
 ###
@@ -76,23 +76,6 @@ def assemble_sum_coms(
     )
 
 
-def common_dkg_output(com: VSSCommitment, n: int) -> Tuple[GE, List[GE]]:
-    # Derive the common parts of the DKG output from the sum of all VSS commitments
-    #
-    # The common parts are the threshold public key and the individual public shares of
-    # all participants.
-    threshold_pubkey = com.ges[0]
-    pubshares = []
-    for i in range(0, n):
-        # TODO The following computation is the major part of com.verify(i, ...),
-        # which we have already computed for i. We should 1) extract the major part of
-        # VSSCommitment.verify into a separate method, and 2) avoid that we're computing
-        # it twice here.
-        pk_i = GE.batch_mul(*(((i + 1) ** j, com.ges[j]) for j in range(0, com.t())))
-        pubshares += [pk_i]
-    return threshold_pubkey, pubshares
-
-
 ###
 ### Participant
 ###
@@ -117,7 +100,7 @@ def participant_step1(
     assert idx < 2 ** (4 * 8)
 
     vss = VSS.generate(seed, t)
-    shares = vss.shares(n)
+    shares = vss.secshares(n)
     pop = pop_prove(vss.secret().to_bytes(), idx)
 
     com = vss.commit()
@@ -157,9 +140,11 @@ def participant_step2(
                 i, "Participant sent invalid proof-of-knowledge"
             )
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
-    if not sum_coms.verify(idx, secshare):
-        raise VSSVerifyError()
-    threshold_pubkey, pubshares = common_dkg_output(sum_coms, n)
+    threshold_pubkey = sum_coms.commitment_to_secret()
+    pubshares = [sum_coms.pubshare(i) for i in range(n)]
+    if not VSSCommitment.verify_secshare(secshare, pubshares[idx]):
+        # TODO What to raise here? We don't know who was wrong.
+        raise InvalidContributionError(None, "Received invalid secshare.")
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
     return DKGOutput(secshare, threshold_pubkey, pubshares), eq_input
 
@@ -189,7 +174,8 @@ def coordinator_step(
     ]
     pops = [pmsg.pop for pmsg in pmsgs]
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
-    threshold_pubkey, pubshares = common_dkg_output(sum_coms, n)
+    threshold_pubkey = sum_coms.commitment_to_secret()
+    pubshares = [sum_coms.pubshare(i) for i in range(n)]
     dkg_output = DKGOutput(None, threshold_pubkey, pubshares)
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
     return (

@@ -11,7 +11,7 @@ from secp256k1ref.secp256k1 import GE, G, Scalar
 from secp256k1ref.keys import pubkey_gen_plain
 
 from chilldkg_ref.util import prf
-from chilldkg_ref.vss import Polynomial, VSS
+from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
 import chilldkg_ref.simplpedpop as simplpedpop
 import chilldkg_ref.encpedpop as encpedpop
 import chilldkg_ref.chilldkg as chilldkg
@@ -27,9 +27,12 @@ def test_vss_correctness():
         for n in range(t, 2 * t + 1):
             f = rand_polynomial(t)
             vss = VSS(f)
-            shares = vss.shares(n)
-            assert len(shares) == n
-            assert all(vss.commit().verify(i, shares[i]) for i in range(n))
+            secshares = vss.secshares(n)
+            assert len(secshares) == n
+            assert all(
+                VSSCommitment.verify_secshare(secshares[i], vss.commit().pubshare(i))
+                for i in range(n)
+            )
 
 
 def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:

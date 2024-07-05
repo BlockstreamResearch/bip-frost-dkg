@@ -7,10 +7,6 @@ from secp256k1ref.secp256k1 import GE, G, Scalar
 from .util import prf, DeserializationError
 
 
-class VSSVerifyError(Exception):
-    pass
-
-
 class Polynomial:
     # A scalar polynomial.
     #
@@ -44,17 +40,22 @@ class VSSCommitment:
     def t(self) -> int:
         return len(self.ges)
 
-    def verify(self, i: int, share: Scalar) -> bool:
-        P = share * G
-        Q = GE.batch_mul(
+    def pubshare(self, i: int) -> GE:
+        pubshare: GE = GE.batch_mul(
             *(((i + 1) ** j, self.ges[j]) for j in range(0, len(self.ges)))
         )
-        valid: bool = P == Q
+        return pubshare
+
+    @staticmethod
+    def verify_secshare(secshare: Scalar, pubshare: GE) -> bool:
+        # The caller needs to provide the correct pubshare(i)
+        actual = secshare * G
+        valid: bool = actual == pubshare
         return valid
 
     def to_bytes(self) -> bytes:
         # Return commitments to the coefficients of f.
-        return b"".join([P.to_bytes_compressed_with_infinity() for P in self.ges])
+        return b"".join([ge.to_bytes_compressed_with_infinity() for ge in self.ges])
 
     def __add__(self, other: VSSCommitment) -> VSSCommitment:
         assert self.t() == other.t()
@@ -88,7 +89,7 @@ class VSS:
         ]
         return VSS(Polynomial(coeffs))
 
-    def share_for(self, i: int) -> Scalar:
+    def secshare_for(self, i: int) -> Scalar:
         # Return the secret share for the participant with index i.
         #
         # This computes f(i+1).
@@ -98,11 +99,11 @@ class VSS:
         assert x != Scalar(0)
         return self.f(x)
 
-    def shares(self, n: int) -> List[Scalar]:
+    def secshares(self, n: int) -> List[Scalar]:
         # Return the secret shares for the participants with indices 0..n-1.
         #
         # This computes [f(1), ..., f(n)].
-        return [self.share_for(i) for i in range(0, n)]
+        return [self.secshare_for(i) for i in range(0, n)]
 
     def commit(self) -> VSSCommitment:
         return VSSCommitment([c * G for c in self.f.coeffs])

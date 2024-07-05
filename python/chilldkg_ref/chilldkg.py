@@ -14,7 +14,7 @@ from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
 
 from .vss import VSS, VSSCommitment
-from .simplpedpop import DKGOutput, common_dkg_output
+from .simplpedpop import DKGOutput
 from . import encpedpop
 from .util import (
     BIP_TAG,
@@ -553,6 +553,10 @@ def recover(
     # Verify cert
     certeq_verify(hostpubkeys, recovery_data[: 64 * n], cert)
 
+    # Compute threshold pubkey and individual pubshares
+    threshold_pubkey = sum_coms.commitment_to_secret()
+    pubshares = [sum_coms.pubshare(i) for i in range(n)]
+
     if seed:
         # Find our hostpubkey
         hostseckey, hostpubkey = hostkeypair(seed)
@@ -577,13 +581,14 @@ def recover(
 
         # Derive my_share
         vss = VSS.generate(session_seed, t)
-        my_share = vss.share_for(idx)
+        my_share = vss.secshare_for(idx)
         secshare += my_share
+
+        # This is just a sanity check. Our signature is valid, so we have done
+        # this check already during the actual session.
+        assert VSSCommitment.verify_secshare(secshare, pubshares[idx])
     else:
         secshare = None
-
-    # Compute threshold pubkey and individual pubshares
-    (threshold_pubkey, pubshares) = common_dkg_output(sum_coms, n)
 
     dkg_output = DKGOutput(secshare, threshold_pubkey, pubshares)
     return dkg_output, params
