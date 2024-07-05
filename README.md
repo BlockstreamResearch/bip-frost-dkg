@@ -444,7 +444,6 @@ Each participant has a point-to-point communication link to the *coordinator*
 (but participants do not have direct communication links to each other).
 
 If there is no dedicated coordinator, one of the participants can act as the coordinator.
-(TODO This is like in MuSig, but we explained this differently in BIP327 where we say that the coordinator is optional...)
 
 ### Inputs and Output
 
