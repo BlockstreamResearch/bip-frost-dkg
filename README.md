@@ -25,7 +25,7 @@ This document is licensed under the 3-clause BSD license.
 
 ### Motivation
 
-The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852),[CKM21](https://eprint.iacr.org/2021/1375),[BTZ21](https://eprint.iacr.org/2022/833),[CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr threshold signatures,
+The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ21](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr threshold signatures,
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` participants are compromised,
 and remains functional as long as `t` honest participants do not lose their secret key material.
@@ -47,7 +47,7 @@ a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all participants avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
-Most suitably for the use with FROST is the PedPop DKG protocol ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3) with proofs of possession") [[KG20](https://eprint.iacr.org/2020/852),[CKM21](https://eprint.iacr.org/2021/1375),[CGRS23](https://eprint.iacr.org/2023/899)],
+Most suitably for the use with FROST is the PedPop DKG protocol [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [CGRS23](https://eprint.iacr.org/2023/899)] ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3) with proofs of possession"),
 which, like FROST, does not impose restrictions on the choice of `t` and `n`.
 
 But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication channels between participants,
