@@ -573,7 +573,7 @@ derived deterministically from the secret seed.
 
 - `ValueError` - If the length of `seed` is not 32 bytes.
 
-## SessionParams Objects
+#### SessionParams Objects
 
 ```python
 class SessionParams(NamedTuple)
@@ -584,8 +584,7 @@ TODO
 #### session\_params
 
 ```python
-def session_params(hostpubkeys: List[bytes],
-                   t: int) -> Tuple[SessionParams, bytes]
+def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]
 ```
 
 Create a `SessionParams` object along with its `params_id`.
@@ -653,9 +652,7 @@ to abstract away from the order.
 #### participant\_step1
 
 ```python
-def participant_step1(
-        seed: bytes, params: SessionParams,
-        random: bytes) -> Tuple[ParticipantState1, ParticipantMsg1]
+def participant_step1(seed: bytes, params: SessionParams, random: bytes) -> Tuple[ParticipantState1, ParticipantMsg1]
 ```
 
 Perform a participant's first step of a ChillDKG session.
@@ -685,9 +682,7 @@ The returned `ParticipantState1` should be kept locally, and the returned
 #### participant\_step2
 
 ```python
-def participant_step2(
-        seed: bytes, state1: ParticipantState1,
-        cmsg1: CoordinatorMsg1) -> Tuple[ParticipantState2, ParticipantMsg2]
+def participant_step2(seed: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1) -> Tuple[ParticipantState2, ParticipantMsg2]
 ```
 
 Perform a participant's second step of a ChillDKG session.
@@ -715,9 +710,7 @@ The returned `ParticipantState2` should be kept locally, and the returned
 #### participant\_finalize
 
 ```python
-def participant_finalize(
-        state2: ParticipantState2,
-        cmsg2: CoordinatorMsg2) -> Tuple[DKGOutput, RecoveryData]
+def participant_finalize(state2: ParticipantState2, cmsg2: CoordinatorMsg2) -> Tuple[DKGOutput, RecoveryData]
 ```
 
 Perform a participant's final step of a ChillDKG session.
@@ -761,9 +754,7 @@ us recovery data.
 #### coordinator\_step1
 
 ```python
-def coordinator_step1(
-        pmsgs1: List[ParticipantMsg1],
-        params: SessionParams) -> Tuple[CoordinatorState, CoordinatorMsg1]
+def coordinator_step1(pmsgs1: List[ParticipantMsg1], params: SessionParams) -> Tuple[CoordinatorState, CoordinatorMsg1]
 ```
 
 Perform the coordinator's first step of a ChillDKG session.
@@ -785,9 +776,7 @@ The returned `CoordinatorState` should be kept locally, and the returned
 #### coordinator\_finalize
 
 ```python
-def coordinator_finalize(
-    state: CoordinatorState, pmsgs2: List[ParticipantMsg2]
-) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]
+def coordinator_finalize(state: CoordinatorState, pmsgs2: List[ParticipantMsg2]) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]
 ```
 
 Perform the coordinator's final step of a ChillDKG session.
@@ -823,8 +812,7 @@ have the `secshare` field set to `None`.
 #### recover
 
 ```python
-def recover(seed: Optional[bytes],
-            recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
+def recover(seed: Optional[bytes], recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
 ```
 
 Recover the DKG output of a session from the seed and recovery data.
