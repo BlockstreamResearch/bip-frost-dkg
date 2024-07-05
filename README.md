@@ -371,7 +371,8 @@ i.e., a full list of valid signatures from all `n` participants (including thems
 
 [^multisig-cert]: Abstractly, the required primitive is a multi-signature scheme, i.e., `n` participants signing the same message `eq_input`.
 We choose the naive scheme of collecting list of `n` individual signatures for simplicity.
-Other multi-signatures schemes, e.g., MuSig2 [[BIP327](bip-0327.mediawiki)] or a scheme based on signature half aggregation [TODO],
+Other multi-signatures schemes,
+e.g., MuSig2 [[BIP327](bip-0327.mediawiki)] or a scheme based on Schnorr signature half aggregation [[Halfagg-BIP-Draft](https://github.com/BlockstreamResearch/cross-input-aggregation/blob/master/half-aggregation.mediawiki), [CGKN21](https://eprint.iacr.org/2021/350), [CZ22](https://eprint.iacr.org/2022/222)],
 could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
 
