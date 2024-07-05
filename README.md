@@ -153,7 +153,7 @@ For example, consider a key generation ceremony for a threshold cold wallet inte
 If it turns out that one of the devices participating appears non-responsive, e.g., due to a loss of network or a software bug,
 it will typically be desirable to prefer security over progress, and abort instead of forcing successful termination of the ceremony.
 Note that all a robust DKG protocol could achieve is to consider that device non-responsive and effectively exclude it from the DKG session, which degrades the setup already from the beginning from `t`-of-`n` to `(t-1)`-of-`(n-1)`.
-While a warning can be presented to users in this case, it is well known, e.g., from certificate warnings in browsers, that users tend to misunderstand and ignore these.
+While a warning can be presented to users in this case, users tend to misunderstand and ignore these.
 
 Even in distributed systems with strict liveness requirements, e.g., a system run by a large federation of nodes of which a majority is trusted, what is typically necessary for the liveness of the system is the continued ability to *produce signatures*.
 However, the setup of keys is typically performed in a one-time ceremony at the inception of the system (and possibly repeated in large time intervals, e.g., every few months).
