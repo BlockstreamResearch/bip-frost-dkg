@@ -573,6 +573,14 @@ derived deterministically from the secret seed.
 
 - `ValueError` - If the length of `seed` is not 32 bytes.
 
+## SessionParams Objects
+
+```python
+class SessionParams(NamedTuple)
+```
+
+TODO
+
 #### session\_params
 
 ```python

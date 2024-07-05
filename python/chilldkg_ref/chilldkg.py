@@ -103,13 +103,8 @@ def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
 
 
 ###
-### Session input and outputs
+### Host keys
 ###
-
-
-class SessionParams(NamedTuple):
-    hostpubkeys: List[bytes]
-    t: int
 
 
 def hostseckey(seed: bytes) -> bytes:
@@ -149,6 +144,21 @@ def hostpubkey(seed: bytes) -> bytes:
         ValueError: If the length of `seed` is not 32 bytes.
     """
     return hostkeypair(seed)[1]
+
+
+###
+### Session input and outputs
+###
+
+
+class SessionParams(NamedTuple):
+    """TODO"""
+
+    hostpubkeys: List[bytes]
+    t: int
+
+
+# TODO What about DKGOutput? It should be here.
 
 
 def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]:
@@ -224,8 +234,6 @@ def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, byt
 
 
 RecoveryData = NewType("RecoveryData", bytes)
-
-# TODO What about DKGOutput? It should be here.
 
 
 ###
