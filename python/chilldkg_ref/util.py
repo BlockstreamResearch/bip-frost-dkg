@@ -1,3 +1,5 @@
+from typing import Optional
+
 from secp256k1ref.util import tagged_hash
 
 
@@ -13,7 +15,7 @@ def prf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
 
 
 class InvalidContributionError(Exception):
-    def __init__(self, participant, error):
+    def __init__(self, participant: Optional[int], error: str) -> None:
         self.participant = participant
         self.contrib = error
 

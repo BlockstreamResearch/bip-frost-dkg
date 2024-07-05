@@ -65,7 +65,7 @@ __all__ = [
 CERTEQ_MSG_TAG = BIP_TAG + "certeq message"
 
 
-def certeq_message(x: bytes, idx: int):
+def certeq_message(x: bytes, idx: int) -> bytes:
     return idx.to_bytes(4, "big")
 
 

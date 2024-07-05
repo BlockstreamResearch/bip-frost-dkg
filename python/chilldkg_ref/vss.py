@@ -1,4 +1,6 @@
-from typing import List, NamedTuple
+from __future__ import annotations
+
+from typing import List
 
 from secp256k1ref.secp256k1 import GE, G, Scalar
 
@@ -6,18 +8,19 @@ from .util import prf, DeserializationError
 
 
 class VSSVerifyError(Exception):
-    def __init__(self):
-        pass
+    pass
 
 
-class Polynomial(NamedTuple):
+class Polynomial:
     # A scalar polynomial.
     #
     # A polynomial f of degree at most t - 1 is represented by a list `coeffs`
     # of t coefficients, i.e., f(x) = coeffs[0] + ... + coeffs[t-1] *
     # x^(t-1)."""
-
     coeffs: List[Scalar]
+
+    def __init__(self, coeffs: List[Scalar]) -> None:
+        self.coeffs = coeffs
 
     def eval(self, x: Scalar) -> Scalar:
         # Evaluate a polynomial at position x.
@@ -32,10 +35,13 @@ class Polynomial(NamedTuple):
         return self.eval(x)
 
 
-class VSSCommitment(NamedTuple):
+class VSSCommitment:
     ges: List[GE]
 
-    def t(self):
+    def __init__(self, ges: List[GE]) -> None:
+        self.ges = ges
+
+    def t(self) -> int:
         return len(self.ges)
 
     def verify(self, i: int, share: Scalar) -> bool:
@@ -43,18 +49,19 @@ class VSSCommitment(NamedTuple):
         Q = GE.batch_mul(
             *(((i + 1) ** j, self.ges[j]) for j in range(0, len(self.ges)))
         )
-        return P == Q
+        valid: bool = P == Q
+        return valid
 
     def to_bytes(self) -> bytes:
         # Return commitments to the coefficients of f.
         return b"".join([P.to_bytes_compressed_with_infinity() for P in self.ges])
 
-    def __add__(self, other):
+    def __add__(self, other: VSSCommitment) -> VSSCommitment:
         assert self.t() == other.t()
-        return [self.ges[i] + other.ges[i] for i in range(self.t())]
+        return VSSCommitment([self.ges[i] + other.ges[i] for i in range(self.t())])
 
     @staticmethod
-    def from_bytes_and_t(b: bytes, t: int):
+    def from_bytes_and_t(b: bytes, t: int) -> VSSCommitment:
         if len(b) != 33 * t:
             raise DeserializationError
         ges = [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
@@ -67,18 +74,21 @@ class VSSCommitment(NamedTuple):
         return self.ges[1 : self.t()]
 
 
-class VSS(NamedTuple):
+class VSS:
     f: Polynomial
 
+    def __init__(self, f: Polynomial) -> None:
+        self.f = f
+
     @staticmethod
-    def generate(seed, t):
+    def generate(seed: bytes, t: int) -> VSS:
         coeffs = [
             Scalar.from_bytes(prf(seed, "vss coeffs", i.to_bytes(4, byteorder="big")))
             for i in range(t)
         ]
         return VSS(Polynomial(coeffs))
 
-    def share_for(self, i: int):
+    def share_for(self, i: int) -> Scalar:
         # Return the secret share for the participant with index i.
         #
         # This computes f(i+1).
@@ -97,7 +107,7 @@ class VSS(NamedTuple):
     def commit(self) -> VSSCommitment:
         return VSSCommitment([c * G for c in self.f.coeffs])
 
-    def secret(self):
+    def secret(self) -> Scalar:
         # Return the secret to be shared.
         #
         # This computes f(0).

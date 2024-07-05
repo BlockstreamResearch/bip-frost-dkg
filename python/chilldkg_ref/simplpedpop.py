@@ -17,18 +17,18 @@ Pop = NewType("Pop", bytes)
 POP_MSG_TAG = BIP_TAG + "pop message"
 
 
-def pop_msg(idx: int):
+def pop_msg(idx: int) -> bytes:
     return idx.to_bytes(4, byteorder="big")
 
 
-def pop_prove(seckey, idx, aux_rand: bytes = 32 * b"\x00"):
+def pop_prove(seckey: bytes, idx: int, aux_rand: bytes = 32 * b"\x00") -> Pop:
     sig = schnorr_sign(
         pop_msg(idx), seckey, aux_rand=random_bytes(32), challenge_tag=POP_MSG_TAG
     )
     return Pop(sig)
 
 
-def pop_verify(pop: Pop, pubkey: bytes, idx: int):
+def pop_verify(pop: Pop, pubkey: bytes, idx: int) -> bool:
     return schnorr_verify(pop_msg(idx), pubkey, pop, challenge_tag=POP_MSG_TAG)
 
 
@@ -76,7 +76,7 @@ def assemble_sum_coms(
     )
 
 
-def common_dkg_output(com, n: int) -> Tuple[GE, List[GE]]:
+def common_dkg_output(com: VSSCommitment, n: int) -> Tuple[GE, List[GE]]:
     # Derive the common parts of the DKG output from the sum of all VSS commitments
     #
     # The common parts are the threshold public key and the individual public shares of

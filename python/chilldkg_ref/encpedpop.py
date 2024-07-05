@@ -120,7 +120,7 @@ class ParticipantState(NamedTuple):
     my_share: Scalar
 
 
-def serialize_enc_context(t, enckeys):
+def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
     # TODO Consider hashing the result here because the string can be long, and
     # we'll feed it into hashes on multiple occasions
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
