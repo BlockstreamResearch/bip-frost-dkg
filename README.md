@@ -590,12 +590,20 @@ def session_params(hostpubkeys: List[bytes],
 Create a `SessionParams` object along with its `params_id`.
 
 A `SessionParams` object holds the common session parameters of a ChillDKG
-session, namely the list of the host public keys of all participants
+session, namely an ordered list of the host public keys of all participants
 (including the local participant, if applicable) and the participation
-threshold `t`. All participants and the coordinator in a session must be
-given the same `SessionParams` object.
+threshold `t`.
 
-TODO Say something about order and sorting, possibly steal from BIP327.
+All participants and the coordinator in a session must be given an identical
+`SessionParams` object. In particular, the host public keys must be in the
+same order. This will make sure that honest participants agree on the order
+as part of the session, which is useful if the order carries an implicit
+meaning in the application (e.g., if the first t participant are the primary
+participants for signing and the others are fallback participants). If there
+is no canonical order of the participants in the application, the caller can
+sort the list of host public keys with the [KeySort algorithm specified in
+BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+to abstract away from the order.
 
 *Arguments*:
 
