@@ -11,13 +11,14 @@ from typing import Tuple, List, NamedTuple, NewType, Optional
 from secp256k1ref.secp256k1 import Scalar, GE
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.keys import pubkey_gen_plain
-from secp256k1ref.util import tagged_hash, int_from_bytes, bytes_from_int
+from secp256k1ref.util import int_from_bytes, bytes_from_int
 
 from .vss import VSS, VSSCommitment
 from .simplpedpop import DKGOutput
 from . import encpedpop
 from .util import (
     BIP_TAG,
+    tagged_hash_bip_dkg,
     prf,
     InvalidContributionError,
 )
@@ -57,7 +58,16 @@ __all__ = [
 # TODO Document in all public functions what exceptions they can raise
 
 
-class DuplicateHostpubkeyError(Exception):
+class DuplicateHostpubkeyError(ValueError):
+    pass
+
+
+class ThresholdError(ValueError):
+    pass
+
+
+# TODO Use this
+class SeedError(ValueError):
     pass
 
 
@@ -163,94 +173,101 @@ def hostpubkey(seed: bytes) -> bytes:
 ###
 
 
+# It would be more idiomatic Python to make this a real (data)class, perform
+# data validation in the constructor, and add methods to it, but let's stick to
+# simple tuples in the public API in order to keep it approachable to readers
+# who are not too familiar with Python.
 class SessionParams(NamedTuple):
-    """TODO"""
+    """A `SessionParams` tuple holds the common parameters of session.
 
+    Attributes:
+        hostpubkeys: Ordered list of the host public keys of all participants.
+        t: The participation threshold `t`.
+            This is the number of participants that will be required to sign.
+            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+
+    Participants must ensure that they have obtained authentic host
+    public keys of all the other participants in the session to make
+    sure that they run the DKG and generate a threshold public key with
+    the intended set of participants. This is analogous to traditional
+    threshold signatures (known as "multisig" in the Bitcoin community,
+    [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
+    where the participants need to obtain authentic extended public keys
+    ("xpubs") from the other participants to generate multisig
+    addresses, or MuSig2
+    [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
+    where the participants need to obtain authentic individual public
+    keys of the other participants to generate an aggregated public key.
+
+    All participants and the coordinator in a session must be given an identical
+    `SessionParams` tuple. In particular, the host public keys must be in the
+    same order. This will make sure that honest participants agree on the order
+    as part of the session, which is useful if the order carries an implicit
+    meaning in the application (e.g., if the first `t` participants are the
+    primary participants for signing and the others are fallback participants).
+    If there is no canonical order of the participants in the application, the
+    caller can sort the list of host public keys with the [KeySort algorithm
+    specified in
+    BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+    to abstract away from the order.
+    """
     hostpubkeys: List[bytes]
     t: int
 
 
-# TODO What about DKGOutput? It should be here.
+def params_validate(params: SessionParams) -> None:
+    (hostpubkeys, t) = params
 
-
-def session_params(hostpubkeys: List[bytes], t: int) -> Tuple[SessionParams, bytes]:
-    """Create a `SessionParams` object along with its `params_id`.
-
-    A `SessionParams` object holds the common session parameters of a ChillDKG
-    session, namely an ordered list of the host public keys of all participants
-    (including the local participant, if applicable) and the participation
-    threshold `t`.
-
-    All participants and the coordinator in a session must be given an identical
-    `SessionParams` object. In particular, the host public keys must be in the
-    same order. This will make sure that honest participants agree on the order
-    as part of the session, which is useful if the order carries an implicit
-    meaning in the application (e.g., if the first t participant are the primary
-    participants for signing and the others are fallback participants). If there
-    is no canonical order of the participants in the application, the caller can
-    sort the list of host public keys with the [KeySort algorithm specified in
-    BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
-    to abstract away from the order.
-
-    Arguments:
-        hostpubkeys: Ordered list of the host public keys of all participants.
-            Participants must ensure that they have obtained authentic host
-            public keys of all the other participants in the session to make
-            sure that they run the DKG and generate a threshold public key with
-            the intended set of participants. This is analogous to traditional
-            threshold signatures (known as "multisig" in the Bitcoin community,
-            [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
-            where the participants need to obtain authentic extended public keys
-            ("xpubs") from the other participants to generate multisig
-            addresses, or MuSig2
-            [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
-            where the participants need to obtain authentic individual public
-            keys of the other participants to generate an aggregated public key.
-
-            In the common scenario that the participants obtain host public keys
-            from the other participants over channels that do not provide
-            end-to-end authentication of the sending participant (e.g., if the
-            participants simply send their unauthenticaed host public keys to
-            the coordinator who is supposed to relay them to all participants),
-            the `params_id` serves as a convenient way to perform an out-of-band
-            comparison of all host public keys. It is a collision-resistant
-            cryptographic hash of the `SessionParams` object. As a result, if
-            all participants present an identical `params_id` (as can be
-            verified out-of-band), then they all agree on all host public keys
-            and the threshold `t`, and in particular, all participants have
-            obtained authentic public host keys.
-        t: The participation threshold `t`.
-            This is the number of participants that will be required to sign.
-
-    Returns:
-         SessionParams: The `SessionParams` object.
-         bytes: The `params_id`, a 32-byte string.
-
-    Raises:
-        ValueError: If the length of `seed` is not 32 bytes.
-        ValueError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
-    """
-    if len(hostpubkeys) != len(set(hostpubkeys)):
-        raise DuplicateHostpubkeyError
     if not (1 <= t <= len(hostpubkeys)):
-        raise ValueError
+        raise ThresholdError
 
-    # Check if hostpubkeys are valid
     for i, hostpubkey in enumerate(hostpubkeys):
         try:
             _ = GE.from_bytes_compressed(hostpubkey)
         except ValueError as e:
             raise InvalidContributionError(
-                i, "Participant has provided invalid encryption key"
+                i, "Participant has provided an invalid host public key"
             ) from e
 
-    params_id = tagged_hash(
-        "session parameters id", b"".join(hostpubkeys) + t.to_bytes(4, byteorder="big")
+    if len(hostpubkeys) != len(set(hostpubkeys)):
+        raise DuplicateHostpubkeyError
+
+
+def params_id(params: SessionParams) -> bytes:
+    """Returns the parameters ID, a unique representation of the`SessionParams`.
+
+    In the common scenario that the participants obtain host public keys from
+    the other participants over channels that do not provide end-to-end
+    authentication of the sending participant (e.g., if the participants simply
+    send their unauthenticated host public keys to the coordinator who is
+    supposed to relay them to all participants), the parameters ID serves as a
+    convenient way to perform an out-of-band comparison of all host public keys.
+    It is a collision-resistant cryptographic hash of the `SessionParams`
+    object. As a result, if all participants have obtained an identical
+    parameters ID (as can be verified out-of-band), then they all agree on all
+    host public keys and the threshold `t`, and in particular, all participants
+    have obtained authentic public host keys.
+
+    Returns:
+        bytes: The parameters ID, a 32-byte string.
+
+    Raises:
+        InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
+            public key.
+        DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
+        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+    """
+    params_validate(params)
+    (hostpubkeys, t) = params
+
+    t_bytes = t.to_bytes(4, byteorder="big")  # OverflowError if t >= 2^32
+    params_id = tagged_hash_bip_dkg(
+        "params_id",
+        t_bytes + b"".join(hostpubkeys),
     )
     assert len(params_id) == 32
-    params = SessionParams(hostpubkeys, t)
-    return params, params_id
+    return params_id
 
 
 RecoveryData = NewType("RecoveryData", bytes)
@@ -368,11 +385,18 @@ def participant_step1(
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
         ValueError: If the length of `seed` is not 32 bytes.
+        InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
+            public key.
+        DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
+        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
-    hostseckey, hostpubkey = hostkeypair(seed)
+    hostseckey, hostpubkey = hostkeypair(seed)  # ValueError if len(seed) != 32
+
+    params_validate(params)
     (hostpubkeys, t) = params
 
-    idx = hostpubkeys.index(hostpubkey)
+    idx = hostpubkeys.index(hostpubkey)  # ValueError if not found
     enc_state, enc_pmsg = encpedpop.participant_step1(seed, t, hostpubkeys, idx, random)
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
@@ -484,9 +508,19 @@ def coordinator_step1(
     Returns:
         CoordinatorState: The coordinator's state after this step.
         CoordinatorMsg1: The first message for all participants.
+
+    Raises:
+        InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
+            public key.
+        DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
+        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
+    params_validate(params)
+    (hostpubkeys, t) = params
+
     enc_cmsg, dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
-        [pmsg1.enc_pmsg for pmsg1 in pmsgs1], params.t, params.hostpubkeys
+        [pmsg1.enc_pmsg for pmsg1 in pmsgs1], t, hostpubkeys
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     state = CoordinatorState(params, eq_input, dkg_output)
@@ -568,7 +602,8 @@ def recover(
         raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
 
     n = len(hostpubkeys)
-    (params, params_id) = session_params(hostpubkeys, t)
+    params = SessionParams(hostpubkeys, t)
+    params_validate(params)
 
     # Verify cert
     certeq_verify(hostpubkeys, recovery_data[: 64 * n], cert)

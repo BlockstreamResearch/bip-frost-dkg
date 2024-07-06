@@ -10,7 +10,6 @@ import sys
 
 from chilldkg_ref.chilldkg import (
     hostpubkey,
-    session_params,
     participant_step1,
     participant_step2,
     participant_finalize,
@@ -116,7 +115,7 @@ def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
         hostpubkeys += [hostpubkey(seeds[i])]
 
     # TODO also print params_id
-    params, _ = session_params(hostpubkeys, t)
+    params = SessionParams(hostpubkeys, t)
 
     async def session():
         coord_chans = CoordinatorChannels(n)
