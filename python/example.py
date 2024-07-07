@@ -167,7 +167,7 @@ def main():
     assert len(set([rets[i][1] for i in range(n + 1)])) == 1
     recovery_data = rets[0][1]
     print(f"=== Common RecoveryData ({len(recovery_data)} bytes)===")
-    print(recovery_data.hex())
+    print(recovery_data)
 
 
 if __name__ == "__main__":

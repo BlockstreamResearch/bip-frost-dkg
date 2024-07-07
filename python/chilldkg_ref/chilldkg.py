@@ -211,6 +211,7 @@ class SessionParams(NamedTuple):
     BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
     to abstract away from the order.
     """
+
     hostpubkeys: List[bytes]
     t: int
 
@@ -645,5 +646,9 @@ def recover(
     else:
         secshare = None
 
-    dkg_output = DKGOutput(secshare, threshold_pubkey, pubshares)
+    dkg_output = DKGOutput(
+        None if secshare is None else secshare.to_bytes(),
+        threshold_pubkey.to_bytes_compressed(),
+        [pubshare.to_bytes_compressed() for pubshare in pubshares],
+    )
     return dkg_output, params

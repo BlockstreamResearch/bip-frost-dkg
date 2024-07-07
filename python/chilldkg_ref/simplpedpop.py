@@ -62,9 +62,9 @@ class CoordinatorMsg(NamedTuple):
 
 
 class DKGOutput(NamedTuple):
-    secshare: Optional[Scalar]  # None for coordinator
-    threshold_pubkey: GE
-    pubshares: List[GE]
+    secshare: Optional[bytes]  # None for coordinator
+    threshold_pubkey: bytes
+    pubshares: List[bytes]
 
 
 def assemble_sum_coms(
@@ -145,8 +145,14 @@ def participant_step2(
     if not VSSCommitment.verify_secshare(secshare, pubshares[idx]):
         # TODO What to raise here? We don't know who was wrong.
         raise InvalidContributionError(None, "Received invalid secshare.")
+
+    dkg_output = DKGOutput(
+        secshare.to_bytes(),
+        threshold_pubkey.to_bytes_compressed(),
+        [pubshare.to_bytes_compressed() for pubshare in pubshares],
+    )
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return DKGOutput(secshare, threshold_pubkey, pubshares), eq_input
+    return dkg_output, eq_input
 
 
 ###
@@ -162,24 +168,25 @@ def coordinator_step(
     # This procedure is introduced by Pedersen in Section 5.1 of
     # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret
     # Sharing'.
-
+    #
     # We cannot sum the commitments to the secrets (i == 0) because they'll be
     # necessary to check the pops.
     coms_to_secrets = [pmsg.com.commitment_to_secret() for pmsg in pmsgs]
-
     # But we can sum the commitments to the non-constant terms.
     sum_coms_to_nonconst_terms = [
         GE.sum(*(pmsg.com.commitment_to_nonconst_terms()[j] for pmsg in pmsgs))
         for j in range(0, t - 1)
     ]
     pops = [pmsg.pop for pmsg in pmsgs]
+    cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
+
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
-    dkg_output = DKGOutput(None, threshold_pubkey, pubshares)
-    eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return (
-        CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops),
-        dkg_output,
-        eq_input,
+    dkg_output = DKGOutput(
+        None,
+        threshold_pubkey.to_bytes_compressed(),
+        [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
+    eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
+    return cmsg, dkg_output, eq_input
