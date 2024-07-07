@@ -553,20 +553,20 @@ derived deterministically from the secret seed.
 *Arguments*:
 
 - `seed` - This participant's long-term secret seed (32 bytes).
-The seed must be 32 bytes of cryptographically secure randomness
-with sufficient entropy to be unpredictable. All outputs of a
-successful participant in a session can be recovered from (a backup
-of) the seed and per-session recovery data.
+  The seed must be 32 bytes of cryptographically secure randomness
+  with sufficient entropy to be unpredictable. All outputs of a
+  successful participant in a session can be recovered from (a backup
+  of) the seed and per-session recovery data.
 
-The same seed (and thus host public key) can be used in multiple DKG
-sessions. A host public key can be correlated to the threshold
-public key resulting from a DKG session only by parties who observed
-the session, namely the participants, the coordinator (and any
+  The same seed (and thus host public key) can be used in multiple DKG
+  sessions. A host public key can be correlated to the threshold
+  public key resulting from a DKG session only by parties who observed
+  the session, namely the participants, the coordinator (and any
 
 
 *Returns*:
 
-The host public key.
+  The host public key.
 
 
 *Raises*:
@@ -577,8 +577,8 @@ The host public key.
 
 ```python
 class SessionParams(NamedTuple):
-hostpubkeys: List[bytes]
-t: int
+    hostpubkeys: List[bytes]
+    t: int
 ```
 
 A `SessionParams` tuple holds the common parameters of session.
@@ -587,33 +587,33 @@ A `SessionParams` tuple holds the common parameters of session.
 
 - `hostpubkeys` - Ordered list of the host public keys of all participants.
 - `t` - The participation threshold `t`.
-This is the number of participants that will be required to sign.
-It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+  This is the number of participants that will be required to sign.
+  It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
 
-Participants must ensure that they have obtained authentic host
-public keys of all the other participants in the session to make
-sure that they run the DKG and generate a threshold public key with
-the intended set of participants. This is analogous to traditional
-threshold signatures (known as "multisig" in the Bitcoin community,
-[[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
-where the participants need to obtain authentic extended public keys
-("xpubs") from the other participants to generate multisig
-addresses, or MuSig2
-[[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
-where the participants need to obtain authentic individual public
-keys of the other participants to generate an aggregated public key.
+  Participants must ensure that they have obtained authentic host
+  public keys of all the other participants in the session to make
+  sure that they run the DKG and generate a threshold public key with
+  the intended set of participants. This is analogous to traditional
+  threshold signatures (known as "multisig" in the Bitcoin community,
+  [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
+  where the participants need to obtain authentic extended public keys
+  ("xpubs") from the other participants to generate multisig
+  addresses, or MuSig2
+  [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
+  where the participants need to obtain authentic individual public
+  keys of the other participants to generate an aggregated public key.
 
-All participants and the coordinator in a session must be given an identical
-`SessionParams` tuple. In particular, the host public keys must be in the
-same order. This will make sure that honest participants agree on the order
-as part of the session, which is useful if the order carries an implicit
-meaning in the application (e.g., if the first `t` participants are the
-primary participants for signing and the others are fallback participants).
-If there is no canonical order of the participants in the application, the
-caller can sort the list of host public keys with the [KeySort algorithm
-specified in
-BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
-to abstract away from the order.
+  All participants and the coordinator in a session must be given an identical
+  `SessionParams` tuple. In particular, the host public keys must be in the
+  same order. This will make sure that honest participants agree on the order
+  as part of the session, which is useful if the order carries an implicit
+  meaning in the application (e.g., if the first `t` participants are the
+  primary participants for signing and the others are fallback participants).
+  If there is no canonical order of the participants in the application, the
+  caller can sort the list of host public keys with the [KeySort algorithm
+  specified in
+  BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+  to abstract away from the order.
 
 #### params\_id
 
@@ -643,7 +643,7 @@ have obtained authentic public host keys.
 *Raises*:
 
 - `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
-public key.
+  public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -652,9 +652,9 @@ public key.
 
 ```python
 class DKGOutput(NamedTuple):
-secshare: Optional[bytes]
-threshold_pubkey: bytes
-pubshares: List[bytes]
+    secshare: Optional[bytes]
+    threshold_pubkey: bytes
+    pubshares: List[bytes]
 ```
 
 Holds the outputs of a DKG session.
@@ -692,10 +692,10 @@ The returned `ParticipantState1` should be kept locally, and the returned
 *Raises*:
 
 - `ValueError` - If the participant's host public key is not in argument
-`hostpubkeys`.
+  `hostpubkeys`.
 - `ValueError` - If the length of `seed` is not 32 bytes.
 - `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
-public key.
+  public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -726,7 +726,7 @@ The returned `ParticipantState2` should be kept locally, and the returned
 
 *Raises*:
 
-TODO
+  TODO
 
 #### participant\_finalize
 
@@ -770,7 +770,7 @@ us recovery data.
 *Raises*:
 
 - `SessionNotFinalizedError` - If finalizing the DKG session was not
-successful from this participant's point of view (see above).
+  successful from this participant's point of view (see above).
 
 #### coordinator\_step1
 
@@ -798,7 +798,7 @@ The returned `CoordinatorState` should be kept locally, and the returned
 *Raises*:
 
 - `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
-public key.
+  public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -832,12 +832,12 @@ have the `secshare` field set to `None`.
 *Raises*:
 
 - `SessionNotFinalizedError` - If finalizing the DKG session was not
-successful from the point of view of the coordinator. In this case,
-it is, in principle, possible to recover the DKG outputs of the
-coordinator using the recovery data from a successful participant,
-should one exist. Any such successful participant would need to have
-received messages from other participants via communication channel
-beside the coordinator (or be malicious).
+  successful from the point of view of the coordinator. In this case,
+  it is, in principle, possible to recover the DKG outputs of the
+  coordinator using the recovery data from a successful participant,
+  should one exist. Any such successful participant would need to have
+  received messages from other participants via communication channel
+  beside the coordinator (or be malicious).
 
 #### recover
 
@@ -858,7 +858,7 @@ a second device.
 *Arguments*:
 
 - `seed` - This participant's long-term secret seed (32 bytes) or `None` if
-recovering the coordinator.
+  recovering the coordinator.
 - `recovery_data` - Recovery data from a successful session.
 
 
@@ -871,6 +871,6 @@ recovering the coordinator.
 *Raises*:
 
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
-data or recovery data that does not match the provided seed.
+  data or recovery data that does not match the provided seed.
 <!--end of pydoc.md-->
 

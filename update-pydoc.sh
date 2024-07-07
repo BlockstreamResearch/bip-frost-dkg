@@ -28,7 +28,7 @@ for name in SessionParams DKGOutput; do
 done
 
 # Remove trailing space
-sed 's/^[ \t]*//;s/[ \t]*$//' -i pydoc.md
+sed 's/[ \t]*$//' -i pydoc.md
 
 # Clean README.md
 sed -z -i README.md -e 's/<!--pydoc.md-->.*<!--end of pydoc.md-->/<!--pydoc.md-->\n<!--end of pydoc.md-->/'
