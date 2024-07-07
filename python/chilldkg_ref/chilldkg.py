@@ -14,7 +14,6 @@ from secp256k1ref.keys import pubkey_gen_plain
 from secp256k1ref.util import int_from_bytes, bytes_from_int
 
 from .vss import VSS, VSSCommitment
-from .simplpedpop import DKGOutput
 from . import encpedpop
 from .util import (
     BIP_TAG,
@@ -271,6 +270,22 @@ def params_id(params: SessionParams) -> bytes:
     return params_id
 
 
+# This is really the same definition as in simplpedpop and encpedpop. We repeat
+# it here only to have its docstring in this module.
+class DKGOutput(NamedTuple):
+    """Holds the outputs of a DKG session.
+
+    Attributes:
+        secshare: Secret share of the participant (or `None` for coordinator)
+        threshold_pubkey: Senerated threshold public key representing the group
+        pubshares: Public shares of the participants
+    """
+
+    secshare: Optional[bytes]
+    threshold_pubkey: bytes
+    pubshares: List[bytes]
+
+
 RecoveryData = NewType("RecoveryData", bytes)
 
 
@@ -429,12 +444,13 @@ def participant_step2(
     (params, idx, enc_state) = state1
     enc_cmsg, enc_secshares = cmsg1
 
-    dkg_output, eq_input = encpedpop.participant_step2(
+    enc_dkg_output, eq_input = encpedpop.participant_step2(
         enc_state, hostseckey, enc_cmsg, enc_secshares[idx]
     )
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
+    dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
     state2 = ParticipantState2(params, eq_input, dkg_output)
     sig = certeq_participant_step(hostseckey, idx, eq_input)
     pmsg2 = ParticipantMsg2(sig)
@@ -520,10 +536,11 @@ def coordinator_step1(
     params_validate(params)
     (hostpubkeys, t) = params
 
-    enc_cmsg, dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
+    enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
         [pmsg1.enc_pmsg for pmsg1 in pmsgs1], t, hostpubkeys
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
+    dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
     state = CoordinatorState(params, eq_input, dkg_output)
     cmsg1 = CoordinatorMsg1(enc_cmsg, enc_secshares)
     return state, cmsg1

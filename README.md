@@ -648,6 +648,23 @@ public key.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
 
+#### DKGOutput Tuples
+
+```python
+class DKGOutput(NamedTuple):
+secshare: Optional[bytes]
+threshold_pubkey: bytes
+pubshares: List[bytes]
+```
+
+Holds the outputs of a DKG session.
+
+*Attributes*:
+
+- `secshare` - Secret share of the participant (or `None` for coordinator)
+- `threshold_pubkey` - Senerated threshold public key representing the group
+- `pubshares` - Public shares of the participants
+
 #### participant\_step1
 
 ```python

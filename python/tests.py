@@ -85,7 +85,7 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
 
 def simulate_chilldkg(
     seeds, t
-) -> List[Tuple[simplpedpop.DKGOutput, chilldkg.RecoveryData]]:
+) -> List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]:
     n = len(seeds)
 
     hostpubkeys = []
