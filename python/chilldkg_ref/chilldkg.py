@@ -26,7 +26,7 @@ from .util import (
 __all__ = [
     # Functions
     "hostpubkey",
-    "session_params",
+    "params_id",
     "participant_step1",
     "participant_step2",
     "participant_finalize",
