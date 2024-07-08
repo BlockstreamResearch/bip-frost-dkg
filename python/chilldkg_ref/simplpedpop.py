@@ -3,7 +3,7 @@ from typing import List, NamedTuple, NewType, Tuple, Optional
 
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.secp256k1 import GE, Scalar
-from .util import BIP_TAG, InvalidContributionError
+from .util import BIP_TAG, SeedError, InvalidContributionError
 from .vss import VSS, VSSCommitment
 
 
@@ -98,6 +98,8 @@ def participant_step1(
 ) -> Tuple[ParticipantState, ParticipantMsg, List[Scalar]]:
     assert t < 2 ** (4 * 8)
     assert idx < 2 ** (4 * 8)
+    if len(seed) != 32:
+        raise SeedError
 
     vss = VSS.generate(seed, t)
     shares = vss.secshares(n)

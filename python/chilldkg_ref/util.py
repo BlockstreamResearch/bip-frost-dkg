@@ -14,6 +14,14 @@ def prf(seed: bytes, tag: str, extra_input: bytes = b"") -> bytes:
     return tagged_hash_bip_dkg(tag, seed + extra_input)
 
 
+class SeedError(ValueError):
+    pass
+
+
+class ThresholdError(ValueError):
+    pass
+
+
 class InvalidContributionError(Exception):
     """TODO"""
 

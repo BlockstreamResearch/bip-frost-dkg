@@ -19,6 +19,7 @@ from .util import (
     BIP_TAG,
     tagged_hash_bip_dkg,
     prf,
+    SeedError,
     InvalidContributionError,
 )
 
@@ -33,6 +34,7 @@ __all__ = [
     "coordinator_finalize",
     "recover",
     # Exceptions
+    "SeedError",
     "InvalidContributionError",
     "InvalidRecoveryDataError",
     "DuplicateHostpubkeyError",
@@ -62,11 +64,6 @@ class DuplicateHostpubkeyError(ValueError):
 
 
 class ThresholdError(ValueError):
-    pass
-
-
-# TODO Use this
-class SeedError(ValueError):
     pass
 
 
@@ -134,7 +131,7 @@ def hostseckey(seed: bytes) -> bytes:
 
 def hostkeypair(seed: bytes) -> Tuple[bytes, bytes]:
     if len(seed) != 32:
-        raise ValueError
+        raise SeedError
     seckey = hostseckey(seed)
     pubkey = pubkey_gen_plain(seckey)
     return (seckey, pubkey)
@@ -162,7 +159,7 @@ def hostpubkey(seed: bytes) -> bytes:
         The host public key.
 
     Raises:
-        ValueError: If the length of `seed` is not 32 bytes.
+        SeedError: If the length of `seed` is not 32 bytes.
     """
     return hostkeypair(seed)[1]
 
@@ -400,20 +397,22 @@ def participant_step1(
     Raises:
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
-        ValueError: If the length of `seed` is not 32 bytes.
+        SeedError: If the length of `seed` is not 32 bytes.
         InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
             public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
-    hostseckey, hostpubkey = hostkeypair(seed)  # ValueError if len(seed) != 32
+    hostseckey, hostpubkey = hostkeypair(seed)  # SeedError if len(seed) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
 
     idx = hostpubkeys.index(hostpubkey)  # ValueError if not found
-    enc_state, enc_pmsg = encpedpop.participant_step1(seed, t, hostpubkeys, idx, random)
+    enc_state, enc_pmsg = encpedpop.participant_step1(
+        seed, t, hostpubkeys, idx, random
+    )  # SeedError if len(seed) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
 
@@ -438,9 +437,10 @@ def participant_step2(
         ParticipantMsg2: The second message for the coordinator.
 
     Raises:
+        SeedError: If the length of `seed` is not 32 bytes.
         TODO
     """
-    (hostseckey, _) = hostkeypair(seed)
+    (hostseckey, _) = hostkeypair(seed)  # SeedError if len(seed) != 32
     (params, idx, enc_state) = state1
     enc_cmsg, enc_secshares = cmsg1
 
