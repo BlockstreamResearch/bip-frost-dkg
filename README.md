@@ -144,7 +144,8 @@ In fact, a single participant can cause the protocol to fail, either due to mali
 In such cases, users must investigate and resolve the issue before the DKG can output key material.
 
 When ChillDKG does not terminate successfully, it is not possible to identify the misbehaving participant unless they misbehave in certain trivial ways.
-While the ability to identify the misbehaving participant, also called *identifiable aborts*, is desirable, we keep this goal out of scope for simplicity (TODO: This may change in a future version of the BIP, but no guarantee).
+While the ability to identify the misbehaving participant, also called *identifiable aborts*, is desirable, we keep this goal out of scope for simplicity.
+(TODO: This may change in a future version of the BIP, but no guarantee.)
 
 Adding robustness to ChillDKG would require the coordinator to exclude participants that appear unresponsive or faulty, which degrades the setup already from the beginning from `t`-of-`n` to `(t-1)`-of-`(n-1)`.
 This approach is undesirable in most scenarios, as a malicious coordinator would have the power to exclude participants at will,
@@ -383,6 +384,7 @@ Other multi-signatures schemes,
 e.g., MuSig2 [[BIP327](bip-0327.mediawiki)] or a scheme based on Schnorr signature half aggregation [[Halfagg-BIP-Draft](https://github.com/BlockstreamResearch/cross-input-aggregation/blob/master/half-aggregation.mediawiki), [CGKN21](https://eprint.iacr.org/2021/350), [CZ22](https://eprint.iacr.org/2022/222)],
 could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
+(TODO: Half-agg may be included in a future version of the BIP, but no guarantee.)
 
 [^certeq-literature]: CertEq can be viewed as signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 
