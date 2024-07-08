@@ -587,8 +587,7 @@ def recover(
        data from another participant or the coordinator (see
        `participant_finalize`).
     2. To reproduce the DKG outputs on a new device, e.g., to recover from a
-       backup after data loss, or to clone a participant or the coordinator to
-       a second device.
+       backup after data loss.
 
     Arguments:
         seed: This participant's long-term secret seed (32 bytes) or `None` if
