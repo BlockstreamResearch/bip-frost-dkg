@@ -170,7 +170,7 @@ def hostpubkey(seed: bytes) -> bytes:
 # simple tuples in the public API in order to keep it approachable to readers
 # who are not too familiar with Python.
 class SessionParams(NamedTuple):
-    """A `SessionParams` tuple holds the common parameters of session.
+    """A `SessionParams` tuple holds the common parameters of a DKG session.
 
     Attributes:
         hostpubkeys: Ordered list of the host public keys of all participants.
@@ -232,7 +232,7 @@ def params_id(params: SessionParams) -> bytes:
     In the common scenario that the participants obtain host public keys from
     the other participants over channels that do not provide end-to-end
     authentication of the sending participant (e.g., if the participants simply
-    send their unauthenticated host public keys to the coordinator who is
+    send their unauthenticated host public keys to the coordinator, who is
     supposed to relay them to all participants), the parameters ID serves as a
     convenient way to perform an out-of-band comparison of all host public keys.
     It is a collision-resistant cryptographic hash of the `SessionParams`
@@ -441,7 +441,7 @@ def participant_step2(
 
             Further information is provided as part of the exception, including
             a hint about which party might be to blame for the problem. The hint
-            should not be trusted and should only be only used for debugging. In
+            should not be trusted and should used only for debugging. In
             particular, the hint may point at the wrong party, e.g., if the
             coordinator is malicious or network connections are unreliable, and
             as a consequence, the caller should not conclude that the party
@@ -475,8 +475,8 @@ def participant_finalize(
     them raise a `SessionNotFinalizedError` instead, or that they have not
     received a `cmsg2` from the coordinator at all. These participants can, at
     any point in time in the future (e.g., when initiating a signing session),
-    be convinced to deem the session successful by presenting them the recovery
-    data, from which they can recover the DKG outputs using the `recover`
+    be convinced to deem the session successful by presenting the recovery data
+    to them, from which they can recover the DKG outputs using the `recover`
     function.
 
     **Warning:**
@@ -498,7 +498,7 @@ def participant_finalize(
 
     Raises:
         SessionNotFinalizedError: If finalizing the DKG session was not
-            successful from this participant's point of view (see above).
+            successful from this participant's perspective (see above).
     """
     (params, eq_input, dkg_output) = state2
     certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
@@ -568,7 +568,7 @@ def coordinator_finalize(
 
     Raises:
         SessionNotFinalizedError: If finalizing the DKG session was not
-            successful from the point of view of the coordinator. In this case,
+            successful from the perspective of the coordinator. In this case,
             it is, in principle, possible to recover the DKG outputs of the
             coordinator using the recovery data from a successful participant,
             should one exist. Any such successful participant would need to have
