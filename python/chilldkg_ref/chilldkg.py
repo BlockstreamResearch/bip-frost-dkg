@@ -385,8 +385,8 @@ def participant_step1(
 
     Returns:
         ParticipantState1: The participant's session state after this step, to
-            be passed as an argument to `participant_step2`. The state is not
-            supposed to be reused (i.e., it should be passed only to one
+            be passed as an argument to `participant_step2`. The state must not
+            be reused (i.e., it must be passed only to one
             `participant_step2` call).
         ParticipantMsg1: The first message to be sent to the coordinator.
 
@@ -428,8 +428,8 @@ def participant_step2(
 
     Returns:
         ParticipantState2: The participant's session state after this step, to
-            be passed as an argument to `participant_finalize`. The state is not
-            supposed to be reused (i.e., it should be passed only to one
+            be passed as an argument to `participant_finalize`. The state must not
+            be reused (i.e., it must be passed only to one
             `participant_finalize` call).
         ParticipantMsg2: The second message to be sent to the coordinator.
 
