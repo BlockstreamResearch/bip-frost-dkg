@@ -4,7 +4,8 @@ Title: Distributed Key Generation for FROST
 Author: Tim Ruffing <crypto@timruffing.de>
         Jonas Nick <jonas@n-ck.net>
 Status: Draft
-License: BSD-3-Clause
+License: CC0-1.0
+License-Code: MIT
 Type: Informational
 Created:
 Post-History:
@@ -19,7 +20,8 @@ This Bitcoin Improvement Proposal proposes ChillDKG, a distributed key generatio
 
 ### Copyright
 
-This document is licensed under the 3-clause BSD license.
+This document is made available under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
+The accompanying source code is licensed under the [MIT license](https://opensource.org/license/mit).
 
 ## Introduction
 
