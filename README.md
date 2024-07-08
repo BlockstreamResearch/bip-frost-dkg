@@ -345,16 +345,16 @@ A detailed treatment is these out-of-band methods is out of scope of this docume
 
 (See [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
-Instead of performing a out-of-band check as the last step of the DKG,
+Instead of performing an out-of-band check as the last step of the DKG,
 ChillDKG relies on an more direct approach:
 ChillDKG is a wrapper around EncPedPop,
 which instantiates the required equality check protocol with a concrete in-band protocol CertEq.
 CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
 ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to EncPedPop.
 
-While ChillDKG still assumes that all participants to verify that they have authentic copies of the host public keys of the other participants,[^trust-anchor]
-it suffices to perform pairwise comparisons involving every pair of participants,
-and these comparisons can happen at any time before the DKG session is finalized, in particular before the DKG session.
+While ChillDKG still assumes that all participants have authentic copies of the host public keys of the other participants,[^trust-anchor]
+this can be verified, e.g., using pairwise out-of-band comparisons involving every pair of participants,
+and these comparisons can happen at any time before the DKG session is finalized, in particular before the start of the session.
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this assumption is implicit in other schemes as well.
