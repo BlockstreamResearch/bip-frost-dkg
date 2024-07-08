@@ -177,7 +177,7 @@ class SessionParams(NamedTuple):
         hostpubkeys: Ordered list of the host public keys of all participants.
         t: The participation threshold `t`.
             This is the number of participants that will be required to sign.
-            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2**32 - 1`.
 
     Participants must ensure that they have obtained authentic host
     public keys of all the other participants in the session to make
