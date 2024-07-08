@@ -379,17 +379,17 @@ def participant_step1(
 ) -> Tuple[ParticipantState1, ParticipantMsg1]:
     """Perform a participant's first step of a ChillDKG session.
 
-    The returned `ParticipantState1` should be kept locally, and the returned
-    `ParticipantMsg1` should be sent to the coordinator.
-
     Arguments:
         seed: Participant's long-term secret seed (32 bytes).
         params: Common session parameters.
         random: FRESH random byte string (32 bytes).
 
     Returns:
-        ParticipantState1: The participant's state after this step.
-        ParticipantMsg1: The first message for the coordinator.
+        ParticipantState1: The participant's session state after this step, to
+            be passed as an argument to `participant_step2`. The state is not
+            supposed to be reused (i.e., it should be passed only to one
+            `participant_step2` call).
+        ParticipantMsg1: The first message to be sent to the coordinator.
 
     Raises:
         ValueError: If the participant's host public key is not in argument
@@ -421,17 +421,18 @@ def participant_step2(
 ) -> Tuple[ParticipantState2, ParticipantMsg2]:
     """Perform a participant's second step of a ChillDKG session.
 
-    The returned `ParticipantState2` should be kept locally, and the returned
-    `ParticipantMsg2` should be sent to the coordinator.
-
     Arguments:
         seed: Participant's long-term secret seed (32 bytes).
-        state1: The participant's state after the previous step.
+        state1: The participant's session state as output by
+            `participant_step1`.
         cmsg1: The first message received from the coordinator.
 
     Returns:
-        ParticipantState2: The participant's state after this step.
-        ParticipantMsg2: The second message for the coordinator.
+        ParticipantState2: The participant's session state after this step, to
+            be passed as an argument to `participant_finalize`. The state is not
+            supposed to be reused (i.e., it should be passed only to one
+            `participant_finalize` call).
+        ParticipantMsg2: The second message to be sent to the coordinator.
 
     Raises:
         SeedError: If the length of `seed` is not 32 bytes.
@@ -480,7 +481,7 @@ def participant_finalize(
     us recovery data.
 
     Arguments:
-        state2: Participant's state after the previous step.
+        state2: The participant's state as output by `participant_step2`.
 
     Returns:
         DKGOutput: The DKG output.
@@ -511,16 +512,15 @@ def coordinator_step1(
 ) -> Tuple[CoordinatorState, CoordinatorMsg1]:
     """Perform the coordinator's first step of a ChillDKG session.
 
-    The returned `CoordinatorState` should be kept locally, and the returned
-    `CoordinatorMsg1` should be sent to all participants.
-
     Arguments:
         pmsgs1: List of first messages received from the participants.
         params: Common session parameters.
 
     Returns:
-        CoordinatorState: The coordinator's state after this step.
-        CoordinatorMsg1: The first message for all participants.
+        CoordinatorState: The coordinator's session state after this step, to be
+            be passed as an argument to `coordinator_finalize`. The state is not
+            supposed to be reused (i.e., it should be passed only to one
+            `coordinator_finalize` call).
 
     Raises:
         InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
@@ -547,18 +547,14 @@ def coordinator_finalize(
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
     """Perform the coordinator's final step of a ChillDKG session.
 
-    The returned `CoordinatorMsg2` should be sent to all participants.
-
-    Since the coordinator does not have a secret shares, the DKG output will
-    have the `secshare` field set to `None`.
-
     Arguments:
-        state: Coordinator's state after the previous step.
+        state: The coordinator's session state as output by `coordinator_step1`.
         pmsgs2: List of second messages received from the participants.
 
     Returns:
-        CoordinatorMsg2: The second message for all participants
-        DKGOutput: The DKG output.
+        CoordinatorMsg2: The second message to be sent to all participants.
+        DKGOutput: The DKG output. Since the coordinator does not have a secret
+            share, the DKG output will have the `secshare` field set to `None`.
         bytes: The serialized recovery data.
 
     Raises:

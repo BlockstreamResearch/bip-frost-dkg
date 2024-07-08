@@ -530,8 +530,9 @@ The coordinator invokes coordinator_finalize and sends the returned cmsg2 to the
 The participant invokes participant_finalize, which ends the second phase.
 ](images/chilldkg-sequence.png "ChillDKG")
 
-A participant can more than one session with the same host public key,
-and multiple sessions may be run concurrently.
+A participant can run more than one session with the same seed,
+as long as session state as output by one of the "step" functions is not reused.
+Multiple sessions may be run concurrently.
 
 Whenever a function call fails, the corresponding party will not continue the session.
 
@@ -675,9 +676,6 @@ def participant_step1(seed: bytes, params: SessionParams, random: bytes) -> Tupl
 
 Perform a participant's first step of a ChillDKG session.
 
-The returned `ParticipantState1` should be kept locally, and the returned
-`ParticipantMsg1` should be sent to the coordinator.
-
 *Arguments*:
 
 - `seed` - Participant's long-term secret seed (32 bytes).
@@ -687,8 +685,11 @@ The returned `ParticipantState1` should be kept locally, and the returned
 
 *Returns*:
 
-- `ParticipantState1` - The participant's state after this step.
-- `ParticipantMsg1` - The first message for the coordinator.
+- `ParticipantState1` - The participant's session state after this step, to
+  be passed as an argument to `participant_step2`. The state is not
+  supposed to be reused (i.e., it should be passed only to one
+  `participant_step2` call).
+- `ParticipantMsg1` - The first message to be sent to the coordinator.
 
 
 *Raises*:
@@ -710,20 +711,21 @@ def participant_step2(seed: bytes, state1: ParticipantState1, cmsg1: Coordinator
 
 Perform a participant's second step of a ChillDKG session.
 
-The returned `ParticipantState2` should be kept locally, and the returned
-`ParticipantMsg2` should be sent to the coordinator.
-
 *Arguments*:
 
 - `seed` - Participant's long-term secret seed (32 bytes).
-- `state1` - The participant's state after the previous step.
+- `state1` - The participant's session state as output by
+  `participant_step1`.
 - `cmsg1` - The first message received from the coordinator.
 
 
 *Returns*:
 
-- `ParticipantState2` - The participant's state after this step.
-- `ParticipantMsg2` - The second message for the coordinator.
+- `ParticipantState2` - The participant's session state after this step, to
+  be passed as an argument to `participant_finalize`. The state is not
+  supposed to be reused (i.e., it should be passed only to one
+  `participant_finalize` call).
+- `ParticipantMsg2` - The second message to be sent to the coordinator.
 
 
 *Raises*:
@@ -761,7 +763,7 @@ us recovery data.
 
 *Arguments*:
 
-- `state2` - Participant's state after the previous step.
+- `state2` - The participant's state as output by `participant_step2`.
 
 
 *Returns*:
@@ -783,9 +785,6 @@ def coordinator_step1(pmsgs1: List[ParticipantMsg1], params: SessionParams) -> T
 
 Perform the coordinator's first step of a ChillDKG session.
 
-The returned `CoordinatorState` should be kept locally, and the returned
-`CoordinatorMsg1` should be sent to all participants.
-
 *Arguments*:
 
 - `pmsgs1` - List of first messages received from the participants.
@@ -794,8 +793,10 @@ The returned `CoordinatorState` should be kept locally, and the returned
 
 *Returns*:
 
-- `CoordinatorState` - The coordinator's state after this step.
-- `CoordinatorMsg1` - The first message for all participants.
+- `CoordinatorState` - The coordinator's session state after this step, to be
+  be passed as an argument to `coordinator_finalize`. The state is not
+  supposed to be reused (i.e., it should be passed only to one
+  `coordinator_finalize` call).
 
 
 *Raises*:
@@ -814,21 +815,17 @@ def coordinator_finalize(state: CoordinatorState, pmsgs2: List[ParticipantMsg2])
 
 Perform the coordinator's final step of a ChillDKG session.
 
-The returned `CoordinatorMsg2` should be sent to all participants.
-
-Since the coordinator does not have a secret shares, the DKG output will
-have the `secshare` field set to `None`.
-
 *Arguments*:
 
-- `state` - Coordinator's state after the previous step.
+- `state` - The coordinator's session state as output by `coordinator_step1`.
 - `pmsgs2` - List of second messages received from the participants.
 
 
 *Returns*:
 
-- `CoordinatorMsg2` - The second message for all participants
-- `DKGOutput` - The DKG output.
+- `CoordinatorMsg2` - The second message to be sent to all participants.
+- `DKGOutput` - The DKG output. Since the coordinator does not have a secret
+  share, the DKG output will have the `secshare` field set to `None`.
 - `bytes` - The serialized recovery data.
 
 
