@@ -270,7 +270,7 @@ class DKGOutput(NamedTuple):
 
     Attributes:
         secshare: Secret share of the participant (or `None` for coordinator)
-        threshold_pubkey: Senerated threshold public key representing the group
+        threshold_pubkey: Generated threshold public key representing the group
         pubshares: Public shares of the participants
     """
 
@@ -443,8 +443,8 @@ def participant_step2(
             a hint about which party might be to blame for the problem. The hint
             should not be trusted and should only be only used for debugging. In
             particular, the hint may point at the wrong party, e.g., if the
-            coodinator is malicious or network connections are unreliable, and
-            as a consquence, the caller should not conclude that the party
+            coordinator is malicious or network connections are unreliable, and
+            as a consequence, the caller should not conclude that the party
             hinted at is malicious.
     """
     (hostseckey, _) = hostkeypair(seed)  # SeedError if len(seed) != 32
