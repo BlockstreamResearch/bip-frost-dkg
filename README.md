@@ -284,22 +284,22 @@ Every participant derives a session seed given to SimplPedPop from this seed and
 This ensures that different sets of participants will have different SimplPedPop sessions.
 
 The encryption relies on a non-interactive ECDH key exchange between the public keys of the participants
-in order to establish a secret pad `pad[i][j]` for every pair of distinct participants `i` and `j`.
-The derivation of `pad[i][j]` from the raw ECDH output uses tagged SHA256 and additionally includes, in this order,
+in order to establish a secret pad `pad_ij` for every pair of distinct participants `i` and `j`.
+The derivation of `pad_ij` from the raw ECDH output uses tagged SHA256 and additionally includes, in this order,
 the encryption key of the sender,
 the encryption key of the recipient
 and the list of encryption keys of all participants.
 This ensures that pads are not reused across different SimplPedPop sessions,
-and also that `pad[i][j] != pad[j][i]`.
+and also that `pad_ij != pad_ji`.
 
 EncPedPop then works like SimplPedPop with the following differences:
-Participant `i` will additionally transmit an encrypted VSS share `shares[j] + pad[i][j]` for every other participant `j`
+Participant `i` will additionally transmit an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
 and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
 The coordinator sends this sum to participant `j`
 who stores it as `enc_secshare` and
-obtains the value `secshare = enc_secshare - (pad[0][j] + ... + pad[n][j])` required by SimplPedPop.[^dc-net]
+obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
 
 [^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
 Note that this emulates a Dining Cryptographer's Network [[Cha88](https://link.springer.com/article/10.1007/BF00206326)],
