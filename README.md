@@ -291,7 +291,7 @@ the static encryption key and the index `j` of the recipient.[^mr-kem]
 
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
 
-Every participant derives an ephemeral *session seed* passed down SimplPedPop from their long-term seed and their public encryption nonce.
+Every participant derives an ephemeral *session seed* passed down to SimplPedPop from their long-term seed and their public encryption nonce.
 Moreover, all encryption keys of all participants is included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
 even in the case that the randomness for deriving the encryption nonce pair is accidentally reused.
 
