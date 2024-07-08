@@ -630,13 +630,11 @@ def recover(
 
         # Decrypt share
         enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
-        their_pubnonces = pubnonces.copy()
-        pubnonce = their_pubnonces.pop(idx)
-        session_seed = encpedpop.derive_session_seed(seed, pubnonce, enc_context)
+        session_seed = encpedpop.derive_session_seed(seed, pubnonces[idx], enc_context)
         secshare = encpedpop.decrypt_sum(
             hostseckey,
             hostpubkeys[idx],
-            their_pubnonces,
+            pubnonces,
             enc_secshares[idx],
             enc_context,
             idx,

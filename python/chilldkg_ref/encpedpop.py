@@ -29,7 +29,7 @@ def ecdh(
 
 
 def encaps_multi(
-    secnonce: bytes, pubnonce: bytes, enckeys: List[bytes], context: bytes, skip: int
+    secnonce: bytes, pubnonce: bytes, enckeys: List[bytes], context: bytes, idx: int
 ) -> List[Scalar]:
     # This is effectively the "Hashed ElGamal" multi-recipient KEM described in
     # Section 5 of "Multi-recipient encryption, revisited" by Alexandre Pinto,
@@ -38,7 +38,7 @@ def encaps_multi(
     # differences are that we skip our own index (because we don't need to
     # encrypt to ourselves) and that we feed also the pubnonce and context data
     # into the hash function.
-    if skip >= len(enckeys):
+    if idx >= len(enckeys):
         raise IndexError
     keys = [
         ecdh(
@@ -49,7 +49,7 @@ def encaps_multi(
             sending=True,
         )
         for i, enckey in enumerate(enckeys)
-        if i != skip
+        if i != idx  # Skip own index
     ]
     return keys
 
@@ -60,10 +60,10 @@ def encrypt_multi(
     enckeys: List[bytes],
     messages: List[Scalar],
     context: bytes,
-    skip: int,
+    idx: int,
 ) -> List[Scalar]:
-    keys = encaps_multi(secnonce, pubnonce, enckeys, context, skip)
-    their_messages = messages[:skip] + messages[skip + 1 :]
+    keys = encaps_multi(secnonce, pubnonce, enckeys, context, idx)
+    their_messages = messages[:idx] + messages[idx + 1 :]  # Skip own index
     ciphertexts = [
         message + key for message, key in zip(their_messages, keys, strict=True)
     ]
@@ -78,15 +78,14 @@ def decrypt_sum(
     context: bytes,
     idx: int,
 ) -> Scalar:
+    if idx >= len(pubnonces):
+        raise IndexError
+    ecdh_context = idx.to_bytes(4, byteorder="big") + context
     secshare = sum_ciphertexts
-    for pubnonce in pubnonces:
-        pad = ecdh(
-            deckey,
-            enckey,
-            pubnonce,
-            idx.to_bytes(4, byteorder="big") + context,
-            sending=False,
-        )
+    for i, pubnonce in enumerate(pubnonces):
+        if i == idx:
+            continue  # Skip own index
+        pad = ecdh(deckey, enckey, pubnonce, ecdh_context, sending=False)
         secshare = secshare - pad
     return secshare
 
@@ -159,7 +158,7 @@ def participant_step1(
 
     # Encrypt shares, no need to encrypt to ourselves
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, enckeys, shares, enc_context, skip=idx
+        secnonce, pubnonce, enckeys, shares, enc_context, idx=idx
     )
 
     pmsg = ParticipantMsg(simpl_pmsg, pubnonce, enc_shares)
@@ -176,19 +175,13 @@ def participant_step2(
     simpl_state, pubnonce, enckeys, idx, self_share = state
     simpl_cmsg, pubnonces = cmsg
 
-    their_pubnonces = pubnonces.copy()
-    reported_pubnonce = their_pubnonces.pop(idx)
+    reported_pubnonce = pubnonces[idx]
     if reported_pubnonce != pubnonce:
         raise InvalidContributionError(None, "Coordinator replied with wrong pubnonce")
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
     secshare = decrypt_sum(
-        deckey,
-        enckeys[idx],
-        their_pubnonces,
-        enc_secshare,
-        enc_context,
-        idx,
+        deckey, enckeys[idx], pubnonces, enc_secshare, enc_context, idx
     )
     secshare += self_share
     dkg_output, eq_input = simplpedpop.participant_step2(
