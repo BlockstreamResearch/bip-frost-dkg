@@ -632,7 +632,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 - `hostpubkeys` - Ordered list of the host public keys of all participants.
 - `t` - The participation threshold `t`.
   This is the number of participants that will be required to sign.
-  It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2*32 - 1`.
+  It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
 
   Participants must ensure that they have obtained authentic host
   public keys of all the other participants in the session to make
@@ -690,7 +690,7 @@ have obtained authentic public host keys.
   for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
+- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
 
 #### DKGOutput Tuples
 
@@ -742,7 +742,7 @@ Perform a participant's first step of a ChillDKG session.
   for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
+- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
 
 #### participant\_step2
 
@@ -855,7 +855,7 @@ Perform the coordinator's first step of a ChillDKG session.
   for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
+- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
 
 #### coordinator\_finalize
 
@@ -922,7 +922,6 @@ backup after data loss.
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
   data or recovery data that does not match the provided seed.
 <!--end of pydoc.md-->
-
 
 ## Changelog
 

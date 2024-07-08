@@ -177,7 +177,7 @@ class SessionParams(NamedTuple):
         hostpubkeys: Ordered list of the host public keys of all participants.
         t: The participation threshold `t`.
             This is the number of participants that will be required to sign.
-            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2**32 - 1`.
+            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
 
     Participants must ensure that they have obtained authentic host
     public keys of all the other participants in the session to make
@@ -250,7 +250,7 @@ def params_id(params: SessionParams) -> bytes:
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
+        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
     (hostpubkeys, t) = params
@@ -399,7 +399,7 @@ def participant_step1(
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
+        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     hostseckey, hostpubkey = hostkeypair(seed)  # SeedError if len(seed) != 32
 
@@ -536,7 +536,7 @@ def coordinator_step1(
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
+        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
     (hostpubkeys, t) = params
