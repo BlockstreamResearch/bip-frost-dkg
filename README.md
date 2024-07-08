@@ -515,6 +515,8 @@ If a participant deems a protocol session successful (see above), then this part
 
 ### Overview of a ChillDKG Session
 
+(See also [`python/example.py`](python/example.py).)
+
 The following figure shows an execution of the participants and the coordinator.
 Arrows indicate network messages between the participants.
 For simplicity, only one participant is depicted;
