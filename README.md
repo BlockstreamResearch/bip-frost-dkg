@@ -63,7 +63,7 @@ which include not only parameters such as the generated threshold public key,
 but also whether the DKG has succeeded at all.
 
 To understand the necessity of reaching agreement,
-consider the example of a DKG to establish 2-of-3 Bitcoin wallet,
+consider the example of a DKG to setup a 2-of-3 Bitcoin wallet,
 in which two participants are honest, but the third participant is malicious.
 The malicious participant sends invalid secret shares to the first honest participant, but valid shares to the second honest participant.
 While the first honest participant cannot finish the DKG,
@@ -336,12 +336,12 @@ More formally, Eq must fulfill the following properties [[CGRS23](https://eprint
 Depending on the application scenario, different approaches may be suitable to implement Eq,
 such as a consensus protocol already available as part of a federated system
 or out-of-band communication.
-For example, in a scenario where a single user employs multiple signing devices (e.g., hardware tokens) in the same room to establish a threshold wallet,
-every device can simply display its value `eq_input` (or a hash of `eq_input` under a collision-resistant hash function) to the user.
-The user can manually verify the equality of the values by comparing the values shown on all displays,
+For example, in a scenario where a single user employs multiple signing devices to setup a threshold wallet,
+every device could display its value `eq_input` (or a hash of `eq_input` under a collision-resistant hash function) to the user.
+The user could manually verify the equality of the values by comparing the values shown on all displays,
 and confirm their equality by providing explicit confirmation to every device, e.g., by pressing a button on every device.
 Similarly, if signing devices are controlled by different organizations in different geographic locations,
-agents of these organizations can meet in a single room and compare the values.
+agents of these organizations could meet and compare the values.
 A detailed treatment is these out-of-band methods is out of scope of this document.
 
 ### DKG Protocol ChillDKG
@@ -455,7 +455,7 @@ TODO inputs
 
 If a session ChillDKG returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
-In that case, the DKG output is a triple consisting of a *secret share* (individual to each participant, not returned to the coordinator), the *threshold public key* (common to all participants and the coordinator), and a list of n *public shares* for partial signature verification (common to all participants and the coordinator).
+In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).
 Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
 
 ### Backup and Recovery
@@ -489,13 +489,37 @@ and we believe that a general recommendation is not useful.
 
 ### Recovering Stuck Participants
 
-The mere fact that one participant deems a protocol session successful does not imply that other participants deem it successful yet.
+The mere fact that the coordinator or a participant deems a ChillDKG session successful does not imply that other participants deem it successful yet.
 Indeed, due to failing network links or invalid messages sent by malicious participants,
-it is possible that some participants have deemed the ChillDKG session successful, but others have not (yet) and thus are stuck in the ChillDKG session.
-In that case, the successful participants can eventually make the stuck participants unstuck by presenting them the recovery data.
+it is possible that a party has deemed the DKG session successful, but others have not (yet) and thus are stuck in the DKG session.
+In that case, the successful parties can eventually convince the stuck participants to consider the DKG session successful by presenting them the recovery data.
 The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
 
-TODO explain that participants are responsible for convincing others
+An important implication of the above is that anyone who uses the threshold public key,
+and thereby relies on the participants' ability to participate in signing sessions,
+is responsible for ensuring that the participants have already deemed the DKG session successful,
+or at least, that the recovery data will be available to convince any stuck participants of the success of the DKG session.
+
+For an example of what could go wrong,
+assume that some participant deems the DKG session successful and uses the threshold public key by sending funds to it.
+Even though everything looks fine from the point of view of this participant,
+it is entirely possible that this participant is the only one who has deemed the DKG session successful,
+and thus (besides the untrusted coordinator) the only one who knows the recovery data.
+If the recovery data is lost now because this participant's permanent storage crashes,
+the other participants cannot be convinced to deem the DKG session successful
+(without the help of the untrusted coordinator)
+and so the funds will be lost.
+
+The proper way to ensure that all participants have deemed the DKG session successful is to obtain explicit confirmations of success,
+which will also imply all participants have a redundant copy of the recovery data.
+One simple method of obtaining confirmation is to collect signed confirmation messages from all participants.
+(TODO Implement this in the code.)
+
+Depending on the application, other methods may be appropriate.
+For example, in a scenario where a single user employs multiple signing devices in the same room to setup a threshold wallet,
+the user could check that all `n` devices signal confirmation via its display.
+Alternatively, the user could check all `n` devices when generating a receiving address for the first time,
+which consists the first use of the threshold public key.
 
 ### Threat Model and Security Goals
 
