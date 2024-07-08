@@ -458,7 +458,7 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 
 ### Inputs and Output
 
-TODO inputs
+The inputs of a session consist of a long-term *secret seed* (individual to each participant, not provided by the coordinator) and public *session parameters*  (common to all participants and the coordinator).
 
 If a session ChillDKG returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
