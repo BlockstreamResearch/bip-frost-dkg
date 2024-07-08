@@ -921,3 +921,13 @@ backup after data loss.
   data or recovery data that does not match the provided seed.
 <!--end of pydoc.md-->
 
+
+## Change Log
+
+To help implementers understand updates to this document, we attach a version number that resembles ''semantic versioning'' (`MAJOR.MINOR.PATCH`).
+The `MAJOR` version is incremented if changes to the BIP are introduced that are incompatible with prior versions.
+An exception to this rule is `MAJOR` version zero (0.y.z) which is for development and does not need to be incremented if backwards incompatible changes are introduced.
+The `MINOR` version is incremented whenever the inputs or the output of an algorithm changes in a backward-compatible way or new backward-compatible functionality is added.
+The `PATCH` version is incremented for other changes that are noteworthy (bug fixes, test vectors, important clarifications, etc.).
+
+* *0.1.0* (2024-07-08): Publication of draft BIP on the bitcoin-dev mailing list
