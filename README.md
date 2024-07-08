@@ -147,10 +147,10 @@ When ChillDKG does not terminate successfully, it is not possible to identify th
 While the ability to identify the misbehaving participant, also called *identifiable aborts*, is desirable, we keep this goal out of scope for simplicity (TODO: This may change in a future version of the BIP, but no guarantee).
 
 Adding robustness to ChillDKG would require the coordinator to exclude participants that appear unresponsive or faulty, which degrades the setup already from the beginning from `t`-of-`n` to `(t-1)`-of-`(n-1)`.
-This approach is undesirable in most scenarios, as a dishonest coordinator would have the power to exclude participants at will.
-Even if ChillDKG's design did not include a coordinator and participants had direct communication links to each other, it would be unclear how to achieve robustness with a dishonest majority.
+This approach is undesirable in most scenarios, as a malicious coordinator would have the power to exclude participants at will,
+and even if ChillDKG's design did not include a coordinator and participants had direct communication links to each other, it would be unclear how to achieve robustness in a dishonest majority setting.
 
-Moreover, we believe that robustness is not a desirable feature of a DKG protocol in many settings:
+Moreover, we believe that it is preferable to err on the side of caution even in the case of benign failures.
 For example, consider a key generation ceremony for a threshold cold wallet intended store large amounts of Bitcoin.
 If it turns out that one of the devices participating appears non-responsive, e.g., due to a loss of network or a software bug,
 users will typically prefer security over progress, and abort the protocol instead of forcing successful termination of the ceremony by excluding the device from the DKG session.
