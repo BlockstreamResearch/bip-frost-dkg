@@ -213,6 +213,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 
     Participant `i` then sends a VSS commitment,
     which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
+    where `G` is the base point of the secp256k1 elliptic curve,
     and a BIP340 Schnorr signature `pop` on message `i` with secret key `a_i[0]` to the coordinator.
     (The Schnorr signature acts as a *proof of possession*,
     i.e., it proves knowledge of the discrete logarithm of `com[0] = a_i[0] * G`.
@@ -270,48 +271,50 @@ Our variant of the SimplPedPop protocol then works as follows:
 
 ### DKG Protocol EncPedPop
 
-TODO Update this to reflect the ephemeral keys
-
 (See [`python/chilldkg_ref/encpedpop.py`](python/chilldkg_ref/encpedpop.py).)
 
 EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
 so that they can be sent over an insecure communication channel.
 
-EncPedPop assumes that every participant holds an ECDH key pair consisting of a secret decryption key and public encryption key,
-and that every participant has an authentic copy of every other participant's encryption key.
-Like in SimplPedPop, every participant is additionally assumed to hold a secret seed.
-Every participant derives a session seed given to SimplPedPop from this seed and the list of encryption keys of all participants.
-This ensures that different sets of participants will have different SimplPedPop sessions.
+As in SimplPedPop, every EncPedPop participant holds a long-term secret seed.
+Every participant derives from this seed a static, long-term ECDH key pair consisting of a secret decryption key and public encryption key.
+It is assumed that every participant has an authentic copy every other participant's encryption key.
 
-The encryption relies on a non-interactive ECDH key exchange between the public keys of the participants
-in order to establish a secret pad `pad_ij` for every pair of distinct participants `i` and `j`.
-The derivation of `pad_ij` from the raw ECDH output uses tagged SHA256 and additionally includes, in this order,
-the encryption key of the sender,
-the encryption key of the recipient
-and the list of encryption keys of all participants.
-This ensures that pads are not reused across different SimplPedPop sessions,
-and also that `pad_ij != pad_ji`.
+The encryption relies on ephemeral-static ECDH key exchange.
+Every participant derives from fresh randomness an ephemeral encryption nonce pair consisting of a secret nonce and the corresponding public nonce.
+This will enable every pair of sending participant `i` and recipient participant `j != i`
+to perform an ECDH key exchange between the ephemeral encryption nonce pair of participant `i` and the static encryption key pair of participant `j`
+in order to establish a shared secret pad `pad_ij` only known to participants `i` and `j`.
+The derivation of `pad_ij` from the raw ECDH output uses tagged SHA256 and includes
+the static encryption key and the index `j` of the recipient.[^mr-kem]
+
+[^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
+
+Every participant derives an ephemeral *session seed* passed down SimplPedPop from their long-term seed and their public encryption nonce.
+Moreover, the list of all encryption keys of all participants is included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
+even in the case that the randomness for deriving the encryption nonce pair is accidentally reused.
 
 EncPedPop then works like SimplPedPop with the following differences:
-Participant `i` will additionally transmit an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
+Participant `i` will additionally transmit their public encryption nonce and an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
 and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
-The coordinator sends this sum to participant `j`
-who stores it as `enc_secshare` and
-obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
+The coordinator sends the list of public encryption nonces along with this sum to participant `j`
+who stores the sum as `enc_secshare`,
+derives the pads `pad_0j`, ..., `pad_nj` as described above,
+and obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
 
 [^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
-Note that this emulates a Dining Cryptographer's Network [[Cha88](https://link.springer.com/article/10.1007/BF00206326)],
+Note that this emulates a Dining Cryptographer's Network [[Cha88](https://doi.org/10.1007/BF00206326)],
 though anonymity is an anti-feature in our case:
 If a SimplPedPop participant receives an invalid `secshare`,
 it is impossible for this participant to identify another participant who has sent wrong contributions,
 even if the coordinator is trusted.
 This is the price we pay for the communication optimization.
 
-EncPedPop appends to the transcript `eq_input` of SimplPedPop
-all `n` encryption keys to ensure that the participants agree on their identities.
-This excludes man-in-the-middle attacks if Eq authenticates participants,
+EncPedPop appends to the transcript `eq_input` of SimplPedPop the `n` public encryption nonces,
+and also all the `n` static encryption keys to ensure that the participants agree on their identities.
+The inclusion of the latter excludes man-in-the-middle attacks if Eq authenticates participants,
 e.g, if the Eq protocol messages are signed under long-term public keys of the participants.
 
 ### Background on Equality Checks
@@ -352,7 +355,10 @@ ChillDKG relies on an more direct approach:
 ChillDKG is a wrapper around EncPedPop,
 which instantiates the required equality check protocol with a concrete in-band protocol CertEq.
 CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
-ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to EncPedPop.
+ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to EncPedPop.[^joint-security]
+
+[^joint-security]: Schnorr signatures and ECDH-based KEMs are known to be jointly secure [Theorem 2, [DLPSS11](https://eprint.iacr.org/2011/615)]
+under the combination of the gap-DH and gap-DL assumptions, and this result can be adapted to the MR-KEM used in EncPedPop.
 
 ChillDKG requires that all participants have authentic copies of the other participants' host public keys.[^trust-anchor]
 Authenticity of the host public keys can be verified through pairwise out-of-band comparisons between every pair of participants.
