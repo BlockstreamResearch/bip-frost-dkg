@@ -96,10 +96,10 @@ def certeq_cert_len(n: int) -> int:
     return 64 * n
 
 
-def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
+def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
     n = len(hostpubkeys)
     if len(cert) != certeq_cert_len(n):
-        return False
+        raise SessionNotFinalizedError
     for i in range(n):
         msg = certeq_message(x, i)
         valid = schnorr_verify(
@@ -109,8 +109,7 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> bool:
             challenge_tag=CERTEQ_MSG_TAG,
         )
         if not valid:
-            return False
-    return True
+            raise SessionNotFinalizedError
 
 
 def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
@@ -492,8 +491,7 @@ def participant_finalize(
         successful from this participant's point of view (see above).
     """
     (params, eq_input, dkg_output) = state2
-    if not certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert):
-        raise SessionNotFinalizedError
+    certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
 
@@ -574,8 +572,7 @@ def coordinator_finalize(
     """
     (params, eq_input, dkg_output) = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
-    if not certeq_verify(params.hostpubkeys, eq_input, cert):
-        raise SessionNotFinalizedError
+    certeq_verify(params.hostpubkeys, eq_input, cert)  # SessionNotFinalizedError
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
 
 
