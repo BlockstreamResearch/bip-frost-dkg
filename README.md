@@ -571,7 +571,7 @@ derived deterministically from the secret seed.
 
 *Raises*:
 
-- `ValueError` - If the length of `seed` is not 32 bytes.
+- `SeedError` - If the length of `seed` is not 32 bytes.
 
 #### SessionParams Tuples
 
@@ -646,7 +646,7 @@ have obtained authentic public host keys.
   public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+- `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
 
 #### DKGOutput Tuples
 
@@ -693,12 +693,12 @@ The returned `ParticipantState1` should be kept locally, and the returned
 
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
-- `ValueError` - If the length of `seed` is not 32 bytes.
+- `SeedError` - If the length of `seed` is not 32 bytes.
 - `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
   public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+- `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
 
 #### participant\_step2
 
@@ -726,6 +726,7 @@ The returned `ParticipantState2` should be kept locally, and the returned
 
 *Raises*:
 
+- `SeedError` - If the length of `seed` is not 32 bytes.
   TODO
 
 #### participant\_finalize
@@ -801,7 +802,7 @@ The returned `CoordinatorState` should be kept locally, and the returned
   public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+- `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
 
 #### coordinator\_finalize
 
