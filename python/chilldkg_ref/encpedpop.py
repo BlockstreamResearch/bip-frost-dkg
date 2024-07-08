@@ -1,9 +1,9 @@
 from typing import Tuple, List, NamedTuple
 
-from secp256k1ref.secp256k1 import Scalar
-from secp256k1ref.ecdh import ecdh_libsecp256k1
-from secp256k1ref.keys import pubkey_gen_plain
-from secp256k1ref.util import int_from_bytes
+from secp256k1proto.secp256k1 import Scalar
+from secp256k1proto.ecdh import ecdh_libsecp256k1
+from secp256k1proto.keys import pubkey_gen_plain
+from secp256k1proto.util import int_from_bytes
 
 from . import simplpedpop
 from .util import tagged_hash_bip_dkg, prf, InvalidContributionError

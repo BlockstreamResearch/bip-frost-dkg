@@ -1,8 +1,8 @@
 from secrets import token_bytes as random_bytes
 from typing import List, NamedTuple, NewType, Tuple, Optional
 
-from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
-from secp256k1ref.secp256k1 import GE, Scalar
+from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
+from secp256k1proto.secp256k1 import GE, Scalar
 from .util import BIP_TAG, SeedError, InvalidContributionError, ThresholdError
 from .vss import VSS, VSSCommitment
 

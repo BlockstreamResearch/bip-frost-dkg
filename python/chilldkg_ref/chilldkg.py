@@ -8,10 +8,10 @@ their arguments and return values, and the exceptions they raise; see also the
 from secrets import token_bytes as random_bytes
 from typing import Tuple, List, NamedTuple, NewType, Optional
 
-from secp256k1ref.secp256k1 import Scalar, GE
-from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
-from secp256k1ref.keys import pubkey_gen_plain
-from secp256k1ref.util import int_from_bytes, bytes_from_int
+from secp256k1proto.secp256k1 import Scalar, GE
+from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
+from secp256k1proto.keys import pubkey_gen_plain
+from secp256k1proto.util import int_from_bytes, bytes_from_int
 
 from .vss import VSS, VSSCommitment
 from . import encpedpop

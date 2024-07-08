@@ -7,8 +7,8 @@ from random import randint
 from typing import Tuple, List
 from secrets import token_bytes as random_bytes
 
-from secp256k1ref.secp256k1 import GE, G, Scalar
-from secp256k1ref.keys import pubkey_gen_plain
+from secp256k1proto.secp256k1 import GE, G, Scalar
+from secp256k1proto.keys import pubkey_gen_plain
 
 from chilldkg_ref.util import prf
 from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from secp256k1ref.secp256k1 import GE, G, Scalar
+from secp256k1proto.secp256k1 import GE, G, Scalar
 
 from .util import prf
 
