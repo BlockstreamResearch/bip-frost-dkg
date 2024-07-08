@@ -326,7 +326,7 @@ Eq may not return at all to the calling participant,
 but if it returns successfully for some calling participant, then all honest participants agree on the value `eq_input`.
 (However, it may be the case that not all honest participants have established this fact yet.)
 This means that the DKG session was successful and the resulting threshold public key can be returned to the participant,
-who can use it, e.g., by sending funds to it.
+who can use it, e.g., by sending funds to some Bitcoin address derived from it.
 
 More formally, Eq must fulfill the following properties [[CGRS23](https://eprint.iacr.org/2023/899)]:
  - **Integrity:** If Eq returns successfully to some honest participant, then for every pair of input values `eq_input` and `eq_input'` provided by two honest participants, we have `eq_input = eq_input'`.
@@ -500,7 +500,7 @@ is responsible for ensuring that the participants have already deemed the DKG se
 or at least, that the recovery data will be available to convince any stuck participants of the success of the DKG session.
 
 For an example of what could go wrong,
-assume that some participant deems the DKG session successful and uses the threshold public key by sending funds to it.
+assume that some participant deems the DKG session successful and uses the threshold public key by sending funds to some Bitcoin address derived from it.
 Even though everything looks fine from the point of view of this participant,
 it is entirely possible that this participant is the only one who has deemed the DKG session successful,
 and thus (besides the untrusted coordinator) the only one who knows the recovery data.
@@ -509,7 +509,8 @@ the other participants cannot be convinced to deem the DKG session successful
 (without the help of the untrusted coordinator)
 and so the funds will be lost.
 
-The proper way to ensure that all participants have deemed the DKG session successful is to obtain explicit confirmations of success,
+Thus, anyone who intends to use the threshold public key
+should first obtain explicit confirmations of all participants that they have deemed the DKG session successful,
 which will also imply all participants have a redundant copy of the recovery data.
 One simple method of obtaining confirmation is to collect signed confirmation messages from all participants.
 (TODO Implement this in the code.)
@@ -519,6 +520,13 @@ For example, in a scenario where a single user employs multiple signing devices 
 the user could check that all `n` devices signal confirmation via its display.
 Alternatively, the user could check all `n` devices when generating a receiving address for the first time,
 which consists the first use of the threshold public key.
+
+If a recovering party (see [Backup and Recovery](#backup-and-recovery)) cannot (re-)obtain confirmations,
+this simply means they should stop using the threshold public key going forward,
+e.g., stop sending additional funds should to addresses derived from it.
+(But, in contrast to the bad example laid out above,
+it will still be possible to spend the funds,
+and even recovered participants can participate in signing session.)
 
 ### Threat Model and Security Goals
 
