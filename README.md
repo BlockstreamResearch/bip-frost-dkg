@@ -49,7 +49,7 @@ a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all participants avoids the need for a trusted dealer.
 There exist a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
-Most suitable for the use with FROST is the PedPop DKG protocol [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [CGRS23](https://eprint.iacr.org/2023/899)] ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3) with proofs of possession"),
+Most suitable for the use with FROST is the PedPop DKG protocol [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [CGRS23](https://eprint.iacr.org/2023/899)] ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3)] with proofs of possession"),
 which, like FROST, does not impose restrictions on the choice of `t` and `n`.
 
 But similar to most DKG protocols in the literature, PedPop has strong requirements on the communication channels between participants,
@@ -169,14 +169,14 @@ Instead, the BIP includes only a normative reference implementation in Python 3.
 (see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py)),
 which serves as an executable specification.
 
-To ease understanding of the design and reference code
+To ease understanding of the design and reference code,
 we provide a technical overview of the internals of ChillDKG in [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 For those who would like to use a ChillDKG implementation in their applications and systems,
 we explain the external interface and usage considerations of ChillDKG in [Section "Usage of ChillDKG"](#usage-of-chilldkg).
 
 ## Internals of ChillDKG
 
-This section provides a detailed technical overview of internals of ChillDKG,
+This section provides a detailed technical overview of the internals of ChillDKG,
 which includes as building blocks the DKG protocols SimplPedPop and EncPedPop, and the equality check protocol CertEq.
 The contents of this section are purely informational and not strictly required to implement or use ChillDKG,
 and some details present in the normative Python reference implementation are omitted.
@@ -232,7 +232,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 
     The coordinator sends the vectors `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` to every participant.
 
-3.  Upon receiving `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` from the coordinator.
+3.  Upon receiving `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` from the coordinator,
     every participant `i` verifies every signature `pops[j]` using message `j` and public key `coms_to_secret[j]`.
     If any signature is invalid, participant `i` aborts.
 
@@ -274,7 +274,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 
 (See [`python/chilldkg_ref/encpedpop.py`](python/chilldkg_ref/encpedpop.py).)
 
-EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares,
+EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares
 so that they can be sent over an insecure communication channel.
 
 As in SimplPedPop, every EncPedPop participant holds a long-term secret seed.
@@ -292,7 +292,7 @@ the static encryption key and the index `j` of the recipient.[^mr-kem]
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
 
 Every participant derives an ephemeral *session seed* passed down SimplPedPop from their long-term seed and their public encryption nonce.
-Moreover, the list of all encryption keys of all participants is included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
+Moreover, all encryption keys of all participants is included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
 even in the case that the randomness for deriving the encryption nonce pair is accidentally reused.
 
 EncPedPop then works like SimplPedPop with the following differences:
@@ -300,7 +300,7 @@ Participant `i` will additionally transmit their public encryption nonce and an 
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
 and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
-The coordinator sends the list of public encryption nonces along with this sum to participant `j`
+The coordinator sends all public encryption nonces along with this sum to participant `j`
 who stores the sum as `enc_secshare`,
 derives the pads `pad_0j`, ..., `pad_nj` as described above,
 and obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
@@ -322,7 +322,7 @@ e.g, if the Eq protocol messages are signed under long-term public keys of the p
 
 As explained in the "Motivation" section, it is crucial for security that participants reach agreement over the results of a DKG session.
 SimplPedPop, and consequently also EncPedPop, ensure agreement during the final step of the DKG session by running an external *equality check protocol* Eq.
-The purpose of Eq is to verify that all participants have received an identical *transcript*  which is a byte string constructed by the respective DKG protocol.
+The purpose of Eq is to verify that all participants have received an identical *transcript*, which is a byte string constructed by the respective DKG protocol.
 
 Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface:
 Every participant can invoke a session of Eq with an input value `eq_input`.
@@ -352,7 +352,7 @@ A detailed treatment of these out-of-band methods is out of scope of this docume
 (See [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
 Instead of performing an out-of-band check as the last step of the DKG,
-ChillDKG relies on an more direct approach:
+ChillDKG relies on a more direct approach:
 ChillDKG is a wrapper around EncPedPop,
 which instantiates the required equality check protocol with a concrete in-band protocol CertEq.
 CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
@@ -368,7 +368,7 @@ This verification can occur at any time before the DKG session is finalized, in 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this requirement is implicit in other schemes as well.
 For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP327](bip-0327.mediawiki)]
-also requires the assumption that all participants have authentic copies of each others' individual public keys.
+also requires the assumption that all participants have authentic copies of each other's individual public keys.
 
 #### Equality Check Protocol CertEq
 
@@ -458,7 +458,7 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 
 ### Inputs and Output
 
-The inputs of a session consist of a long-term *secret seed* (individual to each participant, not provided by the coordinator) and public *session parameters*  (common to all participants and the coordinator).
+The inputs of a session consist of a long-term *secret seed* (individual to each participant, not provided by the coordinator) and public *session parameters* (common to all participants and the coordinator).
 
 If a session ChillDKG returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
@@ -479,7 +479,7 @@ As a result, a full backup of a participant consists of the seed as well as the 
 Since the recovery data is the same for all participants,
 if a participant loses the backup of the recovery data of the DKG session,
 they can request it from any other participants or the coordinator.
-Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating,
+Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 Users should, however, be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
 
@@ -542,7 +542,7 @@ Some participants, the coordinator, and all network links may be malicious, i.e.
 We expect ChillDKG to provide the following informal security goals when it is used to set up keys for the FROST threshold signature scheme.
 
 If a participant deems a protocol session successful (see above), then this participant is assured that:
- - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m`  for which no signing session with at least honest participant was initiated. (Unforgeability)[^unforgeability-formal]
+ - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
    Moreover, any `t` of them have secret shares consistent with the threshold public key.[^correctness-formal]
@@ -563,8 +563,8 @@ For simplicity, only one participant is depicted;
 all participants run the identical code and send messages at the same steps.
 
 ![The diagram shows the message flow between a participant and a coordinator.
-The first of two phases "Generation of host public keys" involves the participant invoking the function hostpubkey with parameter seed and sending the returned hostpubkey to the coordinator.
-The second phase "Session" is initiated by the coordinator sending hostpubkeys and t to the participant.
+The first of two phases named "Generation of host public keys" involves the participant invoking the function hostpubkey with parameter seed and sending the returned hostpubkey to the coordinator.
+The second phase named "Session" is initiated by the coordinator sending hostpubkeys and the threshold t to the participant.
 The participant invokes participant_step1 and sends the returned pmsg1 to the coordinator.
 The coordinator invokes coordinator_step1 and sends the returned cmsg1 to the participant.
 The participant invokes participant_step2 and sends the returned pmsg2 to the coordinator.
@@ -605,6 +605,7 @@ derived deterministically from the secret seed.
   sessions. A host public key can be correlated to the threshold
   public key resulting from a DKG session only by parties who observed
   the session, namely the participants, the coordinator (and any
+  eavesdropper).
 
 
 *Returns*:
@@ -637,7 +638,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   public keys of all the other participants in the session to make
   sure that they run the DKG and generate a threshold public key with
   the intended set of participants. This is analogous to traditional
-  threshold signatures (known as "multisig" in the Bitcoin community,
+  threshold signatures (known as "multisig" in the Bitcoin community),
   [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
   where the participants need to obtain authentic extended public keys
   ("xpubs") from the other participants to generate multisig
@@ -762,8 +763,8 @@ Perform a participant's second step of a ChillDKG session.
 *Returns*:
 
 - `ParticipantState2` - The participant's session state after this step, to
-  be passed as an argument to `participant_finalize`. The state must not
-  be reused (i.e., it must be passed only to one
+  be passed as an argument to `participant_finalize`. The state must
+  not be reused (i.e., it must be passed only to one
   `participant_finalize` call).
 - `ParticipantMsg2` - The second message to be sent to the coordinator.
 
@@ -777,7 +778,7 @@ Perform a participant's second step of a ChillDKG session.
 
   Further information is provided as part of the exception, including
   a hint about which party might be to blame for the problem. The hint
-  should not be trusted and should used only for debugging. In
+  should not be trusted and should be used only for debugging. In
   particular, the hint may point at the wrong party, e.g., if the
   coordinator is malicious or network connections are unreliable, and
   as a consequence, the caller should not conclude that the party
@@ -805,11 +806,10 @@ function.
 Changing perspectives, this implies that even when obtaining a
 `SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
 failed, and as a consequence, you MUST NOT erase the seed. The underlying
-reason is that it is possible that some other participant deems the DKG
-session successful, and uses the resulting threshold public key (e.g., by
-sending funds to it). That other participant can, at any point in the
-future, wish to convince us of the success of the DKG session by presenting
-us recovery data.
+reason is that some other participant may deem the DKG session successful,
+and uses the resulting threshold public key (e.g., by sending funds to it).
+That other participant can, at any point in the future, wish to convince us
+of the success of the DKG session by presenting us recovery data.
 
 *Arguments*:
 
@@ -844,7 +844,7 @@ Perform the coordinator's first step of a ChillDKG session.
 *Returns*:
 
 - `CoordinatorState` - The coordinator's session state after this step, to be
-  be passed as an argument to `coordinator_finalize`. The state is not
+  passed as an argument to `coordinator_finalize`. The state is not
   supposed to be reused (i.e., it should be passed only to one
   `coordinator_finalize` call).
 
@@ -924,9 +924,9 @@ backup after data loss.
 <!--end of pydoc.md-->
 
 
-## Change Log
+## Changelog
 
-To help implementers understand updates to this document, we attach a version number that resembles ''semantic versioning'' (`MAJOR.MINOR.PATCH`).
+To help the reader understand updates to this document, we attach a version number that resembles "semantic versioning" (`MAJOR.MINOR.PATCH`).
 The `MAJOR` version is incremented if changes to the BIP are introduced that are incompatible with prior versions.
 An exception to this rule is `MAJOR` version zero (0.y.z) which is for development and does not need to be incremented if backwards incompatible changes are introduced.
 The `MINOR` version is incremented whenever the inputs or the output of an algorithm changes in a backward-compatible way or new backward-compatible functionality is added.

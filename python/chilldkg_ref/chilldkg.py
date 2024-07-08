@@ -150,6 +150,7 @@ def hostpubkey(seed: bytes) -> bytes:
             sessions. A host public key can be correlated to the threshold
             public key resulting from a DKG session only by parties who observed
             the session, namely the participants, the coordinator (and any
+            eavesdropper).
 
     Returns:
         The host public key.
@@ -182,7 +183,7 @@ class SessionParams(NamedTuple):
     public keys of all the other participants in the session to make
     sure that they run the DKG and generate a threshold public key with
     the intended set of participants. This is analogous to traditional
-    threshold signatures (known as "multisig" in the Bitcoin community,
+    threshold signatures (known as "multisig" in the Bitcoin community),
     [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
     where the participants need to obtain authentic extended public keys
     ("xpubs") from the other participants to generate multisig
@@ -428,8 +429,8 @@ def participant_step2(
 
     Returns:
         ParticipantState2: The participant's session state after this step, to
-            be passed as an argument to `participant_finalize`. The state must not
-            be reused (i.e., it must be passed only to one
+            be passed as an argument to `participant_finalize`. The state must
+            not be reused (i.e., it must be passed only to one
             `participant_finalize` call).
         ParticipantMsg2: The second message to be sent to the coordinator.
 
@@ -441,7 +442,7 @@ def participant_step2(
 
             Further information is provided as part of the exception, including
             a hint about which party might be to blame for the problem. The hint
-            should not be trusted and should used only for debugging. In
+            should not be trusted and should be used only for debugging. In
             particular, the hint may point at the wrong party, e.g., if the
             coordinator is malicious or network connections are unreliable, and
             as a consequence, the caller should not conclude that the party
@@ -526,7 +527,7 @@ def coordinator_step1(
 
     Returns:
         CoordinatorState: The coordinator's session state after this step, to be
-            be passed as an argument to `coordinator_finalize`. The state is not
+            passed as an argument to `coordinator_finalize`. The state is not
             supposed to be reused (i.e., it should be passed only to one
             `coordinator_finalize` call).
 
