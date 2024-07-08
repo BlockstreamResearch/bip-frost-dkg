@@ -354,12 +354,12 @@ which instantiates the required equality check protocol with a concrete in-band 
 CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
 ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to EncPedPop.
 
-While ChillDKG still assumes that all participants have authentic copies of the host public keys of the other participants,[^trust-anchor]
-this can be verified, e.g., using pairwise out-of-band comparisons involving every pair of participants,
-and these comparisons can happen at any time before the DKG session is finalized, in particular before the start of the session.
+ChillDKG requires that all participants have authentic copies of the other participants' host public keys.[^trust-anchor]
+Authenticity of the host public keys can be verified through pairwise out-of-band comparisons between every pair of participants.
+This verification can occur at any time before the DKG session is finalized, in particular before the start of the session.
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
-Note that this assumption is implicit in other schemes as well.
+Note that this requirement is implicit in other schemes as well.
 For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP327](bip-0327.mediawiki)]
 also requires the assumption that all participants have authentic copies of each others' individual public keys.
 
