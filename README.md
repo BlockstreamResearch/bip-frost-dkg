@@ -519,7 +519,7 @@ Depending on the application, other methods may be appropriate.
 For example, in a scenario where a single user employs multiple signing devices in the same room to setup a threshold wallet,
 the user could check that all `n` devices signal confirmation via its display.
 Alternatively, the user could check all `n` devices when generating a receiving address for the first time,
-which consists the first use of the threshold public key.
+which constitutes the first use of the threshold public key.
 
 If a recovering party (see [Backup and Recovery](#backup-and-recovery)) cannot (re-)obtain confirmations,
 this simply means they should stop using the threshold public key going forward,
