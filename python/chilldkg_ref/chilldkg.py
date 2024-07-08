@@ -483,11 +483,10 @@ def participant_finalize(
     Changing perspectives, this implies that even when obtaining a
     `SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
     failed, and as a consequence, you MUST NOT erase the seed. The underlying
-    reason is that it is possible that some other participant deems the DKG
-    session successful, and uses the resulting threshold public key (e.g., by
-    sending funds to it). That other participant can, at any point in the
-    future, wish to convince us of the success of the DKG session by presenting
-    us recovery data.
+    reason is that some other participant may deem the DKG session successful,
+    and uses the resulting threshold public key (e.g., by sending funds to it).
+    That other participant can, at any point in the future, wish to convince us
+    of the success of the DKG session by presenting us recovery data.
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
