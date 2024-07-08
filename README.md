@@ -11,7 +11,7 @@ Post-History:
 Comments-URI:
 ```
 
-# Distributed Key Generation for FROST
+# ChillDKG: Distributed Key Generation for FROST
 
 ### Abstract
 
