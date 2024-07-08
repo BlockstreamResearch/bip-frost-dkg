@@ -564,10 +564,8 @@ The coordinator invokes coordinator_finalize and sends the returned cmsg2 to the
 The participant invokes participant_finalize, which ends the second phase.
 ](images/chilldkg-sequence.png "ChillDKG")
 
-A participant can run more than one session with the same seed,
-as long as session state as output by one of the "step" functions is not reused.
+A participant can run multiple sessions with the same seed, provided that the session state as output from any of the "step" functions is not reused.
 Multiple sessions may be run concurrently.
-
 Whenever a function call fails, the corresponding party will not continue the session.
 
 ### API Documentation
