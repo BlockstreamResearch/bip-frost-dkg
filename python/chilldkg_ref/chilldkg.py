@@ -20,6 +20,7 @@ from .util import (
     tagged_hash_bip_dkg,
     prf,
     SeedError,
+    ThresholdError,
     InvalidContributionError,
 )
 
@@ -35,6 +36,7 @@ __all__ = [
     "recover",
     # Exceptions
     "SeedError",
+    "ThresholdError",
     "InvalidContributionError",
     "InvalidRecoveryDataError",
     "DuplicateHostpubkeyError",
@@ -60,10 +62,6 @@ __all__ = [
 
 
 class DuplicateHostpubkeyError(ValueError):
-    pass
-
-
-class ThresholdError(ValueError):
     pass
 
 
@@ -253,12 +251,12 @@ def params_id(params: SessionParams) -> bytes:
             public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+        OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
     (hostpubkeys, t) = params
 
-    t_bytes = t.to_bytes(4, byteorder="big")  # OverflowError if t >= 2^32
+    t_bytes = t.to_bytes(4, byteorder="big")  # OverflowError if t >= 2**32
     params_id = tagged_hash_bip_dkg(
         "params_id",
         t_bytes + b"".join(hostpubkeys),
@@ -402,7 +400,7 @@ def participant_step1(
             public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+        OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
     """
     hostseckey, hostpubkey = hostkeypair(seed)  # SeedError if len(seed) != 32
 
@@ -531,7 +529,7 @@ def coordinator_step1(
             public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+        OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
     (hostpubkeys, t) = params

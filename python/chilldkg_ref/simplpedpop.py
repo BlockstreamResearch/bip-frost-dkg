@@ -3,7 +3,7 @@ from typing import List, NamedTuple, NewType, Tuple, Optional
 
 from secp256k1ref.bip340 import schnorr_sign, schnorr_verify
 from secp256k1ref.secp256k1 import GE, Scalar
-from .util import BIP_TAG, SeedError, InvalidContributionError
+from .util import BIP_TAG, SeedError, InvalidContributionError, ThresholdError
 from .vss import VSS, VSSCommitment
 
 
@@ -96,12 +96,14 @@ class ParticipantState(NamedTuple):
 def participant_step1(
     seed: bytes, t: int, n: int, idx: int
 ) -> Tuple[ParticipantState, ParticipantMsg, List[Scalar]]:
-    assert t < 2 ** (4 * 8)
-    assert idx < 2 ** (4 * 8)
+    if t > n:
+        raise ThresholdError
+    if idx >= n:
+        raise IndexError
     if len(seed) != 32:
         raise SeedError
 
-    vss = VSS.generate(seed, t)
+    vss = VSS.generate(seed, t)  # OverflowError if t >= 2**32
     shares = vss.secshares(n)
     pop = pop_prove(vss.secret().to_bytes(), idx)
 
@@ -119,6 +121,8 @@ def participant_step2(
 ) -> Tuple[DKGOutput, bytes]:
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
+
+    # TODO Raise InvalidContributionsError when deserizaltion yields wrong lengths
     assert len(coms_to_secrets) == n
     assert len(sum_coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
