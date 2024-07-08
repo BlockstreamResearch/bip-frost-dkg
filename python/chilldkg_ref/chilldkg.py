@@ -58,7 +58,6 @@ __all__ = [
 ###
 ### Exceptions
 ###
-# TODO Document in all public functions what exceptions they can raise
 
 
 class DuplicateHostpubkeyError(ValueError):
@@ -246,8 +245,8 @@ def params_id(params: SessionParams) -> bytes:
         bytes: The parameters ID, a 32-byte string.
 
     Raises:
-        InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
-            public key.
+        InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
+            for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
@@ -395,8 +394,8 @@ def participant_step1(
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
         SeedError: If the length of `seed` is not 32 bytes.
-        InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
-            public key.
+        InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
+            for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).
@@ -436,7 +435,17 @@ def participant_step2(
 
     Raises:
         SeedError: If the length of `seed` is not 32 bytes.
-        TODO
+        InvalidContributionError: If `cmsg1` is invalid. This can happen if
+            another participant has sent an invalid message to the coordinator,
+            or if the coordinator has sent an invalid `cmsg1`.
+
+            Further information is provided as part of the exception, including
+            a hint about which party might be to blame for the problem. The hint
+            should not be trusted and should only be only used for debugging. In
+            particular, the hint may point at the wrong party, e.g., if the
+            coodinator is malicious or network connections are unreliable, and
+            as a consquence, the caller should not conclude that the party
+            hinted at is malicious.
     """
     (hostseckey, _) = hostkeypair(seed)  # SeedError if len(seed) != 32
     (params, idx, enc_state) = state1
@@ -489,7 +498,7 @@ def participant_finalize(
 
     Raises:
         SessionNotFinalizedError: If finalizing the DKG session was not
-        successful from this participant's point of view (see above).
+            successful from this participant's point of view (see above).
     """
     (params, eq_input, dkg_output) = state2
     certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
@@ -523,8 +532,8 @@ def coordinator_step1(
             `coordinator_finalize` call).
 
     Raises:
-        InvalidContributionError(i,...): If `hostpubkeys[i]` is not a valid
-            public key.
+        InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
+            for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2**32` (so `t` cannot be serialized in 4 bytes).

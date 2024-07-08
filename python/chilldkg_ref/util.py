@@ -23,8 +23,6 @@ class ThresholdError(ValueError):
 
 
 class InvalidContributionError(Exception):
-    """TODO"""
-
     def __init__(self, participant: Optional[int], error: str) -> None:
         self.participant = participant
         self.contrib = error

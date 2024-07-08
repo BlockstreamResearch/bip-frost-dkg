@@ -648,8 +648,8 @@ have obtained authentic public host keys.
 
 *Raises*:
 
-- `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
-  public key.
+- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
+  for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
@@ -700,8 +700,8 @@ Perform a participant's first step of a ChillDKG session.
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
 - `SeedError` - If the length of `seed` is not 32 bytes.
-- `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
-  public key.
+- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
+  for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
@@ -734,7 +734,17 @@ Perform a participant's second step of a ChillDKG session.
 *Raises*:
 
 - `SeedError` - If the length of `seed` is not 32 bytes.
-  TODO
+- `InvalidContributionError` - If `cmsg1` is invalid. This can happen if
+  another participant has sent an invalid message to the coordinator,
+  or if the coordinator has sent an invalid `cmsg1`.
+
+  Further information is provided as part of the exception, including
+  a hint about which party might be to blame for the problem. The hint
+  should not be trusted and should only be only used for debugging. In
+  particular, the hint may point at the wrong party, e.g., if the
+  coodinator is malicious or network connections are unreliable, and
+  as a consquence, the caller should not conclude that the party
+  hinted at is malicious.
 
 #### participant\_finalize
 
@@ -804,8 +814,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Raises*:
 
-- `InvalidContributionError(i,...)` - If `hostpubkeys[i]` is not a valid
-  public key.
+- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
+  for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2*32` (so `t` cannot be serialized in 4 bytes).
@@ -855,8 +865,7 @@ This function serves two different purposes:
 data from another participant or the coordinator (see
 `participant_finalize`).
 2. To reproduce the DKG outputs on a new device, e.g., to recover from a
-backup after data loss, or to clone a participant or the coordinator to
-a second device.
+backup after data loss.
 
 *Arguments*:
 
