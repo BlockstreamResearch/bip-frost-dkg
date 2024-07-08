@@ -312,7 +312,8 @@ This is the price we pay for the communication optimization.
 
 EncPedPop appends to the transcript `eq_input` of SimplPedPop
 all `n` encryption keys to ensure that the participants agree on their identities.
-This excludes man-in-the-middle attacks if Eq is authenticated, e.g., runs over authenticated channels.
+This excludes man-in-the-middle attacks if Eq authenticates participants,
+e.g, if the Eq protocol messages are signed under long-term public keys of the participants.
 
 ### Background on Equality Checks
 
