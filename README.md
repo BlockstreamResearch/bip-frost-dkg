@@ -1,6 +1,6 @@
 ```
 BIP:
-Title: Distributed Key Generation for FROST
+Title: ChillDKG: Distributed Key Generation for FROST
 Author: Tim Ruffing <crypto@timruffing.de>
         Jonas Nick <jonas@n-ck.net>
 Status: Draft
