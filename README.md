@@ -932,3 +932,7 @@ The `MINOR` version is incremented whenever the inputs or the output of an algor
 The `PATCH` version is incremented for other changes that are noteworthy (bug fixes, test vectors, important clarifications, etc.).
 
 * *0.1.0* (2024-07-08): Publication of draft BIP on the bitcoin-dev mailing list
+
+## Acknowledgements
+
+We thank Lloyd Fournier for their contributions to this document.
