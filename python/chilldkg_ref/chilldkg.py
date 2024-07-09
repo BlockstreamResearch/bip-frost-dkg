@@ -470,7 +470,7 @@ def participant_finalize(
 ) -> Tuple[DKGOutput, RecoveryData]:
     """Perform a participant's final step of a ChillDKG session.
 
-    If this functions returns properly (without an exception), then this
+    If this function returns properly (without an exception), then this
     participant deems the DKG session successful. It is, however, possible that
     other participants have received a `cmsg2` from the coordinator that made
     them raise a `SessionNotFinalizedError` instead, or that they have not
@@ -484,10 +484,10 @@ def participant_finalize(
     Changing perspectives, this implies that even when obtaining a
     `SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
     failed, and as a consequence, you MUST NOT erase the seed. The underlying
-    reason is that some other participant may deem the DKG session successful,
-    and uses the resulting threshold public key (e.g., by sending funds to it).
+    reason is that some other participant may deem the DKG session successful
+    and use the resulting threshold public key (e.g., by sending funds to it).
     That other participant can, at any point in the future, wish to convince us
-    of the success of the DKG session by presenting us recovery data.
+    of the success of the DKG session by presenting recovery data to us.
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
@@ -572,8 +572,8 @@ def coordinator_finalize(
             it is, in principle, possible to recover the DKG outputs of the
             coordinator using the recovery data from a successful participant,
             should one exist. Any such successful participant would need to have
-            received messages from other participants via communication channel
-            beside the coordinator (or be malicious).
+            received messages from other participants via a communication
+            channel beside the coordinator (or be malicious).
     """
     (params, eq_input, dkg_output) = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])

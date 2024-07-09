@@ -29,8 +29,8 @@ The accompanying source code is licensed under the [MIT license](https://opensou
 
 The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ21](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr threshold signatures,
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
-FROST remains unforgeable as long as at most `t-1` participants are compromised,
-and remains functional as long as `t` honest participants do not lose their secret key material.
+FROST remains unforgeable as long as at most `t-1` participants are compromised
+and remain functional as long as `t` honest participants do not lose their secret key material.
 Notably, FROST can be made compatible with [BIP340](bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
 
 [^t-edge-cases]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
@@ -58,8 +58,8 @@ First, it assumes that participants have secure (i.e., authenticated and encrypt
 which is necessary to avoid man-in-the-middle attacks and to ensure confidentiality of secret shares when delivering them to individual participants.
 Second, PedPop assumes that all participants have access to some external consensus or reliable broadcast mechanism
 that ensures they have an identical view of the protocol messages exchanged during DKG.
-This will in turn ensure that all participants eventually reach agreement over the results of the DKG,
-which include not only parameters such as the generated threshold public key,
+This will, in turn, ensure that all participants eventually reach agreement over the results of the DKG,
+which include not only parameters such as the generated threshold public key
 but also whether the DKG has succeeded at all.
 
 To understand the necessity of reaching agreement,
@@ -67,7 +67,7 @@ consider the example of a DKG to set up a 2-of-3 Bitcoin wallet
 in which two participants are honest but the third participant is malicious.
 The malicious participant sends invalid secret shares to the first honest participant, but valid shares to the second honest participant.
 While the first honest participant cannot finish the DKG,
-the second honest participant will believe that the DKG has finished successfully,
+the second honest participant will believe that the DKG has finished successfully
 and thus may be willing to send funds to the resulting threshold public key.
 But this constitutes a catastrophic failure:
 Those funds will be lost irrevocably because the single remaining secret share of the second participant will not be sufficient to produce a signature (without the help of the malicious participant).[^resharing-attack]
@@ -133,7 +133,7 @@ In summary, we aim for the following design goals:
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
  - **Per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
-In summary, ChillDKG incorporates solutions for both secure channels and consensus, and simplifies backups in practice.
+In summary, ChillDKG incorporates solutions for both secure channels and consensus and simplifies backups in practice.
 As a result, it fits a wide range of application scenarios,
 and due to its low overhead, we recommend ChillDKG even if secure communication channels or a consensus mechanism (e.g., a BFT protocol or a reliable broadcast mechanism) are readily available.
 
@@ -155,7 +155,7 @@ Moreover, we believe that it is preferable to err on the side of caution even in
 For example, consider a key generation ceremony for a threshold cold wallet intended to store large amounts of Bitcoin.
 If it turns out that one of the devices participating appears non-responsive, e.g., due to a loss of network or a software bug,
 users will typically prefer security to progress, and abort the protocol instead of forcing successful termination of the ceremony by excluding the device from the DKG session.
-While warnings can be presented to users in this case, users tend to misunderstand and ignore these.
+While warnings can be presented to users in this case, users tend to misunderstand and ignore them.
 
 Even in distributed systems with strict liveness requirements, e.g., a system run by a large federation of nodes of which a majority is trusted, what is typically necessary for the liveness of the system is the continued ability to *produce signatures*.
 However, the setup of keys is typically performed in a one-time ceremony at the inception of the system (and possibly repeated in large time intervals, e.g., every few months).
@@ -278,7 +278,7 @@ EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the
 so that they can be sent over an insecure communication channel.
 
 As in SimplPedPop, every EncPedPop participant holds a long-term secret seed.
-Every participant derives from this seed a static, long-term ECDH key pair consisting of a secret decryption key and public encryption key.
+Every participant derives from this seed a static, long-term ECDH key pair consisting of a secret decryption key and a public encryption key.
 It is assumed that every participant has an authentic copy of every other participant's encryption key.
 
 The encryption relies on ephemeral-static ECDH key exchange.
@@ -327,7 +327,7 @@ The purpose of Eq is to verify that all participants have received an identical 
 Eq is assumed to be an interactive protocol between the `n` participants with the following abstract interface:
 Every participant can invoke a session of Eq with an input value `eq_input`.
 Eq may not return at all to the calling participant,
-but if it returns successfully for some calling participant, then all honest participants agree on the value `eq_input`.
+but if it returns successfully to some participant, then all honest participants agree on the value `eq_input`.
 (However, it may be the case that not all honest participants have established this fact yet.)
 This means that the DKG session was successful, and the resulting threshold public key can be returned to the participant,
 who can use it, e.g., by sending funds to some Bitcoin address derived from it.
@@ -396,7 +396,7 @@ The key insight to ensuring conditional agreement is that any participant termin
 obtains a *success certificate* `cert` consisting of the collected list of all `n` signatures on `eq_input`.
 This certificate will, by the above termination rule, convince every other honest participant (who, by integrity, has received `eq_input` as input) to terminate successfully.
 Crucially, this other honest participant will be convinced even after having received invalid or no signatures during the actual run of CertEq,
-due to unreliable networks or an unreliable coordinator, or malicious participants signing more than one value.
+due to unreliable networks, an unreliable coordinator, or malicious participants signing more than one value.
 
 Thus, the certificate does not need to be sent during a normal run of CertEq,
 but can instead be presented to other participants later,
@@ -434,13 +434,13 @@ The purpose of this section is to provide a high-level overview of the interface
 aimed at developers who would like to use a ChillDKG implementation in their applications and systems.
 
 Detailed API documentation of the reference implementation is provided in [Subsection "API Documentation"](#api-documentation).
-Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation,
+Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation
 should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ### Use ChillDKG only for FROST
 
 ChillDKG is designed for usage with the FROST Schnorr signature scheme,
-and its security depends on specifics of FROST.
+and its security depends on the specifics of FROST.
 We stress that ChillDKG is not a general-purpose DKG protocol,[^no-simulatable-dkg]
 and combining it with other threshold cryptographic schemes,
 e.g., threshold signature schemes other than FROST, or threshold decryption schemes
@@ -531,7 +531,7 @@ which constitutes the first use of the threshold public key.
 
 If a recovering party (see [Backup and Recovery](#backup-and-recovery)) cannot (re-)obtain confirmations,
 this simply means they should stop using the threshold public key going forward,
-e.g., stop sending additional funds should to addresses derived from it.
+e.g., stop sending additional funds to addresses derived from it.
 (But, in contrast to the bad example laid out above,
 it will still be possible to spend the funds,
 and even recovered participants can participate in signing sessions.)
@@ -542,11 +542,11 @@ Some participants, the coordinator, and all network links may be malicious, i.e.
 We expect ChillDKG to provide the following informal security goals when it is used to set up keys for the FROST threshold signature scheme.
 
 If a participant deems a protocol session successful (see above), then this participant is assured that:
- - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least honest participant was initiated. (Unforgeability)[^unforgeability-formal]
+ - A coalition of at most `t - 1` malicious participants and a malicious coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least one honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
    Moreover, any `t` of them have secret shares consistent with the threshold public key.[^correctness-formal]
-   This means that any `t` participants have all the necessary inputs to session a successful FROST signing sessions that produce signatures valid under the threshold public key.
+   This means that any `t` participants have all the necessary inputs to run FROST signing sessions which produce signatures valid under the threshold public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
 
 [^unforgeability-formal]: See Chu, Gerhart, Ruffing, and Schröder [Definition 3, [CGRS23](https://eprint.iacr.org/2023/899)] for a formal definition.
@@ -557,10 +557,10 @@ If a participant deems a protocol session successful (see above), then this part
 
 (See also [`python/example.py`](python/example.py).)
 
-The following figure shows an execution of the participants and the coordinator.
+The following figure shows an example execution of the participants and the coordinator.
 Arrows indicate network messages between the participants.
 For simplicity, only one participant is depicted;
-all participants run the identical code and send messages at the same steps.
+all participants run the identical code and send messages in the same steps.
 
 ![The diagram shows the message flow between a participant and a coordinator.
 The first of two phases named "Generation of host public keys" involves the participant invoking the function hostpubkey with parameter seed and sending the returned hostpubkey to the coordinator.
@@ -792,7 +792,7 @@ def participant_finalize(state2: ParticipantState2, cmsg2: CoordinatorMsg2) -> T
 
 Perform a participant's final step of a ChillDKG session.
 
-If this functions returns properly (without an exception), then this
+If this function returns properly (without an exception), then this
 participant deems the DKG session successful. It is, however, possible that
 other participants have received a `cmsg2` from the coordinator that made
 them raise a `SessionNotFinalizedError` instead, or that they have not
@@ -806,10 +806,10 @@ function.
 Changing perspectives, this implies that even when obtaining a
 `SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
 failed, and as a consequence, you MUST NOT erase the seed. The underlying
-reason is that some other participant may deem the DKG session successful,
-and uses the resulting threshold public key (e.g., by sending funds to it).
+reason is that some other participant may deem the DKG session successful
+and use the resulting threshold public key (e.g., by sending funds to it).
 That other participant can, at any point in the future, wish to convince us
-of the success of the DKG session by presenting us recovery data.
+of the success of the DKG session by presenting recovery data to us.
 
 *Arguments*:
 
@@ -886,8 +886,8 @@ Perform the coordinator's final step of a ChillDKG session.
   it is, in principle, possible to recover the DKG outputs of the
   coordinator using the recovery data from a successful participant,
   should one exist. Any such successful participant would need to have
-  received messages from other participants via communication channel
-  beside the coordinator (or be malicious).
+  received messages from other participants via a communication
+  channel beside the coordinator (or be malicious).
 
 #### recover
 
@@ -927,12 +927,12 @@ backup after data loss.
 
 To help the reader understand updates to this document, we attach a version number that resembles "semantic versioning" (`MAJOR.MINOR.PATCH`).
 The `MAJOR` version is incremented if changes to the BIP are introduced that are incompatible with prior versions.
-An exception to this rule is `MAJOR` version zero (0.y.z) which is for development and does not need to be incremented if backwards incompatible changes are introduced.
+An exception to this rule is `MAJOR` version zero (0.y.z) which is for development and does not need to be incremented if backwards-incompatible changes are introduced.
 The `MINOR` version is incremented whenever the inputs or the output of an algorithm changes in a backward-compatible way or new backward-compatible functionality is added.
-The `PATCH` version is incremented for other changes that are noteworthy (bug fixes, test vectors, important clarifications, etc.).
+The `PATCH` version is incremented for other noteworthy changes (bug fixes, test vectors, important clarifications, etc.).
 
 * *0.1.0* (2024-07-08): Publication of draft BIP on the bitcoin-dev mailing list
 
-## Acknowledgements
+## Acknowledgments
 
 We thank Lloyd Fournier for their contributions to this document.
