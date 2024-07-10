@@ -1,5 +1,8 @@
 """Reference implementation of ChillDKG.
 
+WARNING: This code is slow and trivially vulnerable to side channel attacks. Do
+not use for anything but tests.
+
 The public API consists of all functions with docstrings, including the types in
 their arguments and return values, and the exceptions they raise; see also the
 `__all__` list. All other definitions are internal.
