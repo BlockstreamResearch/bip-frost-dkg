@@ -386,7 +386,7 @@ could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
 (TODO: Half-agg may be included in a future version of the BIP, but no guarantee.)
 
-[^certeq-literature]: CertEq can be viewed as a signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[GGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
+[^certeq-literature]: CertEq can be viewed as a signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[CGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
 
 This termination rule immediately implies the integrity property:
 Unless a signature has been forged, if some honest participant with input `eq_input` terminates successfully,
