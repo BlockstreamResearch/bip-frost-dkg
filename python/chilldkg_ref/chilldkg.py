@@ -21,15 +21,14 @@ from . import encpedpop
 from .util import (
     BIP_TAG,
     tagged_hash_bip_dkg,
-    prf,
-    SeedError,
+    SecretKeyError,
     ThresholdError,
     InvalidContributionError,
 )
 
 __all__ = [
     # Functions
-    "hostpubkey",
+    "hostpubkey_gen",
     "params_id",
     "participant_step1",
     "participant_step2",
@@ -38,7 +37,7 @@ __all__ = [
     "coordinator_finalize",
     "recover",
     # Exceptions
-    "SeedError",
+    "SecretKeyError",
     "ThresholdError",
     "InvalidContributionError",
     "InvalidRecoveryDataError",
@@ -124,44 +123,34 @@ def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
 ###
 
 
-def hostseckey(seed: bytes) -> bytes:
-    return prf(seed, "chilldkg hostseckey")
+def hostpubkey_gen(hostseckey: bytes) -> bytes:
+    """Compute the participant's host public key from the host secret key.
 
-
-def hostkeypair(seed: bytes) -> Tuple[bytes, bytes]:
-    if len(seed) != 32:
-        raise SeedError
-    seckey = hostseckey(seed)
-    pubkey = pubkey_gen_plain(seckey)
-    return (seckey, pubkey)
-
-
-def hostpubkey(seed: bytes) -> bytes:
-    """Compute the participant's host public key from the seed.
-
-    This is the long-term cryptographic identity of the participant. It is
-    derived deterministically from the secret seed.
+    This is the long-term cryptographic identity of the participant.
 
     Arguments:
-        seed: This participant's long-term secret seed (32 bytes).
-            The seed must be 32 bytes of cryptographically secure randomness
+        hostseckey: This participant's long-term secret key (32 bytes).
+            The key must be 32 bytes of cryptographically secure randomness
             with sufficient entropy to be unpredictable. All outputs of a
             successful participant in a session can be recovered from (a backup
-            of) the seed and per-session recovery data.
+            of) the key and per-session recovery data.
 
-            The same seed (and thus host public key) can be used in multiple DKG
-            sessions. A host public key can be correlated to the threshold
-            public key resulting from a DKG session only by parties who observed
-            the session, namely the participants, the coordinator (and any
-            eavesdropper).
+            The same secret key (and thus host public key) can be used in
+            multiple DKG sessions. A host public key can be correlated to the
+            threshold public key resulting from a DKG session only by parties
+            who observed the session, namely the participants, the coordinator
+            (and any eavesdropper).
 
     Returns:
         The host public key.
 
     Raises:
-        SeedError: If the length of `seed` is not 32 bytes.
+        SecretKeyError: If the length of `hostseckey` is not 32 bytes.
     """
-    return hostkeypair(seed)[1]
+    if len(hostseckey) != 32:
+        raise SecretKeyError
+
+    return pubkey_gen_plain(hostseckey)
 
 
 ###
@@ -378,12 +367,12 @@ class ParticipantState2(NamedTuple):
 
 
 def participant_step1(
-    seed: bytes, params: SessionParams, random: bytes
+    hostseckey: bytes, params: SessionParams, random: bytes
 ) -> Tuple[ParticipantState1, ParticipantMsg1]:
     """Perform a participant's first step of a ChillDKG session.
 
     Arguments:
-        seed: Participant's long-term secret seed (32 bytes).
+        hostseckey: Participant's long-term host secret key (32 bytes).
         params: Common session parameters.
         random: FRESH random byte string (32 bytes).
 
@@ -397,35 +386,35 @@ def participant_step1(
     Raises:
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
-        SeedError: If the length of `seed` is not 32 bytes.
+        SecretKeyError: If the length of `hostseckey` is not 32 bytes.
         InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
-    hostseckey, hostpubkey = hostkeypair(seed)  # SeedError if len(seed) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # SecKeyError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
 
     idx = hostpubkeys.index(hostpubkey)  # ValueError if not found
     enc_state, enc_pmsg = encpedpop.participant_step1(
-        seed, t, hostpubkeys, idx, random
-    )  # SeedError if len(seed) != 32
+        hostseckey, t, hostpubkeys, idx, random
+    )  # SecKeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
 
 
 def participant_step2(
-    seed: bytes,
+    hostseckey: bytes,
     state1: ParticipantState1,
     cmsg1: CoordinatorMsg1,
 ) -> Tuple[ParticipantState2, ParticipantMsg2]:
     """Perform a participant's second step of a ChillDKG session.
 
     Arguments:
-        seed: Participant's long-term secret seed (32 bytes).
+        hostseckey: Participant's long-term host secret key (32 bytes).
         state1: The participant's session state as output by
             `participant_step1`.
         cmsg1: The first message received from the coordinator.
@@ -438,7 +427,7 @@ def participant_step2(
         ParticipantMsg2: The second message to be sent to the coordinator.
 
     Raises:
-        SeedError: If the length of `seed` is not 32 bytes.
+        SecKeyError: If the length of `hostseckey` is not 32 bytes.
         InvalidContributionError: If `cmsg1` is invalid. This can happen if
             another participant has sent an invalid message to the coordinator,
             or if the coordinator has sent an invalid `cmsg1`.
@@ -451,7 +440,6 @@ def participant_step2(
             as a consequence, the caller should not conclude that the party
             hinted at is malicious.
     """
-    (hostseckey, _) = hostkeypair(seed)  # SeedError if len(seed) != 32
     (params, idx, enc_state) = state1
     enc_cmsg, enc_secshares = cmsg1
 
@@ -486,7 +474,7 @@ def participant_finalize(
     **Warning:**
     Changing perspectives, this implies that even when obtaining a
     `SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
-    failed, and as a consequence, you MUST NOT erase the seed. The underlying
+    failed, and as a consequence, you MUST NOT erase the hostseckey. The underlying
     reason is that some other participant may deem the DKG session successful
     and use the resulting threshold public key (e.g., by sending funds to it).
     That other participant can, at any point in the future, wish to convince us
@@ -590,9 +578,9 @@ def coordinator_finalize(
 
 
 def recover(
-    seed: Optional[bytes], recovery_data: RecoveryData
+    hostseckey: Optional[bytes], recovery_data: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of a session from the seed and recovery data.
+    """Recover the DKG output of a session from the hostseckey and recovery data.
 
     This function serves two different purposes:
     1. To recover from a `SessionNotFinalizedError` after obtaining the recovery
@@ -602,8 +590,8 @@ def recover(
        backup after data loss.
 
     Arguments:
-        seed: This participant's long-term secret seed (32 bytes) or `None` if
-            recovering the coordinator.
+        hostseckey: This participant's long-term host secret key (32 bytes) or
+            `None` if recovering the coordinator.
         recovery_data: Recovery data from a successful session.
 
     Returns:
@@ -612,7 +600,7 @@ def recover(
 
     Raises:
         InvalidRecoveryDataError: If recovery failed due to invalid recovery
-            data or recovery data that does not match the provided seed.
+            data or recovery data that does not match the provided hostseckey.
     """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
@@ -632,17 +620,20 @@ def recover(
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
-    if seed:
-        # Find our hostpubkey
-        hostseckey, hostpubkey = hostkeypair(seed)
+    if hostseckey:
+        hostpubkey = hostpubkey_gen(hostseckey)
         try:
             idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:
-            raise InvalidRecoveryDataError("Seed and recovery data don't match") from e
+            raise InvalidRecoveryDataError(
+                "Host secret key and recovery data don't match"
+            ) from e
 
         # Decrypt share
         enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
-        session_seed = encpedpop.derive_session_seed(seed, pubnonces[idx], enc_context)
+        session_seed = encpedpop.derive_session_seed(
+            hostseckey, pubnonces[idx], enc_context
+        )
         secshare = encpedpop.decrypt_sum(
             hostseckey,
             hostpubkeys[idx],

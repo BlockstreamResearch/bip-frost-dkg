@@ -84,20 +84,20 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
 
 
 def simulate_chilldkg(
-    seeds, t
+    hostseckeys, t
 ) -> List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]:
-    n = len(seeds)
+    n = len(hostseckeys)
 
     hostpubkeys = []
     for i in range(n):
-        hostpubkeys += [chilldkg.hostpubkey(seeds[i])]
+        hostpubkeys += [chilldkg.hostpubkey_gen(hostseckeys[i])]
 
     params = chilldkg.SessionParams(hostpubkeys, t)
 
     prets1 = []
     for i in range(n):
         random = random_bytes(32)
-        prets1 += [chilldkg.participant_step1(seeds[i], params, random)]
+        prets1 += [chilldkg.participant_step1(hostseckeys[i], params, random)]
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
@@ -105,7 +105,7 @@ def simulate_chilldkg(
 
     prets2 = []
     for i in range(n):
-        prets2 += [chilldkg.participant_step2(seeds[i], pstates1[i], cmsg)]
+        prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg)]
 
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
         cstate, [pret[1] for pret in prets2]

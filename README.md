@@ -111,12 +111,12 @@ This is sufficient to exclude the catastrophic failure described in the previous
 
 <!-- TODO Call this restore instead of recovery? -->
 As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
-a backup of a single secret per-device seed,
+a backup of a single *host secret key* specific to the device,
 (the essential parts of) the public transcripts of the DKG sessions,
 and the corresponding success certificates.
 To simplify the interface, we combine the transcript data and the session certificate into a single byte string called the *recovery data*,
 which is common to all participants and does not need to be kept confidential.
-Recovering a device that has participated in a DKG session then requires just the device seed and the recovery data,
+Recovering a device that has participated in a DKG session then requires just the device's host secret key and the recovery data,
 the latter of which can be obtained from any cooperative participant (or the coordinator) or from an untrusted backup provider.
 
 These features make ChillDKG usable in a wide range of applications.
@@ -129,7 +129,7 @@ In summary, we aim for the following design goals:
  - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
  - **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
  - **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
- - **Simple backups**: The capability of ChillDKG to recover devices from a static seed and public recovery data avoids the need for secret per-session backups, enhancing user experience.
+ - **Simple backups**: The capability of ChillDKG to recover devices from the host secret key together with public recovery data avoids the need for secret per-session backups, enhancing user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
  - **Per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
@@ -407,15 +407,14 @@ e.g., during a request to participate in a FROST signing session.
 ChillDKG constructs a transcript `eq_input` by appending to the transcript of EncPedPop the vector `enc_secshare`.
 This ensures that all participants agree on all encrypted shares,
 and as a consequence,
-the entire DKG output of a successful ChillDKG participant can be deterministically reproduced from a secret per-participant seed and the transcript.
+the entire DKG output of a successful ChillDKG participant can be deterministically reproduced from a per-participant *host secret key* and the transcript.
 
 This property is leveraged to offer a backup and recovery functionality:
 ChillDKG outputs a string called *recovery data* which is the concatenation of the transcript `eq_input` and the success certificate `cert`.
-The recovery data, which is the same for every participant, can be used by any participant together with the seed to recover the full output of the DKG session.
+The recovery data, which is the same for every participant, can be used by any participant together with the host secret key to recover the full output of the DKG session.
 
 Crucially, the recovery data carries proof that the DKG session took place:
-any recovering participant can re-derive their host key pair from the seed,
-and extract their own valid signature on the transcript from the success certificate.
+any recovering participant can extract their own valid signature on the transcript from the success certificate.
 This valid signature proves that the participant, or more precisely, their former instance,
 had successfully reached the state at which this signature is sent to the coordinator.
 In particular, this implies that the proofs of possession from all participants,
@@ -458,7 +457,7 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 
 ### Inputs and Output
 
-The inputs of a session consist of a long-term *secret seed* (individual to each participant, not provided by the coordinator) and public *session parameters* (common to all participants and the coordinator).
+The inputs of a session consist of a long-term *host secret key* (individual to each participant, not provided by the coordinator) and public *session parameters* (common to all participants and the coordinator).
 
 If a session ChillDKG returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
@@ -473,8 +472,8 @@ unlike deterministically derived secret keys [[BIP32](https://github.com/bitcoin
 not be rederived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
-ChillDKG offers the possibility to recover a participant's DKG output from the participant's seed and the recovery data of the specific session,
-As a result, a full backup of a participant consists of the seed as well as the recovery data of all DKG sessions the participant has successfully participated in.
+ChillDKG offers the possibility to recover a participant's DKG output from the participant's host secret key and the recovery data of the specific session,
+As a result, a full backup of a participant consists of the host secret key as well as the recovery data of all DKG sessions the participant has successfully participated in.
 
 Since the recovery data is the same for all participants,
 if a participant loses the backup of the recovery data of the DKG session,
@@ -483,15 +482,15 @@ Moreover, the recovery data contains secrets only in encrypted form and is self-
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 Users should, however, be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
 
-Keeping seed backups accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
-As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of seeds at all,
+Keeping backups of the secret key accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
+As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of host secret keys at all,
 and simply hope that `t` honest and working participants will remain available.
 As soon as one or more participants are lost or broken, a new DKG session can be performed with the lost participants replaced.
 The obvious drawback of this method is that it will result in a change of the threshold public key,
 and the application will, therefore, need to transition to the new threshold public key,
 e.g., funds stored under the current threshold public key need to be transferred to the new key.
 
-Whether to perform backups of seeds and how to manage them ultimately depends on the requirements of the application,
+Whether to perform backups of host secret keys and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
 
 ### Recovering Stuck Participants
@@ -563,7 +562,7 @@ For simplicity, only one participant is depicted;
 all participants run the identical code and send messages in the same steps.
 
 ![The diagram shows the message flow between a participant and a coordinator.
-The first of two phases named "Generation of host public keys" involves the participant invoking the function hostpubkey with parameter seed and sending the returned hostpubkey to the coordinator.
+The first of two phases named "Generation of host public keys" involves the participant invoking the function hostpubkey_gen with parameter hostseckey and sending the returned hostpubkey to the coordinator.
 The second phase named "Session" is initiated by the coordinator sending hostpubkeys and the threshold t to the participant.
 The participant invokes participant_step1 and sends the returned pmsg1 to the coordinator.
 The coordinator invokes coordinator_step1 and sends the returned cmsg1 to the participant.
@@ -572,7 +571,7 @@ The coordinator invokes coordinator_finalize and sends the returned cmsg2 to the
 The participant invokes participant_finalize, which ends the second phase.
 ](images/chilldkg-sequence.png "ChillDKG")
 
-A participant can run multiple sessions with the same seed, provided that the session state as output from any of the "step" functions is not reused.
+A participant can run multiple sessions with the same hostseckey, provided that the session state as output from any of the "step" functions is not reused.
 Multiple sessions may be run concurrently.
 Whenever a function call fails, the corresponding party will not continue the session.
 
@@ -582,30 +581,29 @@ This subsection is an export of the API documentation generated from the docstri
 (see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
 <!--pydoc.md-->
-#### hostpubkey
+#### hostpubkey\_gen
 
 ```python
-def hostpubkey(seed: bytes) -> bytes
+def hostpubkey_gen(hostseckey: bytes) -> bytes
 ```
 
-Compute the participant's host public key from the seed.
+Compute the participant's host public key from the host secret key.
 
-This is the long-term cryptographic identity of the participant. It is
-derived deterministically from the secret seed.
+This is the long-term cryptographic identity of the participant.
 
 *Arguments*:
 
-- `seed` - This participant's long-term secret seed (32 bytes).
-  The seed must be 32 bytes of cryptographically secure randomness
+- `hostseckey` - This participant's long-term secret key (32 bytes).
+  The key must be 32 bytes of cryptographically secure randomness
   with sufficient entropy to be unpredictable. All outputs of a
   successful participant in a session can be recovered from (a backup
-  of) the seed and per-session recovery data.
+  of) the key and per-session recovery data.
 
-  The same seed (and thus host public key) can be used in multiple DKG
-  sessions. A host public key can be correlated to the threshold
-  public key resulting from a DKG session only by parties who observed
-  the session, namely the participants, the coordinator (and any
-  eavesdropper).
+  The same secret key (and thus host public key) can be used in
+  multiple DKG sessions. A host public key can be correlated to the
+  threshold public key resulting from a DKG session only by parties
+  who observed the session, namely the participants, the coordinator
+  (and any eavesdropper).
 
 
 *Returns*:
@@ -615,7 +613,7 @@ derived deterministically from the secret seed.
 
 *Raises*:
 
-- `SeedError` - If the length of `seed` is not 32 bytes.
+- `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
 
 #### SessionParams Tuples
 
@@ -712,14 +710,14 @@ Holds the outputs of a DKG session.
 #### participant\_step1
 
 ```python
-def participant_step1(seed: bytes, params: SessionParams, random: bytes) -> Tuple[ParticipantState1, ParticipantMsg1]
+def participant_step1(hostseckey: bytes, params: SessionParams, random: bytes) -> Tuple[ParticipantState1, ParticipantMsg1]
 ```
 
 Perform a participant's first step of a ChillDKG session.
 
 *Arguments*:
 
-- `seed` - Participant's long-term secret seed (32 bytes).
+- `hostseckey` - Participant's long-term host secret key (32 bytes).
 - `params` - Common session parameters.
 - `random` - FRESH random byte string (32 bytes).
 
@@ -737,7 +735,7 @@ Perform a participant's first step of a ChillDKG session.
 
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
-- `SeedError` - If the length of `seed` is not 32 bytes.
+- `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
 - `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
   for some `i`, which is indicated as part of the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
@@ -747,14 +745,14 @@ Perform a participant's first step of a ChillDKG session.
 #### participant\_step2
 
 ```python
-def participant_step2(seed: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1) -> Tuple[ParticipantState2, ParticipantMsg2]
+def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1) -> Tuple[ParticipantState2, ParticipantMsg2]
 ```
 
 Perform a participant's second step of a ChillDKG session.
 
 *Arguments*:
 
-- `seed` - Participant's long-term secret seed (32 bytes).
+- `hostseckey` - Participant's long-term host secret key (32 bytes).
 - `state1` - The participant's session state as output by
   `participant_step1`.
 - `cmsg1` - The first message received from the coordinator.
@@ -771,7 +769,7 @@ Perform a participant's second step of a ChillDKG session.
 
 *Raises*:
 
-- `SeedError` - If the length of `seed` is not 32 bytes.
+- `SecKeyError` - If the length of `hostseckey` is not 32 bytes.
 - `InvalidContributionError` - If `cmsg1` is invalid. This can happen if
   another participant has sent an invalid message to the coordinator,
   or if the coordinator has sent an invalid `cmsg1`.
@@ -805,7 +803,7 @@ function.
 *Warning:*
 Changing perspectives, this implies that even when obtaining a
 `SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
-failed, and as a consequence, you MUST NOT erase the seed. The underlying
+failed, and as a consequence, you MUST NOT erase the hostseckey. The underlying
 reason is that some other participant may deem the DKG session successful
 and use the resulting threshold public key (e.g., by sending funds to it).
 That other participant can, at any point in the future, wish to convince us
@@ -892,10 +890,10 @@ Perform the coordinator's final step of a ChillDKG session.
 #### recover
 
 ```python
-def recover(seed: Optional[bytes], recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
+def recover(hostseckey: Optional[bytes], recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
 ```
 
-Recover the DKG output of a session from the seed and recovery data.
+Recover the DKG output of a session from the hostseckey and recovery data.
 
 This function serves two different purposes:
 1. To recover from a `SessionNotFinalizedError` after obtaining the recovery
@@ -906,8 +904,8 @@ backup after data loss.
 
 *Arguments*:
 
-- `seed` - This participant's long-term secret seed (32 bytes) or `None` if
-  recovering the coordinator.
+- `hostseckey` - This participant's long-term host secret key (32 bytes) or
+  `None` if recovering the coordinator.
 - `recovery_data` - Recovery data from a successful session.
 
 
@@ -920,7 +918,7 @@ backup after data loss.
 *Raises*:
 
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
-  data or recovery data that does not match the provided seed.
+  data or recovery data that does not match the provided hostseckey.
 <!--end of pydoc.md-->
 
 ## Changelog

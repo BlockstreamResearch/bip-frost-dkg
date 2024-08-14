@@ -9,7 +9,7 @@ from secrets import token_bytes as random_bytes
 import sys
 
 from chilldkg_ref.chilldkg import (
-    hostpubkey,
+    hostpubkey_gen,
     participant_step1,
     participant_step2,
     participant_finalize,
@@ -65,15 +65,15 @@ class ParticipantChannel:
 
 
 async def participant(
-    chan: ParticipantChannel, seed: bytes, params: SessionParams
+    chan: ParticipantChannel, hostseckey: bytes, params: SessionParams
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
-    state1, pmsg1 = participant_step1(seed, params, random)
+    state1, pmsg1 = participant_step1(hostseckey, params, random)
     chan.send(pmsg1)
     cmsg1 = await chan.receive()
 
-    state2, eq_round1 = participant_step2(seed, state1, cmsg1)
+    state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
 
     chan.send(eq_round1)
     cmsg2 = await chan.receive()
@@ -107,12 +107,12 @@ async def coordinator(
 #
 
 
-def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
+def simulate_chilldkg_full(hostseckeys, t) -> List[Tuple[DKGOutput, RecoveryData]]:
     # Generate common inputs for all participants and coordinator
-    n = len(seeds)
+    n = len(hostseckeys)
     hostpubkeys = []
     for i in range(n):
-        hostpubkeys += [hostpubkey(seeds[i])]
+        hostpubkeys += [hostpubkey_gen(hostseckeys[i])]
 
     # TODO also print params_id
     params = SessionParams(hostpubkeys, t)
@@ -126,7 +126,7 @@ def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
             [participant_chans[i].queue for i in range(n)]
         )
         coroutines = [coordinator(coord_chans, params)] + [
-            participant(participant_chans[i], seeds[i], params) for i in range(n)
+            participant(participant_chans[i], hostseckeys[i], params) for i in range(n)
         ]
         return await asyncio.gather(*coroutines)
 
@@ -137,7 +137,7 @@ def simulate_chilldkg_full(seeds, t) -> List[Tuple[DKGOutput, RecoveryData]]:
 def main():
     n = 5
     t = 3
-    seeds = [random_bytes(32) for _ in range(n)]
+    hostseckeys = [random_bytes(32) for _ in range(n)]
 
     # TODO Move more steps into the async methods. It's not an issue for the
     # tests to have prints in the async methods, we can suppress them, see
@@ -146,10 +146,10 @@ def main():
     print(f"t: {t}")
     print(f"n: {n}")
     for i in range(n):
-        print(f"Participant {i}'s seed:", seeds[i].hex())
+        print(f"Participant {i}'s hostseckey:", hostseckeys[i].hex())
     print()
 
-    rets = simulate_chilldkg_full(seeds, t)
+    rets = simulate_chilldkg_full(hostseckeys, t)
     assert len(rets) == n + 1
 
     print("=== Coordinator's DKGOutput ===")

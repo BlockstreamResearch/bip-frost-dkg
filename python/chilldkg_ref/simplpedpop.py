@@ -3,7 +3,7 @@ from typing import List, NamedTuple, NewType, Tuple, Optional
 
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
 from secp256k1proto.secp256k1 import GE, Scalar
-from .util import BIP_TAG, SeedError, InvalidContributionError, ThresholdError
+from .util import BIP_TAG, SecretKeyError, InvalidContributionError, ThresholdError
 from .vss import VSS, VSSCommitment
 
 
@@ -101,7 +101,7 @@ def participant_step1(
     if idx >= n:
         raise IndexError
     if len(seed) != 32:
-        raise SeedError
+        raise SecretKeyError
 
     vss = VSS.generate(seed, t)  # OverflowError if t >= 2**32
     shares = vss.secshares(n)
