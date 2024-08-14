@@ -67,8 +67,11 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
 
     enckeys = [pret[1] for pret in enc_prets0]
     for i in range(n):
+        deckey = enc_prets0[i][0]
         random = random_bytes(32)
-        enc_prets1 += [encpedpop.participant_step1(seeds[i], t, enckeys, i, random)]
+        enc_prets1 += [
+            encpedpop.participant_step1(seeds[i], deckey, enckeys, t, i, random)
+        ]
 
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     pstates = [pstate for (pstate, _) in enc_prets1]
