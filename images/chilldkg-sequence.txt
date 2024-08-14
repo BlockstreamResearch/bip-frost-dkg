@@ -3,7 +3,7 @@ participant Participant
 participant Coordinator
 
 group Generation of host public keys
-rnote over Participant: hostpubkey(seed)
+rnote over Participant: hostpubkey_gen(hostseckey)
 Participant->Coordinator: hostpubkey
 end
 

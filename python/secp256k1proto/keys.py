@@ -6,7 +6,7 @@ from .util import int_from_bytes
 
 
 # Return the plain public key corresponding to a given secret key
-def pubkey_gen_plain(seckey: bytes):
+def pubkey_gen_plain(seckey: bytes) -> bytes:
     d0 = int_from_bytes(seckey)
     if not (1 <= d0 <= GE.ORDER - 1):
         raise ValueError("The secret key must be an integer in the range 1..n-1.")
