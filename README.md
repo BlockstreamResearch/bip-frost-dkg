@@ -226,7 +226,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     which are simply concatenated (because the participants will need them to verify the proofs of possession):
 
     ```
-    sum_coms_to_nonconst_terms = (coms[0][1] + ... + coms[0][t-1], ..., coms[n-1][1] + ... + coms[n-1][t-1])
+    sum_coms_to_nonconst_terms = (coms[0][1] + ... + coms[n-1][1], ..., coms[0][t-1] + ... + coms[n-1][t-1])
     coms_to_secrets = (coms[0][0], ..., com[n-1][0])
     ```
 
