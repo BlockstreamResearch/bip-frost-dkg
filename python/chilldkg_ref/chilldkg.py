@@ -126,7 +126,15 @@ def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
 def hostpubkey_gen(hostseckey: bytes) -> bytes:
     """Compute the participant's host public key from the host secret key.
 
-    This is the long-term cryptographic identity of the participant.
+    The host public key is the long-term cryptographic identity of the
+    participant.
+
+    This function interprets `hostseckey` as big-endian integer, and computes
+    the corresponding "plain" public key in compressed serialization (33 bytes,
+    starting with 0x02 or 0x03). This is the key generation procedure
+    traditionally used in Bitcoin, e.g., for ECDSA. In other words, this
+    function is equivalent to `IndividualPubkey` as defined in [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
+    TODO Refer to the FROST signing BIP instead, once that one has a number.
 
     Arguments:
         hostseckey: This participant's long-term secret key (32 bytes).
@@ -135,14 +143,14 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
             successful participant in a session can be recovered from (a backup
             of) the key and per-session recovery data.
 
-            The same secret key (and thus host public key) can be used in
-            multiple DKG sessions. A host public key can be correlated to the
-            threshold public key resulting from a DKG session only by parties
-            who observed the session, namely the participants, the coordinator
-            (and any eavesdropper).
+            The same host secret key (and thus the same host public key) can be
+            used in multiple DKG sessions. A host public key can be correlated
+            to the threshold public key resulting from a DKG session only by
+            parties who observed the session, namely the participants, the
+            coordinator (and any eavesdropper).
 
     Returns:
-        The host public key.
+        The host public key (33 bytes).
 
     Raises:
         SecretKeyError: If the length of `hostseckey` is not 32 bytes.
