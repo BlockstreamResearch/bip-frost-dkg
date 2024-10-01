@@ -125,12 +125,12 @@ def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
 
 
-def derive_session_seed(seed: bytes, pubnonce: bytes, enc_context: bytes) -> bytes:
-    return prf(seed, "encpedpop seed", pubnonce + enc_context)
+def derive_session_seed(deckey: bytes, pubnonce: bytes, enc_context: bytes) -> bytes:
+    return prf(deckey, "encpedpop seed", pubnonce + enc_context)
 
 
 def participant_step1(
-    seed: bytes,
+    deckey: bytes,
     t: int,
     enckeys: List[bytes],
     idx: int,
@@ -142,14 +142,14 @@ def participant_step1(
 
     # Create a synthetic encryption nonce
     enc_context = serialize_enc_context(t, enckeys)
-    secnonce = prf(seed, "encpodpop secnonce", random + enc_context)
+    secnonce = prf(deckey, "encpodpop secnonce", random + enc_context)
     # This can be optimized: We serialize the pubnonce here, but ecdh will need
     # to deserialize it again, which involves computing a square root to obtain
     # the y coordinate.
     pubnonce = pubkey_gen_plain(secnonce)
     # Add enc_context again to the derivation of the session seed, just in case
     # someone derives secnonce differently.
-    session_seed = derive_session_seed(seed, pubnonce, enc_context)
+    session_seed = derive_session_seed(deckey, pubnonce, enc_context)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
         session_seed, t, n, idx

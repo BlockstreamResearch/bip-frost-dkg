@@ -277,8 +277,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 EncPedPop is a thin wrapper around SimplPedPop that takes care of encrypting the VSS shares
 so that they can be sent over an insecure communication channel.
 
-As in SimplPedPop, every EncPedPop participant holds a long-term secret seed.
-Every participant derives from this seed a static, long-term ECDH key pair consisting of a secret decryption key and a public encryption key.
+As in SimplPedPop, every EncPedPop participant holds a long-term, static key ECDH pair consisting of a secret decryption key and a public encryption key.
 It is assumed that every participant has an authentic copy of every other participant's encryption key.
 
 The encryption relies on ephemeral-static ECDH key exchange.
@@ -291,8 +290,8 @@ the static encryption key and the index `j` of the recipient.[^mr-kem]
 
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
 
-Every participant derives an ephemeral *session seed* passed down to SimplPedPop from their long-term seed and their public encryption nonce.
-Moreover, all encryption keys of all participants is included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
+Every participant derives an ephemeral *session seed*, to be passed down to SimplPedPop, from their decryption key, their public encryption nonce, and fresh randomness.
+Additionally, all encryption keys of all participants are included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
 even in the case that the randomness for deriving the encryption nonce pair is accidentally reused.
 
 EncPedPop then works like SimplPedPop with the following differences:
