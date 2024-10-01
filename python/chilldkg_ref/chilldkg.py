@@ -28,7 +28,7 @@ from .util import (
 
 __all__ = [
     # Functions
-    "hostpubkey",
+    "hostpubkey_gen",
     "params_id",
     "participant_step1",
     "participant_step2",
@@ -123,7 +123,7 @@ def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
 ###
 
 
-def hostpubkey(hostseckey: bytes) -> bytes:
+def hostpubkey_gen(hostseckey: bytes) -> bytes:
     """Compute the participant's host public key from the host secret key.
 
     This is the long-term cryptographic identity of the participant.
@@ -393,12 +393,12 @@ def participant_step1(
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
-    hostpk = hostpubkey(hostseckey)  # SecKeyError if len(hostseckey) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # SecKeyError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
 
-    idx = hostpubkeys.index(hostpk)  # ValueError if not found
+    idx = hostpubkeys.index(hostpubkey)  # ValueError if not found
     enc_state, enc_pmsg = encpedpop.participant_step1(
         hostseckey, t, hostpubkeys, idx, random
     )  # SecKeyError if len(hostseckey) != 32
@@ -621,9 +621,9 @@ def recover(
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
     if hostseckey:
-        hostpk = hostpubkey(hostseckey)
+        hostpubkey = hostpubkey_gen(hostseckey)
         try:
-            idx = hostpubkeys.index(hostpk)
+            idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:
             raise InvalidRecoveryDataError(
                 "Host secret key and recovery data don't match"

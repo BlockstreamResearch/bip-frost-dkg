@@ -581,10 +581,10 @@ This subsection is an export of the API documentation generated from the docstri
 (see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
 <!--pydoc.md-->
-#### hostpubkey
+#### hostpubkey\_gen
 
 ```python
-def hostpubkey(hostseckey: bytes) -> bytes
+def hostpubkey_gen(hostseckey: bytes) -> bytes
 ```
 
 Compute the participant's host public key from the host secret key.

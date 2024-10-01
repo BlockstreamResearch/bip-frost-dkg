@@ -9,7 +9,7 @@ from secrets import token_bytes as random_bytes
 import sys
 
 from chilldkg_ref.chilldkg import (
-    hostpubkey,
+    hostpubkey_gen,
     participant_step1,
     participant_step2,
     participant_finalize,
@@ -112,7 +112,7 @@ def simulate_chilldkg_full(hostseckeys, t) -> List[Tuple[DKGOutput, RecoveryData
     n = len(hostseckeys)
     hostpubkeys = []
     for i in range(n):
-        hostpubkeys += [hostpubkey(hostseckeys[i])]
+        hostpubkeys += [hostpubkey_gen(hostseckeys[i])]
 
     # TODO also print params_id
     params = SessionParams(hostpubkeys, t)

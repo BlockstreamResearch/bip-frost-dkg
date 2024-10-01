@@ -90,7 +90,7 @@ def simulate_chilldkg(
 
     hostpubkeys = []
     for i in range(n):
-        hostpubkeys += [chilldkg.hostpubkey(hostseckeys[i])]
+        hostpubkeys += [chilldkg.hostpubkey_gen(hostseckeys[i])]
 
     params = chilldkg.SessionParams(hostpubkeys, t)
 
