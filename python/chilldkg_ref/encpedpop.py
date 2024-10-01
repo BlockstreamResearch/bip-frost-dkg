@@ -116,7 +116,7 @@ class ParticipantState(NamedTuple):
     pubnonce: bytes
     enckeys: List[bytes]
     idx: int
-    my_share: Scalar
+    self_share: Scalar
 
 
 def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
