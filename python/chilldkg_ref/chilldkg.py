@@ -650,7 +650,7 @@ def recover(
 
         # Decrypt share
         enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
-        session_seed = encpedpop.derive_session_seed(
+        simpl_seed = encpedpop.derive_simpl_seed(
             hostseckey, pubnonces[idx], enc_context
         )
         secshare = encpedpop.decrypt_sum(
@@ -663,7 +663,7 @@ def recover(
         )
 
         # Derive my_share
-        vss = VSS.generate(session_seed, t)
+        vss = VSS.generate(simpl_seed, t)
         my_share = vss.secshare_for(idx)
         secshare += my_share
 

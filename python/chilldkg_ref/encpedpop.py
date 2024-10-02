@@ -125,7 +125,7 @@ def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
 
 
-def derive_session_seed(seed: bytes, pubnonce: bytes, enc_context: bytes) -> bytes:
+def derive_simpl_seed(seed: bytes, pubnonce: bytes, enc_context: bytes) -> bytes:
     return prf(seed, "encpedpop seed", pubnonce + enc_context)
 
 
@@ -147,12 +147,12 @@ def participant_step1(
     # to deserialize it again, which involves computing a square root to obtain
     # the y coordinate.
     pubnonce = pubkey_gen_plain(secnonce)
-    # Add enc_context again to the derivation of the session seed, just in case
-    # someone derives secnonce differently.
-    session_seed = derive_session_seed(seed, pubnonce, enc_context)
+    # Add enc_context again to the derivation of the SimplPedPop seed, just in
+    # case someone derives secnonce differently.
+    simpl_seed = derive_simpl_seed(seed, pubnonce, enc_context)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
-        session_seed, t, n, idx
+        simpl_seed, t, n, idx
     )
     assert len(shares) == n
 
