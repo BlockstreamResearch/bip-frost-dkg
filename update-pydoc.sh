@@ -36,3 +36,5 @@ sed -z -i README.md -e 's/<!--pydoc.md-->.*<!--end of pydoc.md-->/<!--pydoc.md--
 sed -i README.md -e '/<!--pydoc.md-->/r pydoc.md'
 # Remove temporary file
 rm pydoc.md
+
+echo "Updated pydoc successfully"
