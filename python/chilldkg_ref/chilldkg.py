@@ -408,7 +408,15 @@ def participant_step1(
 
     idx = hostpubkeys.index(hostpubkey)  # ValueError if not found
     enc_state, enc_pmsg = encpedpop.participant_step1(
-        hostseckey, t, hostpubkeys, idx, random
+        # We know that EncPedPop uses its seed only by feeding it to a hash
+        # function. Thus, it is sufficient that the seed has a high entropy,
+        # and so we can simply pass the hostseckey as seed.
+        seed=hostseckey,
+        t=t,
+        # This requires the joint security of Schnorr signatures and ECDH.
+        enckeys=hostpubkeys,
+        idx=idx,
+        random=random,
     )  # SecKeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
@@ -452,7 +460,10 @@ def participant_step2(
     enc_cmsg, enc_secshares = cmsg1
 
     enc_dkg_output, eq_input = encpedpop.participant_step2(
-        enc_state, hostseckey, enc_cmsg, enc_secshares[idx]
+        state=enc_state,
+        deckey=hostseckey,
+        cmsg=enc_cmsg,
+        enc_secshare=enc_secshares[idx],
     )
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
@@ -541,7 +552,7 @@ def coordinator_step1(
     (hostpubkeys, t) = params
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
-        [pmsg1.enc_pmsg for pmsg1 in pmsgs1], t, hostpubkeys
+        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1], t=t, enckeys=hostpubkeys
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
