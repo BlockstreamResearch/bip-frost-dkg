@@ -353,10 +353,11 @@ A detailed treatment of these out-of-band methods is out of scope of this docume
 
 Instead of performing an out-of-band check as the last step of the DKG,
 ChillDKG relies on a more direct approach:
-ChillDKG is a wrapper around EncPedPop,
+It is a wrapper around EncPedPop,
 which instantiates the required equality check protocol with a concrete in-band protocol CertEq.
 CertEq assumes that each participant holds a long-term key pair of a signature scheme, called the *host key pair*.
-ChillDKG repurposes the host key pairs by passing them down as ECDH key pairs to EncPedPop.[^joint-security]
+ChillDKG repurposes the host key pairs as the ECDH key pairs required by EncPedPop,[^joint-security]
+and it repurposes the host secret key as the seed required by EncPedPop.
 
 [^joint-security]: Schnorr signatures and ECDH-based KEMs are known to be jointly secure [Theorem 2, [DLPSS11](https://eprint.iacr.org/2011/615)]
 under the combination of the gap-DH and gap-DL assumptions, and this result can be adapted to the MR-KEM used in EncPedPop.
