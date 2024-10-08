@@ -16,7 +16,7 @@ from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
 from secp256k1proto.keys import pubkey_gen_plain
 from secp256k1proto.util import int_from_bytes, bytes_from_int
 
-from .vss import VSS, VSSCommitment
+from .vss import VSSCommitment
 from . import encpedpop
 from .util import (
     BIP_TAG,
@@ -412,6 +412,7 @@ def participant_step1(
         # function. Thus, it is sufficient that the seed has a high entropy,
         # and so we can simply pass the hostseckey as seed.
         seed=hostseckey,
+        deckey=hostseckey,
         t=t,
         # This requires the joint security of Schnorr signatures and ECDH.
         enckeys=hostpubkeys,
@@ -650,9 +651,6 @@ def recover(
 
         # Decrypt share
         enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
-        simpl_seed = encpedpop.derive_simpl_seed(
-            hostseckey, pubnonces[idx], enc_context
-        )
         secshare = encpedpop.decrypt_sum(
             hostseckey,
             hostpubkeys[idx],
@@ -661,11 +659,6 @@ def recover(
             enc_context,
             idx,
         )
-
-        # Derive my_share
-        vss = VSS.generate(simpl_seed, t)
-        my_share = vss.secshare_for(idx)
-        secshare += my_share
 
         # This is just a sanity check. Our signature is valid, so we have done
         # this check already during the actual session.
