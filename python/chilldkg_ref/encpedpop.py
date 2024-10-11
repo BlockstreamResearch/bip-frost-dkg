@@ -112,6 +112,20 @@ def decaps(
     return pad
 
 
+def decrypt(
+    deckey: bytes,
+    enckey: bytes,
+    pubnonce: bytes,
+    context: bytes,
+    idx: int,
+    sender_idx: int,
+    ciphertext: Scalar,
+) -> Scalar:
+    pad = decaps(deckey, enckey, pubnonce, context, idx, sender_idx)
+    plaintext: Scalar = ciphertext - pad
+    return plaintext
+
+
 def decrypt_sum(
     deckey: bytes,
     enckey: bytes,
