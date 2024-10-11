@@ -94,7 +94,7 @@ def decrypt_sum(
     if idx >= len(pubnonces):
         raise IndexError
     context_ = idx.to_bytes(4, byteorder="big") + context
-    secshare = sum_ciphertexts
+    sum_plaintexts = sum_ciphertexts
     for i, pubnonce in enumerate(pubnonces):
         if i == idx:
             pad = self_pad(deckey, context_)
@@ -106,8 +106,8 @@ def decrypt_sum(
                 context=context_,
                 sending=False,
             )
-        secshare = secshare - pad
-    return secshare
+        sum_plaintexts = sum_plaintexts - pad
+    return sum_plaintexts
 
 
 ###
