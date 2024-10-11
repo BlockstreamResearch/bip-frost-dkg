@@ -93,7 +93,8 @@ class VSS:
         # Return the secret share for the participant with index i.
         #
         # This computes f(i+1).
-
+        if i < 0:
+            raise ValueError(f"Invalid participant index: {i}")
         x = Scalar(i + 1)
         # Ensure we don't compute f(0), which is the secret.
         assert x != Scalar(0)

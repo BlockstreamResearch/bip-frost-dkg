@@ -94,7 +94,7 @@ def decrypt_sum(
     if idx >= len(pubnonces):
         raise IndexError
     context_ = idx.to_bytes(4, byteorder="big") + context
-    secshare = sum_ciphertexts
+    sum_plaintexts = sum_ciphertexts
     for i, pubnonce in enumerate(pubnonces):
         if i == idx:
             pad = self_pad(deckey, context_)
@@ -106,8 +106,8 @@ def decrypt_sum(
                 context=context_,
                 sending=False,
             )
-        secshare = secshare - pad
-    return secshare
+        sum_plaintexts = sum_plaintexts - pad
+    return sum_plaintexts
 
 
 ###
@@ -243,5 +243,10 @@ def coordinator_step(
     # in encpedpop.CoordinatorMsg, but only return it as a side output, so that
     # chilldkg.coordinator_step can pick it up. Implementations of pure
     # EncPedPop will need to decide how to transmit enc_secshares[i] to
-    # participant i; we leave this unspecified.
-    return CoordinatorMsg(simpl_cmsg, pubnonces), dkg_output, eq_input, enc_secshares
+    # participant i for participant_step2(); we leave this unspecified.
+    return (
+        CoordinatorMsg(simpl_cmsg, pubnonces),
+        dkg_output,
+        eq_input,
+        enc_secshares,
+    )

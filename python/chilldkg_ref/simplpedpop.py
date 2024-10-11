@@ -171,17 +171,15 @@ def coordinator_step(
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
     # Sum the commitments to the i-th coefficients for i > 0
     #
-    # This procedure is introduced by Pedersen in Section 5.1 of
-    # 'Non-Interactive and Information-Theoretic Secure Verifiable Secret
-    # Sharing'.
-    #
-    # We cannot sum the commitments to the secrets (i == 0) because they'll be
-    # necessary to check the pops.
+    # This procedure corresponds to the one described by Pedersen in Section 5.1
+    # of "Non-Interactive and Information-Theoretic Secure Verifiable Secret
+    # Sharing". However, we don't sum the commitments to the secrets (i == 0)
+    # because they'll be necessary to check the pops.
     coms_to_secrets = [pmsg.com.commitment_to_secret() for pmsg in pmsgs]
     # But we can sum the commitments to the non-constant terms.
     sum_coms_to_nonconst_terms = [
         GE.sum(*(pmsg.com.commitment_to_nonconst_terms()[j] for pmsg in pmsgs))
-        for j in range(0, t - 1)
+        for j in range(t - 1)
     ]
     pops = [pmsg.pop for pmsg in pmsgs]
     cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
