@@ -83,6 +83,30 @@ def encrypt_multi(
     return ciphertexts
 
 
+def decaps_multi(
+    deckey: bytes,
+    enckey: bytes,
+    pubnonces: List[bytes],
+    context: bytes,
+    idx: int,
+) -> List[Scalar]:
+    context_ = idx.to_bytes(4, byteorder="big") + context
+    pads = []
+    for sender_idx, pubnonce in enumerate(pubnonces):
+        if sender_idx == idx:
+            pad = self_pad(deckey, context_)
+        else:
+            pad = ecdh(
+                seckey=deckey,
+                my_pubkey=enckey,
+                their_pubkey=pubnonce,
+                context=context_,
+                sending=False,
+            )
+        pads.append(pad)
+    return pads
+
+
 def decrypt_sum(
     deckey: bytes,
     enckey: bytes,
@@ -93,20 +117,8 @@ def decrypt_sum(
 ) -> Scalar:
     if idx >= len(pubnonces):
         raise IndexError
-    context_ = idx.to_bytes(4, byteorder="big") + context
-    sum_plaintexts = sum_ciphertexts
-    for i, pubnonce in enumerate(pubnonces):
-        if i == idx:
-            pad = self_pad(deckey, context_)
-        else:
-            pad = ecdh(
-                seckey=deckey,
-                my_pubkey=enckey,
-                their_pubkey=pubnonce,
-                context=context_,
-                sending=False,
-            )
-        sum_plaintexts = sum_plaintexts - pad
+    pads = decaps_multi(deckey, enckey, pubnonces, context, idx)
+    sum_plaintexts: Scalar = sum_ciphertexts - Scalar.sum(*pads)
     return sum_plaintexts
 
 
