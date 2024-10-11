@@ -659,9 +659,9 @@ def recover(
             hostseckey,
             hostpubkeys[idx],
             pubnonces,
-            enc_secshares[idx],
             enc_context,
             idx,
+            enc_secshares[idx],
         )
 
         # This is just a sanity check. Our signature is valid, so we have done

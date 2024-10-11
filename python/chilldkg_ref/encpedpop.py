@@ -79,12 +79,14 @@ def encrypt_multi(
     pubnonce: bytes,
     deckey: bytes,
     enckeys: List[bytes],
-    messages: List[Scalar],
     context: bytes,
     idx: int,
+    plaintexts: List[Scalar],
 ) -> List[Scalar]:
     pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
-    ciphertexts = [message + pad for message, pad in zip(messages, pads, strict=True)]
+    ciphertexts = [
+        plaintext + pad for plaintext, pad in zip(plaintexts, pads, strict=True)
+    ]
     return ciphertexts
 
 
@@ -116,9 +118,9 @@ def decrypt_sum(
     deckey: bytes,
     enckey: bytes,
     pubnonces: List[bytes],
-    sum_ciphertexts: Scalar,
     context: bytes,
     idx: int,
+    sum_ciphertexts: Scalar,
 ) -> Scalar:
     if idx >= len(pubnonces):
         raise IndexError
@@ -194,7 +196,7 @@ def participant_step1(
     assert len(shares) == n
 
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, deckey, enckeys, shares, enc_context, idx
+        secnonce, pubnonce, deckey, enckeys, enc_context, idx, shares
     )
 
     pmsg = ParticipantMsg(simpl_pmsg, pubnonce, enc_shares)
@@ -217,7 +219,7 @@ def participant_step2(
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
     secshare = decrypt_sum(
-        deckey, enckeys[idx], pubnonces, enc_secshare, enc_context, idx
+        deckey, enckeys[idx], pubnonces, enc_context, idx, enc_secshare
     )
     dkg_output, eq_input = simplpedpop.participant_step2(
         simpl_state, simpl_cmsg, secshare
