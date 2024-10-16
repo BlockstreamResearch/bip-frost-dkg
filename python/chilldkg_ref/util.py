@@ -22,7 +22,15 @@ class ThresholdError(ValueError):
     pass
 
 
-class InvalidContributionError(Exception):
+class ProtocolError(Exception):
+    pass
+
+
+class FaultyParticipantError(ProtocolError):
     def __init__(self, participant: Optional[int], error: str) -> None:
-        self.participant = participant
+        self.participant = participant  # None means we don't know
         self.contrib = error
+
+
+class FaultyCoordinatorError(ProtocolError):
+    pass
