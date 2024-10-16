@@ -754,7 +754,7 @@ Perform a participant's first step of a ChillDKG session.
 #### participant\_step2
 
 ```python
-def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1) -> Tuple[ParticipantState2, ParticipantMsg2]
+def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1, blame_rec: Optional[encpedpop.BlameRecord]) -> Tuple[ParticipantState2, ParticipantMsg2]
 ```
 
 Perform a participant's second step of a ChillDKG session.
@@ -779,6 +779,7 @@ Perform a participant's second step of a ChillDKG session.
 *Raises*:
 
 - `SecKeyError` - If the length of `hostseckey` is not 32 bytes.
+  FIXME
 - `FaultyParticipantError` - If `cmsg1` is invalid. This can happen if
   another participant has sent an invalid message to the coordinator,
   or if the coordinator has sent an invalid `cmsg1`.
@@ -837,7 +838,7 @@ of the success of the DKG session by presenting recovery data to us.
 #### coordinator\_step1
 
 ```python
-def coordinator_step1(pmsgs1: List[ParticipantMsg1], params: SessionParams) -> Tuple[CoordinatorState, CoordinatorMsg1]
+def coordinator_step1(pmsgs1: List[ParticipantMsg1], params: SessionParams, blame: bool = True) -> Tuple[CoordinatorState, CoordinatorMsg1, List[Optional[encpedpop.BlameRecord]]]
 ```
 
 Perform the coordinator's first step of a ChillDKG session.
