@@ -9,7 +9,7 @@ their arguments and return values, and the exceptions they raise; see also the
 """
 
 from secrets import token_bytes as random_bytes
-from typing import Tuple, List, NamedTuple, NewType, Optional
+from typing import Tuple, List, NamedTuple, NewType, Optional, NoReturn
 
 from secp256k1proto.secp256k1 import Scalar, GE
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
@@ -26,6 +26,7 @@ from .util import (
     ThresholdError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
+    UnknownFaultyPartyError,
 )
 
 __all__ = [
@@ -43,6 +44,7 @@ __all__ = [
     "ThresholdError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
+    "UnknownFaultyPartyError",
     "InvalidRecoveryDataError",
     "DuplicateHostpubkeyError",
     "SessionNotFinalizedError",
@@ -51,6 +53,7 @@ __all__ = [
     "DKGOutput",
     "ParticipantMsg1",
     "ParticipantMsg2",
+    "CoordinatorBlameMsg",
     "ParticipantState1",
     "ParticipantState2",
     "CoordinatorMsg1",
@@ -256,7 +259,7 @@ def params_id(params: SessionParams) -> bytes:
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
-    (hostpubkeys, t) = params
+    hostpubkeys, t = params
 
     t_bytes = t.to_bytes(4, byteorder="big")  # OverflowError if t >= 2**32
     params_id = tagged_hash_bip_dkg(
@@ -306,6 +309,10 @@ class CoordinatorMsg1(NamedTuple):
 
 class CoordinatorMsg2(NamedTuple):
     cert: bytes
+
+
+class CoordinatorBlameMsg(NamedTuple):
+    enc_cblame: encpedpop.CoordinatorBlameMsg
 
 
 def deserialize_recovery_data(
@@ -448,6 +455,7 @@ def participant_step2(
 
     Raises:
         SecKeyError: If the length of `hostseckey` is not 32 bytes.
+        FIXME
         FaultyParticipantOrCoordinatorError: If `cmsg1` is invalid. This can
             happen if another participant has sent an invalid message to the
             coordinator, or if the coordinator has sent an invalid `cmsg1`.
@@ -459,8 +467,9 @@ def participant_step2(
             coordinator is malicious or network connections are unreliable, and
             as a consequence, the caller should not conclude that the party
             hinted at is malicious.
+        UnknownFaultyPartyError: TODO
     """
-    (params, idx, enc_state) = state1
+    params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
     enc_dkg_output, eq_input = encpedpop.participant_step2(
@@ -514,9 +523,26 @@ def participant_finalize(
         SessionNotFinalizedError: If finalizing the DKG session was not
             successful from this participant's perspective (see above).
     """
-    (params, eq_input, dkg_output) = state2
+    params, eq_input, dkg_output = state2
     certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
+
+
+def participant_blame(
+    hostseckey: bytes,
+    state1: ParticipantState1,
+    cmsg1: CoordinatorMsg1,
+    cblame: CoordinatorBlameMsg,
+) -> NoReturn:
+    """Perform a participant's blame step of a ChillDKG session. TODO"""
+    _, idx, enc_state = state1
+    encpedpop.participant_blame(
+        state=enc_state,
+        deckey=hostseckey,
+        cmsg=cmsg1.enc_cmsg,
+        enc_secshare=cmsg1.enc_secshares[idx],
+        cblame=cblame.enc_cblame,
+    )
 
 
 ###
@@ -553,10 +579,12 @@ def coordinator_step1(
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
-    (hostpubkeys, t) = params
+    hostpubkeys, t = params
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
-        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1], t=t, enckeys=hostpubkeys
+        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1],
+        t=t,
+        enckeys=hostpubkeys,
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
@@ -589,10 +617,16 @@ def coordinator_finalize(
             received messages from other participants via a communication
             channel beside the coordinator (or be malicious).
     """
-    (params, eq_input, dkg_output) = state
+    params, eq_input, dkg_output = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     certeq_verify(params.hostpubkeys, eq_input, cert)  # SessionNotFinalizedError
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
+
+
+def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]:
+    """Perform the coordinator's blame step of a ChillDKG session. TODO"""
+    enc_cblames = encpedpop.coordinator_blame([pmsg.enc_pmsg for pmsg in pmsgs])
+    return [CoordinatorBlameMsg(enc_cblame) for enc_cblame in enc_cblames]
 
 
 ###

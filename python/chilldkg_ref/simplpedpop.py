@@ -1,5 +1,5 @@
 from secrets import token_bytes as random_bytes
-from typing import List, NamedTuple, NewType, Tuple, Optional
+from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
 
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
 from secp256k1proto.secp256k1 import GE, Scalar
@@ -12,6 +12,15 @@ from .util import (
     UnknownFaultyPartyError,
 )
 from .vss import VSS, VSSCommitment
+
+
+###
+### Exceptions
+###
+
+
+class SecshareSumError(ValueError):
+    pass
 
 
 ###
@@ -61,6 +70,10 @@ class CoordinatorMsg(NamedTuple):
                 for P in self.coms_to_secrets + self.sum_coms_to_nonconst_terms
             ]
         ) + b"".join(self.pops)
+
+
+class CoordinatorBlameMsg(NamedTuple):
+    partial_pubshares: List[GE]
 
 
 ###
@@ -184,10 +197,14 @@ def participant_step2(
             )
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
     threshold_pubkey = sum_coms.commitment_to_secret()
-    pubshares = [sum_coms.pubshare(i) for i in range(n)]
-    if not VSSCommitment.verify_secshare(secshare, pubshares[idx]):
-        raise UnknownFaultyPartyError("Received invalid secshare")
+    pubshare = sum_coms.pubshare(idx)
 
+    if not VSSCommitment.verify_secshare(secshare, pubshare):
+        raise UnknownFaultyPartyError(
+            "Received invalid secshare, consider blaming to determine faulty party",
+        )
+
+    pubshares = [sum_coms.pubshare(i) if i != idx else pubshare for i in range(n)]
     dkg_output = DKGOutput(
         secshare.to_bytes(),
         threshold_pubkey.to_bytes_compressed(),
@@ -195,6 +212,45 @@ def participant_step2(
     )
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
     return dkg_output, eq_input
+
+
+def participant_blame(
+    state: ParticipantState,
+    secshare: Scalar,
+    partial_secshares: List[Scalar],
+    cblame: CoordinatorBlameMsg,
+) -> NoReturn:
+    _, n, idx, _ = state
+    partial_pubshares = cblame.partial_pubshares
+
+    if Scalar.sum(*partial_secshares) != secshare:
+        raise SecshareSumError("Sum of partial secshares not equal to secshare")
+
+    for i in range(n):
+        if not VSSCommitment.verify_secshare(
+            partial_secshares[i], partial_pubshares[i]
+        ):
+            if i != idx:
+                raise FaultyParticipantOrCoordinatorError(
+                    i, "Participant sent invalid partial secshare"
+                )
+            else:
+                # We are not faulty, so the coordinator must be.
+                raise FaultyCoordinatorError(
+                    "Coordinator fiddled with the share from me to myself"
+                )
+
+    # We now know:
+    #  - The sum of the partial secshares is equal to the secshare.
+    #  - Every partial secshare matches its corresponding partial pubshare.
+    #  - The secshare does not match the pubshare (because the caller shouldn't
+    #  have called us otherwise).
+    # Therefore, the sum of the partial pubshares is not equal to the pubshare,
+    # and this is the coordinator's fault.
+    raise FaultyCoordinatorError(
+        "Sum of partial pubshares not equal to pubshare (or participant_blame() "
+        "was called even though participant_step2() was successful)"
+    )
 
 
 ###
@@ -223,6 +279,7 @@ def coordinator_step(
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
+
     dkg_output = DKGOutput(
         None,
         threshold_pubkey.to_bytes_compressed(),
@@ -230,3 +287,9 @@ def coordinator_step(
     )
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
     return cmsg, dkg_output, eq_input
+
+
+def coordinator_blame(pmsgs: List[ParticipantMsg]) -> List[CoordinatorBlameMsg]:
+    n = len(pmsgs)
+    all_partial_pubshares = [[pmsg.com.pubshare(i) for pmsg in pmsgs] for i in range(n)]
+    return [CoordinatorBlameMsg(all_partial_pubshares[i]) for i in range(n)]

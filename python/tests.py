@@ -10,7 +10,7 @@ from secrets import token_bytes as random_bytes
 from secp256k1proto.secp256k1 import GE, G, Scalar
 from secp256k1proto.keys import pubkey_gen_plain
 
-from chilldkg_ref.util import prf
+from chilldkg_ref.util import prf, FaultyCoordinatorError
 from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
 import chilldkg_ref.simplpedpop as simplpedpop
 import chilldkg_ref.encpedpop as encpedpop
@@ -40,16 +40,31 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     prets = []
     for i in range(n):
         prets += [simplpedpop.participant_step1(seeds[i], t, n, i)]
-    pmsgs = [ret[1] for ret in prets]
+
+    pstates = [pstate for (pstate, _, _) in prets]
+    pmsgs = [pmsg for (_, pmsg, _) in prets]
 
     cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
+    blame_recs = simplpedpop.coordinator_blame(pmsgs)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
-        partial_secshares = [pret[2][i] for pret in prets]
-        secshare = simplpedpop.participant_step2_prepare_secshare(partial_secshares)
-        pre_finalize_rets += [
-            simplpedpop.participant_step2(prets[i][0], cmsg, secshare)
+        partial_secshares = [
+            partial_secshares_for[i] for (_, _, partial_secshares_for) in prets
         ]
+        # TODO Test that the protocol fails when wrong shares are sent.
+        # if i == n - 1:
+        #     partial_secshares[-1] += Scalar(17)
+        secshare = simplpedpop.participant_step2_prepare_secshare(partial_secshares)
+        pre_finalize_rets += [simplpedpop.participant_step2(pstates[i], cmsg, secshare)]
+        # This was a correct run, so blame should fail.
+        try:
+            simplpedpop.participant_blame(
+                pstates[i], secshare, partial_secshares, blame_recs[i]
+            )
+        except FaultyCoordinatorError:
+            pass
+        else:
+            assert False
     return pre_finalize_rets
 
 
@@ -78,12 +93,22 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     pstates = [pstate for (pstate, _) in enc_prets1]
 
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
+    blame_recs = encpedpop.coordinator_blame(pmsgs)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
         deckey = enc_prets0[i][0]
         pre_finalize_rets += [
             encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
         ]
+        try:
+            encpedpop.participant_blame(
+                pstates[i], deckey, cmsg, enc_secshares[i], blame_recs[i]
+            )
+        # This was a correct run, so blame should fail.
+        except FaultyCoordinatorError:
+            pass
+        else:
+            assert False
     return pre_finalize_rets
 
 
@@ -105,11 +130,21 @@ def simulate_chilldkg(
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
-    cstate, cmsg = chilldkg.coordinator_step1(pmsgs, params)
+    cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs, params)
+    blame_recs = chilldkg.coordinator_blame(pmsgs)
 
     prets2 = []
     for i in range(n):
-        prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg)]
+        prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg1)]
+        # This was a correct run, so blame should fail.
+        try:
+            chilldkg.participant_blame(
+                hostseckeys[i], pstates1[i], cmsg1, blame_recs[i]
+            )
+        except FaultyCoordinatorError:
+            pass
+        else:
+            assert False
 
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
         cstate, [pret[1] for pret in prets2]
