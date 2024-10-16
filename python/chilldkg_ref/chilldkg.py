@@ -256,7 +256,7 @@ def params_id(params: SessionParams) -> bytes:
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
-    (hostpubkeys, t) = params
+    hostpubkeys, t = params
 
     t_bytes = t.to_bytes(4, byteorder="big")  # OverflowError if t >= 2**32
     params_id = tagged_hash_bip_dkg(
@@ -448,6 +448,7 @@ def participant_step2(
 
     Raises:
         SecKeyError: If the length of `hostseckey` is not 32 bytes.
+        FIXME
         FaultyParticipantError: If `cmsg1` is invalid. This can happen if
             another participant has sent an invalid message to the coordinator,
             or if the coordinator has sent an invalid `cmsg1`.
@@ -460,7 +461,7 @@ def participant_step2(
             as a consequence, the caller should not conclude that the party
             hinted at is malicious.
     """
-    (params, idx, enc_state) = state1
+    params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
     enc_dkg_output, eq_input = encpedpop.participant_step2(
@@ -514,9 +515,26 @@ def participant_finalize(
         SessionNotFinalizedError: If finalizing the DKG session was not
             successful from this participant's perspective (see above).
     """
-    (params, eq_input, dkg_output) = state2
+    params, eq_input, dkg_output = state2
     certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
+
+
+def participant_blame(
+    hostseckey: bytes,
+    state1: ParticipantState1,
+    cmsg1: CoordinatorMsg1,
+    blame_rec: encpedpop.BlameRecord,
+) -> Tuple[DKGOutput, RecoveryData]:
+    """Perform a participant's blame step of a ChillDKG session. TODO"""
+    _, idx, enc_state = state1
+    return encpedpop.participant_blame(
+        state=enc_state,
+        deckey=hostseckey,
+        cmsg=cmsg1.enc_cmsg,
+        enc_secshare=cmsg1.enc_secshares[idx],
+        blame_rec=blame_rec,
+    )
 
 
 ###
@@ -553,10 +571,12 @@ def coordinator_step1(
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
     params_validate(params)
-    (hostpubkeys, t) = params
+    hostpubkeys, t = params
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
-        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1], t=t, enckeys=hostpubkeys
+        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1],
+        t=t,
+        enckeys=hostpubkeys,
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
@@ -589,10 +609,14 @@ def coordinator_finalize(
             received messages from other participants via a communication
             channel beside the coordinator (or be malicious).
     """
-    (params, eq_input, dkg_output) = state
+    params, eq_input, dkg_output = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     certeq_verify(params.hostpubkeys, eq_input, cert)  # SessionNotFinalizedError
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
+
+
+def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[encpedpop.BlameRecord]:
+    return encpedpop.coordinator_blame([pmsg.enc_pmsg for pmsg in pmsgs])
 
 
 ###

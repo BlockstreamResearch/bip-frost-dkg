@@ -779,6 +779,7 @@ Perform a participant's second step of a ChillDKG session.
 *Raises*:
 
 - `SecKeyError` - If the length of `hostseckey` is not 32 bytes.
+  FIXME
 - `FaultyParticipantError` - If `cmsg1` is invalid. This can happen if
   another participant has sent an invalid message to the coordinator,
   or if the coordinator has sent an invalid `cmsg1`.
@@ -833,6 +834,14 @@ of the success of the DKG session by presenting recovery data to us.
 
 - `SessionNotFinalizedError` - If finalizing the DKG session was not
   successful from this participant's perspective (see above).
+
+#### participant\_blame
+
+```python
+def participant_blame(hostseckey: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1, blame_rec: encpedpop.BlameRecord) -> Tuple[DKGOutput, RecoveryData]
+```
+
+Perform a participant's blame step of a ChillDKG session. TODO
 
 #### coordinator\_step1
 
