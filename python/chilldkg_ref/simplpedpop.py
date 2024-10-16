@@ -3,7 +3,14 @@ from typing import List, NamedTuple, NewType, Tuple, Optional
 
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
 from secp256k1proto.secp256k1 import GE, Scalar
-from .util import BIP_TAG, SecretKeyError, InvalidContributionError, ThresholdError
+from .util import (
+    BIP_TAG,
+    SecretKeyError,
+    ThresholdError,
+    FaultyParticipantOrCoordinatorError,
+    FaultyCoordinatorError,
+    UnknownFaultyPartyError,
+)
 from .vss import VSS, VSSCommitment
 
 
@@ -122,14 +129,14 @@ def participant_step2(
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
 
-    # TODO Raise InvalidContributionError when deserizaltion yields wrong lengths
+    # TODO Raise FaultyCoordinatorError when deserizaltion yields wrong lengths
     assert len(coms_to_secrets) == n
     assert len(sum_coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
 
     if coms_to_secrets[idx] != com_to_secret:
-        raise InvalidContributionError(
-            None, "Coordinator sent unexpected first group element for local index"
+        raise FaultyCoordinatorError(
+            "Coordinator sent unexpected first group element for local index"
         )
 
     for i in range(n):
@@ -137,20 +144,21 @@ def participant_step2(
             # No need to check our own pop.
             continue
         if coms_to_secrets[i].infinity:
-            raise InvalidContributionError(i, "Participant sent invalid commitment")
+            raise FaultyParticipantOrCoordinatorError(
+                i, "Participant sent invalid commitment"
+            )
         # This can be optimized: We serialize the coms_to_secrets[i] here, but
         # schnorr_verify (inside pop_verify) will need to deserialize it again, which
         # involves computing a square root to obtain the y coordinate.
         if not pop_verify(pops[i], coms_to_secrets[i].to_bytes_xonly(), i):
-            raise InvalidContributionError(
+            raise FaultyParticipantOrCoordinatorError(
                 i, "Participant sent invalid proof-of-knowledge"
             )
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
     if not VSSCommitment.verify_secshare(secshare, pubshares[idx]):
-        # TODO What to raise here? We don't know who was wrong.
-        raise InvalidContributionError(None, "Received invalid secshare.")
+        raise UnknownFaultyPartyError("Received invalid secshare")
 
     dkg_output = DKGOutput(
         secshare.to_bytes(),

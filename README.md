@@ -672,7 +672,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 def params_id(params: SessionParams) -> bytes
 ```
 
-Returns the parameters ID, a unique representation of the`SessionParams`.
+Return the parameters ID, a unique representation of the `SessionParams`.
 
 In the common scenario that the participants obtain host public keys from
 the other participants over channels that do not provide end-to-end
@@ -693,8 +693,8 @@ have obtained authentic public host keys.
 
 *Raises*:
 
-- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
-  for some `i`, which is indicated as part of the exception.
+- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
+  public key for some `i`, which is indicated in the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -745,8 +745,8 @@ Perform a participant's first step of a ChillDKG session.
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
 - `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
-- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
-  for some `i`, which is indicated as part of the exception.
+- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
+  public key for some `i`, which is indicated in the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -779,9 +779,9 @@ Perform a participant's second step of a ChillDKG session.
 *Raises*:
 
 - `SecKeyError` - If the length of `hostseckey` is not 32 bytes.
-- `InvalidContributionError` - If `cmsg1` is invalid. This can happen if
-  another participant has sent an invalid message to the coordinator,
-  or if the coordinator has sent an invalid `cmsg1`.
+- `FaultyParticipantOrCoordinatorError` - If `cmsg1` is invalid. This can
+  happen if another participant has sent an invalid message to the
+  coordinator, or if the coordinator has sent an invalid `cmsg1`.
 
   Further information is provided as part of the exception, including
   a hint about which party might be to blame for the problem. The hint
@@ -858,8 +858,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Raises*:
 
-- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
-  for some `i`, which is indicated as part of the exception.
+- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
+  public key for some `i`, which is indicated in the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).

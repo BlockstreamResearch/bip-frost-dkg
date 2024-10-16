@@ -6,7 +6,12 @@ from secp256k1proto.keys import pubkey_gen_plain
 from secp256k1proto.util import int_from_bytes
 
 from . import simplpedpop
-from .util import tagged_hash_bip_dkg, prf, InvalidContributionError
+from .util import (
+    tagged_hash_bip_dkg,
+    prf,
+    FaultyParticipantOrCoordinatorError,
+    FaultyCoordinatorError,
+)
 
 
 ###
@@ -208,7 +213,7 @@ def participant_step2(
 
     reported_pubnonce = pubnonces[idx]
     if reported_pubnonce != pubnonce:
-        raise InvalidContributionError(None, "Coordinator replied with wrong pubnonce")
+        raise FaultyCoordinatorError("Coordinator replied with wrong pubnonce")
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
     secshare = decrypt_sum(
@@ -240,7 +245,7 @@ def coordinator_step(
     pubnonces = [pmsg.pubnonce for pmsg in pmsgs]
     for i in range(n):
         if len(pmsgs[i].enc_shares) != n:
-            raise InvalidContributionError(
+            raise FaultyParticipantOrCoordinatorError(
                 i, "Participant sent enc_shares with invalid length"
             )
     enc_secshares = [
