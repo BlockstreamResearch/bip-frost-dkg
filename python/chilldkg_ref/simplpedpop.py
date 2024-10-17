@@ -102,7 +102,15 @@ class ParticipantState(NamedTuple):
 
 def participant_step1(
     seed: bytes, t: int, n: int, idx: int
-) -> Tuple[ParticipantState, ParticipantMsg, List[Scalar]]:
+) -> Tuple[
+    ParticipantState,
+    ParticipantMsg,
+    # The following return value is a list of n partial secret shares generated
+    # by this participant. The item at index i is supposed to be made available
+    # to participant i privately, e.g., via an external secure channel. See also
+    # the function participant_step2_prepare_secshare().
+    List[Scalar],
+]:
     if t > n:
         raise ThresholdError
     if idx >= n:
@@ -111,14 +119,34 @@ def participant_step1(
         raise SecretKeyError
 
     vss = VSS.generate(seed, t)  # OverflowError if t >= 2**32
-    shares = vss.secshares(n)
+    partial_secshares_from_me = vss.secshares(n)
     pop = pop_prove(vss.secret().to_bytes(), idx)
 
     com = vss.commit()
     com_to_secret = com.commitment_to_secret()
     msg = ParticipantMsg(com, pop)
     state = ParticipantState(t, n, idx, com_to_secret)
-    return state, msg, shares
+    return state, msg, partial_secshares_from_me
+
+
+# Helper function to prepare the secshare for participant idx's
+# participant_step2() by summing the partial_secshares returned by all
+# participants' participant_step1().
+#
+# In a pure run of SimplPedPop where secret shares are sent via external secure
+# channels (i.e., EncPedPop is not used), each participant needs to run this
+# function in preparation of their participant_step2(). Since this computation
+# involves secret data, it cannot be delegated to the coordinator as opposed to
+# other aggregation steps.
+#
+# If EncPedPop is used instead (as a wrapper of SimplPedPop), the coordinator
+# can securely aggregate the encrypted partial secshares into an encrypted
+# secshare by exploiting the additively homomorphic property of the encryption.
+def participant_step2_prepare_secshare(
+    partial_secshares: List[Scalar],
+) -> Scalar:
+    secshare = Scalar.sum(*partial_secshares)
+    return secshare
 
 
 def participant_step2(

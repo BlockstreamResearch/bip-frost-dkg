@@ -45,7 +45,8 @@ def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
-        secshare = Scalar.sum(*([pret[2][i] for pret in prets]))
+        partial_secshares = [pret[2][i] for pret in prets]
+        secshare = simplpedpop.participant_step2_prepare_secshare(partial_secshares)
         pre_finalize_rets += [
             simplpedpop.participant_step2(prets[i][0], cmsg, secshare)
         ]
