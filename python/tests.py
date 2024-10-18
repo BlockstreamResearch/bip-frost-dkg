@@ -35,19 +35,26 @@ def test_vss_correctness():
             )
 
 
-def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
+def simulate_simplpedpop(seeds, t, blame) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     prets = []
     for i in range(n):
-        prets += [simplpedpop.participant_step1(seeds[i], t, n, i)]
+        prets += [simplpedpop.participant_step1(seeds[i], t, n, i, blame)]
     pmsgs = [ret[1] for ret in prets]
 
-    cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
+    cmsg, cout, ceq, all_partial_pubshares = simplpedpop.coordinator_step(pmsgs, t, n)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
-        secshare = Scalar.sum(*([pret[2][i] for pret in prets]))
+        partial_secshares = [pret[2][i] for pret in prets]
+        partial_pubshares = all_partial_pubshares[i]
+        # TODO Test that the protocol fails when wrong shares are sent.
+        # if i == n - 1:
+        #     partial_secshares[-1] += Scalar(17)
+        secshare, blame_rec = simplpedpop.participant_step2_prepare_secret_side_inputs(
+            partial_secshares, partial_pubshares
+        )
         pre_finalize_rets += [
-            simplpedpop.participant_step2(prets[i][0], cmsg, secshare)
+            simplpedpop.participant_step2(prets[i][0], cmsg, secshare, blame_rec)
         ]
     return pre_finalize_rets
 
@@ -58,7 +65,7 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
     return deckey, enckey
 
 
-def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
+def simulate_encpedpop(seeds, t, blame) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -76,18 +83,22 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     pstates = [pstate for (pstate, _) in enc_prets1]
 
-    cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
+    cmsg, cout, ceq, enc_secshares, blame_recs = encpedpop.coordinator_step(
+        pmsgs, t, enckeys, blame
+    )
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
         deckey = enc_prets0[i][0]
         pre_finalize_rets += [
-            encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
+            encpedpop.participant_step2(
+                pstates[i], deckey, cmsg, enc_secshares[i], blame_recs[i]
+            )
         ]
     return pre_finalize_rets
 
 
 def simulate_chilldkg(
-    hostseckeys, t
+    hostseckeys, t, blame
 ) -> List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]:
     n = len(hostseckeys)
 
@@ -104,11 +115,13 @@ def simulate_chilldkg(
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
-    cstate, cmsg = chilldkg.coordinator_step1(pmsgs, params)
+    cstate, cmsg, blame_recs = chilldkg.coordinator_step1(pmsgs, params, blame)
 
     prets2 = []
     for i in range(n):
-        prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg)]
+        prets2 += [
+            chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg, blame_recs[i])
+        ]
 
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
         cstate, [pret[1] for pret in prets2]
@@ -185,12 +198,12 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
         assert recovered * G == GE.from_bytes_compressed(threshold_pubkey)
 
 
-def test_correctness(t, n, simulate_dkg, recovery=False):
+def test_correctness(t, n, simulate_dkg, recovery=False, blame=True):
     seeds = [None] + [random_bytes(32) for _ in range(n)]
 
     # rets[0] are the return values from the coordinator
     # rets[1 : n + 1] are from the participants
-    rets = simulate_dkg(seeds[1:], t)
+    rets = simulate_dkg(seeds[1:], t, blame=blame)
     assert len(rets) == n + 1
 
     dkg_outputs = [ret[0] for ret in rets]
@@ -213,7 +226,8 @@ def test_correctness(t, n, simulate_dkg, recovery=False):
 test_vss_correctness()
 test_recover_secret()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
-    test_correctness(t, n, simulate_simplpedpop)
-    test_correctness(t, n, simulate_encpedpop)
-    test_correctness(t, n, simulate_chilldkg, recovery=True)
-    test_correctness(t, n, simulate_chilldkg_full, recovery=True)
+    for blame in [False, True]:
+        test_correctness(t, n, simulate_simplpedpop, blame=blame)
+        test_correctness(t, n, simulate_encpedpop, blame=blame)
+        test_correctness(t, n, simulate_chilldkg, blame=blame, recovery=True)
+        test_correctness(t, n, simulate_chilldkg_full, blame=blame, recovery=True)

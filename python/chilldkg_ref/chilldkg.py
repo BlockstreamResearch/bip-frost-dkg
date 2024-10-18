@@ -21,9 +21,11 @@ from . import encpedpop
 from .util import (
     BIP_TAG,
     tagged_hash_bip_dkg,
+    ProtocolError,
     SecretKeyError,
     ThresholdError,
-    InvalidContributionError,
+    FaultyParticipantError,
+    FaultyCoordinatorError,
 )
 
 __all__ = [
@@ -39,7 +41,8 @@ __all__ = [
     # Exceptions
     "SecretKeyError",
     "ThresholdError",
-    "InvalidContributionError",
+    "FaultyParticipantError",
+    "FaultyCoordinatorError",
     "InvalidRecoveryDataError",
     "DuplicateHostpubkeyError",
     "SessionNotFinalizedError",
@@ -62,15 +65,15 @@ __all__ = [
 ###
 
 
-class DuplicateHostpubkeyError(ValueError):
+class DuplicateHostpubkeyError(ProtocolError):
     pass
 
 
-class SessionNotFinalizedError(Exception):
+class SessionNotFinalizedError(ProtocolError):
     pass
 
 
-class InvalidRecoveryDataError(Exception):
+class InvalidRecoveryDataError(ValueError):
     pass
 
 
@@ -219,7 +222,7 @@ def params_validate(params: SessionParams) -> None:
         try:
             _ = GE.from_bytes_compressed(hostpubkey)
         except ValueError as e:
-            raise InvalidContributionError(
+            raise FaultyParticipantError(
                 i, "Participant has provided an invalid host public key"
             ) from e
 
@@ -246,7 +249,7 @@ def params_id(params: SessionParams) -> bytes:
         bytes: The parameters ID, a 32-byte string.
 
     Raises:
-        InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
+        FaultyParticipantError: If `hostpubkeys[i]` is not a valid public key
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
@@ -395,7 +398,7 @@ def participant_step1(
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
         SecretKeyError: If the length of `hostseckey` is not 32 bytes.
-        InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
+        FaultyParticipantError: If `hostpubkeys[i]` is not a valid public key
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
@@ -427,6 +430,7 @@ def participant_step2(
     hostseckey: bytes,
     state1: ParticipantState1,
     cmsg1: CoordinatorMsg1,
+    blame_rec: Optional[encpedpop.BlameRecord],
 ) -> Tuple[ParticipantState2, ParticipantMsg2]:
     """Perform a participant's second step of a ChillDKG session.
 
@@ -445,7 +449,8 @@ def participant_step2(
 
     Raises:
         SecKeyError: If the length of `hostseckey` is not 32 bytes.
-        InvalidContributionError: If `cmsg1` is invalid. This can happen if
+        FIXME
+        FaultyParticipantError: If `cmsg1` is invalid. This can happen if
             another participant has sent an invalid message to the coordinator,
             or if the coordinator has sent an invalid `cmsg1`.
 
@@ -465,6 +470,7 @@ def participant_step2(
         deckey=hostseckey,
         cmsg=enc_cmsg,
         enc_secshare=enc_secshares[idx],
+        blame_rec=blame_rec,
     )
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
@@ -528,8 +534,8 @@ class CoordinatorState(NamedTuple):
 
 
 def coordinator_step1(
-    pmsgs1: List[ParticipantMsg1], params: SessionParams
-) -> Tuple[CoordinatorState, CoordinatorMsg1]:
+    pmsgs1: List[ParticipantMsg1], params: SessionParams, blame: bool = True
+) -> Tuple[CoordinatorState, CoordinatorMsg1, List[Optional[encpedpop.BlameRecord]]]:
     """Perform the coordinator's first step of a ChillDKG session.
 
     Arguments:
@@ -543,7 +549,7 @@ def coordinator_step1(
             `coordinator_finalize` call).
 
     Raises:
-        InvalidContributionError: If `hostpubkeys[i]` is not a valid public key
+        FaultyParticipantError: If `hostpubkeys[i]` is not a valid public key
             for some `i`, which is indicated as part of the exception.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
@@ -552,14 +558,19 @@ def coordinator_step1(
     params_validate(params)
     (hostpubkeys, t) = params
 
-    enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
-        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1], t=t, enckeys=hostpubkeys
+    enc_cmsg, enc_dkg_output, eq_input, enc_secshares, blame_recs = (
+        encpedpop.coordinator_step(
+            pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1],
+            t=t,
+            enckeys=hostpubkeys,
+            blame=blame,
+        )
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
     state = CoordinatorState(params, eq_input, dkg_output)
     cmsg1 = CoordinatorMsg1(enc_cmsg, enc_secshares)
-    return state, cmsg1
+    return state, cmsg1, blame_recs
 
 
 def coordinator_finalize(
@@ -655,9 +666,9 @@ def recover(
             hostseckey,
             hostpubkeys[idx],
             pubnonces,
-            enc_secshares[idx],
             enc_context,
             idx,
+            enc_secshares[idx],
         )
 
         # This is just a sanity check. Our signature is valid, so we have done
