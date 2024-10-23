@@ -83,7 +83,7 @@ CERTEQ_MSG_TAG = BIP_TAG + "certeq message"
 
 
 def certeq_message(x: bytes, idx: int) -> bytes:
-    return idx.to_bytes(4, "big")
+    return idx.to_bytes(4, "big") + x
 
 
 def certeq_participant_step(hostseckey: bytes, idx: int, x: bytes) -> bytes:
@@ -634,7 +634,8 @@ def recover(
     params_validate(params)
 
     # Verify cert
-    certeq_verify(hostpubkeys, recovery_data[: 64 * n], cert)
+    eq_input = recovery_data[: -len(cert)]
+    certeq_verify(hostpubkeys, eq_input, cert)
 
     # Compute threshold pubkey and individual pubshares
     threshold_pubkey = sum_coms.commitment_to_secret()
