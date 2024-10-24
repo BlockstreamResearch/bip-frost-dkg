@@ -35,6 +35,10 @@ class CoordinatorChannels:
     def set_participant_queues(self, participant_queues):
         self.participant_queues = participant_queues
 
+    def send_to(self, i, m):
+        assert self.participant_queues is not None
+        self.participant_queues[i].put_nowait(m)
+
     def send_all(self, m):
         assert self.participant_queues is not None
         for i in range(self.n):
@@ -65,13 +69,22 @@ class ParticipantChannel:
 
 
 async def participant(
-    chan: ParticipantChannel, hostseckey: bytes, params: SessionParams
+    chan: ParticipantChannel,
+    hostseckey: bytes,
+    params: SessionParams,
+    blame: bool = True,
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
     state1, pmsg1 = participant_step1(hostseckey, params, random)
     chan.send(pmsg1)
     cmsg1 = await chan.receive()
+
+    # TODO
+    # if blame:
+    #     blame_rec = await chan.receive()
+    # else:
+    #     blame_rec = None
 
     state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
 
@@ -92,6 +105,11 @@ async def coordinator(
         pmsgs1.append(await chans.receive_from(i))
     state, cmsg1 = coordinator_step1(pmsgs1, params)
     chans.send_all(cmsg1)
+
+    # TODO
+    # if blame:
+    #     for i in range(n):
+    #         chans.send_to(i, blame_recs[i])
 
     sigs = []
     for i in range(n):
@@ -118,6 +136,7 @@ def simulate_chilldkg_full(hostseckeys, t) -> List[Tuple[DKGOutput, RecoveryData
     params = SessionParams(hostpubkeys, t)
 
     async def session():
+        # TODO Blame
         coord_chans = CoordinatorChannels(n)
         participant_chans = [
             ParticipantChannel(coord_chans.queues[i]) for i in range(n)
