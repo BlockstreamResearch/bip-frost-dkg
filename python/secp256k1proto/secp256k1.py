@@ -15,6 +15,9 @@ Exports:
 * G: the secp256k1 generator point
 """
 
+from typing_extensions import Self
+
+
 # TODO Docstrings of methods still say "field element"
 class APrimeFE:
     """Objects of this class represent elements of a prime field.
@@ -57,7 +60,7 @@ class APrimeFE:
         return type(self)(a) + self
 
     @classmethod
-    def sum(cls, *es):
+    def sum(cls, *es: Self) -> Self:
         """Compute the sum of field elements.
 
         sum(a, b, c, ...) is identical to (0 + a + b + c + ...)."""
