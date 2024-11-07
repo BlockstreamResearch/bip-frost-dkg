@@ -108,6 +108,13 @@ class ParticipantState(NamedTuple):
     com_to_secret: GE
 
 
+class ParticipantBlameState(NamedTuple):
+    n: int
+    idx: int
+    secshare: Scalar
+    pubshare: GE
+
+
 # To keep the algorithms of SimplPedPop and EncPedPop purely non-interactive
 # computations, we omit explicit invocations of an interactive equality check
 # protocol. ChillDKG will take care of invoking the equality check protocol.
@@ -201,6 +208,7 @@ def participant_step2(
 
     if not VSSCommitment.verify_secshare(secshare, pubshare):
         raise UnknownFaultyPartyError(
+            ParticipantBlameState(n, idx, secshare, pubshare),
             "Received invalid secshare, consider blaming to determine faulty party",
         )
 
@@ -215,13 +223,15 @@ def participant_step2(
 
 
 def participant_blame(
-    state: ParticipantState,
-    secshare: Scalar,
-    partial_secshares: List[Scalar],
+    blame_state: ParticipantBlameState,
     cblame: CoordinatorBlameMsg,
+    partial_secshares: List[Scalar],
 ) -> NoReturn:
-    _, n, idx, _ = state
+    n, idx, secshare, pubshare = blame_state
     partial_pubshares = cblame.partial_pubshares
+
+    if GE.sum(*partial_pubshares) != pubshare:
+        raise FaultyCoordinatorError("Sum of partial pubshares not equal to pubshare")
 
     if Scalar.sum(*partial_secshares) != secshare:
         raise SecshareSumError("Sum of partial secshares not equal to secshare")
@@ -242,15 +252,13 @@ def participant_blame(
 
     # We now know:
     #  - The sum of the partial secshares is equal to the secshare.
+    #  - The sum of the partial pubshares is equal to the pubshare.
     #  - Every partial secshare matches its corresponding partial pubshare.
-    #  - The secshare does not match the pubshare (because the caller shouldn't
-    #  have called us otherwise).
-    # Therefore, the sum of the partial pubshares is not equal to the pubshare,
-    # and this is the coordinator's fault.
-    raise FaultyCoordinatorError(
-        "Sum of partial pubshares not equal to pubshare (or participant_blame() "
-        "was called even though participant_step2() was successful)"
-    )
+    # Hence, the secshare matches the pubshare.
+    assert VSSCommitment.verify_secshare(secshare, pubshare)
+
+    # This should never happen (unless the caller fiddled with the inputs).
+    raise RuntimeError("participant_blame() was called, but all inputs are consistent.")
 
 
 ###

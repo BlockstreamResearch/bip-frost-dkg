@@ -56,4 +56,8 @@ class FaultyCoordinatorError(ProtocolError):
 
 
 class UnknownFaultyPartyError(ProtocolError):
-    pass
+    """TODO"""
+
+    def __init__(self, blame_state: Any, *args: Any):
+        self.blame_state = blame_state
+        super().__init__(*args)

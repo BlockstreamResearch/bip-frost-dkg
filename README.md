@@ -839,7 +839,7 @@ of the success of the DKG session by presenting recovery data to us.
 #### participant\_blame
 
 ```python
-def participant_blame(hostseckey: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1, cblame: CoordinatorBlameMsg) -> NoReturn
+def participant_blame(blame_state: ParticipantBlameState, cblame: CoordinatorBlameMsg) -> NoReturn
 ```
 
 Perform a participant's blame step of a ChillDKG session. TODO

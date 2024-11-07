@@ -7,6 +7,7 @@ from secp256k1proto.util import int_from_bytes
 
 from . import simplpedpop
 from .util import (
+    UnknownFaultyPartyError,
     tagged_hash_bip_dkg,
     prf,
     FaultyParticipantOrCoordinatorError,
@@ -162,6 +163,12 @@ class ParticipantState(NamedTuple):
     idx: int
 
 
+class ParticipantBlameState(NamedTuple):
+    simpl_bstate: simplpedpop.ParticipantBlameState
+    enc_secshare: Scalar
+    pads: List[Scalar]
+
+
 def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
     # TODO Consider hashing the result here because the string can be long, and
     # we'll feed it into hashes on multiple occasions
@@ -223,33 +230,30 @@ def participant_step2(
         raise FaultyCoordinatorError("Coordinator replied with wrong pubnonce")
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
-    secshare = decrypt_sum(
-        deckey, enckeys[idx], pubnonces, enc_context, idx, enc_secshare
-    )
+    pads = decaps_multi(deckey, enckeys[idx], pubnonces, enc_context, idx)
+    secshare = enc_secshare - Scalar.sum(*pads)
 
-    dkg_output, eq_input = simplpedpop.participant_step2(
-        simpl_state, simpl_cmsg, secshare
-    )
+    try:
+        dkg_output, eq_input = simplpedpop.participant_step2(
+            simpl_state, simpl_cmsg, secshare
+        )
+    except UnknownFaultyPartyError as e:
+        assert isinstance(e.blame_state, simplpedpop.ParticipantBlameState)
+        # Translate simplpedpop.ParticipantBlamestate into our own
+        # encpedpop.ParticipantBlameState.
+        blame_state = ParticipantBlameState(e.blame_state, enc_secshare, pads)
+        raise UnknownFaultyPartyError(blame_state, e.args) from e
+
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input
 
 
 def participant_blame(
-    state: ParticipantState,
-    deckey: bytes,
-    cmsg: CoordinatorMsg,
-    enc_secshare: Scalar,
+    blame_state: ParticipantBlameState,
     cblame: CoordinatorBlameMsg,
 ) -> NoReturn:
-    simpl_state, _, enckeys, idx = state
-    _, pubnonces = cmsg
+    simpl_blame_state, enc_secshare, pads = blame_state
     enc_partial_secshares, partial_pubshares = cblame
-
-    # Compute the encryption pads once and use them to decrypt both the
-    # enc_secshare and all enc_partial_secshares
-    enc_context = serialize_enc_context(simpl_state.t, enckeys)
-    pads = decaps_multi(deckey, enckeys[idx], pubnonces, enc_context, idx)
-    secshare = enc_secshare - Scalar.sum(*pads)
     partial_secshares = [
         enc_partial_secshare - pad
         for enc_partial_secshare, pad in zip(enc_partial_secshares, pads, strict=True)
@@ -258,7 +262,7 @@ def participant_blame(
     simpl_cblame = simplpedpop.CoordinatorBlameMsg(partial_pubshares)
     try:
         simplpedpop.participant_blame(
-            simpl_state, secshare, partial_secshares, simpl_cblame
+            simpl_blame_state, simpl_cblame, partial_secshares
         )
     except simplpedpop.SecshareSumError as e:
         # The secshare is not equal to the sum of the partial secshares in the

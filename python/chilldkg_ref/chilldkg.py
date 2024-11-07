@@ -384,6 +384,10 @@ class ParticipantState2(NamedTuple):
     dkg_output: DKGOutput
 
 
+class ParticipantBlameState(NamedTuple):
+    enc_blame_state: encpedpop.ParticipantBlameState
+
+
 def participant_step1(
     hostseckey: bytes, params: SessionParams, random: bytes
 ) -> Tuple[ParticipantState1, ParticipantMsg1]:
@@ -472,16 +476,24 @@ def participant_step2(
     params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
-    enc_dkg_output, eq_input = encpedpop.participant_step2(
-        state=enc_state,
-        deckey=hostseckey,
-        cmsg=enc_cmsg,
-        enc_secshare=enc_secshares[idx],
-    )
+    try:
+        enc_dkg_output, eq_input = encpedpop.participant_step2(
+            state=enc_state,
+            deckey=hostseckey,
+            cmsg=enc_cmsg,
+            enc_secshare=enc_secshares[idx],
+        )
+    except UnknownFaultyPartyError as e:
+        assert isinstance(e.blame_state, encpedpop.ParticipantBlameState)
+        # Translate encpedpop.UnknownFaultyPartyError into our own
+        # chilldkg.UnknownFaultyPartyError.
+        blame_state = ParticipantBlameState(e.blame_state)
+        raise UnknownFaultyPartyError(blame_state, e.args) from e
+
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
+    dkg_output = DKGOutput._make(enc_dkg_output)
     state2 = ParticipantState2(params, eq_input, dkg_output)
     sig = certeq_participant_step(hostseckey, idx, eq_input)
     pmsg2 = ParticipantMsg2(sig)
@@ -529,18 +541,12 @@ def participant_finalize(
 
 
 def participant_blame(
-    hostseckey: bytes,
-    state1: ParticipantState1,
-    cmsg1: CoordinatorMsg1,
+    blame_state: ParticipantBlameState,
     cblame: CoordinatorBlameMsg,
 ) -> NoReturn:
     """Perform a participant's blame step of a ChillDKG session. TODO"""
-    _, idx, enc_state = state1
     encpedpop.participant_blame(
-        state=enc_state,
-        deckey=hostseckey,
-        cmsg=cmsg1.enc_cmsg,
-        enc_secshare=cmsg1.enc_secshares[idx],
+        blame_state=blame_state.enc_blame_state,
         cblame=cblame.enc_cblame,
     )
 
