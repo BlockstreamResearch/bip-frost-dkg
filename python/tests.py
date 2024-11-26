@@ -4,13 +4,18 @@
 
 from itertools import combinations
 from random import randint
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from secrets import token_bytes as random_bytes
 
 from secp256k1proto.secp256k1 import GE, G, Scalar
 from secp256k1proto.keys import pubkey_gen_plain
 
-from chilldkg_ref.util import prf
+from chilldkg_ref.util import (
+    FaultyParticipantOrCoordinatorError,
+    FaultyCoordinatorError,
+    UnknownFaultyPartyError,
+    prf,
+)
 from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
 import chilldkg_ref.simplpedpop as simplpedpop
 import chilldkg_ref.encpedpop as encpedpop
@@ -35,20 +40,50 @@ def test_vss_correctness():
             )
 
 
-def simulate_simplpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
+def simulate_simplpedpop(
+    seeds, t, blame: bool
+) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
     n = len(seeds)
     prets = []
     for i in range(n):
         prets += [simplpedpop.participant_step1(seeds[i], t, n, i)]
-    pmsgs = [ret[1] for ret in prets]
+
+    pstates = [pstate for (pstate, _, _) in prets]
+    pmsgs = [pmsg for (_, pmsg, _) in prets]
 
     cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
-        secshare = Scalar.sum(*([pret[2][i] for pret in prets]))
-        pre_finalize_rets += [
-            simplpedpop.participant_step2(prets[i][0], cmsg, secshare)
+        partial_secshares = [
+            partial_secshares_for[i] for (_, _, partial_secshares_for) in prets
         ]
+        if blame:
+            # Let a random participant send incorrect shares to participant i.
+            faulty_idx = randint(0, n - 1)
+            partial_secshares[faulty_idx] += Scalar(17)
+
+        secshare = simplpedpop.participant_step2_prepare_secshare(partial_secshares)
+        try:
+            pre_finalize_rets += [
+                simplpedpop.participant_step2(pstates[i], cmsg, secshare)
+            ]
+        except UnknownFaultyPartyError as e:
+            if not blame:
+                raise
+            blame_msgs = simplpedpop.coordinator_blame(pmsgs)
+            assert len(blame_msgs) == len(pmsgs)
+            try:
+                simplpedpop.participant_blame(
+                    e.blame_state, blame_msgs[i], partial_secshares
+                )
+            # If we're not faulty, we should blame the faulty party.
+            except FaultyParticipantOrCoordinatorError as e:
+                assert i != faulty_idx
+                assert e.participant == faulty_idx
+            # If we're faulty, we'll blame the coordinator.
+            except FaultyCoordinatorError:
+                assert i == faulty_idx
+            return None
     return pre_finalize_rets
 
 
@@ -58,7 +93,9 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
     return deckey, enckey
 
 
-def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
+def simulate_encpedpop(
+    seeds, t, blame: bool
+) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -73,22 +110,44 @@ def simulate_encpedpop(seeds, t) -> List[Tuple[simplpedpop.DKGOutput, bytes]]:
             encpedpop.participant_step1(seeds[i], deckey, enckeys, t, i, random)
         ]
 
-    pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     pstates = [pstate for (pstate, _) in enc_prets1]
+    pmsgs = [pmsg for (_, pmsg) in enc_prets1]
+    if blame:
+        faulty_idx: List[int] = []
+        for i in range(n):
+            # Let a random participant faulty_idx[i] send incorrect shares to i.
+            faulty_idx[i:] = [randint(0, n - 1)]
+            pmsgs[faulty_idx[i]].enc_shares[i] += Scalar(17)
 
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_rets = [(cout, ceq)]
     for i in range(n):
         deckey = enc_prets0[i][0]
-        pre_finalize_rets += [
-            encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
-        ]
+        try:
+            pre_finalize_rets += [
+                encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
+            ]
+        except UnknownFaultyPartyError as e:
+            if not blame:
+                raise
+            blame_msgs = encpedpop.coordinator_blame(pmsgs)
+            assert len(blame_msgs) == len(pmsgs)
+            try:
+                encpedpop.participant_blame(e.blame_state, blame_msgs[i])
+            # If we're not faulty, we should blame the faulty party.
+            except FaultyParticipantOrCoordinatorError as e:
+                assert i != faulty_idx[i]
+                assert e.participant == faulty_idx[i]
+            # If we're faulty, we'll blame the coordinator.
+            except FaultyCoordinatorError:
+                assert i == faulty_idx[i]
+            return None
     return pre_finalize_rets
 
 
 def simulate_chilldkg(
-    hostseckeys, t
-) -> List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]:
+    hostseckeys, t, blame: bool
+) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
     n = len(hostseckeys)
 
     hostpubkeys = []
@@ -104,11 +163,34 @@ def simulate_chilldkg(
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
-    cstate, cmsg = chilldkg.coordinator_step1(pmsgs, params)
+    if blame:
+        faulty_idx: List[int] = []
+        for i in range(n):
+            # Let a random participant faulty_idx[i] send incorrect shares to i.
+            faulty_idx[i:] = [randint(0, n - 1)]
+            pmsgs[faulty_idx[i]].enc_pmsg.enc_shares[i] += Scalar(17)
+
+    cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs, params)
 
     prets2 = []
     for i in range(n):
-        prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg)]
+        try:
+            prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg1)]
+        except UnknownFaultyPartyError as e:
+            if not blame:
+                raise
+            blame_msgs = chilldkg.coordinator_blame(pmsgs)
+            assert len(blame_msgs) == len(pmsgs)
+            try:
+                chilldkg.participant_blame(e.blame_state, blame_msgs[i])
+            # If we're not faulty, we should blame the faulty party.
+            except FaultyParticipantOrCoordinatorError as e:
+                assert i != faulty_idx[i]
+                assert e.participant == faulty_idx[i]
+            # If we're faulty, we'll blame the coordinator.
+            except FaultyCoordinatorError:
+                assert i == faulty_idx[i]
+            return None
 
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
         cstate, [pret[1] for pret in prets2]
@@ -185,14 +267,18 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
         assert recovered * G == GE.from_bytes_compressed(threshold_pubkey)
 
 
-def test_correctness(t, n, simulate_dkg, recovery=False):
+def test_correctness(t, n, simulate_dkg, recovery=False, blame=False):
     seeds = [None] + [random_bytes(32) for _ in range(n)]
+
+    rets = simulate_dkg(seeds[1:], t, blame=blame)
+    if blame:
+        assert rets is None
+        # The session has failed correctly, so there's nothing further to check.
+        return
 
     # rets[0] are the return values from the coordinator
     # rets[1 : n + 1] are from the participants
-    rets = simulate_dkg(seeds[1:], t)
     assert len(rets) == n + 1
-
     dkg_outputs = [ret[0] for ret in rets]
     test_correctness_dkg_output(t, n, dkg_outputs)
 
@@ -214,6 +300,9 @@ test_vss_correctness()
 test_recover_secret()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     test_correctness(t, n, simulate_simplpedpop)
+    test_correctness(t, n, simulate_simplpedpop, blame=True)
     test_correctness(t, n, simulate_encpedpop)
+    test_correctness(t, n, simulate_encpedpop, blame=True)
     test_correctness(t, n, simulate_chilldkg, recovery=True)
+    test_correctness(t, n, simulate_chilldkg, recovery=True, blame=True)
     test_correctness(t, n, simulate_chilldkg_full, recovery=True)

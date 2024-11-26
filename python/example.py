@@ -2,9 +2,10 @@
 
 """Example of a full ChillDKG session"""
 
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import asyncio
 import pprint
+from random import randint
 from secrets import token_bytes as random_bytes
 import sys
 
@@ -13,11 +14,14 @@ from chilldkg_ref.chilldkg import (
     participant_step1,
     participant_step2,
     participant_finalize,
+    participant_blame,
     coordinator_step1,
     coordinator_finalize,
+    coordinator_blame,
     SessionParams,
     DKGOutput,
     RecoveryData,
+    UnknownFaultyPartyError,
 )
 
 #
@@ -34,6 +38,10 @@ class CoordinatorChannels:
 
     def set_participant_queues(self, participant_queues):
         self.participant_queues = participant_queues
+
+    def send_to(self, i, m):
+        assert self.participant_queues is not None
+        self.participant_queues[i].put_nowait(m)
 
     def send_all(self, m):
         assert self.participant_queues is not None
@@ -65,15 +73,41 @@ class ParticipantChannel:
 
 
 async def participant(
-    chan: ParticipantChannel, hostseckey: bytes, params: SessionParams
+    chan: ParticipantChannel,
+    hostseckey: bytes,
+    params: SessionParams,
+    blame: bool,
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
     state1, pmsg1 = participant_step1(hostseckey, params, random)
+
+    # The following code simulate a faulty participant that sends a single
+    # incorrect share with probability 1/2. Of course, this should not be part
+    # of a real implementation.
+    if blame:
+        # Flip a coin to decide if we send incorrect shares.
+        faulty = randint(0, 1)
+        print(faulty)
+        if faulty:
+            # Pick a random victim participant.
+            victim = randint(0, len(pmsg1.enc_pmsg.enc_shares) - 1)
+            pmsg1.enc_pmsg.enc_shares[victim] += 17
     chan.send(pmsg1)
     cmsg1 = await chan.receive()
 
-    state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
+    try:
+        state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
+    except UnknownFaultyPartyError as e:
+        if not blame:
+            # Not in blame mode, so we give up.
+            raise
+        blame_msg = await chan.receive()
+        participant_blame(e.blame_state, blame_msg)
+    else:
+        if blame:
+            # Ignore the blame message because we don't need it.
+            _ = await chan.receive()
 
     chan.send(eq_round1)
     cmsg2 = await chan.receive()
@@ -82,7 +116,7 @@ async def participant(
 
 
 async def coordinator(
-    chans: CoordinatorChannels, params: SessionParams
+    chans: CoordinatorChannels, params: SessionParams, blame: bool
 ) -> Tuple[DKGOutput, RecoveryData]:
     (hostpubkeys, t) = params
     n = len(hostpubkeys)
@@ -92,6 +126,11 @@ async def coordinator(
         pmsgs1.append(await chans.receive_from(i))
     state, cmsg1 = coordinator_step1(pmsgs1, params)
     chans.send_all(cmsg1)
+
+    if blame:
+        blame_msgs = coordinator_blame(pmsgs1)
+        for i in range(n):
+            chans.send_to(i, blame_msgs[i])
 
     sigs = []
     for i in range(n):
@@ -107,7 +146,9 @@ async def coordinator(
 #
 
 
-def simulate_chilldkg_full(hostseckeys, t) -> List[Tuple[DKGOutput, RecoveryData]]:
+def simulate_chilldkg_full(
+    hostseckeys, t, blame: bool = False
+) -> Optional[List[Tuple[DKGOutput, RecoveryData]]]:
     # Generate common inputs for all participants and coordinator
     n = len(hostseckeys)
     hostpubkeys = []
@@ -125,8 +166,9 @@ def simulate_chilldkg_full(hostseckeys, t) -> List[Tuple[DKGOutput, RecoveryData
         coord_chans.set_participant_queues(
             [participant_chans[i].queue for i in range(n)]
         )
-        coroutines = [coordinator(coord_chans, params)] + [
-            participant(participant_chans[i], hostseckeys[i], params) for i in range(n)
+        coroutines = [coordinator(coord_chans, params, blame)] + [
+            participant(participant_chans[i], hostseckeys[i], params, blame)
+            for i in range(n)
         ]
         return await asyncio.gather(*coroutines)
 
@@ -149,7 +191,8 @@ def main():
         print(f"Participant {i}'s hostseckey:", hostseckeys[i].hex())
     print()
 
-    rets = simulate_chilldkg_full(hostseckeys, t)
+    # TODO Add cli arguments to enable blame mode
+    rets = simulate_chilldkg_full(hostseckeys, t, blame=False)
     assert len(rets) == n + 1
 
     print("=== Coordinator's DKGOutput ===")

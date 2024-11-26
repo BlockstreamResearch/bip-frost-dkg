@@ -1,12 +1,18 @@
-from typing import Tuple, List, NamedTuple
+from typing import Tuple, List, NamedTuple, NoReturn
 
-from secp256k1proto.secp256k1 import Scalar
+from secp256k1proto.secp256k1 import Scalar, GE
 from secp256k1proto.ecdh import ecdh_libsecp256k1
 from secp256k1proto.keys import pubkey_gen_plain
 from secp256k1proto.util import int_from_bytes
 
 from . import simplpedpop
-from .util import tagged_hash_bip_dkg, prf, InvalidContributionError
+from .util import (
+    UnknownFaultyPartyError,
+    tagged_hash_bip_dkg,
+    prf,
+    FaultyParticipantOrCoordinatorError,
+    FaultyCoordinatorError,
+)
 
 
 ###
@@ -74,29 +80,28 @@ def encrypt_multi(
     pubnonce: bytes,
     deckey: bytes,
     enckeys: List[bytes],
-    messages: List[Scalar],
     context: bytes,
     idx: int,
+    plaintexts: List[Scalar],
 ) -> List[Scalar]:
     pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
-    ciphertexts = [message + pad for message, pad in zip(messages, pads, strict=True)]
+    ciphertexts = [
+        plaintext + pad for plaintext, pad in zip(plaintexts, pads, strict=True)
+    ]
     return ciphertexts
 
 
-def decrypt_sum(
+def decaps_multi(
     deckey: bytes,
     enckey: bytes,
     pubnonces: List[bytes],
-    sum_ciphertexts: Scalar,
     context: bytes,
     idx: int,
-) -> Scalar:
-    if idx >= len(pubnonces):
-        raise IndexError
+) -> List[Scalar]:
     context_ = idx.to_bytes(4, byteorder="big") + context
-    sum_plaintexts = sum_ciphertexts
-    for i, pubnonce in enumerate(pubnonces):
-        if i == idx:
+    pads = []
+    for sender_idx, pubnonce in enumerate(pubnonces):
+        if sender_idx == idx:
             pad = self_pad(deckey, context_)
         else:
             pad = ecdh(
@@ -106,7 +111,22 @@ def decrypt_sum(
                 context=context_,
                 sending=False,
             )
-        sum_plaintexts = sum_plaintexts - pad
+        pads.append(pad)
+    return pads
+
+
+def decrypt_sum(
+    deckey: bytes,
+    enckey: bytes,
+    pubnonces: List[bytes],
+    context: bytes,
+    idx: int,
+    sum_ciphertexts: Scalar,
+) -> Scalar:
+    if idx >= len(pubnonces):
+        raise IndexError
+    pads = decaps_multi(deckey, enckey, pubnonces, context, idx)
+    sum_plaintexts: Scalar = sum_ciphertexts - Scalar.sum(*pads)
     return sum_plaintexts
 
 
@@ -126,6 +146,11 @@ class CoordinatorMsg(NamedTuple):
     pubnonces: List[bytes]
 
 
+class CoordinatorBlameMsg(NamedTuple):
+    enc_partial_secshares: List[Scalar]
+    partial_pubshares: List[GE]
+
+
 ###
 ### Participant
 ###
@@ -136,6 +161,12 @@ class ParticipantState(NamedTuple):
     pubnonce: bytes
     enckeys: List[bytes]
     idx: int
+
+
+class ParticipantBlameState(NamedTuple):
+    simpl_bstate: simplpedpop.ParticipantBlameState
+    enc_secshare: Scalar
+    pads: List[Scalar]
 
 
 def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
@@ -177,7 +208,7 @@ def participant_step1(
     assert len(shares) == n
 
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, deckey, enckeys, shares, enc_context, idx
+        secnonce, pubnonce, deckey, enckeys, enc_context, idx, shares
     )
 
     pmsg = ParticipantMsg(simpl_pmsg, pubnonce, enc_shares)
@@ -196,17 +227,53 @@ def participant_step2(
 
     reported_pubnonce = pubnonces[idx]
     if reported_pubnonce != pubnonce:
-        raise InvalidContributionError(None, "Coordinator replied with wrong pubnonce")
+        raise FaultyCoordinatorError("Coordinator replied with wrong pubnonce")
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
-    secshare = decrypt_sum(
-        deckey, enckeys[idx], pubnonces, enc_secshare, enc_context, idx
-    )
-    dkg_output, eq_input = simplpedpop.participant_step2(
-        simpl_state, simpl_cmsg, secshare
-    )
+    pads = decaps_multi(deckey, enckeys[idx], pubnonces, enc_context, idx)
+    secshare = enc_secshare - Scalar.sum(*pads)
+
+    try:
+        dkg_output, eq_input = simplpedpop.participant_step2(
+            simpl_state, simpl_cmsg, secshare
+        )
+    except UnknownFaultyPartyError as e:
+        assert isinstance(e.blame_state, simplpedpop.ParticipantBlameState)
+        # Translate simplpedpop.ParticipantBlamestate into our own
+        # encpedpop.ParticipantBlameState.
+        blame_state = ParticipantBlameState(e.blame_state, enc_secshare, pads)
+        raise UnknownFaultyPartyError(blame_state, e.args) from e
+
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input
+
+
+def participant_blame(
+    blame_state: ParticipantBlameState,
+    cblame: CoordinatorBlameMsg,
+) -> NoReturn:
+    simpl_blame_state, enc_secshare, pads = blame_state
+    enc_partial_secshares, partial_pubshares = cblame
+    partial_secshares = [
+        enc_partial_secshare - pad
+        for enc_partial_secshare, pad in zip(enc_partial_secshares, pads, strict=True)
+    ]
+
+    simpl_cblame = simplpedpop.CoordinatorBlameMsg(partial_pubshares)
+    try:
+        simplpedpop.participant_blame(
+            simpl_blame_state, simpl_cblame, partial_secshares
+        )
+    except simplpedpop.SecshareSumError as e:
+        # The secshare is not equal to the sum of the partial secshares in the
+        # blame records. Since the encryption is additively homomorphic, this
+        # can only happen if the sum of the *encrypted* secshare is not equal
+        # to the sum of the encrypted partial sechares, which is the
+        # coordinator's fault.
+        assert Scalar.sum(*enc_partial_secshares) != enc_secshare
+        raise FaultyCoordinatorError(
+            "Sum of encrypted partial secshares not equal to encrypted secshare"
+        ) from e
 
 
 ###
@@ -222,19 +289,20 @@ def coordinator_step(
     n = len(enckeys)
     if n != len(pmsgs):
         raise ValueError
-    simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
-        [pmsg.simpl_pmsg for pmsg in pmsgs], t, n
-    )
+
+    simpl_pmsgs = [pmsg.simpl_pmsg for pmsg in pmsgs]
+    simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(simpl_pmsgs, t, n)
     pubnonces = [pmsg.pubnonce for pmsg in pmsgs]
     for i in range(n):
         if len(pmsgs[i].enc_shares) != n:
-            raise InvalidContributionError(
+            raise FaultyParticipantOrCoordinatorError(
                 i, "Participant sent enc_shares with invalid length"
             )
     enc_secshares = [
         Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs])) for i in range(n)
     ]
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
+
     # In ChillDKG, the coordinator needs to broadcast the entire enc_secshares
     # array to all participants. But in pure EncPedPop, the coordinator needs to
     # send to each participant i only their entry enc_secshares[i].
@@ -250,3 +318,20 @@ def coordinator_step(
         eq_input,
         enc_secshares,
     )
+
+
+def coordinator_blame(pmsgs: List[ParticipantMsg]) -> List[CoordinatorBlameMsg]:
+    n = len(pmsgs)
+    simpl_pmsgs = [pmsg.simpl_pmsg for pmsg in pmsgs]
+
+    all_enc_partial_secshares = [
+        [pmsg.enc_shares[i] for pmsg in pmsgs] for i in range(n)
+    ]
+    simpl_cblames = simplpedpop.coordinator_blame(simpl_pmsgs)
+    cblames = [
+        CoordinatorBlameMsg(
+            all_enc_partial_secshares[i], simpl_cblames[i].partial_pubshares
+        )
+        for i in range(n)
+    ]
+    return cblames

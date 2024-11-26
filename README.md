@@ -672,7 +672,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 def params_id(params: SessionParams) -> bytes
 ```
 
-Returns the parameters ID, a unique representation of the`SessionParams`.
+Return the parameters ID, a unique representation of the `SessionParams`.
 
 In the common scenario that the participants obtain host public keys from
 the other participants over channels that do not provide end-to-end
@@ -693,8 +693,8 @@ have obtained authentic public host keys.
 
 *Raises*:
 
-- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
-  for some `i`, which is indicated as part of the exception.
+- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
+  public key for some `i`, which is indicated in the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -745,8 +745,8 @@ Perform a participant's first step of a ChillDKG session.
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
 - `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
-- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
-  for some `i`, which is indicated as part of the exception.
+- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
+  public key for some `i`, which is indicated in the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -779,9 +779,10 @@ Perform a participant's second step of a ChillDKG session.
 *Raises*:
 
 - `SecKeyError` - If the length of `hostseckey` is not 32 bytes.
-- `InvalidContributionError` - If `cmsg1` is invalid. This can happen if
-  another participant has sent an invalid message to the coordinator,
-  or if the coordinator has sent an invalid `cmsg1`.
+  FIXME
+- `FaultyParticipantOrCoordinatorError` - If `cmsg1` is invalid. This can
+  happen if another participant has sent an invalid message to the
+  coordinator, or if the coordinator has sent an invalid `cmsg1`.
 
   Further information is provided as part of the exception, including
   a hint about which party might be to blame for the problem. The hint
@@ -790,6 +791,7 @@ Perform a participant's second step of a ChillDKG session.
   coordinator is malicious or network connections are unreliable, and
   as a consequence, the caller should not conclude that the party
   hinted at is malicious.
+- `UnknownFaultyPartyError` - TODO
 
 #### participant\_finalize
 
@@ -834,6 +836,14 @@ of the success of the DKG session by presenting recovery data to us.
 - `SessionNotFinalizedError` - If finalizing the DKG session was not
   successful from this participant's perspective (see above).
 
+#### participant\_blame
+
+```python
+def participant_blame(blame_state: ParticipantBlameState, cblame: CoordinatorBlameMsg) -> NoReturn
+```
+
+Perform a participant's blame step of a ChillDKG session. TODO
+
 #### coordinator\_step1
 
 ```python
@@ -858,8 +868,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Raises*:
 
-- `InvalidContributionError` - If `hostpubkeys[i]` is not a valid public key
-  for some `i`, which is indicated as part of the exception.
+- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
+  public key for some `i`, which is indicated in the exception.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -896,6 +906,14 @@ Perform the coordinator's final step of a ChillDKG session.
   received messages from other participants via a communication
   channel beside the coordinator (or be malicious).
 
+#### coordinator\_blame
+
+```python
+def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]
+```
+
+Perform the coordinator's blame step of a ChillDKG session. TODO
+
 #### recover
 
 ```python
@@ -928,6 +946,46 @@ backup after data loss.
 
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
   data or recovery data that does not match the provided hostseckey.
+
+#### FaultyParticipantOrCoordinatorError Expection
+
+```python
+class FaultyParticipantOrCoordinatorError(ProtocolError)
+```
+
+Raised when another participant appears faulty.
+
+This is raised when another participant appears to have sent an invalid
+protocol message. This error does not necessarily imply that the suspected
+participant is faulty. It is always possible that the coordinator is faulty
+instead and has misrepresented the suspected particant's protocol messages.
+It is also possible that protocol message was simply not transmitted
+correctly.
+
+*Attributes*:
+
+- `participant` _int_ - Index of the suspected participant.
+
+#### FaultyCoordinatorError Expection
+
+```python
+class FaultyCoordinatorError(ProtocolError)
+```
+
+Raised when the coordinator appears faulty.
+
+This is raised when the coordinator appears to have sent an invalid protocol
+message. This error does not necessarily imply that the coordinator is
+faulty. It is also possible that a protocol message from the coordinator was
+simply not transmitted correctly.
+
+#### UnknownFaultyPartyError Expection
+
+```python
+class UnknownFaultyPartyError(ProtocolError)
+```
+
+TODO
 <!--end of pydoc.md-->
 
 ## Changelog
