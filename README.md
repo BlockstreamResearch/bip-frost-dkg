@@ -946,6 +946,46 @@ backup after data loss.
 
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
   data or recovery data that does not match the provided hostseckey.
+
+#### FaultyParticipantOrCoordinatorError Expection
+
+```python
+class FaultyParticipantOrCoordinatorError(ProtocolError)
+```
+
+Raised when another participant appears faulty.
+
+This is raised when another participant appears to have sent an invalid
+protocol message. This error does not necessarily imply that the suspected
+participant is faulty. It is always possible that the coordinator is faulty
+instead and has misrepresented the suspected particant's protocol messages.
+It is also possible that protocol message was simply not transmitted
+correctly.
+
+*Attributes*:
+
+- `participant` _int_ - Index of the suspected participant.
+
+#### FaultyCoordinatorError Expection
+
+```python
+class FaultyCoordinatorError(ProtocolError)
+```
+
+Raised when the coordinator appears faulty.
+
+This is raised when the coordinator appears to have sent an invalid protocol
+message. This error does not necessarily imply that the coordinator is
+faulty. It is also possible that a protocol message from the coordinator was
+simply not transmitted correctly.
+
+#### UnknownFaultyPartyError Expection
+
+```python
+class UnknownFaultyPartyError(ProtocolError)
+```
+
+TODO
 <!--end of pydoc.md-->
 
 ## Changelog
