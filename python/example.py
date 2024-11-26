@@ -88,7 +88,6 @@ async def participant(
     if blame:
         # Flip a coin to decide if we send incorrect shares.
         faulty = randint(0, 1)
-        print(faulty)
         if faulty:
             # Pick a random victim participant.
             victim = randint(0, len(pmsg1.enc_pmsg.enc_shares) - 1)
