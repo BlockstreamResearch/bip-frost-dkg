@@ -966,7 +966,7 @@ participant is indeed faulty.
 
 This exception is raised only by the coordinator code. Some faulty behavior
 by participants will be detected by the other participants instead.
-See FaultyParticipantOrCoordinatorError for details.
+See `FaultyParticipantOrCoordinatorError` for details.
 
 *Attributes*:
 
@@ -996,7 +996,7 @@ participant).
 
 This exception is raised only by the participant code. Some faulty behavior
 by participants will be detected by the coordinator instead. See
-FaultyParticipantError for details.
+`FaultyParticipantError` for details.
 
 *Attributes*:
 
@@ -1030,7 +1030,7 @@ information to determine which participant should be suspected.
 
 To determine a suspected participant, the raising participant may choose to
 run the optional blame step of the protocol, which requires obtaining a
-blame message by the coordinator. See the participant_blame function for
+blame message by the coordinator. See the `participant_blame` function for
 details.
 
 This is only raised for specific faulty behavior by another participant
@@ -1039,7 +1039,8 @@ the coordinator (namely, sending invalid encrypted secret shares).
 
 *Attributes*:
 
-- `blame_state` _BlameState_ - To be given to the participant_blame function.
+- `blame_state` _BlameState_ - To be passed to the `participant_blame`
+  function.
 <!--end of pydoc.md-->
 
 ## Changelog

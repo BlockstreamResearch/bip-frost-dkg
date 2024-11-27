@@ -34,7 +34,7 @@ class FaultyParticipantError(ProtocolError):
 
     This exception is raised only by the coordinator code. Some faulty behavior
     by participants will be detected by the other participants instead.
-    See FaultyParticipantOrCoordinatorError for details.
+    See `FaultyParticipantOrCoordinatorError` for details.
 
     Attributes:
         participant (int): Index of the faulty participant.
@@ -64,7 +64,7 @@ class FaultyParticipantOrCoordinatorError(ProtocolError):
 
     This exception is raised only by the participant code. Some faulty behavior
     by participants will be detected by the coordinator instead. See
-    FaultyParticipantError for details.
+    `FaultyParticipantError` for details.
 
     Attributes:
         participant (int): Index of the suspected participant.
@@ -95,7 +95,7 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
 
     To determine a suspected participant, the raising participant may choose to
     run the optional blame step of the protocol, which requires obtaining a
-    blame message by the coordinator. See the participant_blame function for
+    blame message by the coordinator. See the `participant_blame` function for
     details.
 
     This is only raised for specific faulty behavior by another participant
@@ -103,7 +103,8 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
     the coordinator (namely, sending invalid encrypted secret shares).
 
     Attributes:
-        blame_state (BlameState): To be given to the participant_blame function.
+        blame_state (BlameState): To be passed to the `participant_blame`
+            function.
     """
 
     def __init__(self, blame_state: Any, *args: Any):
