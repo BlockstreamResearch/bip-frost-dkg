@@ -21,7 +21,7 @@ import chilldkg_ref.simplpedpop as simplpedpop
 import chilldkg_ref.encpedpop as encpedpop
 import chilldkg_ref.chilldkg as chilldkg
 
-from example import simulate_chilldkg_full
+from example import simulate_chilldkg_full as simulate_chilldkg_full_example
 
 
 def test_vss_correctness():
@@ -202,6 +202,16 @@ def simulate_chilldkg(
         outputs += [out]
 
     return outputs
+
+
+def simulate_chilldkg_full(
+    hostseckeys,
+    t,
+    blame: bool,
+) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+    # blaming is not supported by this wrapper
+    assert not blame
+    return simulate_chilldkg_full_example(hostseckeys, t, faulty_idx=None)
 
 
 def derive_interpolating_value(L, x_i):
