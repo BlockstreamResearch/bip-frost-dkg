@@ -165,6 +165,7 @@ def participant_step1(
 def participant_step2_prepare_secshare(
     partial_secshares: List[Scalar],
 ) -> Scalar:
+    secshare: Scalar  # REVIEW Work around missing type annotation of Scalar.sum
     secshare = Scalar.sum(*partial_secshares)
     return secshare
 
