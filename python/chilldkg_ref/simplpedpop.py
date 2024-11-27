@@ -9,7 +9,7 @@ from .util import (
     ThresholdError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
-    UnknownFaultyPartyError,
+    UnknownFaultyParticipantOrCoordinatorError,
 )
 from .vss import VSS, VSSCommitment
 
@@ -208,7 +208,7 @@ def participant_step2(
     pubshare = sum_coms.pubshare(idx)
 
     if not VSSCommitment.verify_secshare(secshare, pubshare):
-        raise UnknownFaultyPartyError(
+        raise UnknownFaultyParticipantOrCoordinatorError(
             ParticipantBlameState(n, idx, secshare, pubshare),
             "Received invalid secshare, consider blaming to determine faulty party",
         )

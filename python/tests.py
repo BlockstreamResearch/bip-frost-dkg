@@ -13,7 +13,7 @@ from secp256k1proto.keys import pubkey_gen_plain
 from chilldkg_ref.util import (
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
-    UnknownFaultyPartyError,
+    UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
 )
 from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
@@ -67,7 +67,7 @@ def simulate_simplpedpop(
             pre_finalize_rets += [
                 simplpedpop.participant_step2(pstates[i], cmsg, secshare)
             ]
-        except UnknownFaultyPartyError as e:
+        except UnknownFaultyParticipantOrCoordinatorError as e:
             if not blame:
                 raise
             blame_msgs = simplpedpop.coordinator_blame(pmsgs)
@@ -127,7 +127,7 @@ def simulate_encpedpop(
             pre_finalize_rets += [
                 encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
             ]
-        except UnknownFaultyPartyError as e:
+        except UnknownFaultyParticipantOrCoordinatorError as e:
             if not blame:
                 raise
             blame_msgs = encpedpop.coordinator_blame(pmsgs)
@@ -176,7 +176,7 @@ def simulate_chilldkg(
     for i in range(n):
         try:
             prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg1)]
-        except UnknownFaultyPartyError as e:
+        except UnknownFaultyParticipantOrCoordinatorError as e:
             if not blame:
                 raise
             blame_msgs = chilldkg.coordinator_blame(pmsgs)

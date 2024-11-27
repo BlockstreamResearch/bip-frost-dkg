@@ -22,15 +22,49 @@ class ProtocolError(Exception):
     pass
 
 
-class FaultyParticipantOrCoordinatorError(ProtocolError):
-    """Raised when another participant appears faulty.
+class FaultyParticipantError(ProtocolError):
+    """Raised when a participant is faulty.
 
-    This is raised when another participant appears to have sent an invalid
-    protocol message. This error does not necessarily imply that the suspected
-    participant is faulty. It is always possible that the coordinator is faulty
-    instead and has misrepresented the suspected particant's protocol messages.
-    It is also possible that protocol message was simply not transmitted
-    correctly.
+    This exception is raised by the coordinator code when it detects faulty
+    behavior by a participant, i.e., a participant has deviated from the
+    protocol. The index of the participant is provided as part of the exception.
+    Assuming protocol messages have been transmitted correctly and the
+    coordinator itself is not faulty, this exception implies that the
+    participant is indeed faulty.
+
+    This exception is raised only by the coordinator code. Some faulty behavior
+    by participants will be detected by the other participants instead.
+    See FaultyParticipantOrCoordinatorError for details.
+
+    Attributes:
+        participant (int): Index of the faulty participant.
+    """
+
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)
+
+
+class FaultyParticipantOrCoordinatorError(ProtocolError):
+    """Raised when another known participant or the coordinator is faulty.
+
+    This exception is raised by the participant code when it detects what looks
+    like faulty behavior by a suspected participant. The index of the suspected
+    participant is provided as part of the exception.
+
+    Importantly, this exception is not proof that the suspected participant is
+    indeed faulty. It is instead possible that the coordinator has deviated from
+    the protocol in a way that makes it look as if the suspected participant has
+    deviated from the protocol. In other words, assuming messages have been
+    transmitted correctly and the raising participant is not faulty, this
+    exception implies that
+      - the suspected participant is faulty,
+      - *or* the coordinator is faulty (and has framed the suspected
+        participant).
+
+    This exception is raised only by the participant code. Some faulty behavior
+    by participants will be detected by the coordinator instead. See
+    FaultyParticipantError for details.
 
     Attributes:
         participant (int): Index of the suspected participant.
@@ -42,17 +76,35 @@ class FaultyParticipantOrCoordinatorError(ProtocolError):
 
 
 class FaultyCoordinatorError(ProtocolError):
-    """Raised when the coordinator appears faulty.
+    """Raised when the coordinator is faulty.
 
-    This is raised when the coordinator appears to have sent an invalid protocol
-    message. This error does not necessarily imply that the coordinator is
-    faulty. It is also possible that a protocol message from the coordinator was
-    simply not transmitted correctly.
+    This exception is raised by the participant code when it detects faulty
+    behavior by the coordinator, i.e., the coordinator has deviated from the
+    protocol. Assuming protocol messages have been transmitted correctly and the
+    raising participant is not faulty, this exception implies that the
+    coordinator is indeed faulty.
     """
 
 
-class UnknownFaultyPartyError(ProtocolError):
-    """TODO"""
+class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
+    """Raised when another unknown participant or the coordinator is faulty.
+
+    This exception is raised by the participant code when it detects what looks
+    like faulty behavior by some other participant, but there is insufficient
+    information to determine which participant should be suspected.
+
+    To determine a suspected participant, the raising participant may choose to
+    run the optional blame step of the protocol, which requires obtaining a
+    blame message by the coordinator. See the participant_blame function for
+    details.
+
+    This is only raised for specific faulty behavior by another participant
+    which cannot be attributed to another participant without further help of
+    the coordinator (namely, sending invalid encrypted secret shares).
+
+    Attributes:
+        blame_state (BlameState): To be given to the participant_blame function.
+    """
 
     def __init__(self, blame_state: Any, *args: Any):
         self.blame_state = blame_state

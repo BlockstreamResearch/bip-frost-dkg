@@ -26,7 +26,7 @@ from .util import (
     ThresholdError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
-    UnknownFaultyPartyError,
+    UnknownFaultyParticipantOrCoordinatorError,
 )
 
 __all__ = [
@@ -44,7 +44,7 @@ __all__ = [
     "ThresholdError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
-    "UnknownFaultyPartyError",
+    "UnknownFaultyParticipantOrCoordinatorError",
     "InvalidRecoveryDataError",
     "DuplicateHostpubkeyError",
     "SessionNotFinalizedError",
@@ -472,7 +472,7 @@ def participant_step2(
             coordinator is malicious or network connections are unreliable, and
             as a consequence, the caller should not conclude that the party
             hinted at is malicious.
-        UnknownFaultyPartyError: TODO
+        UnknownFaultyParticipantOrCoordinatorError: TODO
     """
     params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
@@ -484,12 +484,12 @@ def participant_step2(
             cmsg=enc_cmsg,
             enc_secshare=enc_secshares[idx],
         )
-    except UnknownFaultyPartyError as e:
+    except UnknownFaultyParticipantOrCoordinatorError as e:
         assert isinstance(e.blame_state, encpedpop.ParticipantBlameState)
-        # Translate encpedpop.UnknownFaultyPartyError into our own
-        # chilldkg.UnknownFaultyPartyError.
+        # Translate encpedpop.UnknownFaultyParticipantOrCoordinatorError into our own
+        # chilldkg.UnknownFaultyParticipantOrCoordinatorError.
         blame_state = ParticipantBlameState(e.blame_state)
-        raise UnknownFaultyPartyError(blame_state, e.args) from e
+        raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
 
     # Include the enc_shares in eq_input to ensure that participants agree on all
     # shares, which in turn ensures that they have the right recovery data.

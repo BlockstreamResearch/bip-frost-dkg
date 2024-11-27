@@ -7,7 +7,7 @@ from secp256k1proto.util import int_from_bytes
 
 from . import simplpedpop
 from .util import (
-    UnknownFaultyPartyError,
+    UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
@@ -234,12 +234,12 @@ def participant_step2(
         dkg_output, eq_input = simplpedpop.participant_step2(
             simpl_state, simpl_cmsg, secshare
         )
-    except UnknownFaultyPartyError as e:
+    except UnknownFaultyParticipantOrCoordinatorError as e:
         assert isinstance(e.blame_state, simplpedpop.ParticipantBlameState)
         # Translate simplpedpop.ParticipantBlamestate into our own
         # encpedpop.ParticipantBlameState.
         blame_state = ParticipantBlameState(e.blame_state, enc_secshare, pads)
-        raise UnknownFaultyPartyError(blame_state, e.args) from e
+        raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input

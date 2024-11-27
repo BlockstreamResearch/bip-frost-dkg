@@ -22,8 +22,8 @@ from chilldkg_ref.chilldkg import (
     SessionParams,
     DKGOutput,
     RecoveryData,
-    UnknownFaultyPartyError,
     FaultyParticipantOrCoordinatorError,
+    UnknownFaultyParticipantOrCoordinatorError,
 )
 
 #
@@ -98,7 +98,7 @@ async def participant(
 
     try:
         state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
-    except UnknownFaultyPartyError as e:
+    except UnknownFaultyParticipantOrCoordinatorError as e:
         if blame_mode:
             participant_blame(e.blame_state, cblame)
         else:
