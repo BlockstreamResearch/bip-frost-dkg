@@ -215,7 +215,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     Participant `i` then sends a VSS commitment,
     which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
     where `G` is the base point of the secp256k1 elliptic curve,
-    and a BIP340 Schnorr signature `pop` on message `i` with secret key `a_i[0]` to the coordinator.
+    and a BIP340 Schnorr signature `pop` on message "`i`" with secret key `a_i[0]` to the coordinator.
     (The Schnorr signature acts as a *proof of possession*,
     i.e., it proves knowledge of the discrete logarithm of `com[0] = a_i[0] * G`.
     This avoids rogue-key attacks, also known as key cancellation attacks.)
