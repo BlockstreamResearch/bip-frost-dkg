@@ -14,7 +14,7 @@ from chilldkg_ref.util import (
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyPartyError,
-    prf,
+    tagged_hash_bip_dkg,
 )
 from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
 import chilldkg_ref.simplpedpop as simplpedpop
@@ -88,7 +88,7 @@ def simulate_simplpedpop(
 
 
 def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
-    deckey = prf(seed, "encpedpop deckey")
+    deckey = tagged_hash_bip_dkg("encpedpop deckey", seed)
     enckey = pubkey_gen_plain(deckey)
     return deckey, enckey
 
