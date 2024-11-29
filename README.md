@@ -129,7 +129,7 @@ In summary, we aim for the following design goals:
  - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
  - **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
  - **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
- - **Simple backups**: The capability of ChillDKG to recover devices from the host secret key together with public recovery data avoids the need for secret per-session backups, enhancing user experience.
+ - **Simple backups**: ChillDKG allows recovering the DKG output using the host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
  - **Per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
 
@@ -481,7 +481,11 @@ if a participant loses the backup of the recovery data of the DKG session,
 they can request it from any other participants or the coordinator.
 Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating
 so that it can, in principle, be stored with an untrusted third-party backup provider.
-Users should, however, be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
+
+Users should be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
+To eliminate this issue, users can encrypt the recovery data using an encryption key derived from their seed before publishing the data.
+Recovery from encrypted data requires only the participant's seed, with no additional secrets needed.
+This BIP does not specify the encryption scheme.
 
 Keeping backups of the secret key accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
 As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of host secret keys at all,
