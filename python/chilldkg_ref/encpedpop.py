@@ -190,7 +190,7 @@ def participant_step1(
 
     # Create a synthetic encryption nonce
     enc_context = serialize_enc_context(t, enckeys)
-    secnonce = tagged_hash_bip_dkg("encpodpop secnonce", seed + random + enc_context)
+    secnonce = tagged_hash_bip_dkg("encpedpop secnonce", seed + random + enc_context)
     # This can be optimized: We serialize the pubnonce here, but ecdh will need
     # to deserialize it again, which involves computing a square root to obtain
     # the y coordinate.
