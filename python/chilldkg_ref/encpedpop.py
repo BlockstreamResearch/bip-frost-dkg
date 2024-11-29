@@ -9,7 +9,6 @@ from . import simplpedpop
 from .util import (
     UnknownFaultyPartyError,
     tagged_hash_bip_dkg,
-    prf,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
 )
@@ -36,9 +35,7 @@ def ecdh(
 
 def self_pad(deckey: bytes, context_: bytes) -> Scalar:
     return Scalar(
-        int_from_bytes(
-            prf(seed=deckey, tag="encaps_multi self_pad", extra_input=context_)
-        )
+        int_from_bytes(tagged_hash_bip_dkg("encaps_multi self_pad", deckey + context_))
     )
 
 
@@ -176,7 +173,7 @@ def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
 
 
 def derive_simpl_seed(seed: bytes, pubnonce: bytes, enc_context: bytes) -> bytes:
-    return prf(seed, "encpedpop seed", pubnonce + enc_context)
+    return tagged_hash_bip_dkg("encpedpop seed", seed + pubnonce + enc_context)
 
 
 def participant_step1(
@@ -193,7 +190,7 @@ def participant_step1(
 
     # Create a synthetic encryption nonce
     enc_context = serialize_enc_context(t, enckeys)
-    secnonce = prf(seed, "encpodpop secnonce", random + enc_context)
+    secnonce = tagged_hash_bip_dkg("encpodpop secnonce", seed + random + enc_context)
     # This can be optimized: We serialize the pubnonce here, but ecdh will need
     # to deserialize it again, which involves computing a square root to obtain
     # the y coordinate.

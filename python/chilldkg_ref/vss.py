@@ -4,7 +4,7 @@ from typing import List
 
 from secp256k1proto.secp256k1 import GE, G, Scalar
 
-from .util import prf
+from .util import tagged_hash_bip_dkg
 
 
 class Polynomial:
@@ -84,7 +84,9 @@ class VSS:
     @staticmethod
     def generate(seed: bytes, t: int) -> VSS:
         coeffs = [
-            Scalar.from_bytes(prf(seed, "vss coeffs", i.to_bytes(4, byteorder="big")))
+            Scalar.from_bytes(
+                tagged_hash_bip_dkg("vss coeffs", seed + i.to_bytes(4, byteorder="big"))
+            )
             for i in range(t)
         ]
         return VSS(Polynomial(coeffs))
