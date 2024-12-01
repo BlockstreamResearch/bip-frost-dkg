@@ -483,8 +483,8 @@ Moreover, the recovery data contains secrets only in encrypted form and is self-
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 
 Users should be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
-To eliminate this issue, users can encrypt the recovery data using an encryption key derived from their seed before publishing the data.
-Recovery from encrypted data requires only the participant's seed, with no additional secrets needed.
+To eliminate this issue, users can encrypt the recovery data using an encryption key derived from their host secret key before publishing the data.
+Recovery from encrypted data requires only the participant's host secret key, with no additional secrets needed.
 This BIP does not specify the encryption scheme.
 
 Keeping backups of the secret key accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
