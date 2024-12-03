@@ -88,11 +88,11 @@ class DKGOutput(NamedTuple):
 
 
 def assemble_sum_coms(
-    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE], n: int
+    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE]
 ) -> VSSCommitment:
     # Sum the commitments to the secrets
     return VSSCommitment(
-        [GE.sum(*(coms_to_secrets[i] for i in range(n)))] + sum_coms_to_nonconst_terms
+        [GE.sum(*(c for c in coms_to_secrets))] + sum_coms_to_nonconst_terms
     )
 
 
@@ -203,7 +203,7 @@ def participant_step2(
             raise FaultyParticipantOrCoordinatorError(
                 i, "Participant sent invalid proof-of-knowledge"
             )
-    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
+    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshare = sum_coms.pubshare(idx)
 
@@ -285,7 +285,7 @@ def coordinator_step(
     pops = [pmsg.pop for pmsg in pmsgs]
     cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
 
-    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms, n)
+    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
