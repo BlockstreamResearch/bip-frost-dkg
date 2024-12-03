@@ -109,7 +109,6 @@ The list of signatures, also called a *success certificate*, can convince any ot
 that the DKG session has indeed been successful.
 This is sufficient to exclude the catastrophic failure described in the previous section.
 
-<!-- TODO Call this restore instead of recovery? -->
 As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
 a backup of a single *host secret key* specific to the device,
 (the essential parts of) the public transcripts of the DKG sessions,
@@ -524,7 +523,6 @@ Thus, anyone who intends to use the threshold public key
 should first obtain explicit confirmations from all participants that they have deemed the DKG session successful,
 which will also imply that all participants have a redundant copy of the recovery data.
 One simple method of obtaining confirmation is to collect signed confirmation messages from all participants.
-(TODO Implement this in the code.)
 
 Depending on the application, other methods may be appropriate.
 For example, in a scenario where a single user employs multiple signing devices in the same room to set up a threshold wallet,
