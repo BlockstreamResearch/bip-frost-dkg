@@ -416,7 +416,7 @@ def participant_step1(
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
     """
-    hostpubkey = hostpubkey_gen(hostseckey)  # SecKeyError if len(hostseckey) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # SecretKeyError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
@@ -433,7 +433,7 @@ def participant_step1(
         enckeys=hostpubkeys,
         idx=idx,
         random=random,
-    )  # SecKeyError if len(hostseckey) != 32
+    )  # SecretKeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
 
@@ -459,7 +459,7 @@ def participant_step2(
         ParticipantMsg2: The second message to be sent to the coordinator.
 
     Raises:
-        SecKeyError: If the length of `hostseckey` is not 32 bytes.
+        SecretKeyError: If the length of `hostseckey` is not 32 bytes.
         FIXME
         FaultyParticipantOrCoordinatorError: If `cmsg1` is invalid. This can
             happen if another participant has sent an invalid message to the
@@ -486,13 +486,13 @@ def participant_step2(
         )
     except UnknownFaultyParticipantOrCoordinatorError as e:
         assert isinstance(e.blame_state, encpedpop.ParticipantBlameState)
-        # Translate encpedpop.UnknownFaultyParticipantOrCoordinatorError into our own
-        # chilldkg.UnknownFaultyParticipantOrCoordinatorError.
+        # Translate encpedpop.UnknownFaultyParticipantOrCoordinatorError into
+        # our own chilldkg.UnknownFaultyParticipantOrCoordinatorError.
         blame_state = ParticipantBlameState(e.blame_state)
         raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
 
-    # Include the enc_shares in eq_input to ensure that participants agree on all
-    # shares, which in turn ensures that they have the right recovery data.
+    # Include the enc_shares in eq_input to ensure that participants agree on
+    # all shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)
     state2 = ParticipantState2(params, eq_input, dkg_output)
