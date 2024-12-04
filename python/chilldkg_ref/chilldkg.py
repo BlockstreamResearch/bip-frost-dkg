@@ -684,6 +684,7 @@ def recover(
     certeq_verify(hostpubkeys, eq_input, cert)
 
     # Compute threshold pubkey and individual pubshares
+    sum_coms, secshare_tweak = sum_coms.invalid_taproot_commit()
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
@@ -706,6 +707,7 @@ def recover(
             idx,
             enc_secshares[idx],
         )
+        secshare += secshare_tweak
 
         # This is just a sanity check. Our signature is valid, so we have done
         # this check already during the actual session.

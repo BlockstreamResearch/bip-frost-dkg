@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Tuple
 
 from secp256k1proto.secp256k1 import GE, G, Scalar
+from secp256k1proto.util import tagged_hash
 
 from .util import tagged_hash_bip_dkg
 
@@ -73,6 +74,32 @@ class VSSCommitment:
 
     def commitment_to_nonconst_terms(self) -> List[GE]:
         return self.ges[1 : self.t()]
+
+    def invalid_taproot_commit(self) -> Tuple[VSSCommitment, Scalar]:
+        # Return a modified VSS commitment such that the threshold public key
+        # generated from it has an unspendable BIP 341 Taproot script path.
+        #
+        # Specifically, for a VSS commitment `com`, we have:
+        # `com.add_invalid_taproot_commitment().commitment_to_secret() = com.commitment_to_secret() + t*G`.
+        #
+        # The tweak `t` commits to an empty message, which is invalid according
+        # to BIP 341 for Taproot script spends. This follows BIP 341's
+        # recommended approach for committing to an unspendable script path.
+        #
+        # This prevents a malicious participant from secretly inserting a *valid*
+        # Taproot commitment to a script path into the summed VSS commitment during
+        # the DKG protocol. If the resulting threshold public key was used directly
+        # in a BIP 341 Taproot output, the malicious participant would be able to
+        # spend the output using their hidden script path.
+        #
+        # The function returns the updated VSS commitment and the tweak `t` which
+        # must be added to all secret shares of the commitment.
+        pk = self.commitment_to_secret()
+        secshare_tweak = Scalar.from_bytes(
+            tagged_hash("TapTweak", pk.to_bytes_compressed())
+        )
+        vss_tweak = VSSCommitment([secshare_tweak * G] + [GE()] * (self.t() - 1))
+        return (self + vss_tweak, secshare_tweak)
 
 
 class VSS:
