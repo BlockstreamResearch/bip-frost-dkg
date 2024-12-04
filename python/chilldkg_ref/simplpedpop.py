@@ -2,8 +2,9 @@ from secrets import token_bytes as random_bytes
 from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
 
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
-from secp256k1proto.secp256k1 import GE, Scalar
+from secp256k1proto.secp256k1 import G, GE, Scalar
 from .util import (
+    tagged_hash_bip_dkg,
     BIP_TAG,
     SecretKeyError,
     ThresholdError,
@@ -79,6 +80,18 @@ class CoordinatorBlameMsg(NamedTuple):
 ###
 ### Other common definitions
 ###
+
+class DKGPreOutput(NamedTuple):
+    n: int
+    idx: int
+    secshare: Scalar
+    com: VSSCommitment
+    pubshare: GE
+
+
+class CoordinatorDKGPreOutput(NamedTuple):
+    n: int
+    com: VSSCommitment
 
 
 class DKGOutput(NamedTuple):
@@ -204,7 +217,6 @@ def participant_step2(
                 i, "Participant sent invalid proof-of-knowledge"
             )
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
-    threshold_pubkey = sum_coms.commitment_to_secret()
     pubshare = sum_coms.pubshare(idx)
 
     if not VSSCommitment.verify_secshare(secshare, pubshare):
@@ -213,14 +225,40 @@ def participant_step2(
             "Received invalid secshare, consider blaming to determine faulty party",
         )
 
-    pubshares = [sum_coms.pubshare(i) if i != idx else pubshare for i in range(n)]
-    dkg_output = DKGOutput(
-        secshare.to_bytes(),
+    dkg_pre_output = DKGPreOutput(
+        n,
+        idx,
+        secshare,
+        sum_coms,
+        pubshare,
+    )
+    eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
+    return dkg_pre_output, eq_input
+
+
+# TODO: add comment
+def vss_invalid_taproot_commit(vss: VSSCommitment, pubshare: Optional[GE]) -> (VSSCommitment, Scalar):
+    pk = vss.commitment_to_secret()
+    secshare_tweak = Scalar.from_bytes(
+        tagged_hash_bip_dkg("invalid Taproot commitment", pk.to_bytes_compressed())
+    )
+    pk_tweak = secshare_tweak * G
+    if pubshare:
+        pubshare += pk_tweak
+    vss_offset = VSSCommitment([pk_tweak] + [GE()] * (vss.t() - 1))
+    return (vss + vss_offset, pubshare, secshare_tweak)
+
+def dkg_output(dkg_pre_output: DKGPreOutput) -> DKGOutput:
+    (n, idx, secshare, com, pubshare) = dkg_pre_output
+
+    com, pubshare, secshare_offset = vss_invalid_taproot_commit(com, pubshare)
+    threshold_pubkey = com.commitment_to_secret()
+    pubshares = [com.pubshare(i) if i != idx else pubshare for i in range(n)]
+    return DKGOutput(
+        (secshare + secshare_offset).to_bytes(),
         threshold_pubkey.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
-    eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return dkg_output, eq_input
 
 
 def participant_blame(
@@ -267,9 +305,22 @@ def participant_blame(
 ###
 
 
+
+def coordinator_dkg_output(dkg_pre_output: CoordinatorDKGPreOutput) -> DKGOutput:
+    n, com = dkg_pre_output
+    com, _, _ = vss_invalid_taproot_commit(com, None)
+    threshold_pubkey = com.commitment_to_secret()
+    pubshares = [com.pubshare(i) for i in range(n)]
+    return DKGOutput(
+        None,
+        threshold_pubkey.to_bytes_compressed(),
+        [pubshare.to_bytes_compressed() for pubshare in pubshares],
+    )
+
+
 def coordinator_step(
     pmsgs: List[ParticipantMsg], t: int, n: int
-) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+) -> Tuple[CoordinatorMsg, CoordinatorDKGPreOutput, bytes]:
     # Sum the commitments to the i-th coefficients for i > 0
     #
     # This procedure corresponds to the one described by Pedersen in Section 5.1
@@ -286,16 +337,9 @@ def coordinator_step(
     cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
 
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
-    threshold_pubkey = sum_coms.commitment_to_secret()
-    pubshares = [sum_coms.pubshare(i) for i in range(n)]
-
-    dkg_output = DKGOutput(
-        None,
-        threshold_pubkey.to_bytes_compressed(),
-        [pubshare.to_bytes_compressed() for pubshare in pubshares],
-    )
+    dkg_pre_output = CoordinatorDKGPreOutput(n, sum_coms)
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return cmsg, dkg_output, eq_input
+    return cmsg, dkg_pre_output, eq_input
 
 
 def coordinator_blame(pmsgs: List[ParticipantMsg]) -> List[CoordinatorBlameMsg]:

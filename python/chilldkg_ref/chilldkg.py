@@ -18,6 +18,7 @@ from secp256k1proto.util import int_from_bytes, bytes_from_int
 
 from .vss import VSSCommitment
 from . import encpedpop
+from . import simplpedpop
 from .util import (
     BIP_TAG,
     tagged_hash_bip_dkg,
@@ -480,7 +481,7 @@ def participant_step2(
     enc_cmsg, enc_secshares = cmsg1
 
     try:
-        enc_dkg_output, eq_input = encpedpop.participant_step2(
+        enc_dkg_pre_output, eq_input = encpedpop.participant_step2(
             state=enc_state,
             deckey=hostseckey,
             cmsg=enc_cmsg,
@@ -496,8 +497,7 @@ def participant_step2(
     # Include the enc_shares in eq_input to ensure that participants agree on
     # all shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    dkg_output = DKGOutput._make(enc_dkg_output)
-    state2 = ParticipantState2(params, eq_input, dkg_output)
+    state2 = ParticipantState2(params, eq_input, enc_dkg_pre_output)
     sig = certeq_participant_step(hostseckey, idx, eq_input)
     pmsg2 = ParticipantMsg2(sig)
     return state2, pmsg2
@@ -538,9 +538,9 @@ def participant_finalize(
         SessionNotFinalizedError: If finalizing the DKG session was not
             successful from this participant's perspective (see above).
     """
-    params, eq_input, dkg_output = state2
+    params, eq_input, dkg_pre_output = state2
     certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
-    return dkg_output, RecoveryData(eq_input + cmsg2.cert)
+    return simplpedpop.dkg_output(dkg_pre_output), RecoveryData(eq_input + cmsg2.cert)
 
 
 def participant_blame(
@@ -590,14 +590,13 @@ def coordinator_step1(
     params_validate(params)
     hostpubkeys, t = params
 
-    enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
+    enc_cmsg, enc_dkg_pre_output, eq_input, enc_secshares = encpedpop.coordinator_step(
         pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1],
         t=t,
         enckeys=hostpubkeys,
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
-    state = CoordinatorState(params, eq_input, dkg_output)
+    state = CoordinatorState(params, eq_input, enc_dkg_pre_output)
     cmsg1 = CoordinatorMsg1(enc_cmsg, enc_secshares)
     return state, cmsg1
 
@@ -626,10 +625,10 @@ def coordinator_finalize(
             received messages from other participants via a communication
             channel beside the coordinator (or be malicious).
     """
-    params, eq_input, dkg_output = state
+    params, eq_input, dkg_pre_output = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     certeq_verify(params.hostpubkeys, eq_input, cert)  # SessionNotFinalizedError
-    return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
+    return CoordinatorMsg2(cert), simplpedpop.coordinator_dkg_output(dkg_pre_output), RecoveryData(eq_input + cert)
 
 
 def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]:
@@ -683,9 +682,6 @@ def recover(
     eq_input = recovery_data[: -len(cert)]
     certeq_verify(hostpubkeys, eq_input, cert)
 
-    # Compute threshold pubkey and individual pubshares
-    threshold_pubkey = sum_coms.commitment_to_secret()
-    pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
     if hostseckey:
         hostpubkey = hostpubkey_gen(hostseckey)
@@ -707,15 +703,25 @@ def recover(
             enc_secshares[idx],
         )
 
+        pubshare = sum_coms.pubshare(idx)
         # This is just a sanity check. Our signature is valid, so we have done
         # this check already during the actual session.
-        assert VSSCommitment.verify_secshare(secshare, pubshares[idx])
-    else:
-        secshare = None
+        assert VSSCommitment.verify_secshare(secshare, pubshare)
 
-    dkg_output = DKGOutput(
-        None if secshare is None else secshare.to_bytes(),
-        threshold_pubkey.to_bytes_compressed(),
-        [pubshare.to_bytes_compressed() for pubshare in pubshares],
-    )
+        # Compute threshold pubkey and individual pubshares
+        dkg_pre_output = simplpedpop.DKGPreOutput(
+            n,
+            idx,
+            secshare,
+            sum_coms,
+            pubshare,
+        )
+        dkg_output = simplpedpop.dkg_output(dkg_pre_output)
+    else:
+        dkg_pre_output = simplpedpop.CoordinatorDKGPreOutput(
+            n,
+            sum_coms,
+        )
+        dkg_output = simplpedpop.coordinator_dkg_output(dkg_pre_output)
+
     return dkg_output, params

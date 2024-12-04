@@ -218,7 +218,7 @@ def participant_step2(
     deckey: bytes,
     cmsg: CoordinatorMsg,
     enc_secshare: Scalar,
-) -> Tuple[simplpedpop.DKGOutput, bytes]:
+) -> Tuple[simplpedpop.DKGPreOutput, bytes]:
     simpl_state, pubnonce, enckeys, idx = state
     simpl_cmsg, pubnonces = cmsg
 
@@ -231,7 +231,7 @@ def participant_step2(
     secshare = enc_secshare - Scalar.sum(*pads)
 
     try:
-        dkg_output, eq_input = simplpedpop.participant_step2(
+        dkg_pre_output, eq_input = simplpedpop.participant_step2(
             simpl_state, simpl_cmsg, secshare
         )
     except UnknownFaultyParticipantOrCoordinatorError as e:
@@ -242,7 +242,7 @@ def participant_step2(
         raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
-    return dkg_output, eq_input
+    return dkg_pre_output, eq_input
 
 
 def participant_blame(
@@ -282,13 +282,13 @@ def coordinator_step(
     pmsgs: List[ParticipantMsg],
     t: int,
     enckeys: List[bytes],
-) -> Tuple[CoordinatorMsg, simplpedpop.DKGOutput, bytes, List[Scalar]]:
+) -> Tuple[CoordinatorMsg, simplpedpop.CoordinatorDKGPreOutput, bytes, List[Scalar]]:
     n = len(enckeys)
     if n != len(pmsgs):
         raise ValueError
 
     simpl_pmsgs = [pmsg.simpl_pmsg for pmsg in pmsgs]
-    simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(simpl_pmsgs, t, n)
+    simpl_cmsg, vss_com, eq_input = simplpedpop.coordinator_step(simpl_pmsgs, t, n)
     pubnonces = [pmsg.pubnonce for pmsg in pmsgs]
     for i in range(n):
         if len(pmsgs[i].enc_shares) != n:
@@ -311,7 +311,7 @@ def coordinator_step(
     # participant i for participant_step2(); we leave this unspecified.
     return (
         CoordinatorMsg(simpl_cmsg, pubnonces),
-        dkg_output,
+        vss_com,
         eq_input,
         enc_secshares,
     )

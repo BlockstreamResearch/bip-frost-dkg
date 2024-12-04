@@ -52,7 +52,7 @@ def simulate_simplpedpop(
     pmsgs = [pmsg for (_, pmsg, _) in prets]
 
     cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
-    pre_finalize_rets = [(cout, ceq)]
+    pre_finalize_rets = [(simplpedpop.coordinator_dkg_output(cout), ceq)]
     for i in range(n):
         partial_secshares = [
             partial_secshares_for[i] for (_, _, partial_secshares_for) in prets
@@ -64,8 +64,9 @@ def simulate_simplpedpop(
 
         secshare = simplpedpop.participant_step2_prepare_secshare(partial_secshares)
         try:
+            pre_out, eq = simplpedpop.participant_step2(pstates[i], cmsg, secshare)
             pre_finalize_rets += [
-                simplpedpop.participant_step2(pstates[i], cmsg, secshare)
+                (simplpedpop.dkg_output(pre_out), eq)
             ]
         except UnknownFaultyParticipantOrCoordinatorError as e:
             if not blame:
@@ -120,12 +121,13 @@ def simulate_encpedpop(
             pmsgs[faulty_idx[i]].enc_shares[i] += Scalar(17)
 
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
-    pre_finalize_rets = [(cout, ceq)]
+    pre_finalize_rets = [(simplpedpop.coordinator_dkg_output(cout), ceq)]
     for i in range(n):
         deckey = enc_prets0[i][0]
         try:
+            pre_out, eq = encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
             pre_finalize_rets += [
-                encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
+                (simplpedpop.dkg_output(pre_out), eq)
             ]
         except UnknownFaultyParticipantOrCoordinatorError as e:
             if not blame:
