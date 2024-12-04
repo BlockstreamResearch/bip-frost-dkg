@@ -159,7 +159,7 @@ While warnings can be presented to users in this case, users tend to misundersta
 Even in distributed systems with strict liveness requirements, e.g., a system run by a large federation of nodes of which a majority is trusted, what is typically necessary for the liveness of the system is the continued ability to *produce signatures*.
 However, the setup of keys is typically performed in a one-time ceremony at the inception of the system (and possibly repeated in large time intervals, e.g., every few months).
 In other words, what is primarily required to ensure liveness in these applications is a robust signing protocol
-(and a solution for FROST exists [[RRJSS22](https://eprint.iacr.org/2022/550)], and not a robust DKG protocol.
+(and a solution for FROST exists [[RRJSS22](https://eprint.iacr.org/2022/550)]), and not a robust DKG protocol.
 
 ### Structure of this Document
 
@@ -291,7 +291,7 @@ the static encryption key and the index `j` of the recipient.[^mr-kem]
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
 
 Every participant derives an ephemeral *session seed* passed down to SimplPedPop from their long-term seed and their public encryption nonce.
-Moreover, all encryption keys of all participants is included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
+Moreover, all encryption keys of all participants are included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
 even in the case that the randomness for deriving the encryption nonce pair is accidentally reused.
 
 EncPedPop then works like SimplPedPop with the following differences:
