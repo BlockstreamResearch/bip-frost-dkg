@@ -780,7 +780,7 @@ Perform a participant's second step of a ChillDKG session.
 
 *Raises*:
 
-- `SecKeyError` - If the length of `hostseckey` is not 32 bytes.
+- `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
   FIXME
 - `FaultyParticipantOrCoordinatorError` - If `cmsg1` is invalid. This can
   happen if another participant has sent an invalid message to the
