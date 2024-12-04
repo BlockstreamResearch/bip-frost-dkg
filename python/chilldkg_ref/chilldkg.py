@@ -13,7 +13,7 @@ from typing import Tuple, List, NamedTuple, NewType, Optional, NoReturn
 
 from secp256k1proto.secp256k1 import Scalar, GE
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
-from secp256k1proto.keys import pubkey_gen_plain
+from secp256k1proto.keys import pubkey_gen_plain, G
 from secp256k1proto.util import int_from_bytes, bytes_from_int
 
 from .vss import VSSCommitment
@@ -288,6 +288,18 @@ class DKGOutput(NamedTuple):
     threshold_pubkey: bytes
     pubshares: List[bytes]
 
+    # TODO: add comment
+    def invalid_taproot_commit(self) -> VSSCommitment:
+        secshare_tweak = Scalar.from_bytes(
+            tagged_hash_bip_dkg("delinearization", self.threshold_pubkey)
+        )
+        pubshare_tweak = secshare_tweak * G
+        return DKGOutput(
+            (Scalar(int_from_bytes(self.secshare)) + secshare_tweak).to_bytes() if self.secshare else None,
+            (GE.from_bytes(self.threshold_pubkey) + pubshare_tweak).to_bytes_compressed(),
+            [(GE.from_bytes(pubshare) + pubshare_tweak).to_bytes_compressed() for pubshare in self.pubshares]
+        )
+
 
 RecoveryData = NewType("RecoveryData", bytes)
 
@@ -540,7 +552,7 @@ def participant_finalize(
     """
     params, eq_input, dkg_output = state2
     certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
-    return dkg_output, RecoveryData(eq_input + cmsg2.cert)
+    return dkg_output.invalid_taproot_commit(), RecoveryData(eq_input + cmsg2.cert)
 
 
 def participant_blame(
@@ -629,7 +641,7 @@ def coordinator_finalize(
     params, eq_input, dkg_output = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     certeq_verify(params.hostpubkeys, eq_input, cert)  # SessionNotFinalizedError
-    return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
+    return CoordinatorMsg2(cert), dkg_output.invalid_taproot_commit(), RecoveryData(eq_input + cert)
 
 
 def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]:
@@ -717,5 +729,5 @@ def recover(
         None if secshare is None else secshare.to_bytes(),
         threshold_pubkey.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
-    )
+    ).invalid_taproot_commit()
     return dkg_output, params
