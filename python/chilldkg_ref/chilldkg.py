@@ -36,8 +36,10 @@ __all__ = [
     "participant_step1",
     "participant_step2",
     "participant_finalize",
+    "participant_blame",
     "coordinator_step1",
     "coordinator_finalize",
+    "coordinator_blame",
     "recover",
     # Exceptions
     "SecretKeyError",
