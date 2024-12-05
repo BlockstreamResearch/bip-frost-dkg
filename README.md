@@ -450,9 +450,9 @@ should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 ChillDKG is designed for usage with the FROST Schnorr signature scheme,
 and its security depends on the specifics of FROST.
 We stress that ChillDKG is not a general-purpose DKG protocol,[^no-simulatable-dkg]
-and combining it with other threshold cryptographic schemes,
-e.g., threshold signature schemes other than FROST, or threshold decryption schemes
-requires careful further consideration, which is not endorsed or in the scope of this document.
+and **must not** be combined with other threshold cryptographic schemes,
+e.g., threshold signature schemes other than FROST, or threshold decryption schemes,
+without careful further consideration, which is not in the scope of this document.
 
 [^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
 
@@ -490,7 +490,7 @@ they can request it from any other participants or the coordinator.
 Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 
-Users should be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
+Users **should** be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
 To eliminate this issue, users can encrypt the recovery data using an encryption key derived from their host secret key before publishing the data.
 Recovery from encrypted data requires only the participant's host secret key, with no additional secrets needed.
 This BIP does not specify the encryption scheme.
@@ -516,7 +516,7 @@ The recovery data can, e.g., be attached to the first request to initiate a FROS
 
 An important implication of the above is that anyone who uses the threshold public key,
 and thereby relies on the participants' ability to participate in signing sessions,
-is responsible for ensuring that the participants have already deemed the DKG session successful,
+**must** ensure that the participants have already deemed the DKG session successful,
 or at least, that the recovery data will be available to convince any stuck participants of the success of the DKG session.
 
 For an example of what could go wrong,
@@ -524,13 +524,13 @@ assume that some participant deems the DKG session successful and uses the thres
 Even though everything looks fine from the perspective of this participant,
 it is entirely possible that this participant is the only one who has deemed the DKG session successful,
 and thus (besides the untrusted coordinator) the only one who knows the recovery data.
-If the recovery data is lost now because this participant's permanent storage crashes,
+If the recovery data is lost now because this participant's permanent storage fails,
 the other participants cannot be convinced to deem the DKG session successful
 (without the help of the untrusted coordinator)
 and so the funds will be lost.
 
 Thus, anyone who intends to use the threshold public key
-should first obtain explicit confirmations from all participants that they have deemed the DKG session successful,
+**should** first obtain explicit confirmations from all participants that they have deemed the DKG session successful,
 which will also imply that all participants have a redundant copy of the recovery data.
 One simple method of obtaining confirmation is to collect signed confirmation messages from all participants.
 
@@ -541,7 +541,7 @@ Alternatively, the user could check all `n` devices when generating a receiving 
 which constitutes the first use of the threshold public key.
 
 If a recovering party (see [Backup and Recovery](#backup-and-recovery)) cannot (re-)obtain confirmations,
-this simply means they should stop using the threshold public key going forward,
+this simply means they **should** stop using the threshold public key going forward,
 e.g., stop sending additional funds to addresses derived from it.
 (But, in contrast to the bad example laid out above,
 it will still be possible to spend the funds,
@@ -615,7 +615,7 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 *Arguments*:
 
 - `hostseckey` - This participant's long-term secret key (32 bytes).
-  The key must be 32 bytes of cryptographically secure randomness
+  The key *must* be 32 bytes of cryptographically secure randomness
   with sufficient entropy to be unpredictable. All outputs of a
   successful participant in a session can be recovered from (a backup
   of) the key and per-session recovery data.
@@ -651,9 +651,9 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 - `hostpubkeys` - Ordered list of the host public keys of all participants.
 - `t` - The participation threshold `t`.
   This is the number of participants that will be required to sign.
-  It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+  It *must* hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
 
-  Participants must ensure that they have obtained authentic host
+  Participants *must* ensure that they have obtained authentic host
   public keys of all the other participants in the session to make
   sure that they run the DKG and generate a threshold public key with
   the intended set of participants. This is analogous to traditional
@@ -666,8 +666,8 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   where the participants need to obtain authentic individual public
   keys of the other participants to generate an aggregated public key.
 
-  All participants and the coordinator in a session must be given an identical
-  `SessionParams` tuple. In particular, the host public keys must be in the
+  All participants and the coordinator in a session *must* be given an identical
+  `SessionParams` tuple. In particular, the host public keys *must* be in the
   same order. This will make sure that honest participants agree on the order
   as part of the session, which is useful if the order carries an implicit
   meaning in the application (e.g., if the first `t` participants are the
@@ -746,7 +746,7 @@ Perform a participant's first step of a ChillDKG session.
 *Returns*:
 
 - `ParticipantState1` - The participant's session state after this step, to
-  be passed as an argument to `participant_step2`. The state must not
+  be passed as an argument to `participant_step2`. The state *must not*
   be reused (i.e., it must be passed only to one
   `participant_step2` call).
 - `ParticipantMsg1` - The first message to be sent to the coordinator.
@@ -783,8 +783,8 @@ Perform a participant's second step of a ChillDKG session.
 *Returns*:
 
 - `ParticipantState2` - The participant's session state after this step, to
-  be passed as an argument to `participant_finalize`. The state must
-  not be reused (i.e., it must be passed only to one
+  be passed as an argument to `participant_finalize`. The state *must
+  not* be reused (i.e., it must be passed only to one
   `participant_finalize` call).
 - `ParticipantMsg2` - The second message to be sent to the coordinator.
 
@@ -821,8 +821,8 @@ function.
 
 *Warning:*
 Changing perspectives, this implies that even when obtaining a
-`SessionNotFinalizedError`, you MUST NOT conclude that the DKG session has
-failed, and as a consequence, you MUST NOT erase the hostseckey. The underlying
+`SessionNotFinalizedError`, you *must not* conclude that the DKG session has
+failed, and as a consequence, you *must not* erase the hostseckey. The underlying
 reason is that some other participant may deem the DKG session successful
 and use the resulting threshold public key (e.g., by sending funds to it).
 That other participant can, at any point in the future, wish to convince us
