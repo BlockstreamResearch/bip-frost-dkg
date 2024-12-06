@@ -31,11 +31,11 @@ The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](ht
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` participants are compromised
 and remain functional as long as `t` honest participants do not lose their secret key material.
-Notably, FROST can be made compatible with [BIP340](bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
+Notably, FROST can be made compatible with [BIP 340](bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
 
 [^t-edge-cases]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
-In the case of `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 (see [BIP327](bip-0327.mediawiki)) instead of FROST avoids the need for an interactive DKG.
-The case `t = 1` can be realized by letting one participant generate an ordinary [BIP340](bip-0340.mediawiki) key pair and transmitting the key pair to every other participant, who can check its consistency and then simply use the ordinary [BIP340](bip-0340.mediawiki) signing algorithm.
+In the case of `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 (see [BIP 327](bip-0327.mediawiki)) instead of FROST avoids the need for an interactive DKG.
+The case `t = 1` can be realized by letting one participant generate an ordinary [BIP 340](bip-0340.mediawiki) key pair and transmitting the key pair to every other participant, who can check its consistency and then simply use the ordinary [BIP 340](bip-0340.mediawiki) signing algorithm.
 Participants still need to ensure that they agree on a key pair. A detailed specification is not in the scope of this document.
 
 As a result, threshold signatures increase both security and availability,
@@ -214,7 +214,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     Participant `i` then sends a VSS commitment,
     which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
     where `G` is the base point of the secp256k1 elliptic curve,
-    and a BIP340 Schnorr signature `pop` on message "`i`" with secret key `a_i[0]` to the coordinator.
+    and a BIP 340 Schnorr signature `pop` on message "`i`" with secret key `a_i[0]` to the coordinator.
     (The Schnorr signature acts as a *proof of possession*,
     i.e., it proves knowledge of the discrete logarithm of `com[0] = a_i[0] * G`.
     This avoids rogue-key attacks, also known as key cancellation attacks.)
@@ -367,7 +367,7 @@ This verification can occur at any time before the DKG session is finalized, in 
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this requirement is implicit in other schemes as well.
-For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP327](bip-0327.mediawiki)]
+For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP 327](bip-0327.mediawiki)]
 also requires the assumption that all participants have authentic copies of each other's individual public keys.
 
 #### Equality Check Protocol CertEq
@@ -381,7 +381,7 @@ i.e., a full list of valid signatures from all `n` participants (including thems
 [^multisig-cert]: Abstractly, the required primitive is a multi-signature scheme, i.e., `n` participants signing the same message `eq_input`.
 We have chosen the naive scheme of collecting a list of `n` individual signatures for simplicity.
 Other multi-signatures schemes,
-e.g., MuSig2 [[BIP327](bip-0327.mediawiki)] or a scheme based on Schnorr signature half aggregation [[Halfagg-BIP-Draft](https://github.com/BlockstreamResearch/cross-input-aggregation/blob/master/half-aggregation.mediawiki), [CGKN21](https://eprint.iacr.org/2021/350), [CZ22](https://eprint.iacr.org/2022/222)],
+e.g., MuSig2 [[BIP 327](bip-0327.mediawiki)] or a scheme based on Schnorr signature half aggregation [[Halfagg-BIP-Draft](https://github.com/BlockstreamResearch/cross-input-aggregation/blob/master/half-aggregation.mediawiki), [CGKN21](https://eprint.iacr.org/2021/350), [CZ22](https://eprint.iacr.org/2022/222)],
 could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
 
@@ -467,7 +467,7 @@ Moreover, all parties obtain *recovery data* (common to all participants and the
 
 Losing the secret share or the threshold public key, e.g., after the loss of a participant device, will render the participant incapable of participating in signing sessions.
 As these values depend on the contributions of the other participants to the DKG session, they can,
-unlike deterministically derived secret keys [[BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)] as typically used for single-signer Schnorr signatures [[BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)] or MuSig [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
+unlike deterministically derived secret keys [[BIP 32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)] as typically used for single-signer Schnorr signatures [[BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)] or MuSig [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
 not be rederived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
@@ -599,7 +599,7 @@ the corresponding "plain" public key in compressed serialization (33 bytes,
 starting with 0x02 or 0x03). This is the key generation procedure
 traditionally used in Bitcoin, e.g., for ECDSA. In other words, this
 function is equivalent to `IndividualPubkey` as defined in
-[[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
+[[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
 TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Arguments*:
@@ -648,11 +648,11 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   sure that they run the DKG and generate a threshold public key with
   the intended set of participants. This is analogous to traditional
   threshold signatures (known as "multisig" in the Bitcoin community),
-  [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
+  [[BIP 383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
   where the participants need to obtain authentic extended public keys
   ("xpubs") from the other participants to generate multisig
   addresses, or MuSig2
-  [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
+  [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
   where the participants need to obtain authentic individual public
   keys of the other participants to generate an aggregated public key.
 
@@ -665,7 +665,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   If there is no canonical order of the participants in the application, the
   caller can sort the list of host public keys with the [KeySort algorithm
   specified in
-  BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+  BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
   to abstract away from the order.
 
 #### params\_id

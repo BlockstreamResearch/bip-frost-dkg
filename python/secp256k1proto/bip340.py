@@ -1,4 +1,4 @@
-# The following functions are based on the BIP-340 reference implementation:
+# The following functions are based on the BIP 340 reference implementation:
 # https://github.com/bitcoin/bips/blob/master/bip-0340/reference.py
 
 from .secp256k1 import FE, GE, G

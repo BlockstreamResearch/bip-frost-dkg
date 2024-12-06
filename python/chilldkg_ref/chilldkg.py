@@ -142,7 +142,7 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
     starting with 0x02 or 0x03). This is the key generation procedure
     traditionally used in Bitcoin, e.g., for ECDSA. In other words, this
     function is equivalent to `IndividualPubkey` as defined in
-    [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
+    [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
     TODO Refer to the FROST signing BIP instead, once that one has a number.
 
     Arguments:
@@ -193,11 +193,11 @@ class SessionParams(NamedTuple):
     sure that they run the DKG and generate a threshold public key with
     the intended set of participants. This is analogous to traditional
     threshold signatures (known as "multisig" in the Bitcoin community),
-    [[BIP383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
+    [[BIP 383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
     where the participants need to obtain authentic extended public keys
     ("xpubs") from the other participants to generate multisig
     addresses, or MuSig2
-    [[BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
+    [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
     where the participants need to obtain authentic individual public
     keys of the other participants to generate an aggregated public key.
 
@@ -210,7 +210,7 @@ class SessionParams(NamedTuple):
     If there is no canonical order of the participants in the application, the
     caller can sort the list of host public keys with the [KeySort algorithm
     specified in
-    BIP327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+    BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
     to abstract away from the order.
     """
 
