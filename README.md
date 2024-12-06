@@ -615,7 +615,7 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 *Arguments*:
 
 - `hostseckey` - This participant's long-term secret key (32 bytes).
-  The key *must* be 32 bytes of cryptographically secure randomness
+  The key **must** be 32 bytes of cryptographically secure randomness
   with sufficient entropy to be unpredictable. All outputs of a
   successful participant in a session can be recovered from (a backup
   of) the key and per-session recovery data.
@@ -651,9 +651,9 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 - `hostpubkeys` - Ordered list of the host public keys of all participants.
 - `t` - The participation threshold `t`.
   This is the number of participants that will be required to sign.
-  It *must* hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+  It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
 
-  Participants *must* ensure that they have obtained authentic host
+  Participants **must** ensure that they have obtained authentic host
   public keys of all the other participants in the session to make
   sure that they run the DKG and generate a threshold public key with
   the intended set of participants. This is analogous to traditional
@@ -666,16 +666,15 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   where the participants need to obtain authentic individual public
   keys of the other participants to generate an aggregated public key.
 
-  All participants and the coordinator in a session *must* be given an identical
-  `SessionParams` tuple. In particular, the host public keys *must* be in the
-  same order. This will make sure that honest participants agree on the order
-  as part of the session, which is useful if the order carries an implicit
-  meaning in the application (e.g., if the first `t` participants are the
-  primary participants for signing and the others are fallback participants).
-  If there is no canonical order of the participants in the application, the
-  caller can sort the list of host public keys with the [KeySort algorithm
-  specified in
-  BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+  A DKG session will fail if the participants and the coordinator in a session
+  don't have the `hostpubkeys` in the same order. This will make sure that
+  honest participants agree on the order as part of the session, which is
+  useful if the order carries an implicit meaning in the application (e.g., if
+  the first `t` participants are the primary participants for signing and the
+  others are fallback participants). If there is no canonical order of the
+  participants in the application, the caller can sort the list of host public
+  keys with the [KeySort algorithm specified in BIP
+  327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
   to abstract away from the order.
 
 #### params\_id
@@ -746,7 +745,7 @@ Perform a participant's first step of a ChillDKG session.
 *Returns*:
 
 - `ParticipantState1` - The participant's session state after this step, to
-  be passed as an argument to `participant_step2`. The state *must not*
+  be passed as an argument to `participant_step2`. The state **must not**
   be reused (i.e., it must be passed only to one
   `participant_step2` call).
 - `ParticipantMsg1` - The first message to be sent to the coordinator.
@@ -783,8 +782,8 @@ Perform a participant's second step of a ChillDKG session.
 *Returns*:
 
 - `ParticipantState2` - The participant's session state after this step, to
-  be passed as an argument to `participant_finalize`. The state *must
-  not* be reused (i.e., it must be passed only to one
+  be passed as an argument to `participant_finalize`. The state **must
+  not** be reused (i.e., it must be passed only to one
   `participant_finalize` call).
 - `ParticipantMsg2` - The second message to be sent to the coordinator.
 
@@ -821,8 +820,8 @@ function.
 
 *Warning:*
 Changing perspectives, this implies that even when obtaining a
-`SessionNotFinalizedError`, you *must not* conclude that the DKG session has
-failed, and as a consequence, you *must not* erase the hostseckey. The underlying
+`SessionNotFinalizedError`, you **must not** conclude that the DKG session has
+failed, and as a consequence, you **must not** erase the hostseckey. The underlying
 reason is that some other participant may deem the DKG session successful
 and use the resulting threshold public key (e.g., by sending funds to it).
 That other participant can, at any point in the future, wish to convince us

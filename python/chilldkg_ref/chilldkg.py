@@ -186,7 +186,7 @@ class SessionParams(NamedTuple):
         hostpubkeys: Ordered list of the host public keys of all participants.
         t: The participation threshold `t`.
             This is the number of participants that will be required to sign.
-            It **must** hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
 
     Participants **must** ensure that they have obtained authentic host
     public keys of all the other participants in the session to make
@@ -201,16 +201,15 @@ class SessionParams(NamedTuple):
     where the participants need to obtain authentic individual public
     keys of the other participants to generate an aggregated public key.
 
-    All participants and the coordinator in a session **must** be given an identical
-    `SessionParams` tuple. In particular, the host public keys **must** be in the
-    same order. This will make sure that honest participants agree on the order
-    as part of the session, which is useful if the order carries an implicit
-    meaning in the application (e.g., if the first `t` participants are the
-    primary participants for signing and the others are fallback participants).
-    If there is no canonical order of the participants in the application, the
-    caller can sort the list of host public keys with the [KeySort algorithm
-    specified in
-    BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+    A DKG session will fail if the participants and the coordinator in a session
+    don't have the `hostpubkeys` in the same order. This will make sure that
+    honest participants agree on the order as part of the session, which is
+    useful if the order carries an implicit meaning in the application (e.g., if
+    the first `t` participants are the primary participants for signing and the
+    others are fallback participants). If there is no canonical order of the
+    participants in the application, the caller can sort the list of host public
+    keys with the [KeySort algorithm specified in BIP
+    327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
     to abstract away from the order.
     """
 
