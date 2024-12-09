@@ -487,9 +487,9 @@ def participant_step2(
             enc_secshare=enc_secshares[idx],
         )
     except UnknownFaultyParticipantOrCoordinatorError as e:
+        # Convert from encpedpop.ParticipantBlameState into
+        # chilldkg.ParticipantBlameState.
         assert isinstance(e.blame_state, encpedpop.ParticipantBlameState)
-        # Translate encpedpop.UnknownFaultyParticipantOrCoordinatorError into
-        # our own chilldkg.UnknownFaultyParticipantOrCoordinatorError.
         blame_state = ParticipantBlameState(e.blame_state)
         raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
 
