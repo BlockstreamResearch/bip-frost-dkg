@@ -12,8 +12,10 @@ for i in "chilldkg,Tuples" "util,Expection"; do
 pydoc-markdown -I python/chilldkg_ref -m "$module" "{renderer: {type: markdown, insert_header_anchors: false, render_module_header: no, format_code: no, header_level_by_type: {\"Function\": 4, \"Class\": 4, \"Method\": 5}, descriptive_class_title: \"$ ${class_title}\" }}" |
     # Remove header
     sed -z 's/[^#]*#/#/' |
-    # Replace bold (**) by italics (*)
-    sed -z 's/\*\*/*/g' >> pydoc.md
+    # Replace bold (**) by italics (*), but not for **must**, **must not**,
+    # **should**, or **should not**.
+    python3 -c "import re, sys; sys.stdout.write(re.sub(r'\*\*(?!must\*\*|should\*\*|must not\*\*|should not\*\*)(.*?)\*\*', r'*\1*', sys.stdin.read()))" >> pydoc.md
+
 done
 
 # Remove trailing newline
