@@ -758,7 +758,8 @@ Perform a participant's first step of a ChillDKG session.
   `hostpubkeys`.
 - `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
 - `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
-  public key for some `i`, which is indicated in the exception.
+  public key for some `i`, which is indicated in the exception. See
+  the documentation of the exception for further details.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -791,19 +792,14 @@ Perform a participant's second step of a ChillDKG session.
 *Raises*:
 
 - `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
-  FIXME
-- `FaultyParticipantOrCoordinatorError` - If `cmsg1` is invalid. This can
-  happen if another participant has sent an invalid message to the
-  coordinator, or if the coordinator has sent an invalid `cmsg1`.
-
-  Further information is provided as part of the exception, including
-  a hint about which party might be to blame for the problem. The hint
-  should not be trusted and should be used only for debugging. In
-  particular, the hint may point at the wrong party, e.g., if the
-  coordinator is malicious or network connections are unreliable, and
-  as a consequence, the caller should not conclude that the party
-  hinted at is malicious.
-- `UnknownFaultyParticipantOrCoordinatorError` - TODO
+- `FaultyParticipantOrCoordinatorError` - If another known participant or the
+  coordinator is faulty. See the documentation of the exception for
+  further details.
+- `UnknownFaultyParticipantOrCoordinatorError` - If another unknown
+  participant or the coordinator is faulty, but running the optional
+  blame step of the protocol is necessary to determine a suspected
+  participant. See the documentation of the exception for further
+  details.
 
 #### participant\_finalize
 
