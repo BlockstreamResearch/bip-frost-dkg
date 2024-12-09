@@ -673,8 +673,8 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   the first `t` participants are the primary participants for signing and the
   others are fallback participants). If there is no canonical order of the
   participants in the application, the caller can sort the list of host public
-  keys with the [KeySort algorithm specified in BIP
-  327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
+  keys with the [KeySort algorithm specified in
+  BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
   to abstract away from the order.
 
 #### params\_id
@@ -745,8 +745,8 @@ Perform a participant's first step of a ChillDKG session.
 *Returns*:
 
 - `ParticipantState1` - The participant's session state after this step, to
-  be passed as an argument to `participant_step2`. The state **must not**
-  be reused (i.e., it must be passed only to one
+  be passed as an argument to `participant_step2`. The state **must
+  not** be reused (i.e., it must be passed only to one
   `participant_step2` call).
 - `ParticipantMsg1` - The first message to be sent to the coordinator.
 
@@ -820,12 +820,13 @@ function.
 
 *Warning:*
 Changing perspectives, this implies that even when obtaining a
-`SessionNotFinalizedError`, you **must not** conclude that the DKG session has
-failed, and as a consequence, you **must not** erase the hostseckey. The underlying
-reason is that some other participant may deem the DKG session successful
-and use the resulting threshold public key (e.g., by sending funds to it).
-That other participant can, at any point in the future, wish to convince us
-of the success of the DKG session by presenting recovery data to us.
+`SessionNotFinalizedError`, you **must not** conclude that the DKG session
+has failed, and as a consequence, you **must not** erase the hostseckey. The
+underlying reason is that some other participant may deem the DKG session
+successful and use the resulting threshold public key (e.g., by sending
+funds to it). That other participant can, at any point in the future, wish
+to convince us of the success of the DKG session by presenting recovery data
+to us.
 
 *Arguments*:
 
