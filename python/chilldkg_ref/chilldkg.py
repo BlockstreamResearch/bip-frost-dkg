@@ -9,7 +9,7 @@ their arguments and return values, and the exceptions they raise; see also the
 """
 
 from secrets import token_bytes as random_bytes
-from typing import Tuple, List, NamedTuple, NewType, Optional, NoReturn
+from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn
 
 from secp256k1proto.secp256k1 import Scalar, GE
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
@@ -27,6 +27,7 @@ from .util import (
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
+    FaultyParticipantError,
 )
 
 __all__ = [
@@ -49,7 +50,6 @@ __all__ = [
     "UnknownFaultyParticipantOrCoordinatorError",
     "InvalidRecoveryDataError",
     "DuplicateHostpubkeyError",
-    "SessionNotFinalizedError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -74,8 +74,10 @@ class DuplicateHostpubkeyError(ProtocolError):
     pass
 
 
-class SessionNotFinalizedError(ProtocolError):
-    pass
+class InvalidSignatureInCertificateError(ValueError):
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)
 
 
 class InvalidRecoveryDataError(ValueError):
@@ -108,7 +110,7 @@ def certeq_cert_len(n: int) -> int:
 def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
     n = len(hostpubkeys)
     if len(cert) != certeq_cert_len(n):
-        raise SessionNotFinalizedError
+        raise ValueError
     for i in range(n):
         msg = certeq_message(x, i)
         valid = schnorr_verify(
@@ -118,7 +120,7 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
             challenge_tag=CERTEQ_MSG_TAG,
         )
         if not valid:
-            raise SessionNotFinalizedError
+            raise InvalidSignatureInCertificateError(i)
 
 
 def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
@@ -506,22 +508,20 @@ def participant_finalize(
     If this function returns properly (without an exception), then this
     participant deems the DKG session successful. It is, however, possible that
     other participants have received a `cmsg2` from the coordinator that made
-    them raise a `SessionNotFinalizedError` instead, or that they have not
-    received a `cmsg2` from the coordinator at all. These participants can, at
-    any point in time in the future (e.g., when initiating a signing session),
-    be convinced to deem the session successful by presenting the recovery data
-    to them, from which they can recover the DKG outputs using the `recover`
-    function.
+    them raise an exception instead, or that they have not received a `cmsg2`
+    from the coordinator at all. These participants can, at any point in time in
+    the future (e.g., when initiating a signing session), be convinced to deem
+    the session successful by presenting the recovery data to them, from which
+    they can recover the DKG outputs using the `recover` function.
 
     **Warning:**
-    Changing perspectives, this implies that even when obtaining a
-    `SessionNotFinalizedError`, you **must not** conclude that the DKG session
-    has failed, and as a consequence, you **must not** erase the hostseckey. The
-    underlying reason is that some other participant may deem the DKG session
-    successful and use the resulting threshold public key (e.g., by sending
-    funds to it). That other participant can, at any point in the future, wish
-    to convince us of the success of the DKG session by presenting recovery data
-    to us.
+    Changing perspectives, this implies that, even when obtaining an exception,
+    you **must not** conclude that the DKG session has failed, and as a
+    consequence, you **must not** erase the hostseckey. The underlying reason is
+    that some other participant may deem the DKG session successful and use the
+    resulting threshold public key (e.g., by sending funds to it). That other
+    participant can, at any point in the future, wish to convince us of the
+    success of the DKG session by presenting recovery data to us.
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
@@ -531,11 +531,21 @@ def participant_finalize(
         bytes: The serialized recovery data.
 
     Raises:
-        SessionNotFinalizedError: If finalizing the DKG session was not
-            successful from this participant's perspective (see above).
+        FaultyParticipantOrCoordinatorError: If another known participant or the
+            coordinator is faulty. Make sure to read the above warning, and see
+            the documentation of the exception for further details.
+        FaultyCoordinatorError: If the coordinator is faulty. Make sure to read
+            the above warning, and see the documentation of the exception for
+            further details.
     """
     params, eq_input, dkg_output = state2
-    certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)  # SessionNotFinalizedError
+    try:
+        certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)
+    except InvalidSignatureInCertificateError as e:
+        raise FaultyParticipantOrCoordinatorError(
+            e.participant,
+            "Participant has provided an invalid signature for the certificate",
+        ) from e
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
 
@@ -603,6 +613,24 @@ def coordinator_finalize(
 ) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
     """Perform the coordinator's final step of a ChillDKG session.
 
+    If this function returns properly (without an exception), then the
+    coordinator deems the DKG session successful. The returned `CoordinatorMsg2`
+    is supposed to be sent to all participants, who are supposed to pass it as
+    input to the `participant_finalize` function. It is, however, possible that
+    some participants pass a wrong and invalid message to `participant_finalize`
+    (e.g., because the message is transmitted incorrectly). These participants
+    can, at any point in time in the future (e.g., when initiating a signing
+    session), be convinced to deem the session successful by presenting the
+    recovery data to them, from which they can recover the DKG outputs using the
+    `recover` function.
+
+    If this function raises an exception, then the DKG session was not
+    successful from the perspective of the coordinator. In this case, it is, in
+    principle, possible to recover the DKG outputs of the coordinator using the
+    recovery data from a successful participant, should one exist. Any such
+    successful participant is either faulty, or has received messages from
+    other participants via a communication channel beside the coordinator.
+
     Arguments:
         state: The coordinator's session state as output by `coordinator_step1`.
         pmsgs2: List of second messages received from the participants.
@@ -614,17 +642,19 @@ def coordinator_finalize(
         bytes: The serialized recovery data.
 
     Raises:
-        SessionNotFinalizedError: If finalizing the DKG session was not
-            successful from the perspective of the coordinator. In this case,
-            it is, in principle, possible to recover the DKG outputs of the
-            coordinator using the recovery data from a successful participant,
-            should one exist. Any such successful participant would need to have
-            received messages from other participants via a communication
-            channel beside the coordinator (or be malicious).
+        FaultyParticipantError: If another known participant or the coordinator
+            is faulty. See the documentation of the exception for further
+            details.
     """
     params, eq_input, dkg_output = state
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
-    certeq_verify(params.hostpubkeys, eq_input, cert)  # SessionNotFinalizedError
+    try:
+        certeq_verify(params.hostpubkeys, eq_input, cert)
+    except InvalidSignatureInCertificateError as e:
+        raise FaultyParticipantError(
+            e.participant,
+            "Participant has provided an invalid signature for the certificate",
+        ) from e
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
 
 
@@ -642,12 +672,13 @@ def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]
 def recover(
     hostseckey: Optional[bytes], recovery_data: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of a session from the hostseckey and recovery data.
+    """Recover the DKG output of a ChillDKG session.
 
     This function serves two different purposes:
-    1. To recover from a `SessionNotFinalizedError` after obtaining the recovery
-       data from another participant or the coordinator (see
-       `participant_finalize`).
+    1. To recover from an exception in `participant_finalize` or
+       `coordinator_finalize`, after obtaining the recovery data from another
+        participant or the coordinator. See `participant_finalize` and
+        `coordinator_finalize` for background.
     2. To reproduce the DKG outputs on a new device, e.g., to recover from a
        backup after data loss.
 
