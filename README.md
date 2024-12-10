@@ -206,7 +206,7 @@ We make the following modifications as compared to the original SimplPedPop prop
 
 Our variant of the SimplPedPop protocol then works as follows:
 
-1.  Every participant `i` creates a `t`-of-`n` sharing of a random secret scalar using Feldman Verifiable Secret Sharing (VSS), a variant of Shamir Secret Sharing.
+1.  Every participant `i` (where `i` is an integer `0 <= i < n`) creates a `t`-of-`n` sharing of a random secret scalar using Feldman Verifiable Secret Sharing (VSS), a variant of Shamir Secret Sharing.
     This involves generating random coefficients `a_i[0], ..., a_i[t-1]` of a polynomial `f_i` of degree `t-1` in the scalar group:
 
     ```
@@ -472,6 +472,9 @@ If a session ChillDKG returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
 In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).
 Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
+
+To participate in the FROST signing protocol, signers need their DKG output and their index in the host public key list, although the full list of host public keys is not required for signing.
+Additionally, the set of indices of all participating signers within the host public key list is required to initiate a signing session.
 
 ### Backup and Recovery
 
