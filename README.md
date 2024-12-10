@@ -201,6 +201,7 @@ We make the following modifications as compared to the original SimplPedPop prop
  - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged SHA256).
  - Individual participants' public keys are added to the output of the DKG. This allows partial signature verification.
  - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs.
+ - To prevent a malicious participant from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable BIP script path.
  - ~The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.~ (TODO: This will be fixed in an updated version of the paper.)
 
 Our variant of the SimplPedPop protocol then works as follows:
@@ -247,9 +248,8 @@ Our variant of the SimplPedPop protocol then works as follows:
     the vector `sum_coms` is now the complete component-wise sum of the `coms[j]` vectors from every participant `j`.
     It acts as a VSS commitment to the sum `f = f_0 + ... + f_{n-1}` of the polynomials of all participants.)
 
-    To prevent malicious participants from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key,
-    each participant creates a modified VSS commitment called `sum_coms_tweaked` from `sum_coms`, such that the public key generated from `sum_coms_tweaked` has an unspendable script path.
-    This is achieved by computing a Taproot tweak `t` for an unspendable script path and adding the point `t * G` to `sum_coms[0]`.
+    To generate a threshold public key with an unspendable [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path, each participant computes a Taproot tweak `t` for an unspendable script path.
+    They then add the point `t * G` to `sum_coms[0]`, resulting in a new VSS commitment called `sum_coms_tweaked`.
 
     Participant `i` computes the public share of every participant `j` as follows:
 
