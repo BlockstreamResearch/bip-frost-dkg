@@ -10,20 +10,12 @@ def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
     return tagged_hash(BIP_TAG + tag, msg)
 
 
-class SecretKeyError(ValueError):
-    pass
-
-
-class ThresholdError(ValueError):
-    pass
-
-
 class ProtocolError(Exception):
-    pass
+    """Base exception for errors caused by received protocol messages."""
 
 
 class FaultyParticipantError(ProtocolError):
-    """Raised when a participant is faulty.
+    """Raised if a participant is faulty.
 
     This exception is raised by the coordinator code when it detects faulty
     behavior by a participant, i.e., a participant has deviated from the
@@ -46,7 +38,7 @@ class FaultyParticipantError(ProtocolError):
 
 
 class FaultyParticipantOrCoordinatorError(ProtocolError):
-    """Raised when another known participant or the coordinator is faulty.
+    """Raised if another known participant or the coordinator is faulty.
 
     This exception is raised by the participant code when it detects what looks
     like faulty behavior by a suspected participant. The index of the suspected
@@ -76,7 +68,7 @@ class FaultyParticipantOrCoordinatorError(ProtocolError):
 
 
 class FaultyCoordinatorError(ProtocolError):
-    """Raised when the coordinator is faulty.
+    """Raised if the coordinator is faulty.
 
     This exception is raised by the participant code when it detects faulty
     behavior by the coordinator, i.e., the coordinator has deviated from the
@@ -87,7 +79,7 @@ class FaultyCoordinatorError(ProtocolError):
 
 
 class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
-    """Raised when another unknown participant or the coordinator is faulty.
+    """Raised if another unknown participant or the coordinator is faulty.
 
     This exception is raised by the participant code when it detects what looks
     like faulty behavior by some other participant, but there is insufficient
