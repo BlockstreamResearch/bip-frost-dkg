@@ -730,7 +730,7 @@ Base exception for invalid `SessionParams` tuples.
 class DuplicateHostPubkeyError(SessionParamsError)
 ```
 
-Raised when two participants have identical host public keys.
+Raised if two participants have identical host public keys.
 
 This exception is raised when two participants have an identical host public
 key in the `SessionParams` tuple. Assuming the host public keys in question
@@ -749,7 +749,7 @@ negligible probability if keys are generated honestly).
 class InvalidHostPubkeyError(SessionParamsError)
 ```
 
-Raised when a host public key is invalid.
+Raised if a host public key is invalid.
 
 This exception is raised when a host public key in the `SessionParams` tuple
 is not a valid public key in compressed serialization. Assuming the host
@@ -1041,7 +1041,7 @@ Raised if the recovery data is invalid or does not match `hostseckey`.
 class FaultyParticipantError(ProtocolError)
 ```
 
-Raised when a participant is faulty.
+Raised if a participant is faulty.
 
 This exception is raised by the coordinator code when it detects faulty
 behavior by a participant, i.e., a participant has deviated from the
@@ -1064,7 +1064,7 @@ See `FaultyParticipantOrCoordinatorError` for details.
 class FaultyParticipantOrCoordinatorError(ProtocolError)
 ```
 
-Raised when another known participant or the coordinator is faulty.
+Raised if another known participant or the coordinator is faulty.
 
 This exception is raised by the participant code when it detects what looks
 like faulty behavior by a suspected participant. The index of the suspected
@@ -1094,7 +1094,7 @@ by participants will be detected by the coordinator instead. See
 class FaultyCoordinatorError(ProtocolError)
 ```
 
-Raised when the coordinator is faulty.
+Raised if the coordinator is faulty.
 
 This exception is raised by the participant code when it detects faulty
 behavior by the coordinator, i.e., the coordinator has deviated from the
@@ -1108,7 +1108,7 @@ coordinator is indeed faulty.
 class UnknownFaultyParticipantOrCoordinatorError(ProtocolError)
 ```
 
-Raised when another unknown participant or the coordinator is faulty.
+Raised if another unknown participant or the coordinator is faulty.
 
 This exception is raised by the participant code when it detects what looks
 like faulty behavior by some other participant, but there is insufficient

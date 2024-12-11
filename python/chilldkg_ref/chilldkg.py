@@ -273,7 +273,7 @@ class SessionParamsError(ValueError):
 
 
 class DuplicateHostPubkeyError(SessionParamsError):
-    """Raised when two participants have identical host public keys.
+    """Raised if two participants have identical host public keys.
 
     This exception is raised when two participants have an identical host public
     key in the `SessionParams` tuple. Assuming the host public keys in question
@@ -293,7 +293,7 @@ class DuplicateHostPubkeyError(SessionParamsError):
 
 
 class InvalidHostPubkeyError(SessionParamsError):
-    """Raised when a host public key is invalid.
+    """Raised if a host public key is invalid.
 
     This exception is raised when a host public key in the `SessionParams` tuple
     is not a valid public key in compressed serialization. Assuming the host
