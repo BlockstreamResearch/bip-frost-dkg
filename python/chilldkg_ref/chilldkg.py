@@ -728,6 +728,7 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
         RecoveryDataError: If recovery failed due to invalid recovery data or
             recovery data that does not match the provided `hostseckey`.
     """
@@ -740,11 +741,17 @@ def recover(
 
     n = len(hostpubkeys)
     params = SessionParams(hostpubkeys, t)
-    params_validate(params)
+    try:
+        params_validate(params)
+    except SessionParamsError as e:
+        raise RecoveryDataError("Invalid session parameters in recovery data") from e
 
     # Verify cert
     eq_input = recovery_data[: -len(cert)]
-    certeq_verify(hostpubkeys, eq_input, cert)
+    try:
+        certeq_verify(hostpubkeys, eq_input, cert)
+    except InvalidSignatureInCertificateError as e:
+        raise RecoveryDataError("Invalid certificate in recovery data") from e
 
     # Compute threshold pubkey and individual pubshares
     sum_coms, secshare_tweak = sum_coms.invalid_taproot_commit()
@@ -752,12 +759,12 @@ def recover(
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
     if hostseckey:
-        hostpubkey = hostpubkey_gen(hostseckey)
+        hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError
         try:
             idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:
             raise RecoveryDataError(
-                "Host secret key and recovery data don't match"
+                "Host secret key does not match any host public key in the recovery data"
             ) from e
 
         # Decrypt share

@@ -1024,6 +1024,7 @@ backup after data loss.
 
 *Raises*:
 
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
 - `RecoveryDataError` - If recovery failed due to invalid recovery data or
   recovery data that does not match the provided `hostseckey`.
 
