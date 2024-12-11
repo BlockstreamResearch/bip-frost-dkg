@@ -720,6 +720,7 @@ have obtained authentic public host keys.
 #### SessionParamsError Exception
 
 ```python
+class SessionParamsError(ValueError)
 ```
 
 Base exception for invalid `SessionParams` tuples.

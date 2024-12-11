@@ -33,7 +33,7 @@ for name in SessionParams DKGOutput; do
         # Remove trailing newline
         sed -z '$ s/\n$//' |
         # Do the patching
-        sed -e "/^class $name/{r /dev/stdin" -e 'd;}' -i pydoc.md
+        sed -e "/^class $name(NamedTuple)/{r /dev/stdin" -e 'd;}' -i pydoc.md
 done
 
 # Remove trailing space
