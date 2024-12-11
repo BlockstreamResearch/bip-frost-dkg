@@ -729,7 +729,7 @@ def recover(
 
     Raises:
         RecoveryDataError: If recovery failed due to invalid recovery data or
-            recovery data that does not match the provided hostseckey.
+            recovery data that does not match the provided `hostseckey`.
     """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
@@ -787,4 +787,4 @@ def recover(
 
 
 class RecoveryDataError(ValueError):
-    pass
+    """Raised if the recovery data is invalid or does not match `hostseckey`."""

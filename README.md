@@ -1025,7 +1025,15 @@ backup after data loss.
 *Raises*:
 
 - `RecoveryDataError` - If recovery failed due to invalid recovery data or
-  recovery data that does not match the provided hostseckey.
+  recovery data that does not match the provided `hostseckey`.
+
+#### RecoveryDataError Exception
+
+```python
+class RecoveryDataError(ValueError)
+```
+
+Raised if the recovery data is invalid or does not match `hostseckey`.
 
 #### FaultyParticipantError Exception
 
