@@ -812,9 +812,8 @@ Perform a participant's first step of a ChillDKG session.
 
 *Raises*:
 
-- `ValueError` - If the participant's host public key is not in argument
-  `hostpubkeys`.
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if
+  `hostseckey` does not match any entry of `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
@@ -1025,9 +1024,10 @@ backup after data loss.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
-- `RecoveryDataError` - If recovery failed due to invalid recovery data or
-  recovery data that does not match the provided `hostseckey`.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if
+  `hostseckey` does not match the recovery data. (This can also
+  occur if the recovery data is invalid.)
+- `RecoveryDataError` - If recovery failed due to invalid recovery data.
 
 #### RecoveryDataError Exception
 
@@ -1035,7 +1035,7 @@ backup after data loss.
 class RecoveryDataError(ValueError)
 ```
 
-Raised if the recovery data is invalid or does not match `hostseckey`.
+Raised if the recovery data is invalid.
 
 #### ProtocolError Exception
 

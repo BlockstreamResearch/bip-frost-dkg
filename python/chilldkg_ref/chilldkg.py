@@ -449,9 +449,8 @@ def participant_step1(
         ParticipantMsg1: The first message to be sent to the coordinator.
 
     Raises:
-        ValueError: If the participant's host public key is not in argument
-        `hostpubkeys`.
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if
+            `hostseckey` does not match any entry of `hostpubkeys`.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
@@ -462,7 +461,12 @@ def participant_step1(
     params_validate(params)
     (hostpubkeys, t) = params
 
-    idx = hostpubkeys.index(hostpubkey)  # ValueError if not found
+    try:
+        idx = hostpubkeys.index(hostpubkey)
+    except ValueError as e:
+        raise HostSeckeyError(
+            "Host secret key does not match any host public key"
+        ) from e
     enc_state, enc_pmsg = encpedpop.participant_step1(
         # We know that EncPedPop uses its seed only by feeding it to a hash
         # function. Thus, it is sufficient that the seed has a high entropy,
@@ -728,9 +732,10 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
-        RecoveryDataError: If recovery failed due to invalid recovery data or
-            recovery data that does not match the provided `hostseckey`.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if
+            `hostseckey` does not match the recovery data. (This can also
+            occur if the recovery data is invalid.)
+        RecoveryDataError: If recovery failed due to invalid recovery data.
     """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
@@ -763,7 +768,7 @@ def recover(
         try:
             idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:
-            raise RecoveryDataError(
+            raise HostSeckeyError(
                 "Host secret key does not match any host public key in the recovery data"
             ) from e
 
@@ -794,4 +799,4 @@ def recover(
 
 
 class RecoveryDataError(ValueError):
-    """Raised if the recovery data is invalid or does not match `hostseckey`."""
+    """Raised if the recovery data is invalid."""
