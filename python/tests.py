@@ -32,7 +32,7 @@ def test_chilldkg_params_validate():
     params_with_duplicate = chilldkg.SessionParams(with_duplicate, 2)
     try:
         _ = chilldkg.params_id(params_with_duplicate)
-    except chilldkg.DuplicateHostpubkeyError as e:
+    except chilldkg.DuplicateHostPubkeyError as e:
         assert {e.participant1, e.participant2} == {1, 3}
     else:
         assert False, "Expected exception"
@@ -43,7 +43,7 @@ def test_chilldkg_params_validate():
     )
     try:
         _ = chilldkg.params_id(params_with_invalid)
-    except chilldkg.InvalidHostpubkeyError as e:
+    except chilldkg.InvalidHostPubkeyError as e:
         assert e.participant == 1
         pass
     else:

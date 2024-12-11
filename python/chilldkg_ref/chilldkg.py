@@ -41,10 +41,10 @@ __all__ = [
     "coordinator_blame",
     "recover",
     # Exceptions
-    "HostseckeyError",
+    "HostSeckeyError",
     "SessionParamsError",
-    "InvalidHostpubkeyError",
-    "DuplicateHostpubkeyError",
+    "InvalidHostPubkeyError",
+    "DuplicateHostPubkeyError",
     "ThresholdOrCountError",
     "ProtocolError",
     "FaultyParticipantOrCoordinatorError",
@@ -152,15 +152,15 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
         The host public key (33 bytes).
 
     Raises:
-        HostseckeyError: If the length of `hostseckey` is not 32 bytes.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
     """
     if len(hostseckey) != 32:
-        raise HostseckeyError
+        raise HostSeckeyError
 
     return pubkey_gen_plain(hostseckey)
 
 
-class HostseckeyError(ValueError):
+class HostSeckeyError(ValueError):
     """Raised if the length of a host secret key is not 32 bytes."""
 
 
@@ -222,13 +222,13 @@ def params_validate(params: SessionParams) -> None:
         try:
             _ = GE.from_bytes_compressed(hostpubkey)
         except ValueError as e:
-            raise InvalidHostpubkeyError(i) from e
+            raise InvalidHostPubkeyError(i) from e
 
     # Check for duplicate hostpubkeys and find the corresponding indices
     hostpubkey_to_idx: Dict[bytes, int] = dict()
     for i, hostpubkey in enumerate(hostpubkeys):
         if hostpubkey in hostpubkey_to_idx:
-            raise DuplicateHostpubkeyError(hostpubkey_to_idx[hostpubkey], i)
+            raise DuplicateHostPubkeyError(hostpubkey_to_idx[hostpubkey], i)
         hostpubkey_to_idx[hostpubkey] = i
 
 
@@ -251,8 +251,8 @@ def params_id(params: SessionParams) -> bytes:
         bytes: The parameters ID, a 32-byte string.
 
     Raises:
-        InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
-        DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
     """
@@ -272,7 +272,7 @@ class SessionParamsError(ValueError):
     """Base exception for invalid `SessionParams` tuples."""
 
 
-class DuplicateHostpubkeyError(SessionParamsError):
+class DuplicateHostPubkeyError(SessionParamsError):
     """Raised when two participants have identical host public keys.
 
     This exception is raised when two participants have an identical host public
@@ -292,7 +292,7 @@ class DuplicateHostpubkeyError(SessionParamsError):
         super().__init__(participant1, participant2, *args)
 
 
-class InvalidHostpubkeyError(SessionParamsError):
+class InvalidHostPubkeyError(SessionParamsError):
     """Raised when a host public key is invalid.
 
     This exception is raised when a host public key in the `SessionParams` tuple
@@ -451,13 +451,13 @@ def participant_step1(
     Raises:
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
-        HostseckeyError: If the length of `hostseckey` is not 32 bytes.
-        InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
-        DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
     """
-    hostpubkey = hostpubkey_gen(hostseckey)  # HostseckeyError if len(hostseckey) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
@@ -474,7 +474,7 @@ def participant_step1(
         enckeys=hostpubkeys,
         idx=idx,
         random=random,
-    )  # HostseckeyError if len(hostseckey) != 32
+    )  # HostSeckeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
 
@@ -500,7 +500,7 @@ def participant_step2(
         ParticipantMsg2: The second message to be sent to the coordinator.
 
     Raises:
-        HostseckeyError: If the length of `hostseckey` is not 32 bytes.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
         FaultyParticipantOrCoordinatorError: If another known participant or the
             coordinator is faulty. See the documentation of the exception for
             further details.
@@ -624,8 +624,8 @@ def coordinator_step1(
             `coordinator_finalize` call).
 
     Raises:
-        InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
-        DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
     """

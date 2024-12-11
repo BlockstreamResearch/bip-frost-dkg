@@ -634,12 +634,12 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Raises*:
 
-- `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
 
-#### HostseckeyError Exception
+#### HostSeckeyError Exception
 
 ```python
-class HostseckeyError(ValueError)
+class HostSeckeyError(ValueError)
 ```
 
 Raised if the length of a host secret key is not 32 bytes.
@@ -712,8 +712,8 @@ have obtained authentic public host keys.
 
 *Raises*:
 
-- `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
-- `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
 
@@ -724,10 +724,10 @@ have obtained authentic public host keys.
 
 Base exception for invalid `SessionParams` tuples.
 
-#### DuplicateHostpubkeyError Exception
+#### DuplicateHostPubkeyError Exception
 
 ```python
-class DuplicateHostpubkeyError(SessionParamsError)
+class DuplicateHostPubkeyError(SessionParamsError)
 ```
 
 Raised when two participants have identical host public keys.
@@ -743,10 +743,10 @@ negligible probability if keys are generated honestly).
 - `participant1` _int_ - Index of the first participant.
 - `participant2` _int_ - Index of the second participant.
 
-#### InvalidHostpubkeyError Exception
+#### InvalidHostPubkeyError Exception
 
 ```python
-class InvalidHostpubkeyError(SessionParamsError)
+class InvalidHostPubkeyError(SessionParamsError)
 ```
 
 Raised when a host public key is invalid.
@@ -813,9 +813,9 @@ Perform a participant's first step of a ChillDKG session.
 
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
-- `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
-- `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
-- `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
 
@@ -846,7 +846,7 @@ Perform a participant's second step of a ChillDKG session.
 
 *Raises*:
 
-- `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. See the documentation of the exception for
   further details.
@@ -934,8 +934,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Raises*:
 
-- `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
-- `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
 
