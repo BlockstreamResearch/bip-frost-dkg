@@ -22,7 +22,6 @@ from .util import (
     BIP_TAG,
     tagged_hash_bip_dkg,
     ProtocolError,
-    SecretKeyError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
@@ -42,7 +41,7 @@ __all__ = [
     "coordinator_blame",
     "recover",
     # Exceptions
-    "SecretKeyError",
+    "HostseckeyError",
     "SessionParamsError",
     "InvalidHostpubkeyError",
     "DuplicateHostpubkeyError",
@@ -153,12 +152,16 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
         The host public key (33 bytes).
 
     Raises:
-        SecretKeyError: If the length of `hostseckey` is not 32 bytes.
+        HostseckeyError: If the length of `hostseckey` is not 32 bytes.
     """
     if len(hostseckey) != 32:
-        raise SecretKeyError
+        raise HostseckeyError
 
     return pubkey_gen_plain(hostseckey)
+
+
+class HostseckeyError(ValueError):
+    """Raised if the length of a host secret key is not 32 bytes."""
 
 
 ###
@@ -448,13 +451,13 @@ def participant_step1(
     Raises:
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
-        SecretKeyError: If the length of `hostseckey` is not 32 bytes.
+        HostseckeyError: If the length of `hostseckey` is not 32 bytes.
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
             does not hold.
     """
-    hostpubkey = hostpubkey_gen(hostseckey)  # SecretKeyError if len(hostseckey) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # HostseckeyError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
@@ -471,7 +474,7 @@ def participant_step1(
         enckeys=hostpubkeys,
         idx=idx,
         random=random,
-    )  # SecretKeyError if len(hostseckey) != 32
+    )  # HostseckeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
 
@@ -497,7 +500,7 @@ def participant_step2(
         ParticipantMsg2: The second message to be sent to the coordinator.
 
     Raises:
-        SecretKeyError: If the length of `hostseckey` is not 32 bytes.
+        HostseckeyError: If the length of `hostseckey` is not 32 bytes.
         FaultyParticipantOrCoordinatorError: If another known participant or the
             coordinator is faulty. See the documentation of the exception for
             further details.

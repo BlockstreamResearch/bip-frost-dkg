@@ -5,7 +5,6 @@ from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
 from secp256k1proto.secp256k1 import G, GE, Scalar
 from .util import (
     BIP_TAG,
-    SecretKeyError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
@@ -136,7 +135,7 @@ def participant_step1(
     if idx >= n:
         raise IndexError
     if len(seed) != 32:
-        raise SecretKeyError
+        raise ValueError
 
     vss = VSS.generate(seed, t)  # OverflowError if t >= 2**32
     partial_secshares_from_me = vss.secshares(n)

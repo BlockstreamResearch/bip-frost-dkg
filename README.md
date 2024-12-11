@@ -634,7 +634,15 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Raises*:
 
-- `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
+
+#### HostseckeyError Exception
+
+```python
+class HostseckeyError(ValueError)
+```
+
+Raised if the length of a host secret key is not 32 bytes.
 
 #### SessionParams Tuples
 
@@ -805,7 +813,7 @@ Perform a participant's first step of a ChillDKG session.
 
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
-- `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
@@ -838,7 +846,7 @@ Perform a participant's second step of a ChillDKG session.
 
 *Raises*:
 
-- `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. See the documentation of the exception for
   further details.

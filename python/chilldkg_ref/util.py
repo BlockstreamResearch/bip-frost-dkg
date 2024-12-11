@@ -10,10 +10,6 @@ def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
     return tagged_hash(BIP_TAG + tag, msg)
 
 
-class SecretKeyError(ValueError):
-    pass
-
-
 class ProtocolError(Exception):
     pass
 
