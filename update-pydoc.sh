@@ -7,11 +7,12 @@ set -euo pipefail
 # Remove old temporary file if it exists
 rm -f pydoc.md
 
-for i in "chilldkg,Tuples" "util,Expection"; do
-    IFS=',' read -r module class_title <<< "$i"
-pydoc-markdown -I python/chilldkg_ref -m "$module" "{renderer: {type: markdown, insert_header_anchors: false, render_module_header: no, format_code: no, header_level_by_type: {\"Function\": 4, \"Class\": 4, \"Method\": 5}, descriptive_class_title: \"$ ${class_title}\" }}" |
+for module in "chilldkg" "util"; do
+pydoc-markdown -I python/chilldkg_ref -m "$module" "{renderer: {type: markdown, insert_header_anchors: false, render_module_header: no, format_code: no, header_level_by_type: {\"Function\": 4, \"Class\": 4, \"Method\": 5}, descriptive_class_title: \"$ Tuples\" }}" |
     # Remove header
     sed -z 's/[^#]*#/#/' |
+    # Replace "Tuples" by "Exception" where appropriate
+    sed -z 's/Error Tuples/Error Exception/g' |
     # Replace bold (**) by italics (*), but not for **must**, **must not**,
     # **should**, or **should not**.
     python3 -c "import re, sys; sys.stdout.write(re.sub(r'\*\*(?!must\*\*|should\*\*|must not\*\*|should not\*\*)(.*?)\*\*', r'*\1*', sys.stdin.read()))" >> pydoc.md

@@ -24,6 +24,48 @@ import chilldkg_ref.chilldkg as chilldkg
 from example import simulate_chilldkg_full as simulate_chilldkg_full_example
 
 
+def test_chilldkg_params_validate():
+    hostseckeys = [random_bytes(32) for _ in range(3)]
+    hostpubkeys = [chilldkg.hostpubkey_gen(hostseckey) for hostseckey in hostseckeys]
+
+    with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
+    params_with_duplicate = chilldkg.SessionParams(with_duplicate, 2)
+    try:
+        _ = chilldkg.params_id(params_with_duplicate)
+    except chilldkg.DuplicateHostpubkeyError as e:
+        assert {e.participant1, e.participant2} == {1, 3}
+    else:
+        assert False, "Expected exception"
+
+    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
+    params_with_invalid = chilldkg.SessionParams(
+        [hostpubkeys[1], invalid_hostpubkey, hostpubkeys[2]], 1
+    )
+    try:
+        _ = chilldkg.params_id(params_with_invalid)
+    except chilldkg.InvalidHostpubkeyError as e:
+        assert e.participant == 1
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        _ = chilldkg.params_id(
+            chilldkg.SessionParams(hostpubkeys, len(hostpubkeys) + 1)
+        )
+    except chilldkg.ThresholdError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        _ = chilldkg.params_id(chilldkg.SessionParams(hostpubkeys, -2))
+    except chilldkg.ThresholdError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+
 def test_vss_correctness():
     def rand_polynomial(t):
         return Polynomial([randint(1, GE.ORDER - 1) for _ in range(1, t + 1)])
@@ -306,6 +348,7 @@ def test_correctness(t, n, simulate_dkg, recovery=False, blame=False):
             assert pubshares == dkg_outputs[i][2]
 
 
+test_chilldkg_params_validate()
 test_vss_correctness()
 test_recover_secret()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:

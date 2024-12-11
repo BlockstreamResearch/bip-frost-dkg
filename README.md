@@ -692,7 +692,7 @@ send their unauthenticated host public keys to the coordinator, who is
 supposed to relay them to all participants), the parameters ID serves as a
 convenient way to perform an out-of-band comparison of all host public keys.
 It is a collision-resistant cryptographic hash of the `SessionParams`
-object. As a result, if all participants have obtained an identical
+tuple. As a result, if all participants have obtained an identical
 parameters ID (as can be verified out-of-band), then they all agree on all
 host public keys and the threshold `t`, and in particular, all participants
 have obtained authentic public host keys.
@@ -704,11 +704,53 @@ have obtained authentic public host keys.
 
 *Raises*:
 
-- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
-  public key for some `i`, which is indicated in the exception.
+- `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+
+#### SessionParamsError Exception
+
+```python
+```
+
+Base exception for invalid `SessionParams` tuples.
+
+#### DuplicateHostpubkeyError Exception
+
+```python
+class DuplicateHostpubkeyError(SessionParamsError)
+```
+
+Raised when two participants have identical host public keys.
+
+This exception is raised when two participants have an identical host public
+key in the `SessionParams` tuple. Assuming the host public keys in question
+have been transmitted correctly, this exception implies that at least one of
+the two participants is faulty (because duplicates occur only with
+negligible probability if keys are generated honestly).
+
+*Attributes*:
+
+- `participant1` _int_ - Index of the first participant.
+- `participant2` _int_ - Index of the second participant.
+
+#### InvalidHostpubkeyError Exception
+
+```python
+class InvalidHostpubkeyError(SessionParamsError)
+```
+
+Raised when a host public key is invalid.
+
+This exception is raised when a host public key in the `SessionParams` tuple
+is not a valid public key in compressed serialization. Assuming the host
+public keys in question has been transmitted correctly, this exception
+implies that the corresponding participant is faulty.
+
+*Attributes*:
+
+- `participant` _int_ - Index of the participant.
 
 #### DKGOutput Tuples
 
@@ -756,9 +798,7 @@ Perform a participant's first step of a ChillDKG session.
 - `ValueError` - If the participant's host public key is not in argument
   `hostpubkeys`.
 - `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
-- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
-  public key for some `i`, which is indicated in the exception. See
-  the documentation of the exception for further details.
+- `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -878,8 +918,7 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Raises*:
 
-- `FaultyParticipantOrCoordinatorError` - If `hostpubkeys[i]` is not a valid
-  public key for some `i`, which is indicated in the exception.
+- `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
 - `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -972,7 +1011,7 @@ backup after data loss.
 - `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
   data or recovery data that does not match the provided hostseckey.
 
-#### FaultyParticipantError Expection
+#### FaultyParticipantError Exception
 
 ```python
 class FaultyParticipantError(ProtocolError)
@@ -995,7 +1034,7 @@ See `FaultyParticipantOrCoordinatorError` for details.
 
 - `participant` _int_ - Index of the faulty participant.
 
-#### FaultyParticipantOrCoordinatorError Expection
+#### FaultyParticipantOrCoordinatorError Exception
 
 ```python
 class FaultyParticipantOrCoordinatorError(ProtocolError)
@@ -1025,7 +1064,7 @@ by participants will be detected by the coordinator instead. See
 
 - `participant` _int_ - Index of the suspected participant.
 
-#### FaultyCoordinatorError Expection
+#### FaultyCoordinatorError Exception
 
 ```python
 class FaultyCoordinatorError(ProtocolError)
@@ -1039,7 +1078,7 @@ protocol. Assuming protocol messages have been transmitted correctly and the
 raising participant is not faulty, this exception implies that the
 coordinator is indeed faulty.
 
-#### UnknownFaultyParticipantOrCoordinatorError Expection
+#### UnknownFaultyParticipantOrCoordinatorError Exception
 
 ```python
 class UnknownFaultyParticipantOrCoordinatorError(ProtocolError)

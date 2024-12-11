@@ -9,7 +9,7 @@ their arguments and return values, and the exceptions they raise; see also the
 """
 
 from secrets import token_bytes as random_bytes
-from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn
+from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn, Dict
 
 from secp256k1proto.secp256k1 import Scalar, GE
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
@@ -44,12 +44,15 @@ __all__ = [
     "recover",
     # Exceptions
     "SecretKeyError",
+    "SessionParamsError",
+    "InvalidHostpubkeyError",
+    "DuplicateHostpubkeyError",
     "ThresholdError",
+    "ProtocolError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
     "InvalidRecoveryDataError",
-    "DuplicateHostpubkeyError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -63,25 +66,6 @@ __all__ = [
     "CoordinatorState",
     "RecoveryData",
 ]
-
-
-###
-### Exceptions
-###
-
-
-class DuplicateHostpubkeyError(ProtocolError):
-    pass
-
-
-class InvalidSignatureInCertificateError(ValueError):
-    def __init__(self, participant: int, *args: Any):
-        self.participant = participant
-        super().__init__(participant, *args)
-
-
-class InvalidRecoveryDataError(ValueError):
-    pass
 
 
 ###
@@ -126,6 +110,12 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
 def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
     cert = b"".join(sigs)
     return cert
+
+
+class InvalidSignatureInCertificateError(ValueError):
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)
 
 
 ###
@@ -225,16 +215,19 @@ def params_validate(params: SessionParams) -> None:
     if not (1 <= t <= len(hostpubkeys)):
         raise ThresholdError
 
+    # Check that all hostpubkeys are valid
     for i, hostpubkey in enumerate(hostpubkeys):
         try:
             _ = GE.from_bytes_compressed(hostpubkey)
         except ValueError as e:
-            raise FaultyParticipantOrCoordinatorError(
-                i, "Participant has provided an invalid host public key"
-            ) from e
+            raise InvalidHostpubkeyError(i) from e
 
-    if len(hostpubkeys) != len(set(hostpubkeys)):
-        raise DuplicateHostpubkeyError
+    # Check for duplicate hostpubkeys and find the corresponding indices
+    hostpubkey_to_idx: Dict[bytes, int] = dict()
+    for i, hostpubkey in enumerate(hostpubkeys):
+        if hostpubkey in hostpubkey_to_idx:
+            raise DuplicateHostpubkeyError(hostpubkey_to_idx[hostpubkey], i)
+        hostpubkey_to_idx[hostpubkey] = i
 
 
 def params_id(params: SessionParams) -> bytes:
@@ -247,7 +240,7 @@ def params_id(params: SessionParams) -> bytes:
     supposed to relay them to all participants), the parameters ID serves as a
     convenient way to perform an out-of-band comparison of all host public keys.
     It is a collision-resistant cryptographic hash of the `SessionParams`
-    object. As a result, if all participants have obtained an identical
+    tuple. As a result, if all participants have obtained an identical
     parameters ID (as can be verified out-of-band), then they all agree on all
     host public keys and the threshold `t`, and in particular, all participants
     have obtained authentic public host keys.
@@ -256,8 +249,7 @@ def params_id(params: SessionParams) -> bytes:
         bytes: The parameters ID, a 32-byte string.
 
     Raises:
-        FaultyParticipantOrCoordinatorError: If `hostpubkeys[i]` is not a valid
-            public key for some `i`, which is indicated in the exception.
+        InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -272,6 +264,47 @@ def params_id(params: SessionParams) -> bytes:
     )
     assert len(params_id) == 32
     return params_id
+
+
+class SessionParamsError(ValueError):
+    """Base exception for invalid `SessionParams` tuples."""
+
+
+class DuplicateHostpubkeyError(SessionParamsError):
+    """Raised when two participants have identical host public keys.
+
+    This exception is raised when two participants have an identical host public
+    key in the `SessionParams` tuple. Assuming the host public keys in question
+    have been transmitted correctly, this exception implies that at least one of
+    the two participants is faulty (because duplicates occur only with
+    negligible probability if keys are generated honestly).
+
+    Attributes:
+        participant1 (int): Index of the first participant.
+        participant2 (int): Index of the second participant.
+    """
+
+    def __init__(self, participant1: int, participant2: int, *args: Any):
+        self.participant1 = participant1
+        self.participant2 = participant2
+        super().__init__(participant1, participant2, *args)
+
+
+class InvalidHostpubkeyError(SessionParamsError):
+    """Raised when a host public key is invalid.
+
+    This exception is raised when a host public key in the `SessionParams` tuple
+    is not a valid public key in compressed serialization. Assuming the host
+    public keys in question has been transmitted correctly, this exception
+    implies that the corresponding participant is faulty.
+
+    Attributes:
+        participant (int): Index of the participant.
+    """
+
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)
 
 
 # This is really the same definition as in simplpedpop and encpedpop. We repeat
@@ -413,9 +446,7 @@ def participant_step1(
         ValueError: If the participant's host public key is not in argument
         `hostpubkeys`.
         SecretKeyError: If the length of `hostseckey` is not 32 bytes.
-        FaultyParticipantOrCoordinatorError: If `hostpubkeys[i]` is not a valid
-            public key for some `i`, which is indicated in the exception. See
-            the documentation of the exception for further details.
+        InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -587,8 +618,7 @@ def coordinator_step1(
             `coordinator_finalize` call).
 
     Raises:
-        FaultyParticipantOrCoordinatorError: If `hostpubkeys[i]` is not a valid
-            public key for some `i`, which is indicated in the exception.
+        InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
         OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
@@ -748,3 +778,7 @@ def recover(
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
     return dkg_output, params
+
+
+class InvalidRecoveryDataError(ValueError):
+    pass
