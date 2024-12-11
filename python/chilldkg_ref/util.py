@@ -11,7 +11,7 @@ def tagged_hash_bip_dkg(tag: str, msg: bytes) -> bytes:
 
 
 class ProtocolError(Exception):
-    pass
+    """Base exception for errors caused by received protocol messages."""
 
 
 class FaultyParticipantError(ProtocolError):

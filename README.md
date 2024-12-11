@@ -1037,6 +1037,14 @@ class RecoveryDataError(ValueError)
 
 Raised if the recovery data is invalid or does not match `hostseckey`.
 
+#### ProtocolError Exception
+
+```python
+class ProtocolError(Exception)
+```
+
+Base exception for errors caused by received protocol messages.
+
 #### FaultyParticipantError Exception
 
 ```python
