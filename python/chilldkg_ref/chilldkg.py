@@ -45,12 +45,12 @@ __all__ = [
     "SessionParamsError",
     "InvalidHostpubkeyError",
     "DuplicateHostpubkeyError",
-    "InvalidThresholdOrCountError",
+    "ThresholdOrCountError",
     "ProtocolError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
-    "InvalidRecoveryDataError",
+    "RecoveryDataError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -215,7 +215,7 @@ def params_validate(params: SessionParams) -> None:
     (hostpubkeys, t) = params
 
     if not (1 <= t <= len(hostpubkeys) <= 2**32 - 1):
-        raise InvalidThresholdOrCountError
+        raise ThresholdOrCountError
 
     # Check that all hostpubkeys are valid
     for i, hostpubkey in enumerate(hostpubkeys):
@@ -253,8 +253,8 @@ def params_id(params: SessionParams) -> bytes:
     Raises:
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
-        InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
-            does not hold.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
     """
     params_validate(params)
     hostpubkeys, t = params
@@ -309,7 +309,7 @@ class InvalidHostpubkeyError(SessionParamsError):
         super().__init__(participant, *args)
 
 
-class InvalidThresholdOrCountError(SessionParamsError):
+class ThresholdOrCountError(SessionParamsError):
     """Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold."""
 
 
@@ -454,8 +454,8 @@ def participant_step1(
         HostseckeyError: If the length of `hostseckey` is not 32 bytes.
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
-        InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
-            does not hold.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # HostseckeyError if len(hostseckey) != 32
 
@@ -626,8 +626,8 @@ def coordinator_step1(
     Raises:
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
-        InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
-            does not hold.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
     """
     params_validate(params)
     hostpubkeys, t = params
@@ -728,15 +728,15 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        InvalidRecoveryDataError: If recovery failed due to invalid recovery
-            data or recovery data that does not match the provided hostseckey.
+        RecoveryDataError: If recovery failed due to invalid recovery data or
+            recovery data that does not match the provided hostseckey.
     """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
             deserialize_recovery_data(recovery_data)
         )
     except Exception as e:
-        raise InvalidRecoveryDataError("Failed to deserialize recovery data") from e
+        raise RecoveryDataError("Failed to deserialize recovery data") from e
 
     n = len(hostpubkeys)
     params = SessionParams(hostpubkeys, t)
@@ -756,7 +756,7 @@ def recover(
         try:
             idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:
-            raise InvalidRecoveryDataError(
+            raise RecoveryDataError(
                 "Host secret key and recovery data don't match"
             ) from e
 
@@ -786,5 +786,5 @@ def recover(
     return dkg_output, params
 
 
-class InvalidRecoveryDataError(ValueError):
+class RecoveryDataError(ValueError):
     pass

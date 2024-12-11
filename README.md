@@ -714,8 +714,8 @@ have obtained authentic public host keys.
 
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
-- `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
-  does not hold.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
 
 #### SessionParamsError Exception
 
@@ -760,10 +760,10 @@ implies that the corresponding participant is faulty.
 
 - `participant` _int_ - Index of the participant.
 
-#### InvalidThresholdOrCountError Exception
+#### ThresholdOrCountError Exception
 
 ```python
-class InvalidThresholdOrCountError(SessionParamsError)
+class ThresholdOrCountError(SessionParamsError)
 ```
 
 Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
@@ -816,8 +816,8 @@ Perform a participant's first step of a ChillDKG session.
 - `HostseckeyError` - If the length of `hostseckey` is not 32 bytes.
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
-- `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
-  does not hold.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
 
 #### participant\_step2
 
@@ -936,8 +936,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
-- `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
-  does not hold.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
 
 #### coordinator\_finalize
 
@@ -1024,8 +1024,8 @@ backup after data loss.
 
 *Raises*:
 
-- `InvalidRecoveryDataError` - If recovery failed due to invalid recovery
-  data or recovery data that does not match the provided hostseckey.
+- `RecoveryDataError` - If recovery failed due to invalid recovery data or
+  recovery data that does not match the provided hostseckey.
 
 #### FaultyParticipantError Exception
 
