@@ -23,7 +23,6 @@ from .util import (
     tagged_hash_bip_dkg,
     ProtocolError,
     SecretKeyError,
-    ThresholdError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
@@ -47,7 +46,7 @@ __all__ = [
     "SessionParamsError",
     "InvalidHostpubkeyError",
     "DuplicateHostpubkeyError",
-    "ThresholdError",
+    "InvalidThresholdOrCountError",
     "ProtocolError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
@@ -178,7 +177,7 @@ class SessionParams(NamedTuple):
         hostpubkeys: Ordered list of the host public keys of all participants.
         t: The participation threshold `t`.
             This is the number of participants that will be required to sign.
-            It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+            It must hold that `1 <= t <= len(hostpubkeys) <= 2**32 - 1`.
 
     Participants **must** ensure that they have obtained authentic host
     public keys of all the other participants in the session to make
@@ -212,8 +211,8 @@ class SessionParams(NamedTuple):
 def params_validate(params: SessionParams) -> None:
     (hostpubkeys, t) = params
 
-    if not (1 <= t <= len(hostpubkeys)):
-        raise ThresholdError
+    if not (1 <= t <= len(hostpubkeys) <= 2**32 - 1):
+        raise InvalidThresholdOrCountError
 
     # Check that all hostpubkeys are valid
     for i, hostpubkey in enumerate(hostpubkeys):
@@ -251,13 +250,13 @@ def params_id(params: SessionParams) -> bytes:
     Raises:
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+        InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
+            does not hold.
     """
     params_validate(params)
     hostpubkeys, t = params
 
-    t_bytes = t.to_bytes(4, byteorder="big")  # OverflowError if t >= 2**32
+    t_bytes = t.to_bytes(4, byteorder="big")
     params_id = tagged_hash_bip_dkg(
         "params_id",
         t_bytes + b"".join(hostpubkeys),
@@ -305,6 +304,10 @@ class InvalidHostpubkeyError(SessionParamsError):
     def __init__(self, participant: int, *args: Any):
         self.participant = participant
         super().__init__(participant, *args)
+
+
+class InvalidThresholdOrCountError(SessionParamsError):
+    """Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold."""
 
 
 # This is really the same definition as in simplpedpop and encpedpop. We repeat
@@ -448,8 +451,8 @@ def participant_step1(
         SecretKeyError: If the length of `hostseckey` is not 32 bytes.
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+        InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
+            does not hold.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # SecretKeyError if len(hostseckey) != 32
 
@@ -620,8 +623,8 @@ def coordinator_step1(
     Raises:
         InvalidHostpubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostpubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdError: If `1 <= t <= len(hostpubkeys)` does not hold.
-        OverflowError: If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+        InvalidThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
+            does not hold.
     """
     params_validate(params)
     hostpubkeys, t = params

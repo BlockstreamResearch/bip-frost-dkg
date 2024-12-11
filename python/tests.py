@@ -53,14 +53,14 @@ def test_chilldkg_params_validate():
         _ = chilldkg.params_id(
             chilldkg.SessionParams(hostpubkeys, len(hostpubkeys) + 1)
         )
-    except chilldkg.ThresholdError:
+    except chilldkg.InvalidThresholdOrCountError:
         pass
     else:
         assert False, "Expected exception"
 
     try:
         _ = chilldkg.params_id(chilldkg.SessionParams(hostpubkeys, -2))
-    except chilldkg.ThresholdError:
+    except chilldkg.InvalidThresholdOrCountError:
         pass
     else:
         assert False, "Expected exception"

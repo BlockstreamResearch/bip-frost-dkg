@@ -651,7 +651,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 - `hostpubkeys` - Ordered list of the host public keys of all participants.
 - `t` - The participation threshold `t`.
   This is the number of participants that will be required to sign.
-  It must hold that `1 <= t <= len(hostpubkeys)` and `t <= 2^32 - 1`.
+  It must hold that `1 <= t <= len(hostpubkeys) <= 2**32 - 1`.
 
   Participants **must** ensure that they have obtained authentic host
   public keys of all the other participants in the session to make
@@ -706,8 +706,8 @@ have obtained authentic public host keys.
 
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+- `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
+  does not hold.
 
 #### SessionParamsError Exception
 
@@ -751,6 +751,14 @@ implies that the corresponding participant is faulty.
 *Attributes*:
 
 - `participant` _int_ - Index of the participant.
+
+#### InvalidThresholdOrCountError Exception
+
+```python
+class InvalidThresholdOrCountError(SessionParamsError)
+```
+
+Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
 
 #### DKGOutput Tuples
 
@@ -800,8 +808,8 @@ Perform a participant's first step of a ChillDKG session.
 - `SecretKeyError` - If the length of `hostseckey` is not 32 bytes.
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+- `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
+  does not hold.
 
 #### participant\_step2
 
@@ -920,8 +928,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 - `InvalidHostpubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostpubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdError` - If `1 <= t <= len(hostpubkeys)` does not hold.
-- `OverflowError` - If `t >= 2^32` (so `t` cannot be serialized in 4 bytes).
+- `InvalidThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1`
+  does not hold.
 
 #### coordinator\_finalize
 

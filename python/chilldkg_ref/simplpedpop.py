@@ -6,7 +6,6 @@ from secp256k1proto.secp256k1 import G, GE, Scalar
 from .util import (
     BIP_TAG,
     SecretKeyError,
-    ThresholdError,
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
@@ -133,7 +132,7 @@ def participant_step1(
     List[Scalar],
 ]:
     if t > n:
-        raise ThresholdError
+        raise ValueError
     if idx >= n:
         raise IndexError
     if len(seed) != 32:

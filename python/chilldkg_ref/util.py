@@ -14,10 +14,6 @@ class SecretKeyError(ValueError):
     pass
 
 
-class ThresholdError(ValueError):
-    pass
-
-
 class ProtocolError(Exception):
     pass
 
