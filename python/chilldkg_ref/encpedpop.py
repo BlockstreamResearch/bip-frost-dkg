@@ -170,13 +170,7 @@ class ParticipantBlameState(NamedTuple):
 
 
 def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
-    # TODO Consider hashing the result here because the string can be long, and
-    # we'll feed it into hashes on multiple occasions
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
-
-
-def derive_simpl_seed(seed: bytes, pubnonce: bytes, enc_context: bytes) -> bytes:
-    return tagged_hash_bip_dkg("encpedpop seed", seed + pubnonce + enc_context)
 
 
 def participant_step1(
@@ -191,16 +185,18 @@ def participant_step1(
     assert len(random) == 32
     n = len(enckeys)
 
-    # Create a synthetic encryption nonce
+    # Derive an encryption nonce and a seed for SimplPedPop.
+    #
+    # SimplPedPop will use its seed to derive the secret shares, which we will
+    # encrypt using the encryption nonce. That means that all entropy used in
+    # the derivation of simpl_seed should also be in the derivation of the
+    # pubnonce, to ensure that we never encrypt different secret shares with the
+    # same encryption pads. The foolproof way to achieve this is to simply
+    # derive the nonce from simpl_seed.
     enc_context = serialize_enc_context(t, enckeys)
-    secnonce = tagged_hash_bip_dkg("encpedpop secnonce", seed + random + enc_context)
-    # This can be optimized: We serialize the pubnonce here, but ecdh will need
-    # to deserialize it again, which involves computing a square root to obtain
-    # the y coordinate.
+    simpl_seed = tagged_hash_bip_dkg("encpedpop seed", seed + random + enc_context)
+    secnonce = tagged_hash_bip_dkg("encpedpop secnonce", simpl_seed)
     pubnonce = pubkey_gen_plain(secnonce)
-    # Add enc_context again to the derivation of the SimplPedPop seed, just in
-    # case someone derives secnonce differently.
-    simpl_seed = derive_simpl_seed(seed, pubnonce, enc_context)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
         simpl_seed, t, n, idx
