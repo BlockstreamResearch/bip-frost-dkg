@@ -33,9 +33,12 @@ def ecdh(
     return Scalar(int_from_bytes(tagged_hash_bip_dkg("encpedpop ecdh", data)))
 
 
-def self_pad(deckey: bytes, context_: bytes) -> Scalar:
+def self_pad(symkey: bytes, nonce: bytes, context: bytes) -> Scalar:
+    # Pad for symmetric encryption to ourselves
     return Scalar(
-        int_from_bytes(tagged_hash_bip_dkg("encaps_multi self_pad", deckey + context_))
+        int_from_bytes(
+            tagged_hash_bip_dkg("encaps_multi self_pad", symkey + nonce + context)
+        )
     )
 
 
@@ -59,7 +62,7 @@ def encaps_multi(
         if i == idx:
             # We're encrypting to ourselves, so we use a symmetrically derived
             # pad to save the ECDH computation.
-            pad = self_pad(deckey, context_)
+            pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
         else:
             pad = ecdh(
                 seckey=secnonce,
@@ -99,7 +102,7 @@ def decaps_multi(
     pads = []
     for sender_idx, pubnonce in enumerate(pubnonces):
         if sender_idx == idx:
-            pad = self_pad(deckey, context_)
+            pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
         else:
             pad = ecdh(
                 seckey=deckey,
