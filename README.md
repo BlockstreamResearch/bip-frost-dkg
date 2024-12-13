@@ -199,7 +199,7 @@ The SimplPedPop protocol has been proposed by Chu, Gerhart, Ruffing, and Schröd
 We make the following modifications as compared to the original SimplPedPop proposal:
 
  - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged hashes as defined in [[BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)]).
- - Individual participants' public keys are added to the output of the DKG. This allows partial signature verification.
+ - Individual participants' public shares are added to the output of the DKG. This allows partial signature verification.
  - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs.
  - To prevent a malicious participant from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable BIP script path.
  - ~The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.~ (TODO: This will be fixed in an updated version of the paper.)
