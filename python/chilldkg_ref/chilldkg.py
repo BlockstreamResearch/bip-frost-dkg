@@ -81,7 +81,7 @@ def certeq_message(x: bytes, idx: int) -> bytes:
 def certeq_participant_step(hostseckey: bytes, idx: int, x: bytes) -> bytes:
     msg = certeq_message(x, idx)
     return schnorr_sign(
-        msg, hostseckey, aux_rand=random_bytes(32), challenge_tag=CERTEQ_MSG_TAG
+        msg, hostseckey, aux_rand=random_bytes(32), tag_prefix=CERTEQ_MSG_TAG
     )
 
 
@@ -99,7 +99,7 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
             msg,
             hostpubkeys[i][1:33],
             cert[i * 64 : (i + 1) * 64],
-            challenge_tag=CERTEQ_MSG_TAG,
+            tag_prefix=CERTEQ_MSG_TAG,
         )
         if not valid:
             raise InvalidSignatureInCertificateError(i)

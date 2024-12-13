@@ -15,7 +15,7 @@ def pubkey_gen(seckey: bytes) -> bytes:
 
 
 def schnorr_sign(
-    msg: bytes, seckey: bytes, aux_rand: bytes, challenge_tag: str = "BIP0340/challenge"
+    msg: bytes, seckey: bytes, aux_rand: bytes, tag_prefix: str = "BIP0340"
 ) -> bytes:
     d0 = int_from_bytes(seckey)
     if not (1 <= d0 <= GE.ORDER - 1):
@@ -25,9 +25,9 @@ def schnorr_sign(
     P = d0 * G
     assert not P.infinity
     d = d0 if P.has_even_y() else GE.ORDER - d0
-    t = xor_bytes(bytes_from_int(d), tagged_hash("BIP0340/aux", aux_rand))
+    t = xor_bytes(bytes_from_int(d), tagged_hash(tag_prefix + "/aux", aux_rand))
     k0 = (
-        int_from_bytes(tagged_hash("BIP0340/nonce", t + P.to_bytes_xonly() + msg))
+        int_from_bytes(tagged_hash(tag_prefix + "/nonce", t + P.to_bytes_xonly() + msg))
         % GE.ORDER
     )
     if k0 == 0:
@@ -37,17 +37,19 @@ def schnorr_sign(
     k = k0 if R.has_even_y() else GE.ORDER - k0
     e = (
         int_from_bytes(
-            tagged_hash(challenge_tag, R.to_bytes_xonly() + P.to_bytes_xonly() + msg)
+            tagged_hash(
+                tag_prefix + "/challenge", R.to_bytes_xonly() + P.to_bytes_xonly() + msg
+            )
         )
         % GE.ORDER
     )
     sig = R.to_bytes_xonly() + bytes_from_int((k + e * d) % GE.ORDER)
-    assert schnorr_verify(msg, P.to_bytes_xonly(), sig, challenge_tag=challenge_tag)
+    assert schnorr_verify(msg, P.to_bytes_xonly(), sig, tag_prefix=tag_prefix)
     return sig
 
 
 def schnorr_verify(
-    msg: bytes, pubkey: bytes, sig: bytes, challenge_tag: str = "BIP0340/challenge"
+    msg: bytes, pubkey: bytes, sig: bytes, tag_prefix: str = "BIP0340"
 ) -> bool:
     if len(pubkey) != 32:
         raise ValueError("The public key must be a 32-byte array.")
@@ -61,7 +63,10 @@ def schnorr_verify(
     s = int_from_bytes(sig[32:64])
     if (r >= FE.SIZE) or (s >= GE.ORDER):
         return False
-    e = int_from_bytes(tagged_hash(challenge_tag, sig[0:32] + pubkey + msg)) % GE.ORDER
+    e = (
+        int_from_bytes(tagged_hash(tag_prefix + "/challenge", sig[0:32] + pubkey + msg))
+        % GE.ORDER
+    )
     R = s * G - e * P
     if R.infinity or (not R.has_even_y()) or (R.x != r):
         return False
