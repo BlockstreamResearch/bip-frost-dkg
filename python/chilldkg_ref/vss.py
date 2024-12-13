@@ -80,7 +80,7 @@ class VSSCommitment:
         # generated from it has an unspendable BIP 341 Taproot script path.
         #
         # Specifically, for a VSS commitment `com`, we have:
-        # `com.add_invalid_taproot_commitment().commitment_to_secret() = com.commitment_to_secret() + t*G`.
+        # `com.invalid_taproot_commit().commitment_to_secret() = com.commitment_to_secret() + t*G`.
         #
         # The tweak `t` commits to an empty message, which is invalid according
         # to BIP 341 for Taproot script spends. This follows BIP 341's
