@@ -85,9 +85,8 @@ def encrypt_multi(
     plaintexts: List[Scalar],
 ) -> List[Scalar]:
     pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
-    ciphertexts = [
-        plaintext + pad for plaintext, pad in zip(plaintexts, pads, strict=True)
-    ]
+    assert len(plaintexts) == len(pads)
+    ciphertexts = [plaintext + pad for plaintext, pad in zip(plaintexts, pads)]
     return ciphertexts
 
 
@@ -250,9 +249,10 @@ def participant_blame(
 ) -> NoReturn:
     simpl_blame_state, enc_secshare, pads = blame_state
     enc_partial_secshares, partial_pubshares = cblame
+    assert len(enc_partial_secshares) == len(pads)
     partial_secshares = [
         enc_partial_secshare - pad
-        for enc_partial_secshare, pad in zip(enc_partial_secshares, pads, strict=True)
+        for enc_partial_secshare, pad in zip(enc_partial_secshares, pads)
     ]
 
     simpl_cblame = simplpedpop.CoordinatorBlameMsg(partial_pubshares)
