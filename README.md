@@ -1150,6 +1150,11 @@ An exception to this rule is `MAJOR` version zero (0.y.z) which is for developme
 The `MINOR` version is incremented whenever the inputs or the output of an algorithm changes in a backward-compatible way or new backward-compatible functionality is added.
 The `PATCH` version is incremented for other noteworthy changes (bug fixes, test vectors, important clarifications, etc.).
 
+* *0.2.0* (2024-12-19): In addition to various readability improvements to specification and reference implementation, the following major changes were implemented:
+  * Fix security vulnerability where the CertEq signature did not cover the entire message.
+  * Add blame functionality to identify faulty parties, including an investigation phase.
+  * Make threshold public key Taproot-safe by default.
+  * Let each participant encrypt the secret share intended for themselves so that it can be decrypted instead of re-derived during recovery. The encryption is symmetric to avoid the overhead of an ECDH computation.
 * *0.1.0* (2024-07-08): Publication of draft BIP on the bitcoin-dev mailing list
 
 ## Acknowledgments
