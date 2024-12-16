@@ -71,18 +71,16 @@ __all__ = [
 ###
 
 
-CERTEQ_MSG_TAG = BIP_TAG + "certeq message"
-
-
 def certeq_message(x: bytes, idx: int) -> bytes:
-    return idx.to_bytes(4, "big") + x
+    # Domain separation as described in BIP 340
+    prefix = (BIP_TAG + "certeq message").encode()
+    prefix = prefix + b"\x00" * (33 - len(prefix))
+    return prefix + idx.to_bytes(4, "big") + x
 
 
 def certeq_participant_step(hostseckey: bytes, idx: int, x: bytes) -> bytes:
     msg = certeq_message(x, idx)
-    return schnorr_sign(
-        msg, hostseckey, aux_rand=random_bytes(32), tag_prefix=CERTEQ_MSG_TAG
-    )
+    return schnorr_sign(msg, hostseckey, aux_rand=random_bytes(32))
 
 
 def certeq_cert_len(n: int) -> int:
@@ -99,7 +97,6 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
             msg,
             hostpubkeys[i][1:33],
             cert[i * 64 : (i + 1) * 64],
-            tag_prefix=CERTEQ_MSG_TAG,
         )
         if not valid:
             raise InvalidSignatureInCertificateError(i)
