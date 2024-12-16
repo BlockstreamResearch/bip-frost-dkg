@@ -198,8 +198,8 @@ Consequently, implementations should not expose the algorithms of the building b
 The SimplPedPop protocol has been proposed by Chu, Gerhart, Ruffing, and Schröder [Section 4, [CGRS23](https://eprint.iacr.org/2023/899)].
 We make the following modifications as compared to the original SimplPedPop proposal:
 
- - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged SHA256).
- - Individual participants' public keys are added to the output of the DKG. This allows partial signature verification.
+ - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged hashes as defined in [[BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)]).
+ - Individual participants' public shares are added to the output of the DKG. This allows partial signature verification.
  - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs.
  - To prevent a malicious participant from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable BIP script path.
  - ~The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.~ (TODO: This will be fixed in an updated version of the paper.)
@@ -295,10 +295,13 @@ Every participant derives from fresh randomness an ephemeral encryption nonce pa
 This will enable every pair of sending participant `i` and recipient participant `j != i`
 to perform an ECDH key exchange between the ephemeral encryption nonce pair of participant `i` and the static encryption key pair of participant `j`
 in order to establish a shared secret pad `pad_ij` only known to participants `i` and `j`.
-The derivation of `pad_ij` from the raw ECDH output uses tagged SHA256 and includes
-the static encryption key and the index `j` of the recipient.[^mr-kem]
+The derivation of `pad_ij` from the raw ECDH output uses a tagged hash and includes
+additional context, namely the static encryption key and the index `j` of the recipient.[^mr-kem]
 
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
+
+When `j = i` (i.e., when a participant encrypts a VSS share for themselves), the computationally expensive ECDH key exchange is unnecessary.
+Instead, the participant repurposes the secret decryption key as a symmetric key, such that `pad_ii` is computed as the tagged hash of the decryption key, public encryption nonce, and context.
 
 Every participant derives an ephemeral *session seed* passed down to SimplPedPop from their long-term seed and their public encryption nonce.
 Moreover, all encryption keys of all participants are included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
