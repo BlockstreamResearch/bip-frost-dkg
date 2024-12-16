@@ -91,7 +91,11 @@ This will enable bandwidth optimizations and is common also in implementations o
 Participants are identified and authenticated via long-term public keys.
 
 The basic building block of ChillDKG is the SimplPedPop protocol (a simplified variant of PedPop),
-which has been proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)].
+which has been designed specifically for FROST.
+SimplPedPop is proven to be secure when combined with FROST [[CGRS23](https://eprint.iacr.org/2023/899)],
+and its output contains, in addition to the threshold public key, separate per-participant public shares thereof,
+which allow for partial verification of contributions in a FROST signing session.
+
 Besides external secure channels, SimplPedPop depends on an external *equality check protocol*.
 The equality check protocol serves as an abstraction of a consensus mechanism:
 Its only purpose is to check that, at the end of SimplPedPop, all participants have received identical protocol messages.
@@ -139,7 +143,7 @@ In summary, we aim for the following design goals:
  - **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
  - **Simple backups**: ChillDKG allows recovering the DKG output using the host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A faulty coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
- - **Per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
+ - **Per-participant public shares**: ChillDKG supports partial signature verification in FROST signing sessions.
  - **Taproot-safe threshold public key**: ChillDKG prevents malicious participants from embedding a hidden [[BIP 341]](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki) Taproot commitment to a script path in the threshold public key.
  - **Blame functionality**: If a ChillDKG session aborts, it is possible to identify and blame a single party responsible for the failure (assuming the network, and, depending on the circumstances, the coordinator, is reliable).
 
