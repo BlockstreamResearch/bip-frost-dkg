@@ -136,7 +136,7 @@ In summary, we aim for the following design goals:
  - **Simple backups**: ChillDKG allows recovering the DKG output using the host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A malicious coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
  - **Per-participant public keys**: When ChillDKG is used with FROST, partial signature verification is supported.
- - **Taproot-safe threshold public key**: ChillDKG prevents malicious participants from embedding hidden [[BIP 341]](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot commitment to a script path in the threshold public key.
+ - **Taproot-safe threshold public key**: ChillDKG prevents malicious participants from embedding a hidden [[BIP 341]](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki) Taproot commitment to a script path in the threshold public key.
 
 In summary, ChillDKG incorporates solutions for both secure channels and consensus and simplifies backups in practice.
 As a result, it fits a wide range of application scenarios,
