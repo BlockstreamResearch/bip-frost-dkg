@@ -949,6 +949,7 @@ Perform the coordinator's first step of a ChillDKG session.
   passed as an argument to `coordinator_finalize`. The state is not
   supposed to be reused (i.e., it should be passed only to one
   `coordinator_finalize` call).
+- `CoordinatorMsg1` - The first message to be sent to all participants.
 
 
 *Raises*:

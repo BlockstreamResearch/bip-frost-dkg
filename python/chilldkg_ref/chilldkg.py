@@ -636,6 +636,7 @@ def coordinator_step1(
             passed as an argument to `coordinator_finalize`. The state is not
             supposed to be reused (i.e., it should be passed only to one
             `coordinator_finalize` call).
+        CoordinatorMsg1: The first message to be sent to all participants.
 
     Raises:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
