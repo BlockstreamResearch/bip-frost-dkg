@@ -87,7 +87,7 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
 
     To determine a suspected participant, the raising participant may choose to
     run the optional investigation procedure of the protocol, which requires
-    obtaining an investigation message by the coordinator. See the
+    obtaining an investigation message from the coordinator. See the
     `participant_investigate` function for details.
 
     This is only raised for specific faulty behavior by another participant

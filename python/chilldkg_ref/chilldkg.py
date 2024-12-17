@@ -593,8 +593,28 @@ def participant_investigate(
     error: UnknownFaultyParticipantOrCoordinatorError,
     cinv: CoordinatorInvestigationMsg,
 ) -> NoReturn:
-    """Perform a participant's blame step of a ChillDKG session. TODO"""
+    """Investigate who is to blame for a failed ChillDKG session.
 
+    This function can optionally be called when `participant_step2` raises
+    `UnknownFaultyParticipantOrCoordinatorError`. It narrows down the suspected
+    faulty parties by analyzing the investigation message provided by the coordinator.
+
+    This function does not return normally. Instead, it raises one of two
+    exceptions.
+
+    Arguments:
+        error: `UnknownFaultyParticipantOrCoordinatorError` raised by
+            `participant_step2`.
+        cinv: Coordinator investigation message for this participant as output
+            by `coordinator_investigate`.
+
+    Raises:
+        FaultyParticipantOrCoordinatorError: If another known participant or the
+            coordinator is faulty. See the documentation of the exception for
+            further details.
+        FaultyCoordinatorError: If the coordinator is faulty. See the
+            documentation of the exception for further details.
+    """
     assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
     encpedpop.participant_investigate(
         error=error,
@@ -703,7 +723,22 @@ def coordinator_finalize(
 def coordinator_investigate(
     pmsgs: List[ParticipantMsg1],
 ) -> List[CoordinatorInvestigationMsg]:
-    """Perform the coordinator's blame step of a ChillDKG session. TODO"""
+    """Generate investigation messages for a ChillDKG session.
+
+    The investigation messages will allow the participants to investigate who is
+    to blame for a failed ChillDKG session (see `participant_investigate`).
+
+    Each message is intended for a single participant but can be safely
+    broadcast to all participants because the messages contain no confidential
+    information.
+
+    Arguments:
+        pmsgs: List of first messages received from the participants.
+
+    Returns:
+        List[CoordinatorInvestigationMsg]: A list of investigation messages, each
+            intended for a single participant.
+    """
     enc_cinvs = encpedpop.coordinator_investigate([pmsg.enc_pmsg for pmsg in pmsgs])
     return [CoordinatorInvestigationMsg(enc_cinv) for enc_cinv in enc_cinvs]
 
