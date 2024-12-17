@@ -833,6 +833,18 @@ def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: Coord
 
 Perform a participant's second step of a ChillDKG session.
 
+*Warning:*
+After sending the returned message to the coordinator, this participant
+**must not** erase the hostseckey, even if this participant does not receive
+the coordinator reply needed for the `participant_finalize` call. The
+underlying reason is that some other participant may receive the coordinator
+reply, deem the DKG session successful and use the resulting threshold
+public key (e.g., by sending funds to it). If the coordinator reply remains
+missing, that other participant can, at any point in the future, convince
+this participant of the success of the DKG session by presenting recovery
+data, from which this participant can recover the DKG output using the
+`recover` function.
+
 *Arguments*:
 
 - `hostseckey` - Participant's long-term host secret key (32 bytes).
@@ -881,12 +893,13 @@ they can recover the DKG outputs using the `recover` function.
 
 *Warning:*
 Changing perspectives, this implies that, even when obtaining an exception,
-you **must not** conclude that the DKG session has failed, and as a
-consequence, you **must not** erase the hostseckey. The underlying reason is
-that some other participant may deem the DKG session successful and use the
-resulting threshold public key (e.g., by sending funds to it). That other
-participant can, at any point in the future, wish to convince us of the
-success of the DKG session by presenting recovery data to us.
+this participant **must not** conclude that the DKG session has failed, and
+as a consequence, this particiant **must not** erase the hostseckey. The
+underlying reason is that some other participant may deem the DKG session
+successful and use the resulting threshold public key (e.g., by sending
+funds to it). That other participant can, at any point in the future,
+convince this participant of the success of the DKG session by presenting
+recovery data to this participant.
 
 *Arguments*:
 
