@@ -205,7 +205,7 @@ We make the following modifications as compared to the original SimplPedPop prop
 
  - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged hashes as defined in [[BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)]).
  - Individual participants' public shares are added to the output of the DKG. This allows partial signature verification.
- - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs. However, if a session fails, participants are still able investigate which other participants provided invalid secret shares by asking the coordinator for the other participants' individual contributions to their public share.
+ - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs. However, if a session fails, participants are still able to investigate who provided invalid secret shares by asking the coordinator for the other participants' individual contributions to their public share.
  - To prevent a malicious participant from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable BIP script path.
  - ~The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.~ (TODO: This will be fixed in an updated version of the paper.)
 
@@ -238,13 +238,13 @@ Our variant of the SimplPedPop protocol then works as follows:
 
     ```
     sum_coms_to_nonconst_terms = (coms[0][1] + ... + coms[n-1][1], ..., coms[0][t-1] + ... + coms[n-1][t-1])
-    coms_to_secrets = (coms[0][0], ..., com[n-1][0])
+    coms_to_secrets = (coms[0][0], ..., coms[n-1][0])
     ```
 
     The coordinator sends the vectors `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` to every participant.
 
 3.  Upon receiving `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` from the coordinator,
-    every participant `i` verifies every signature `pops[j]` using message `j` and public key `coms_to_secret[j]`.
+    every participant `i` verifies every signature `pops[j]` using message `j` and public key `coms_to_secrets[j]`.
     If any signature, say the one from participant `j`, is invalid, participant `i` aborts and blames participant `j` for the failure of the session.
 
     Otherwise, i.e., if all signatures are valid, participant `i` sums the components of `coms_to_secrets`,
@@ -253,14 +253,14 @@ Our variant of the SimplPedPop protocol then works as follows:
     the vector `sum_coms` is now the complete component-wise sum of the `coms[j]` vectors from every participant `j`.
     It acts as a VSS commitment to the sum `f = f_0 + ... + f_{n-1}` of the polynomials of all participants.)
 
-    Let `partial_secshares` be vector of the VSS shares that participant `i` has privately obtained from each participant,
-    and let `secshare = partial_secshares[0] + ... + partial_secshares[n]` be the sum of the vector components.
+    Let `partial_secshares` be the vector of the VSS shares that participant `i` has privately obtained from each participant,
+    and let `secshare = partial_secshares[0] + ... + partial_secshares[n-1]` be the sum of the vector components.
     Participant `i` checks the validity of `secshare` against `sum_coms`
     by checking if the equation `secshare * G = pubshares[i]` holds.
     (`secshare` is supposed to be equal to `f(i+1)`.)
 
     If the check fails, participant `i` aborts.
-    Assuming the coordinator is honest and has sent a correct `sums_com` vector,
+    Assuming the coordinator is honest and has sent a correct `sums_coms` vector,
     participant `i` knows that some participant contributed a wrong summand to `secshare`,
     but participant `i` does not have sufficient information to single out and blame the faulty participant.
     In this case, participant `i` can optionally investigate the error by asking the coordinator for the vector `partial_pubshares` defined as:
@@ -268,7 +268,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     partial_pubshares[j] = (i+1)^0 * coms[j][0] + ... + (i+1)^(t-1) * coms[j][t-1]
     ```
     With this vector at hand, participant `i` verifies each component of `partial_secshares` individually
-    by checking for which participant `j` the equation `partial_secshare[j] * G = partial_pubshares[j]` does not hold.
+    by checking for which participant `j` the equation `partial_secshares[j] * G = partial_pubshares[j]` does not hold.
     Participant `i` blames this participant `j` .
 
     Otherwise, i.e., in the successful case that the equation `secshare * G = pubshares[i]` holds, participant `i` proceeds as follows.
