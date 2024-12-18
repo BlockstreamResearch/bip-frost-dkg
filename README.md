@@ -522,7 +522,7 @@ and we believe that a general recommendation is not useful.
 ### Recovering Stuck Participants
 
 The mere fact that the coordinator or a participant deems a ChillDKG session successful does not imply that other participants deem it successful yet.
-Indeed, due to failing communication links or invalid messages sent by malicious participants,
+Indeed, due to failing communication links or invalid messages sent by faulty participants,
 it is possible that a party has deemed the DKG session successful, but others have not (yet) and thus are stuck in the DKG session.
 In that case, the successful parties can eventually convince the stuck participants to consider the DKG session successful by presenting the recovery data to them.
 The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
