@@ -202,20 +202,24 @@ def participant_step2(
             )
 
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
-    pubshare = sum_coms.pubshare(idx)
-    if not VSSCommitment.verify_secshare(secshare, pubshare):
+    # Verifying the tweaked secshare against the tweaked pubshare is equivalent
+    # to verifying the untweaked secshare against the untweaked pubshare, but
+    # avoids computing the untweaked pubshare in the happy path and thereby
+    # moves a group addition to the error path.
+    sum_coms_tweaked, tweak, pubtweak = sum_coms.invalid_taproot_commit()
+    pubshare_tweaked = sum_coms_tweaked.pubshare(idx)
+    secshare_tweaked = secshare + tweak
+    if not VSSCommitment.verify_secshare(secshare_tweaked, pubshare_tweaked):
+        pubshare = pubshare_tweaked - pubtweak
         raise UnknownFaultyParticipantOrCoordinatorError(
             ParticipantInvestigationData(n, idx, secshare, pubshare),
             "Received invalid secshare, "
             "consider investigation procedure to determine faulty party",
         )
 
-    sum_coms_tweaked, tweak, pubshare_tweak = sum_coms.invalid_taproot_commit()
-    secshare_tweaked = secshare + tweak
     threshold_pubkey = sum_coms_tweaked.commitment_to_secret()
     pubshares = [
-        sum_coms_tweaked.pubshare(i) if i != idx else pubshare + pubshare_tweak
-        for i in range(n)
+        sum_coms_tweaked.pubshare(i) if i != idx else pubshare_tweaked for i in range(n)
     ]
     dkg_output = DKGOutput(
         secshare_tweaked.to_bytes(),
