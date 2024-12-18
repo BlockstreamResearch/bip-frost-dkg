@@ -194,16 +194,21 @@ def simulate_chilldkg_full(
 
 
 def main():
-    n = 5
-    t = 3
-
     parser = argparse.ArgumentParser(description="ChillDKG example")
     parser.add_argument(
         "--faulty-participant",
         action="store_true",
         help="When this flag is set, one random participant will send an invalid message, and blame mode will be enabled for other participants and the coordinator.",
     )
+    parser.add_argument(
+        "t", nargs="?", type=int, default=2, help="Signing threshold [default = 2]"
+    )
+    parser.add_argument(
+        "n", nargs="?", type=int, default=3, help="Number of participants [default = 3]"
+    )
     args = parser.parse_args()
+    t = args.t
+    n = args.n
     if args.faulty_participant:
         faulty_idx = randint(0, n - 1)
     else:
@@ -217,8 +222,7 @@ def main():
     params = SessionParams(hostpubkeys, t)
 
     print("=== Inputs ===")
-    print(f"t: {t}")
-    print(f"n: {n}")
+    print(f"t = {t}, n = {n}")
     print()
     if faulty_idx is not None:
         print(f"Participant {faulty_idx} is faulty.")
@@ -227,7 +231,7 @@ def main():
             f"Participant {i}'s (hostseckey, hostpubkey) pair: "
             f"({hostseckeys[i].hex()}, {hostpubkeys[i].hex()})"
         )
-
+    print()
     print(f"SessionParams identifier: {params_id(params).hex()}")
     print()
 
