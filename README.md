@@ -327,7 +327,7 @@ EncPedPop then works like SimplPedPop with the following differences:
 Participant `i` will additionally transmit their public encryption nonce and an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
-and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
+and computes the sum `enc_secshare[i]` of all shares intended for every participant `i`.
 The coordinator sends all public encryption nonces along with the sum `enc_secshare[i]` to participant `i`.
 Participant `i` stores the sum as `enc_secshare`,
 derives the pads `pad_0i`, ..., `pad_ni` as described above,
