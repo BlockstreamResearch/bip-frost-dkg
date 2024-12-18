@@ -75,7 +75,7 @@ class VSSCommitment:
     def commitment_to_nonconst_terms(self) -> List[GE]:
         return self.ges[1 : self.t()]
 
-    def invalid_taproot_commit(self) -> Tuple[VSSCommitment, Scalar]:
+    def invalid_taproot_commit(self) -> Tuple[VSSCommitment, Scalar, GE]:
         # Return a modified VSS commitment such that the threshold public key
         # generated from it has an unspendable BIP 341 Taproot script path.
         #
@@ -98,8 +98,9 @@ class VSSCommitment:
         secshare_tweak = Scalar.from_bytes(
             tagged_hash("TapTweak", pk.to_bytes_compressed())
         )
-        vss_tweak = VSSCommitment([secshare_tweak * G] + [GE()] * (self.t() - 1))
-        return (self + vss_tweak, secshare_tweak)
+        pubshare_tweak = secshare_tweak * G
+        vss_tweak = VSSCommitment([pubshare_tweak] + [GE()] * (self.t() - 1))
+        return (self + vss_tweak, secshare_tweak, pubshare_tweak)
 
 
 class VSS:
