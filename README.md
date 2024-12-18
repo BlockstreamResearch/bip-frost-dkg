@@ -280,11 +280,10 @@ Our variant of the SimplPedPop protocol then works as follows:
     In order to obtain a threshold public key with an unspendable [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path,
     participant `i` computes a Taproot tweak `tweak` for an unspendable script path,
     and adds the point `tweak * G` to `sum_coms[0]`, resulting in a new VSS commitment called `sum_coms_tweaked`.
-    Participant `i` computes the public share of every participant `j != i` as
+    Participant `i` computes the public share of every participant as
     ```
     pubshares[j] = (j+1)^0 * sum_coms_tweaked[0] + ... + (j+1)^(t-1) * sum_coms_tweaked[t-1]
     ```
-    and participant `i`'s own share as `pubshares[i] = pubshare + tweak * G`.
     Correspondingly, participant `i` computes `secshare_tweaked = secshare + tweak`.
 
     Then, participant `i` sets the DKG output consisting of
