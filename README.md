@@ -205,7 +205,7 @@ We make the following modifications as compared to the original SimplPedPop prop
 
  - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged hashes as defined in [[BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)]).
  - Individual participants' public shares are added to the output of the DKG. This allows partial signature verification.
- - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs.
+ - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs. However, if a session fails, participants are still able investigate which other participants provided invalid secret shares by asking the coordinator for the other participants' individual contributions to their public share.
  - To prevent a malicious participant from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable BIP script path.
  - ~The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.~ (TODO: This will be fixed in an updated version of the paper.)
 
@@ -245,31 +245,43 @@ Our variant of the SimplPedPop protocol then works as follows:
 
 3.  Upon receiving `coms_to_secrets`, `sum_coms_to_nonconst_terms`, and `pops` from the coordinator,
     every participant `i` verifies every signature `pops[j]` using message `j` and public key `coms_to_secret[j]`.
-    If any signature is invalid, participant `i` aborts.
+    If any signature, say the one from participant `j`, is invalid, participant `i` aborts and blames participant `j` for the failure of the session.
 
-    Otherwise, participant `i` sums the components of `coms_to_secrets`,
+    Otherwise, i.e., if all signatures are valid, participant `i` sums the components of `coms_to_secrets`,
     and prepends the sum to the `sum_coms_to_nonconst_terms` vector, resulting in a vector `sum_coms`.
     (Assuming the coordinator performed its computations correctly,
     the vector `sum_coms` is now the complete component-wise sum of the `coms[j]` vectors from every participant `j`.
     It acts as a VSS commitment to the sum `f = f_0 + ... + f_{n-1}` of the polynomials of all participants.)
 
-    To generate a threshold public key with an unspendable [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path, each participant computes a Taproot tweak `t` for an unspendable script path.
-    They then add the point `t * G` to `sum_coms[0]`, resulting in a new VSS commitment called `sum_coms_tweaked`.
+    Let `partial_secshares` be vector of the VSS shares that participant `i` has privately obtained from each participant,
+    and let `secshare = partial_secshares[0] + ... + partial_secshares[n]` be the sum of the vector components.
+    Participant `i` checks the validity of `secshare` against `sum_coms`
+    by checking if the equation `secshare * G = pubshares[i]` holds.
+    (`secshare` is supposed to be equal to `f(i+1)`.)
 
+    If the check fails, participant `i` aborts.
+    Assuming the coordinator is honest and has sent a correct `sums_com` vector,
+    participant `i` knows that some participant contributed a wrong summand to `secshare`,
+    but participant `i` does not have sufficient information to single out and blame the faulty participant.
+    In this case, participant `i` can optionally investigate the error by asking the coordinator for the vector `partial_pubshares` defined as:
+    ```
+    partial_pubshares[j] = (i+1)^0 * coms[j][0] + ... + (i+1)^(t-1) * coms[j][t-1]
+    ```
+    With this vector at hand, participant `i` verifies each component of `partial_secshares` individually
+    by checking for which participant `j` the equation `partial_secshare[j] * G = partial_pubshares[j]` does not hold.
+    Participant `i` blames this participant `j` .
+
+    Otherwise, i.e., in the successful case that the equation `secshare * G = pubshares[i]` holds, participant `i` proceeds as follows.
+    In order to obtain a threshold public key with an unspendable [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path,
+    participant `i` computes a Taproot tweak `tweak` for an unspendable script path,
+    and adds the point `tweak * G` to `sum_coms[0]`, resulting in a new VSS commitment called `sum_coms_tweaked`.
     Participant `i` computes the public share of every participant `j` as follows:
-
     ```
     pubshares[j] = (j+1)^0 * sum_coms_tweaked[0] + ... + (j+1)^(t-1) * sum_coms_tweaked[t-1]
     ```
 
-    Let `secshare` be the sum of VSS shares privately obtained from each participant and Taproot tweak `t`.
-    Participant `i` checks the validity of `secshare` against `sum_coms_tweaked`
-    by checking if the equation `secshare * G = pubshares[i]` holds.
-    (Assuming `secshare` is the sum of the VSS shares created by other participants, it will be equal to `f(i+1)`.)
-
-    If the check fails, participant `i` aborts.
-    Otherwise, participant `i` sets the DKG output consisting of
-    this participant's secret share `secshare`,
+    Then, participant `i` sets the DKG output consisting of
+    this participant's secret share `secshare_tweaked`,
     the threshold public key `threshold_pubkey = sum_coms_tweaked[0]`, and
     all participants' public shares `pubshares`.
 
@@ -282,7 +294,6 @@ Our variant of the SimplPedPop protocol then works as follows:
     participant `i` returns successfully with the DKG outputs as computed above.
     Details of the interface of the equality check protocol will be described further below in
     [Subsection "Background on Equality Checks"](#background-on-equality-checks).
-
 
 ### DKG Protocol EncPedPop
 
@@ -317,19 +328,22 @@ Participant `i` will additionally transmit their public encryption nonce and an 
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
 and computes the sum `enc_secshare[j]` of all shares intended for every participant `j`.
-The coordinator sends all public encryption nonces along with this sum to participant `j`
-who stores the sum as `enc_secshare`,
-derives the pads `pad_0j`, ..., `pad_nj` as described above,
-and obtains the value `secshare = enc_secshare - (pad_0j + ... + pad_nj)` required by SimplPedPop.[^dc-net]
+The coordinator sends all public encryption nonces along with the sum `enc_secshare[i]` to participant `i`.
+Participant `i` stores the sum as `enc_secshare`,
+derives the pads `pad_0i`, ..., `pad_ni` as described above,
+obtains the value `secshare = enc_secshare - (pad_0i + ... + pad_ni)`,
+and passes it down to SimplPedPop.
 
-[^dc-net]: We use additively homomorphic encryption to enable the coordinator to aggregate the shares, which saves communication.
-Note that this emulates a Dining Cryptographer's Network [[Cha88](https://doi.org/10.1007/BF00206326)],
-though anonymity is an anti-feature in our case:
-If a SimplPedPop participant receives an invalid `secshare`,
-it is impossible for this participant to identify another participant who has sent wrong contributions,
-even if the coordinator is trusted.
-This is the price we pay for the communication optimization.
+If SimplPedPop raises an error because this `secshare` value fails VSS verification,
+then participant `i` can optionally investigate the error
+by asking the coordinator for the vector `enc_partial_secshares` of the individual contributions of all participants to `enc_secshare`.
+Participant `i` obtains the vector `partial_secshares`, which SimplPedPop requires for investigating the error,
+by decrypting the components of `enc_partial_secshares` via `partial_secshares[j] = enc_partial_secshares[j] - pad_ji` for every other participant `j`.
+Then, participant `i` can pass `partial_secshares` down to SimplPedPop,
+which, after additionally obtaining the vector `partial_pubshares` from the coordinator,
+has all the information required to determine and blame a faulty participant.
 
+Otherwise, i.e., if SimplPedPop does not raise an error,
 EncPedPop appends to the transcript `eq_input` of SimplPedPop the `n` public encryption nonces,
 and also all the `n` static encryption keys to ensure that the participants agree on their identities.
 The inclusion of the latter excludes man-in-the-middle attacks if Eq authenticates participants,
