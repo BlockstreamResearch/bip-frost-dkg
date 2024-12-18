@@ -106,7 +106,7 @@ class ParticipantState(NamedTuple):
     com_to_secret: GE
 
 
-class ParticipantBlameState(NamedTuple):
+class ParticipantInvestigationData(NamedTuple):
     n: int
     idx: int
     secshare: Scalar
@@ -209,7 +209,7 @@ def participant_step2(
 
     if not VSSCommitment.verify_secshare(secshare, pubshare):
         raise UnknownFaultyParticipantOrCoordinatorError(
-            ParticipantBlameState(n, idx, secshare, secshare_tweak, pubshare),
+            ParticipantInvestigationData(n, idx, secshare, secshare_tweak, pubshare),
             "Received invalid secshare, consider investigation procedure to determine faulty party",
         )
 
@@ -226,11 +226,11 @@ def participant_step2(
 
 
 def participant_investigate(
-    blame_state: ParticipantBlameState,
+    error: UnknownFaultyParticipantOrCoordinatorError,
     cinv: CoordinatorInvestigationMsg,
     partial_secshares: List[Scalar],
 ) -> NoReturn:
-    n, idx, secshare, secshare_tweak, pubshare = blame_state
+    n, idx, secshare, secshare_tweak, pubshare = error.inv_data
     partial_pubshares = cinv.partial_pubshares
 
     if GE.sum(*partial_pubshares) + secshare_tweak * G != pubshare:

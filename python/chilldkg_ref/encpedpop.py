@@ -161,8 +161,8 @@ class ParticipantState(NamedTuple):
     idx: int
 
 
-class ParticipantBlameState(NamedTuple):
-    simpl_bstate: simplpedpop.ParticipantBlameState
+class ParticipantInvestigationData(NamedTuple):
+    simpl_bstate: simplpedpop.ParticipantInvestigationData
     enc_secshare: Scalar
     pads: List[Scalar]
 
@@ -232,21 +232,21 @@ def participant_step2(
             simpl_state, simpl_cmsg, secshare
         )
     except UnknownFaultyParticipantOrCoordinatorError as e:
-        assert isinstance(e.blame_state, simplpedpop.ParticipantBlameState)
-        # Translate simplpedpop.ParticipantBlamestate into our own
-        # encpedpop.ParticipantBlameState.
-        blame_state = ParticipantBlameState(e.blame_state, enc_secshare, pads)
-        raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
+        assert isinstance(e.inv_data, simplpedpop.ParticipantInvestigationData)
+        # Translate simplpedpop.ParticipantInvestigationData into our own
+        # encpedpop.ParticipantInvestigationData.
+        inv_data = ParticipantInvestigationData(e.inv_data, enc_secshare, pads)
+        raise UnknownFaultyParticipantOrCoordinatorError(inv_data, e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input
 
 
 def participant_investigate(
-    blame_state: ParticipantBlameState,
+    error: UnknownFaultyParticipantOrCoordinatorError,
     cinv: CoordinatorInvestigationMsg,
 ) -> NoReturn:
-    simpl_blame_state, enc_secshare, pads = blame_state
+    simpl_inv_data, enc_secshare, pads = error.inv_data
     enc_partial_secshares, partial_pubshares = cinv
     assert len(enc_partial_secshares) == len(pads)
     partial_secshares = [
@@ -257,7 +257,9 @@ def participant_investigate(
     simpl_cinv = simplpedpop.CoordinatorInvestigationMsg(partial_pubshares)
     try:
         simplpedpop.participant_investigate(
-            simpl_blame_state, simpl_cinv, partial_secshares
+            UnknownFaultyParticipantOrCoordinatorError(simpl_inv_data),
+            simpl_cinv,
+            partial_secshares,
         )
     except simplpedpop.SecshareSumError as e:
         # The secshare is not equal to the sum of the partial secshares in the

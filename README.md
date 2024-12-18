@@ -966,7 +966,7 @@ recovery data to this participant.
 #### participant\_investigate
 
 ```python
-def participant_investigate(blame_state: ParticipantBlameState, cinv: CoordinatorInvestigationMsg) -> NoReturn
+def participant_investigate(error: UnknownFaultyParticipantOrCoordinatorError, cinv: CoordinatorInvestigationMsg) -> NoReturn
 ```
 
 Perform a participant's blame step of a ChillDKG session. TODO
@@ -1197,8 +1197,7 @@ the coordinator (namely, sending invalid encrypted secret shares).
 
 *Attributes*:
 
-- `blame_state` _BlameState_ - To be passed to the `participant_investigate`
-  function.
+- `inv_data` - Information required to perform the investigation.
 <!--end of pydoc.md-->
 
 ## Changelog

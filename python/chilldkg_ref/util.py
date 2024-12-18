@@ -95,10 +95,9 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
     the coordinator (namely, sending invalid encrypted secret shares).
 
     Attributes:
-        blame_state (BlameState): To be passed to the `participant_investigate`
-            function.
+        inv_data: Information required to perform the investigation.
     """
 
-    def __init__(self, blame_state: Any, *args: Any):
-        self.blame_state = blame_state
+    def __init__(self, inv_data: Any, *args: Any):
+        self.inv_data = inv_data
         super().__init__(*args)

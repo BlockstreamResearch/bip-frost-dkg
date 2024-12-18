@@ -127,7 +127,7 @@ async def participant(
         state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
     except UnknownFaultyParticipantOrCoordinatorError as e:
         if investigation_procedure:
-            participant_investigate(e.blame_state, cinv)
+            participant_investigate(e, cinv)
         else:
             # If this participant does not implement the investigation
             # procedure, it cannot determine which party is faulty. Re-raise

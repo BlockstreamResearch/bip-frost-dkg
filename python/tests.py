@@ -115,9 +115,7 @@ def simulate_simplpedpop(
             inv_msgs = simplpedpop.coordinator_investigate(pmsgs)
             assert len(inv_msgs) == len(pmsgs)
             try:
-                simplpedpop.participant_investigate(
-                    e.blame_state, inv_msgs[i], partial_secshares
-                )
+                simplpedpop.participant_investigate(e, inv_msgs[i], partial_secshares)
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_idx
@@ -175,7 +173,7 @@ def simulate_encpedpop(
             inv_msgs = encpedpop.coordinator_investigate(pmsgs)
             assert len(inv_msgs) == len(pmsgs)
             try:
-                encpedpop.participant_investigate(e.blame_state, inv_msgs[i])
+                encpedpop.participant_investigate(e, inv_msgs[i])
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_idx[i]
@@ -224,7 +222,7 @@ def simulate_chilldkg(
             inv_msgs = chilldkg.coordinator_investigate(pmsgs)
             assert len(inv_msgs) == len(pmsgs)
             try:
-                chilldkg.participant_investigate(e.blame_state, inv_msgs[i])
+                chilldkg.participant_investigate(e, inv_msgs[i])
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_idx[i]

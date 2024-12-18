@@ -424,10 +424,6 @@ class ParticipantState2(NamedTuple):
     dkg_output: DKGOutput
 
 
-class ParticipantBlameState(NamedTuple):
-    enc_blame_state: encpedpop.ParticipantBlameState
-
-
 def participant_step1(
     hostseckey: bytes, params: SessionParams, random: bytes
 ) -> Tuple[ParticipantState1, ParticipantMsg1]:
@@ -526,19 +522,12 @@ def participant_step2(
     params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
-    try:
-        enc_dkg_output, eq_input = encpedpop.participant_step2(
-            state=enc_state,
-            deckey=hostseckey,
-            cmsg=enc_cmsg,
-            enc_secshare=enc_secshares[idx],
-        )
-    except UnknownFaultyParticipantOrCoordinatorError as e:
-        # Convert from encpedpop.ParticipantBlameState into
-        # chilldkg.ParticipantBlameState.
-        assert isinstance(e.blame_state, encpedpop.ParticipantBlameState)
-        blame_state = ParticipantBlameState(e.blame_state)
-        raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
+    enc_dkg_output, eq_input = encpedpop.participant_step2(
+        state=enc_state,
+        deckey=hostseckey,
+        cmsg=enc_cmsg,
+        enc_secshare=enc_secshares[idx],
+    )
 
     # Include the enc_shares in eq_input to ensure that participants agree on
     # all shares, which in turn ensures that they have the right recovery data.
@@ -601,12 +590,14 @@ def participant_finalize(
 
 
 def participant_investigate(
-    blame_state: ParticipantBlameState,
+    error: UnknownFaultyParticipantOrCoordinatorError,
     cinv: CoordinatorInvestigationMsg,
 ) -> NoReturn:
     """Perform a participant's blame step of a ChillDKG session. TODO"""
+
+    assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
     encpedpop.participant_investigate(
-        blame_state=blame_state.enc_blame_state,
+        error=error,
         cinv=cinv.enc_cinv,
     )
 
