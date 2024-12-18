@@ -265,7 +265,7 @@ def main():
     # Check that all RecoveryData of all parties is identical
     assert len(set([rets[i][1] for i in range(n + 1)])) == 1
     recovery_data = rets[0][1]
-    print(f"=== Common recovery data ({len(recovery_data)} bytes)===")
+    print(f"=== Common recovery data ({len(recovery_data)} bytes) ===")
     print(recovery_data.hex())
 
 
