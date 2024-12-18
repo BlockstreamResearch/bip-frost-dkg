@@ -540,12 +540,12 @@ e.g., funds stored under the current threshold public key need to be transferred
 Whether to perform backups of host secret keys and how to manage them ultimately depends on the requirements of the application,
 and we believe that a general recommendation is not useful.
 
-### Recovering Stuck Participants
+### Recovering Stuck Parties
 
-The mere fact that the coordinator or a participant deems a ChillDKG session successful does not imply that other participants deem it successful yet.
-Indeed, due to failing communication links or invalid messages sent by faulty participants,
-it is possible that a party has deemed the DKG session successful, but others have not (yet) and thus are stuck in the DKG session.
-In that case, the successful parties can eventually convince the stuck participants to consider the DKG session successful by presenting the recovery data to them.
+The mere fact that a protocol party deems a ChillDKG session successful does not imply that other parties deem it successful yet.
+Indeed, due to failing communication links or invalid messages sent by faulty parties,
+it is possible that one party has deemed the DKG session successful, but others have not (yet) and thus are stuck in the DKG session.
+In that case, the successful parties can eventually convince the stuck parties to consider the DKG session successful by presenting the recovery data to them.
 The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
 
 An important implication of the above is that anyone who uses the threshold public key,
