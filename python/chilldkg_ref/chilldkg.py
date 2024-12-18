@@ -35,10 +35,10 @@ __all__ = [
     "participant_step1",
     "participant_step2",
     "participant_finalize",
-    "participant_blame",
+    "participant_investigate",
     "coordinator_step1",
     "coordinator_finalize",
-    "coordinator_blame",
+    "coordinator_investigate",
     "recover",
     # Exceptions
     "HostSeckeyError",
@@ -56,7 +56,7 @@ __all__ = [
     "DKGOutput",
     "ParticipantMsg1",
     "ParticipantMsg2",
-    "CoordinatorBlameMsg",
+    "CoordinatorInvestigationMsg",
     "ParticipantState1",
     "ParticipantState2",
     "CoordinatorMsg1",
@@ -351,8 +351,8 @@ class CoordinatorMsg2(NamedTuple):
     cert: bytes
 
 
-class CoordinatorBlameMsg(NamedTuple):
-    enc_cblame: encpedpop.CoordinatorBlameMsg
+class CoordinatorInvestigationMsg(NamedTuple):
+    enc_cinv: encpedpop.CoordinatorInvestigationMsg
 
 
 def deserialize_recovery_data(
@@ -422,10 +422,6 @@ class ParticipantState2(NamedTuple):
     params: SessionParams
     eq_input: bytes
     dkg_output: DKGOutput
-
-
-class ParticipantBlameState(NamedTuple):
-    enc_blame_state: encpedpop.ParticipantBlameState
 
 
 def participant_step1(
@@ -519,26 +515,19 @@ def participant_step2(
             further details.
         UnknownFaultyParticipantOrCoordinatorError: If another unknown
             participant or the coordinator is faulty, but running the optional
-            blame step of the protocol is necessary to determine a suspected
-            participant. See the documentation of the exception for further
-            details.
+            investigation procedure of the protocol is necessary to determine a
+            suspected participant. See the documentation of the exception for
+            further details.
     """
     params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
-    try:
-        enc_dkg_output, eq_input = encpedpop.participant_step2(
-            state=enc_state,
-            deckey=hostseckey,
-            cmsg=enc_cmsg,
-            enc_secshare=enc_secshares[idx],
-        )
-    except UnknownFaultyParticipantOrCoordinatorError as e:
-        # Convert from encpedpop.ParticipantBlameState into
-        # chilldkg.ParticipantBlameState.
-        assert isinstance(e.blame_state, encpedpop.ParticipantBlameState)
-        blame_state = ParticipantBlameState(e.blame_state)
-        raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
+    enc_dkg_output, eq_input = encpedpop.participant_step2(
+        state=enc_state,
+        deckey=hostseckey,
+        cmsg=enc_cmsg,
+        enc_secshare=enc_secshares[idx],
+    )
 
     # Include the enc_shares in eq_input to ensure that participants agree on
     # all shares, which in turn ensures that they have the right recovery data.
@@ -600,14 +589,16 @@ def participant_finalize(
     return dkg_output, RecoveryData(eq_input + cmsg2.cert)
 
 
-def participant_blame(
-    blame_state: ParticipantBlameState,
-    cblame: CoordinatorBlameMsg,
+def participant_investigate(
+    error: UnknownFaultyParticipantOrCoordinatorError,
+    cinv: CoordinatorInvestigationMsg,
 ) -> NoReturn:
     """Perform a participant's blame step of a ChillDKG session. TODO"""
-    encpedpop.participant_blame(
-        blame_state=blame_state.enc_blame_state,
-        cblame=cblame.enc_cblame,
+
+    assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
+    encpedpop.participant_investigate(
+        error=error,
+        cinv=cinv.enc_cinv,
     )
 
 
@@ -709,10 +700,12 @@ def coordinator_finalize(
     return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
 
 
-def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]:
+def coordinator_investigate(
+    pmsgs: List[ParticipantMsg1],
+) -> List[CoordinatorInvestigationMsg]:
     """Perform the coordinator's blame step of a ChillDKG session. TODO"""
-    enc_cblames = encpedpop.coordinator_blame([pmsg.enc_pmsg for pmsg in pmsgs])
-    return [CoordinatorBlameMsg(enc_cblame) for enc_cblame in enc_cblames]
+    enc_cinvs = encpedpop.coordinator_investigate([pmsg.enc_pmsg for pmsg in pmsgs])
+    return [CoordinatorInvestigationMsg(enc_cinv) for enc_cinv in enc_cinvs]
 
 
 ###

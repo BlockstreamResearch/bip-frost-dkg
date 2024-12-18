@@ -912,9 +912,9 @@ data, from which this participant can recover the DKG output using the
   further details.
 - `UnknownFaultyParticipantOrCoordinatorError` - If another unknown
   participant or the coordinator is faulty, but running the optional
-  blame step of the protocol is necessary to determine a suspected
-  participant. See the documentation of the exception for further
-  details.
+  investigation procedure of the protocol is necessary to determine a
+  suspected participant. See the documentation of the exception for
+  further details.
 
 #### participant\_finalize
 
@@ -963,10 +963,10 @@ recovery data to this participant.
   the above warning, and see the documentation of the exception for
   further details.
 
-#### participant\_blame
+#### participant\_investigate
 
 ```python
-def participant_blame(blame_state: ParticipantBlameState, cblame: CoordinatorBlameMsg) -> NoReturn
+def participant_investigate(error: UnknownFaultyParticipantOrCoordinatorError, cinv: CoordinatorInvestigationMsg) -> NoReturn
 ```
 
 Perform a participant's blame step of a ChillDKG session. TODO
@@ -1047,10 +1047,10 @@ other participants via a communication channel beside the coordinator.
   is faulty. See the documentation of the exception for further
   details.
 
-#### coordinator\_blame
+#### coordinator\_investigate
 
 ```python
-def coordinator_blame(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorBlameMsg]
+def coordinator_investigate(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorInvestigationMsg]
 ```
 
 Perform the coordinator's blame step of a ChillDKG session. TODO
@@ -1187,9 +1187,9 @@ like faulty behavior by some other participant, but there is insufficient
 information to determine which participant should be suspected.
 
 To determine a suspected participant, the raising participant may choose to
-run the optional blame step of the protocol, which requires obtaining a
-blame message by the coordinator. See the `participant_blame` function for
-details.
+run the optional investigation procedure of the protocol, which requires
+obtaining an investigation message by the coordinator. See the
+`participant_investigate` function for details.
 
 This is only raised for specific faulty behavior by another participant
 which cannot be attributed to another participant without further help of
@@ -1197,8 +1197,7 @@ the coordinator (namely, sending invalid encrypted secret shares).
 
 *Attributes*:
 
-- `blame_state` _BlameState_ - To be passed to the `participant_blame`
-  function.
+- `inv_data` - Information required to perform the investigation.
 <!--end of pydoc.md-->
 
 ## Changelog

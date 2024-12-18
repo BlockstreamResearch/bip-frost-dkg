@@ -144,7 +144,7 @@ class CoordinatorMsg(NamedTuple):
     pubnonces: List[bytes]
 
 
-class CoordinatorBlameMsg(NamedTuple):
+class CoordinatorInvestigationMsg(NamedTuple):
     enc_partial_secshares: List[Scalar]
     partial_pubshares: List[GE]
 
@@ -161,8 +161,8 @@ class ParticipantState(NamedTuple):
     idx: int
 
 
-class ParticipantBlameState(NamedTuple):
-    simpl_bstate: simplpedpop.ParticipantBlameState
+class ParticipantInvestigationData(NamedTuple):
+    simpl_bstate: simplpedpop.ParticipantInvestigationData
     enc_secshare: Scalar
     pads: List[Scalar]
 
@@ -232,38 +232,40 @@ def participant_step2(
             simpl_state, simpl_cmsg, secshare
         )
     except UnknownFaultyParticipantOrCoordinatorError as e:
-        assert isinstance(e.blame_state, simplpedpop.ParticipantBlameState)
-        # Translate simplpedpop.ParticipantBlamestate into our own
-        # encpedpop.ParticipantBlameState.
-        blame_state = ParticipantBlameState(e.blame_state, enc_secshare, pads)
-        raise UnknownFaultyParticipantOrCoordinatorError(blame_state, e.args) from e
+        assert isinstance(e.inv_data, simplpedpop.ParticipantInvestigationData)
+        # Translate simplpedpop.ParticipantInvestigationData into our own
+        # encpedpop.ParticipantInvestigationData.
+        inv_data = ParticipantInvestigationData(e.inv_data, enc_secshare, pads)
+        raise UnknownFaultyParticipantOrCoordinatorError(inv_data, e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input
 
 
-def participant_blame(
-    blame_state: ParticipantBlameState,
-    cblame: CoordinatorBlameMsg,
+def participant_investigate(
+    error: UnknownFaultyParticipantOrCoordinatorError,
+    cinv: CoordinatorInvestigationMsg,
 ) -> NoReturn:
-    simpl_blame_state, enc_secshare, pads = blame_state
-    enc_partial_secshares, partial_pubshares = cblame
+    simpl_inv_data, enc_secshare, pads = error.inv_data
+    enc_partial_secshares, partial_pubshares = cinv
     assert len(enc_partial_secshares) == len(pads)
     partial_secshares = [
         enc_partial_secshare - pad
         for enc_partial_secshare, pad in zip(enc_partial_secshares, pads)
     ]
 
-    simpl_cblame = simplpedpop.CoordinatorBlameMsg(partial_pubshares)
+    simpl_cinv = simplpedpop.CoordinatorInvestigationMsg(partial_pubshares)
     try:
-        simplpedpop.participant_blame(
-            simpl_blame_state, simpl_cblame, partial_secshares
+        simplpedpop.participant_investigate(
+            UnknownFaultyParticipantOrCoordinatorError(simpl_inv_data),
+            simpl_cinv,
+            partial_secshares,
         )
     except simplpedpop.SecshareSumError as e:
         # The secshare is not equal to the sum of the partial secshares in the
-        # blame records. Since the encryption is additively homomorphic, this
-        # can only happen if the sum of the *encrypted* secshare is not equal
-        # to the sum of the encrypted partial sechares, which is the
+        # investigation message. Since the encryption is additively homomorphic,
+        # this can only happen if the sum of the *encrypted* secshare is not
+        # equal to the sum of the encrypted partial sechares, which is the
         # coordinator's fault.
         assert Scalar.sum(*enc_partial_secshares) != enc_secshare
         raise FaultyCoordinatorError(
@@ -315,18 +317,20 @@ def coordinator_step(
     )
 
 
-def coordinator_blame(pmsgs: List[ParticipantMsg]) -> List[CoordinatorBlameMsg]:
+def coordinator_investigate(
+    pmsgs: List[ParticipantMsg],
+) -> List[CoordinatorInvestigationMsg]:
     n = len(pmsgs)
     simpl_pmsgs = [pmsg.simpl_pmsg for pmsg in pmsgs]
 
     all_enc_partial_secshares = [
         [pmsg.enc_shares[i] for pmsg in pmsgs] for i in range(n)
     ]
-    simpl_cblames = simplpedpop.coordinator_blame(simpl_pmsgs)
-    cblames = [
-        CoordinatorBlameMsg(
-            all_enc_partial_secshares[i], simpl_cblames[i].partial_pubshares
+    simpl_cinvs = simplpedpop.coordinator_investigate(simpl_pmsgs)
+    cinvs = [
+        CoordinatorInvestigationMsg(
+            all_enc_partial_secshares[i], simpl_cinvs[i].partial_pubshares
         )
         for i in range(n)
     ]
-    return cblames
+    return cinvs

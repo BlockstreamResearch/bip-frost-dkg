@@ -83,7 +83,7 @@ def test_vss_correctness():
 
 
 def simulate_simplpedpop(
-    seeds, t, blame: bool
+    seeds, t, investigation: bool
 ) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
     n = len(seeds)
     prets = []
@@ -99,7 +99,7 @@ def simulate_simplpedpop(
         partial_secshares = [
             partial_secshares_for[i] for (_, _, partial_secshares_for) in prets
         ]
-        if blame:
+        if investigation:
             # Let a random participant send incorrect shares to participant i.
             faulty_idx = randint(0, n - 1)
             partial_secshares[faulty_idx] += Scalar(17)
@@ -110,14 +110,12 @@ def simulate_simplpedpop(
                 simplpedpop.participant_step2(pstates[i], cmsg, secshare)
             ]
         except UnknownFaultyParticipantOrCoordinatorError as e:
-            if not blame:
+            if not investigation:
                 raise
-            blame_msgs = simplpedpop.coordinator_blame(pmsgs)
-            assert len(blame_msgs) == len(pmsgs)
+            inv_msgs = simplpedpop.coordinator_investigate(pmsgs)
+            assert len(inv_msgs) == len(pmsgs)
             try:
-                simplpedpop.participant_blame(
-                    e.blame_state, blame_msgs[i], partial_secshares
-                )
+                simplpedpop.participant_investigate(e, inv_msgs[i], partial_secshares)
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_idx
@@ -136,7 +134,7 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
 
 
 def simulate_encpedpop(
-    seeds, t, blame: bool
+    seeds, t, investigation: bool
 ) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
     n = len(seeds)
     enc_prets0 = []
@@ -154,7 +152,7 @@ def simulate_encpedpop(
 
     pstates = [pstate for (pstate, _) in enc_prets1]
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
-    if blame:
+    if investigation:
         faulty_idx: List[int] = []
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
@@ -170,12 +168,12 @@ def simulate_encpedpop(
                 encpedpop.participant_step2(pstates[i], deckey, cmsg, enc_secshares[i])
             ]
         except UnknownFaultyParticipantOrCoordinatorError as e:
-            if not blame:
+            if not investigation:
                 raise
-            blame_msgs = encpedpop.coordinator_blame(pmsgs)
-            assert len(blame_msgs) == len(pmsgs)
+            inv_msgs = encpedpop.coordinator_investigate(pmsgs)
+            assert len(inv_msgs) == len(pmsgs)
             try:
-                encpedpop.participant_blame(e.blame_state, blame_msgs[i])
+                encpedpop.participant_investigate(e, inv_msgs[i])
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_idx[i]
@@ -188,7 +186,7 @@ def simulate_encpedpop(
 
 
 def simulate_chilldkg(
-    hostseckeys, t, blame: bool
+    hostseckeys, t, investigation: bool
 ) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
     n = len(hostseckeys)
 
@@ -205,7 +203,7 @@ def simulate_chilldkg(
 
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
-    if blame:
+    if investigation:
         faulty_idx: List[int] = []
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
@@ -219,12 +217,12 @@ def simulate_chilldkg(
         try:
             prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg1)]
         except UnknownFaultyParticipantOrCoordinatorError as e:
-            if not blame:
+            if not investigation:
                 raise
-            blame_msgs = chilldkg.coordinator_blame(pmsgs)
-            assert len(blame_msgs) == len(pmsgs)
+            inv_msgs = chilldkg.coordinator_investigate(pmsgs)
+            assert len(inv_msgs) == len(pmsgs)
             try:
-                chilldkg.participant_blame(e.blame_state, blame_msgs[i])
+                chilldkg.participant_investigate(e, inv_msgs[i])
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_idx[i]
@@ -249,10 +247,10 @@ def simulate_chilldkg(
 def simulate_chilldkg_full(
     hostseckeys,
     t,
-    blame: bool,
+    investigation: bool,
 ) -> List[Optional[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
-    # blaming is not supported by this wrapper
-    assert not blame
+    # Investigating is not supported by this wrapper
+    assert not investigation
 
     hostpubkeys = []
     for i in range(n):
@@ -324,11 +322,11 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
         assert recovered * G == GE.from_bytes_compressed(threshold_pubkey)
 
 
-def test_correctness(t, n, simulate_dkg, recovery=False, blame=False):
+def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
     seeds = [None] + [random_bytes(32) for _ in range(n)]
 
-    rets = simulate_dkg(seeds[1:], t, blame=blame)
-    if blame:
+    rets = simulate_dkg(seeds[1:], t, investigation=investigation)
+    if investigation:
         assert rets is None
         # The session has failed correctly, so there's nothing further to check.
         return
@@ -358,9 +356,9 @@ test_vss_correctness()
 test_recover_secret()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     test_correctness(t, n, simulate_simplpedpop)
-    test_correctness(t, n, simulate_simplpedpop, blame=True)
+    test_correctness(t, n, simulate_simplpedpop, investigation=True)
     test_correctness(t, n, simulate_encpedpop)
-    test_correctness(t, n, simulate_encpedpop, blame=True)
+    test_correctness(t, n, simulate_encpedpop, investigation=True)
     test_correctness(t, n, simulate_chilldkg, recovery=True)
-    test_correctness(t, n, simulate_chilldkg, recovery=True, blame=True)
+    test_correctness(t, n, simulate_chilldkg, recovery=True, investigation=True)
     test_correctness(t, n, simulate_chilldkg_full, recovery=True)

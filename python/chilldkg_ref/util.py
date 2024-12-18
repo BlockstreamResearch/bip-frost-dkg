@@ -86,19 +86,18 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
     information to determine which participant should be suspected.
 
     To determine a suspected participant, the raising participant may choose to
-    run the optional blame step of the protocol, which requires obtaining a
-    blame message by the coordinator. See the `participant_blame` function for
-    details.
+    run the optional investigation procedure of the protocol, which requires
+    obtaining an investigation message by the coordinator. See the
+    `participant_investigate` function for details.
 
     This is only raised for specific faulty behavior by another participant
     which cannot be attributed to another participant without further help of
     the coordinator (namely, sending invalid encrypted secret shares).
 
     Attributes:
-        blame_state (BlameState): To be passed to the `participant_blame`
-            function.
+        inv_data: Information required to perform the investigation.
     """
 
-    def __init__(self, blame_state: Any, *args: Any):
-        self.blame_state = blame_state
+    def __init__(self, inv_data: Any, *args: Any):
+        self.inv_data = inv_data
         super().__init__(*args)
