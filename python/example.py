@@ -214,6 +214,12 @@ def main():
     else:
         faulty_idx = None
 
+    print("====== ChillDKG example session ======")
+    print(f"Using n = {n} participants and a threshold of t = {t}.")
+    if faulty_idx is not None:
+        print(f"Participant {faulty_idx} is faulty.")
+    print()
+
     # Generate common inputs for all participants and coordinator
     hostseckeys = [random_bytes(32) for _ in range(n)]
     hostpubkeys = []
@@ -221,18 +227,14 @@ def main():
         hostpubkeys += [hostpubkey_gen(hostseckeys[i])]
     params = SessionParams(hostpubkeys, t)
 
-    print("=== Inputs ===")
-    print(f"t = {t}, n = {n}")
+    print("=== Host secret keys ===")
+    pphex(hostseckeys)
     print()
-    if faulty_idx is not None:
-        print(f"Participant {faulty_idx} is faulty.")
-    for i in range(n):
-        print(
-            f"Participant {i}'s (hostseckey, hostpubkey) pair: "
-            f"({hostseckeys[i].hex()}, {hostpubkeys[i].hex()})"
-        )
+
+    print("=== Session parameters ===")
+    pphex(params)
     print()
-    print(f"SessionParams identifier: {params_id(params).hex()}")
+    print(f"Session parameters identifier: {params_id(params).hex()}")
     print()
 
     try:
@@ -249,22 +251,39 @@ def main():
             raise
 
     assert len(rets) == n + 1
-    print("=== Coordinator's DKGOutput ===")
+    print("=== Coordinator's DKG output ===")
     dkg_output, _ = rets[0]
-    pprint.pp(dkg_output._asdict())
+    pphex(dkg_output)
     print()
 
     for i in range(n):
-        print(f"=== Participant {i}'s DKGOutput ===")
+        print(f"=== Participant {i}'s DKG output ===")
         dkg_output, _ = rets[i + 1]
-        pprint.pp(dkg_output._asdict())
+        pphex(dkg_output)
         print()
 
     # Check that all RecoveryData of all parties is identical
     assert len(set([rets[i][1] for i in range(n + 1)])) == 1
     recovery_data = rets[0][1]
-    print(f"=== Common RecoveryData ({len(recovery_data)} bytes)===")
+    print(f"=== Common recovery data ({len(recovery_data)} bytes)===")
     print(recovery_data.hex())
+
+
+def pphex(thing):
+    """Pretty print an object with bytes as hex strings"""
+
+    def hexlify(thing):
+        if isinstance(thing, bytes):
+            return thing.hex()
+        if isinstance(thing, dict):
+            return {k: hexlify(v) for k, v in thing.items()}
+        if hasattr(thing, "_asdict"):  # NamedTuple
+            return hexlify(thing._asdict())
+        if isinstance(thing, List):
+            return [hexlify(v) for v in thing]
+        return thing
+
+    pprint.pp(hexlify(thing))
 
 
 if __name__ == "__main__":
