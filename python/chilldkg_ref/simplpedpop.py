@@ -70,7 +70,7 @@ class CoordinatorMsg(NamedTuple):
         ) + b"".join(self.pops)
 
 
-class CoordinatorBlameMsg(NamedTuple):
+class CoordinatorInvestigationMsg(NamedTuple):
     partial_pubshares: List[GE]
 
 
@@ -210,7 +210,7 @@ def participant_step2(
     if not VSSCommitment.verify_secshare(secshare, pubshare):
         raise UnknownFaultyParticipantOrCoordinatorError(
             ParticipantBlameState(n, idx, secshare, secshare_tweak, pubshare),
-            "Received invalid secshare, consider blaming to determine faulty party",
+            "Received invalid secshare, consider investigation procedure to determine faulty party",
         )
 
     pubshares = [
@@ -225,13 +225,13 @@ def participant_step2(
     return dkg_output, eq_input
 
 
-def participant_blame(
+def participant_investigate(
     blame_state: ParticipantBlameState,
-    cblame: CoordinatorBlameMsg,
+    cinv: CoordinatorInvestigationMsg,
     partial_secshares: List[Scalar],
 ) -> NoReturn:
     n, idx, secshare, secshare_tweak, pubshare = blame_state
-    partial_pubshares = cblame.partial_pubshares
+    partial_pubshares = cinv.partial_pubshares
 
     if GE.sum(*partial_pubshares) + secshare_tweak * G != pubshare:
         raise FaultyCoordinatorError("Sum of partial pubshares not equal to pubshare")
@@ -261,7 +261,9 @@ def participant_blame(
     assert VSSCommitment.verify_secshare(secshare, pubshare)
 
     # This should never happen (unless the caller fiddled with the inputs).
-    raise RuntimeError("participant_blame() was called, but all inputs are consistent.")
+    raise RuntimeError(
+        "participant_investigate() was called, but all inputs are consistent."
+    )
 
 
 ###
@@ -301,7 +303,9 @@ def coordinator_step(
     return cmsg, dkg_output, eq_input
 
 
-def coordinator_blame(pmsgs: List[ParticipantMsg]) -> List[CoordinatorBlameMsg]:
+def coordinator_investigate(
+    pmsgs: List[ParticipantMsg],
+) -> List[CoordinatorInvestigationMsg]:
     n = len(pmsgs)
     all_partial_pubshares = [[pmsg.com.pubshare(i) for pmsg in pmsgs] for i in range(n)]
-    return [CoordinatorBlameMsg(all_partial_pubshares[i]) for i in range(n)]
+    return [CoordinatorInvestigationMsg(all_partial_pubshares[i]) for i in range(n)]

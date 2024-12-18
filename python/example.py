@@ -16,10 +16,10 @@ from chilldkg_ref.chilldkg import (
     participant_step1,
     participant_step2,
     participant_finalize,
-    participant_blame,
+    participant_investigate,
     coordinator_step1,
     coordinator_finalize,
-    coordinator_blame,
+    coordinator_investigate,
     SessionParams,
     DKGOutput,
     RecoveryData,
@@ -98,7 +98,10 @@ def pphex(thing):
 
 
 async def participant(
-    chan: ParticipantChannel, hostseckey: bytes, params: SessionParams, blame_mode: bool
+    chan: ParticipantChannel,
+    hostseckey: bytes,
+    params: SessionParams,
+    investigation_procedure: bool,
 ) -> Tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
@@ -107,27 +110,28 @@ async def participant(
     chan.send(pmsg1)
     cmsg1 = await chan.receive()
 
-    # Participants can implement an optional blame mode. This allows the
-    # participant to determine which participant is faulty in case of a protocol
-    # failure. Blaming requires the participant to receive an extra "blame
+    # Participants can implement an optional investigation procedure. This
+    # allows the participant to determine which participant is faulty when an
+    # `UnknownFaultyParticipantOrCoordinatorError` is raised. The investiation
+    # procedure requires the participant to receive an extra "investigation
     # message" from the coordinator that contains necessary information.
     #
-    # In this example, if blame mode is enabled, the participant expects the
-    # coordinator to send a blame message. Alternatively, an implementation of
-    # the participant can explicitly request the blame message only if
-    # participant_step2 fails.
-    if blame_mode:
-        cblame = await chan.receive()
+    # In this example, if the investigation procedure is enabled, the
+    # participant expects the coordinator to send a investigation message.
+    # Alternatively, an implementation of the participant can explicitly request
+    # the investigation message only if participant_step2 fails.
+    if investigation_procedure:
+        cinv = await chan.receive()
 
     try:
         state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
     except UnknownFaultyParticipantOrCoordinatorError as e:
-        if blame_mode:
-            participant_blame(e.blame_state, cblame)
+        if investigation_procedure:
+            participant_investigate(e.blame_state, cinv)
         else:
-            # If this participant does not support blame mode, it cannot
-            # determine which party is faulty. Re-raise UnknownFaultyPartyError
-            # in this case.
+            # If this participant does not implement the investigation
+            # procedure, it cannot determine which party is faulty. Re-raise
+            # UnknownFaultyPartyError in this case.
             raise
 
     chan.send(eq_round1)
@@ -137,7 +141,7 @@ async def participant(
 
 
 async def coordinator(
-    chans: CoordinatorChannels, params: SessionParams, blame_mode: bool
+    chans: CoordinatorChannels, params: SessionParams, investigation_procedure: bool
 ) -> Tuple[DKGOutput, RecoveryData]:
     (hostpubkeys, t) = params
     n = len(hostpubkeys)
@@ -148,12 +152,12 @@ async def coordinator(
     state, cmsg1 = coordinator_step1(pmsgs1, params)
     chans.send_all(cmsg1)
 
-    # If the coordinator implements blame mode and it is enabled, it sends an
-    # extra message to the participants.
-    if blame_mode:
-        blame_msgs = coordinator_blame(pmsgs1)
+    # If the coordinator implements the investigation procedure and it is
+    # enabled, it sends an extra message to the participants.
+    if investigation_procedure:
+        inv_msgs = coordinator_investigate(pmsgs1)
         for i in range(n):
-            chans.send_to(i, blame_msgs[i])
+            chans.send_to(i, inv_msgs[i])
 
     sigs = []
     for i in range(n):
@@ -169,8 +173,8 @@ async def coordinator(
 #
 
 
-# This is a dummy participant used to demonstrate blame mode. It picks a random
-# victim participant and sends an invalid share to it.
+# This is a dummy participant used to demonstrate the investigation procedure.
+# It picks a random victim participant and sends an invalid share to it.
 async def faulty_participant(
     chan: ParticipantChannel, hostseckey: bytes, params: SessionParams, idx: int
 ):
@@ -191,9 +195,9 @@ def simulate_chilldkg_full(
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 
-    # For demonstration purposes, we enable blame mode if a participant is
+    # For demonstration purposes, we enable the investigation pro if a participant is
     # faulty.
-    blame_mode = faulty_idx is not None
+    investigation_procedure = faulty_idx is not None
 
     async def session():
         coord_chans = CoordinatorChannels(n)
@@ -203,8 +207,10 @@ def simulate_chilldkg_full(
         coord_chans.set_participant_queues(
             [participant_chans[i].queue for i in range(n)]
         )
-        coroutines = [coordinator(coord_chans, params, blame_mode)] + [
-            participant(participant_chans[i], hostseckeys[i], params, blame_mode)
+        coroutines = [coordinator(coord_chans, params, investigation_procedure)] + [
+            participant(
+                participant_chans[i], hostseckeys[i], params, investigation_procedure
+            )
             if i != faulty_idx
             else faulty_participant(participant_chans[i], hostseckeys[i], params, i)
             for i in range(n)
@@ -220,7 +226,7 @@ def main():
     parser.add_argument(
         "--faulty-participant",
         action="store_true",
-        help="When this flag is set, one random participant will send an invalid message, and blame mode will be enabled for other participants and the coordinator.",
+        help="When this flag is set, one random participant will send an invalid message, and the investigation procedure will be enabled for other participants and the coordinator.",
     )
     parser.add_argument(
         "t", nargs="?", type=int, default=2, help="Signing threshold [default = 2]"
