@@ -205,7 +205,7 @@ We make the following modifications as compared to the original SimplPedPop prop
 
  - Every participant holds a secret seed, from which all required random values are derived deterministically using a pseudorandom function (based on tagged hashes as defined in [[BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)]).
  - Individual participants' public shares are added to the output of the DKG. This allows partial signature verification.
- - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs. However, if a session fails, participants are still able to investigate who provided invalid secret shares by asking the coordinator for the other participants' individual contributions to their public share.
+ - The participants send VSS commitments to an untrusted coordinator instead of directly to each other. This lets the coordinator aggregate VSS commitments, which reduces communication costs. Nevertheless, if a session fails, participants are able to investigate who provided invalid secret shares by asking the coordinator for the other participants' individual contributions to their public share.
  - To prevent a malicious participant from embedding a [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable BIP script path.
  - ~The proofs of knowledge are not included in the data for the equality check. This will reduce the size of the backups in ChillDKG.~ (TODO: This will be fixed in an updated version of the paper.)
 
@@ -584,7 +584,7 @@ and even recovered participants can participate in signing sessions.)
 ### Blaming Faulty Parties
 
 Any faulty party can make a ChillDKG session abort by sending a message that deviates from the protocol specification.
-To help investigating and resolving these protocol failures, ChillDKG provides a *blame functionality*
+To help resolve the underlying problem, ChillDKG provides a *blame functionality*
 that enables honest protocol parties to identify and blame at least one participant suspected to be faulty:
  - If an honest participant aborts the session, then this participant will blame at least one participant or the coordinator.
  - If an honest coordinator aborts the session, then the coordinator then will blame at least one participant.
@@ -593,16 +593,20 @@ Moreover, a party which, instead of aborting after having received an invalid pr
 aborts due to a timeout while waiting for a protocol message
 will trivially blame the party who is supposed to send the outstanding message.
 
-The aborting party will be guaranteed that the suspected party is indeed faulty
-*only if* all messages in the ChillDKG session have been transmitted correctly over the communication links,
-and, in case of a participant blaming another participant, if the coordinator is additionally honest.
+The guarantees provided by the blame functionality are limited,
+and its primary purpose is to support manual investigation and debugging efforts.
+Different parties, even if honest, are not guaranteed to blame the same party,
+and there is, in general, no way to verify an accusation by some party that another party is to blame.
+Nevertheless, if all messages in the ChillDKG session have been transmitted correctly over the communication links,
+and, in case of a participant blaming another participant, if the coordinator is additionally honest,
+the aborting party will be guaranteed that the blamed party is indeed faulty.
 
-It is important to understand that this is a conditional statement.
+It is important to understand that this guarantee is conditional.
 For example, assume that the condition of a honest coordinator is violated.
-In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the suspected participant.
+In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the blamed participant.
 
 In some cases,[^incorrect-shares] an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
-before a suspected participant can be determined (see below).
+in order to single out and blame another participant (see below).
 
 [^incorrect-shares]: Namely, when having received incorrect secret shares.
 
