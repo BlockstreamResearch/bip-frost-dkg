@@ -578,7 +578,7 @@ It is important to understand that this is a conditional statement.
 For example, assume that the condition of a honest coordinator is violated.
 In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the suspected participant.
 
-In some cases,[^incorrect-shares], an aborting participant needs to obtain an auxiliary *blame message* from the coordinator
+In some cases,[^incorrect-shares], an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
 before a suspected participant can be determined (see below).
 
 [^incorrect-shares]: Namely, when having received incorrect secret shares.
