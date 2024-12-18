@@ -763,7 +763,7 @@ def recover(
         raise RecoveryDataError("Invalid certificate in recovery data") from e
 
     # Compute threshold pubkey and individual pubshares
-    sum_coms, secshare_tweak = sum_coms.invalid_taproot_commit()
+    sum_coms, tweak, _ = sum_coms.invalid_taproot_commit()
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
@@ -786,16 +786,16 @@ def recover(
             idx,
             enc_secshares[idx],
         )
-        secshare += secshare_tweak
+        secshare_tweaked = secshare + tweak
 
         # This is just a sanity check. Our signature is valid, so we have done
-        # this check already during the actual session.
-        assert VSSCommitment.verify_secshare(secshare, pubshares[idx])
+        # an equivalent check already during the actual session.
+        assert VSSCommitment.verify_secshare(secshare_tweaked, pubshares[idx])
     else:
-        secshare = None
+        secshare_tweaked = None
 
     dkg_output = DKGOutput(
-        None if secshare is None else secshare.to_bytes(),
+        None if secshare_tweaked is None else secshare_tweaked.to_bytes(),
         threshold_pubkey.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )

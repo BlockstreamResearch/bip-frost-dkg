@@ -2,7 +2,7 @@ from secrets import token_bytes as random_bytes
 from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
 
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
-from secp256k1proto.secp256k1 import G, GE, Scalar
+from secp256k1proto.secp256k1 import GE, Scalar
 from .util import (
     BIP_TAG,
     FaultyParticipantOrCoordinatorError,
@@ -110,7 +110,6 @@ class ParticipantInvestigationData(NamedTuple):
     n: int
     idx: int
     secshare: Scalar
-    secshare_tweak: Scalar
     pubshare: GE
 
 
@@ -201,23 +200,25 @@ def participant_step2(
             raise FaultyParticipantOrCoordinatorError(
                 i, "Participant sent invalid proof-of-knowledge"
             )
-    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
-    sum_coms_tweaked, secshare_tweak = sum_coms.invalid_taproot_commit()
-    secshare += secshare_tweak
-    threshold_pubkey = sum_coms_tweaked.commitment_to_secret()
-    pubshare = sum_coms_tweaked.pubshare(idx)
 
+    sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
+    pubshare = sum_coms.pubshare(idx)
     if not VSSCommitment.verify_secshare(secshare, pubshare):
         raise UnknownFaultyParticipantOrCoordinatorError(
-            ParticipantInvestigationData(n, idx, secshare, secshare_tweak, pubshare),
-            "Received invalid secshare, consider investigation procedure to determine faulty party",
+            ParticipantInvestigationData(n, idx, secshare, pubshare),
+            "Received invalid secshare, "
+            "consider investigation procedure to determine faulty party",
         )
 
+    sum_coms_tweaked, tweak, pubshare_tweak = sum_coms.invalid_taproot_commit()
+    secshare_tweaked = secshare + tweak
+    threshold_pubkey = sum_coms_tweaked.commitment_to_secret()
     pubshares = [
-        sum_coms_tweaked.pubshare(i) if i != idx else pubshare for i in range(n)
+        sum_coms_tweaked.pubshare(i) if i != idx else pubshare + pubshare_tweak
+        for i in range(n)
     ]
     dkg_output = DKGOutput(
-        secshare.to_bytes(),
+        secshare_tweaked.to_bytes(),
         threshold_pubkey.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
@@ -230,13 +231,13 @@ def participant_investigate(
     cinv: CoordinatorInvestigationMsg,
     partial_secshares: List[Scalar],
 ) -> NoReturn:
-    n, idx, secshare, secshare_tweak, pubshare = error.inv_data
+    n, idx, secshare, pubshare = error.inv_data
     partial_pubshares = cinv.partial_pubshares
 
-    if GE.sum(*partial_pubshares) + secshare_tweak * G != pubshare:
+    if GE.sum(*partial_pubshares) != pubshare:
         raise FaultyCoordinatorError("Sum of partial pubshares not equal to pubshare")
 
-    if Scalar.sum(*partial_secshares) + secshare_tweak != secshare:
+    if Scalar.sum(*partial_secshares) != secshare:
         raise SecshareSumError("Sum of partial secshares not equal to secshare")
 
     for i in range(n):
@@ -290,7 +291,7 @@ def coordinator_step(
     cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
 
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
-    sum_coms_tweaked, secshare_tweak = sum_coms.invalid_taproot_commit()
+    sum_coms_tweaked, _, _ = sum_coms.invalid_taproot_commit()
     threshold_pubkey = sum_coms_tweaked.commitment_to_secret()
     pubshares = [sum_coms_tweaked.pubshare(i) for i in range(n)]
 
