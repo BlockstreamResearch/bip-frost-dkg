@@ -177,7 +177,6 @@ def participant_step2(
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
 
-    # TODO Raise FaultyCoordinatorError when deserizaltion yields wrong lengths
     assert len(coms_to_secrets) == n
     assert len(sum_coms_to_nonconst_terms) == t - 1
     assert len(pops) == n
