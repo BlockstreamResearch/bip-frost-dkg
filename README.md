@@ -581,15 +581,17 @@ e.g., stop sending additional funds to addresses derived from it.
 it will still be possible to spend the funds,
 and even recovered participants can participate in signing sessions.)
 
-### Blame Functionality
+### Blaming Faulty Parties
 
 Any faulty party can make a ChillDKG session abort by sending a message that deviates from the protocol specification.
-To help investigating and resolving these protocol failures, ChillDKG provides *blame functionality*
-that enables honest protocol parties to identify and blame at least one participant suspected to be faulty:[^missing-messages]
+To help investigating and resolving these protocol failures, ChillDKG provides a *blame functionality*
+that enables honest protocol parties to identify and blame at least one participant suspected to be faulty:
  - If an honest participant aborts the session, then this participant will blame at least one participant or the coordinator.
  - If an honest coordinator aborts the session, then the coordinator then will blame at least one participant.
 
-[^missing-messages]: If a session is stuck due to missing messages, the receiving party will (trivially) know who has not sent their protocol messages (yet).
+Moreover, a party which, instead of aborting after having received an invalid protocol message,
+aborts due to a timeout while waiting for a protocol message
+will trivially blame the party who is supposed to send the outstanding message.
 
 The aborting party will be guaranteed that the suspected party is indeed faulty
 *only if* all messages in the ChillDKG session have been transmitted correctly over the communication links,
@@ -599,7 +601,7 @@ It is important to understand that this is a conditional statement.
 For example, assume that the condition of a honest coordinator is violated.
 In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the suspected participant.
 
-In some cases,[^incorrect-shares], an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
+In some cases,[^incorrect-shares] an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
 before a suspected participant can be determined (see below).
 
 [^incorrect-shares]: Namely, when having received incorrect secret shares.
