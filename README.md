@@ -606,14 +606,14 @@ For example, assume that the condition of a honest coordinator is violated.
 In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the blamed participant.
 
 In some cases,[^incorrect-shares] an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
-in order to single out and blame another participant (see below).
+in order to single out and blame another participant (see [Overview of a ChillDKG session](#overview-of-a-chilldkg-session)).
 
 [^incorrect-shares]: Namely, when having received incorrect secret shares.
 
 ### Threat Model and Security Goals
 
 We expect ChillDKG to provide the following informal security goals when it is used to set up keys for the FROST threshold signature scheme.
-If a participant deems a protocol session successful (see above), then this participant is assured that:
+If a participant deems a protocol session successful (as defined in [Inputs and Outputs](#inputs-and-outputs)), then this participant is assured that:
  - A coalition of at most `t - 1` faulty participants and a faulty coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least one honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
