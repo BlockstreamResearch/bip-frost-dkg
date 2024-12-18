@@ -253,10 +253,15 @@ Our variant of the SimplPedPop protocol then works as follows:
     the vector `sum_coms` is now the complete component-wise sum of the `coms[j]` vectors from every participant `j`.
     It acts as a VSS commitment to the sum `f = f_0 + ... + f_{n-1}` of the polynomials of all participants.)
 
+    Participant `i` computes its public share `pubshare` as:
+    ```
+    pubshare = (i+1)^0 * sum_coms[0] + ... + (i+1)^(t-1) * sum_coms[t-1]
+    ```
+
     Let `partial_secshares` be the vector of the VSS shares that participant `i` has privately obtained from each participant,
     and let `secshare = partial_secshares[0] + ... + partial_secshares[n-1]` be the sum of the vector components.
     Participant `i` checks the validity of `secshare` against `sum_coms`
-    by checking if the equation `secshare * G = pubshares[i]` holds.
+    by checking if the equation `secshare * G = pubshare` holds.
     (`secshare` is supposed to be equal to `f(i+1)`.)
 
     If the check fails, participant `i` aborts.
@@ -271,14 +276,15 @@ Our variant of the SimplPedPop protocol then works as follows:
     by checking for which participant `j` the equation `partial_secshares[j] * G = partial_pubshares[j]` does not hold.
     Participant `i` blames this participant `j` .
 
-    Otherwise, i.e., in the successful case that the equation `secshare * G = pubshares[i]` holds, participant `i` proceeds as follows.
+    Otherwise, i.e., in the successful case that the equation `secshare * G = pubshare` holds, participant `i` proceeds as follows.
     In order to obtain a threshold public key with an unspendable [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)] Taproot script path,
     participant `i` computes a Taproot tweak `tweak` for an unspendable script path,
     and adds the point `tweak * G` to `sum_coms[0]`, resulting in a new VSS commitment called `sum_coms_tweaked`.
-    Participant `i` computes the public share of every participant `j` as follows:
+    Participant `i` computes the public share of every participant `j != i` as
     ```
     pubshares[j] = (j+1)^0 * sum_coms_tweaked[0] + ... + (j+1)^(t-1) * sum_coms_tweaked[t-1]
     ```
+    and participant `i`'s own share as `pubshares[i] = pubshare + tweak * G`.
 
     Then, participant `i` sets the DKG output consisting of
     this participant's secret share `secshare_tweaked`,
