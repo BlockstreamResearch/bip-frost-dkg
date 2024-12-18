@@ -27,7 +27,7 @@ def ecdh(
         data += my_pubkey + their_pubkey
     else:
         data += their_pubkey + my_pubkey
-    assert len(data) == 2 * 33 + 32
+    assert len(data) == 32 + 2 * 33
     data += context
     return Scalar(int_from_bytes(tagged_hash_bip_dkg("encpedpop ecdh", data)))
 
