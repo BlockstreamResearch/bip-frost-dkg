@@ -250,10 +250,15 @@ def simulate_chilldkg_full(
     hostseckeys,
     t,
     blame: bool,
-) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> List[Optional[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
     # blaming is not supported by this wrapper
     assert not blame
-    return simulate_chilldkg_full_example(hostseckeys, t, faulty_idx=None)
+
+    hostpubkeys = []
+    for i in range(n):
+        hostpubkeys += [chilldkg.hostpubkey_gen(hostseckeys[i])]
+    params = chilldkg.SessionParams(hostpubkeys, t)
+    return simulate_chilldkg_full_example(hostseckeys, params, faulty_idx=None)
 
 
 def derive_interpolating_value(L, x_i):

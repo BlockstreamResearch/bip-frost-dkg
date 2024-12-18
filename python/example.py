@@ -11,6 +11,7 @@ import sys
 import argparse
 
 from chilldkg_ref.chilldkg import (
+    params_id,
     hostpubkey_gen,
     participant_step1,
     participant_step2,
@@ -163,16 +164,10 @@ async def faulty_participant(
 
 
 def simulate_chilldkg_full(
-    hostseckeys, t, faulty_idx
-) -> Optional[List[Tuple[DKGOutput, RecoveryData]]]:
-    # Generate common inputs for all participants and coordinator
+    hostseckeys: List[bytes], params: SessionParams, faulty_idx: Optional[int]
+) -> List[Optional[Tuple[DKGOutput, RecoveryData]]]:
     n = len(hostseckeys)
-    hostpubkeys = []
-    for i in range(n):
-        hostpubkeys += [hostpubkey_gen(hostseckeys[i])]
-
-    # TODO also print params_id
-    params = SessionParams(hostpubkeys, t)
+    assert n == len(params.hostpubkeys)
 
     # For demonstration purposes, we enable blame mode if a participant is
     # faulty.
@@ -201,35 +196,43 @@ def simulate_chilldkg_full(
 def main():
     n = 5
     t = 3
-    hostseckeys = [random_bytes(32) for _ in range(n)]
-    parser = argparse.ArgumentParser(description="ChillDKG example")
 
+    parser = argparse.ArgumentParser(description="ChillDKG example")
     parser.add_argument(
         "--faulty-participant",
         action="store_true",
         help="When this flag is set, one random participant will send an invalid message, and blame mode will be enabled for other participants and the coordinator.",
     )
-
     args = parser.parse_args()
     if args.faulty_participant:
         faulty_idx = randint(0, n - 1)
     else:
         faulty_idx = None
 
-    # TODO Move more steps into the async methods. It's not an issue for the
-    # tests to have prints in the async methods, we can suppress them, see
-    # https://stackoverflow.com/a/28321717.
+    # Generate common inputs for all participants and coordinator
+    hostseckeys = [random_bytes(32) for _ in range(n)]
+    hostpubkeys = []
+    for i in range(n):
+        hostpubkeys += [hostpubkey_gen(hostseckeys[i])]
+    params = SessionParams(hostpubkeys, t)
+
     print("=== Inputs ===")
     print(f"t: {t}")
     print(f"n: {n}")
+    print()
     if faulty_idx is not None:
-        print(f"Participant {faulty_idx} is faulty")
+        print(f"Participant {faulty_idx} is faulty.")
     for i in range(n):
-        print(f"Participant {i}'s hostseckey:", hostseckeys[i].hex())
+        print(
+            f"Participant {i}'s (hostseckey, hostpubkey) pair: "
+            f"({hostseckeys[i].hex()}, {hostpubkeys[i].hex()})"
+        )
+
+    print(f"SessionParams identifier: {params_id(params).hex()}")
     print()
 
     try:
-        rets = simulate_chilldkg_full(hostseckeys, t, faulty_idx)
+        rets = simulate_chilldkg_full(hostseckeys, params, faulty_idx)
     except FaultyParticipantOrCoordinatorError as e:
         print(
             f"A participant has failed and is blaming either participant {e.participant} or the coordinator."
@@ -257,7 +260,7 @@ def main():
     assert len(set([rets[i][1] for i in range(n + 1)])) == 1
     recovery_data = rets[0][1]
     print(f"=== Common RecoveryData ({len(recovery_data)} bytes)===")
-    print(recovery_data)
+    print(recovery_data.hex())
 
 
 if __name__ == "__main__":
