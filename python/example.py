@@ -71,6 +71,28 @@ class ParticipantChannel:
 
 
 #
+# Helper functions
+#
+
+
+def pphex(thing):
+    """Pretty print an object with bytes as hex strings"""
+
+    def hexlify(thing):
+        if isinstance(thing, bytes):
+            return thing.hex()
+        if isinstance(thing, dict):
+            return {k: hexlify(v) for k, v in thing.items()}
+        if hasattr(thing, "_asdict"):  # NamedTuple
+            return hexlify(thing._asdict())
+        if isinstance(thing, List):
+            return [hexlify(v) for v in thing]
+        return thing
+
+    pprint.pp(hexlify(thing))
+
+
+#
 # Protocol parties
 #
 
@@ -267,23 +289,6 @@ def main():
     recovery_data = rets[0][1]
     print(f"=== Common recovery data ({len(recovery_data)} bytes) ===")
     print(recovery_data.hex())
-
-
-def pphex(thing):
-    """Pretty print an object with bytes as hex strings"""
-
-    def hexlify(thing):
-        if isinstance(thing, bytes):
-            return thing.hex()
-        if isinstance(thing, dict):
-            return {k: hexlify(v) for k, v in thing.items()}
-        if hasattr(thing, "_asdict"):  # NamedTuple
-            return hexlify(thing._asdict())
-        if isinstance(thing, List):
-            return [hexlify(v) for v in thing]
-        return thing
-
-    pprint.pp(hexlify(thing))
 
 
 if __name__ == "__main__":
