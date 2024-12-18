@@ -22,7 +22,6 @@ from .util import (
 def ecdh(
     seckey: bytes, my_pubkey: bytes, their_pubkey: bytes, context: bytes, sending: bool
 ) -> Scalar:
-    # TODO Decide on exact ecdh variant to use
     data = ecdh_libsecp256k1(seckey, their_pubkey)
     if sending:
         data += my_pubkey + their_pubkey
