@@ -285,6 +285,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     pubshares[j] = (j+1)^0 * sum_coms_tweaked[0] + ... + (j+1)^(t-1) * sum_coms_tweaked[t-1]
     ```
     and participant `i`'s own share as `pubshares[i] = pubshare + tweak * G`.
+    Correspondingly, participant `i` computes `secshare_tweaked = secshare + tweak`.
 
     Then, participant `i` sets the DKG output consisting of
     this participant's secret share `secshare_tweaked`,
