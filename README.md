@@ -628,12 +628,18 @@ If a participant deems a protocol session successful (as defined in [Inputs and 
 
 (See also [`python/example.py`](python/example.py).)
 
-The following figure shows an example execution of the participants and the coordinator.
-Arrows indicate network messages between the participants.
+The following figure shows an example ChillDKG involving the participants and the coordinator.
 For simplicity, only one participant is depicted.
+Arrows indicate network messages between the parties.
+Each message sent by the coordinator is a broadcast message[^no-reliable broadcast],
+i.e., the coordinator sends the same message to each participant.
 Unless participants abort due to errors, all participants run the same code and send messages in the same steps.
 
-![The diagram shows the message flow between a participant and a coordinator.
+[^no-reliable-broadcast]: Recall that we do not assume a *reliable* broadcast channel but instead that the coordinator has separate a point-to-point communication links to each participant. In other words, the protocol prescribes that an honest coordinator sends the same message to every participant, but the security of the protocol does not depend on the coordinator adhering to that prescribe.
+
+TODO Add on-wire messages sizes to the figure after defining message serialization format.
+
+![The figure shows the message flow between a participant and a coordinator.
 The first of two phases named "Generation of host public keys" involves the participant invoking the hostpubkey_gen function with parameter hostseckey and sending the returned hostpubkey to the coordinator.
 The second phase named "Session" is initiated by the coordinator sending hostpubkeys and the threshold t to the participant.
 The participant invokes participant_step1 and sends the returned pmsg1 to the coordinator.
@@ -658,8 +664,7 @@ Applications may choose to let the coordinator always create and send investigat
 (i.e., even if not asked for by an aborting participant).
 While different aborting participants will need different investigation messages,
 an investigation message intended for some participant does not to be kept confidential from other participants.
-Thus, applications may additionally choose to let the coordinator send all `n` investigation messages to all `n` participants
-(e.g., if the communication link from the coordinator to the participants is inherently a broadcast link).
+Thus, applications may additionally choose to let the coordinator send all `n` investigation messages to all `n` participants.
 
 ### API Documentation
 
