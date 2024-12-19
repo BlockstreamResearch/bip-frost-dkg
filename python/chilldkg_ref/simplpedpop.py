@@ -219,7 +219,10 @@ def participant_step2(
 
     threshold_pubkey = sum_coms_tweaked.commitment_to_secret()
     pubshares = [
-        sum_coms_tweaked.pubshare(i) if i != idx else pubshare_tweaked for i in range(n)
+        sum_coms_tweaked.pubshare(i)
+        if i != idx
+        else pubshare_tweaked  # We have computed our own pubshare already.
+        for i in range(n)
     ]
     dkg_output = DKGOutput(
         secshare_tweaked.to_bytes(),
