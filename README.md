@@ -631,8 +631,8 @@ If a participant deems a protocol session successful (as defined in [Inputs and 
 The following figure shows an example ChillDKG involving the participants and the coordinator.
 For simplicity, only one participant is depicted.
 Arrows indicate network messages between the parties.
-Each message sent by the coordinator is a broadcast message[^no-reliable broadcast],
-i.e., the coordinator sends the same message to each participant.
+Each message sent by the coordinator is a broadcast message,
+i.e., the coordinator sends the same message to each participant.[^no-reliable-broadcast]
 Unless participants abort due to errors, all participants run the same code and send messages in the same steps.
 
 [^no-reliable-broadcast]: Recall that we do not assume a *reliable* broadcast channel but instead that the coordinator has separate a point-to-point communication links to each participant. In other words, the protocol prescribes that an honest coordinator sends the same message to every participant, but the security of the protocol does not depend on the coordinator adhering to that prescribe.
