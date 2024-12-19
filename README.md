@@ -1288,4 +1288,4 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
 
 ## Acknowledgments
 
-We thank Lloyd Fournier for their contributions to this document.
+We thank Lloyd Fournier (LLFourn) and Sivaram (siv2r) for their comments and contributions to this document.
