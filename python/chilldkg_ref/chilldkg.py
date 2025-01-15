@@ -14,7 +14,7 @@ from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn, Di
 from secp256k1proto.secp256k1 import Scalar, GE
 from secp256k1proto.bip340 import schnorr_sign, schnorr_verify
 from secp256k1proto.keys import pubkey_gen_plain
-from secp256k1proto.util import int_from_bytes, bytes_from_int
+from secp256k1proto.util import bytes_from_int
 
 from .vss import VSSCommitment
 from . import encpedpop
@@ -392,7 +392,7 @@ def deserialize_recovery_data(
     if len(rest) < 32 * n:
         raise ValueError
     enc_secshares, rest = (
-        [Scalar(int_from_bytes(rest[i : i + 32])) for i in range(0, 32 * n, 32)],
+        [Scalar.from_bytes(rest[i : i + 32]) for i in range(0, 32 * n, 32)],
         rest[32 * n :],
     )
 
