@@ -56,7 +56,7 @@ def schnorr_verify(
     if len(sig) != 64:
         raise ValueError("The signature must be a 64-byte array.")
     try:
-        P = GE.lift_x(int_from_bytes(pubkey))
+        P = GE.from_bytes_xonly(pubkey)
     except ValueError:
         return False
     r = int_from_bytes(sig[0:32])
