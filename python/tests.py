@@ -310,7 +310,7 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
 
     # Check that each secshare matches the corresponding pubshare
     secshares_scalar = [
-        None if secshare is None else Scalar.from_bytes(secshare)
+        None if secshare is None else Scalar.from_bytes_checked(secshare)
         for secshare in secshares
     ]
     for i in range(1, n + 1):

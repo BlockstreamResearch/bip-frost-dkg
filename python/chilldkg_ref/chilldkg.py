@@ -392,7 +392,7 @@ def deserialize_recovery_data(
     if len(rest) < 32 * n:
         raise ValueError
     enc_secshares, rest = (
-        [Scalar.from_bytes(rest[i : i + 32]) for i in range(0, 32 * n, 32)],
+        [Scalar.from_bytes_checked(rest[i : i + 32]) for i in range(0, 32 * n, 32)],
         rest[32 * n :],
     )
 
