@@ -142,6 +142,12 @@ class APrimeFE:
             raise ValueError
         return cls(v)
 
+    @classmethod
+    def from_bytes_wrapping(cls, b):
+        """Convert a 32-byte array to a field element (BE byte order, reduced modulo SIZE)."""
+        v = int.from_bytes(b, 'big')
+        return cls(v % cls.SIZE)
+
     def __str__(self):
         """Convert this field element to a 64 character hex string."""
         return f"{int(self):064x}"
