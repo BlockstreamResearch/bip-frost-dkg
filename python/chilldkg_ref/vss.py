@@ -95,7 +95,7 @@ class VSSCommitment:
         # The function returns the updated VSS commitment and the tweak `t` which
         # must be added to all secret shares of the commitment.
         pk = self.commitment_to_secret()
-        secshare_tweak = Scalar.from_bytes(
+        secshare_tweak = Scalar.from_bytes_checked(
             tagged_hash("TapTweak", pk.to_bytes_compressed())
         )
         pubshare_tweak = secshare_tweak * G
@@ -112,7 +112,7 @@ class VSS:
     @staticmethod
     def generate(seed: bytes, t: int) -> VSS:
         coeffs = [
-            Scalar.from_bytes(
+            Scalar.from_bytes_checked(
                 tagged_hash_bip_dkg("vss coeffs", seed + i.to_bytes(4, byteorder="big"))
             )
             for i in range(t)
