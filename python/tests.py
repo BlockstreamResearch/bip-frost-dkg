@@ -7,8 +7,8 @@ from random import randint
 from typing import Tuple, List, Optional
 from secrets import token_bytes as random_bytes
 
-from secp256k1proto.secp256k1 import GE, G, Scalar
-from secp256k1proto.keys import pubkey_gen_plain
+from secp256k1proto.src.secp256k1proto.secp256k1 import GE, G, Scalar
+from secp256k1proto.src.secp256k1proto.keys import pubkey_gen_plain
 
 from chilldkg_ref.util import (
     FaultyParticipantOrCoordinatorError,
