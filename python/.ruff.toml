@@ -1,4 +1,3 @@
 [format]
-# Exclude the file taken from Bitcoin Core for now, in case we want to
-# contribute our changes back to upstream.
-exclude = ["secp256k1lab/secp256k1.py"]
+# Exclude vendored package.
+exclude = ["secp256k1lab/*"]
