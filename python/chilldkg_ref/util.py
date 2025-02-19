@@ -1,6 +1,6 @@
 from typing import Any
 
-from secp256k1proto.util import tagged_hash
+from secp256k1lab.util import tagged_hash
 
 
 BIP_TAG = "BIP DKG/"
