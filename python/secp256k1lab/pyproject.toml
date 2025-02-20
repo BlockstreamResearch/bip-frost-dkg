@@ -1,0 +1,16 @@
+[project]
+name = "secp256k1lab"
+version = "0.1.0"
+description = "A library for prototypes using the secp256k1 curve"
+readme = "README.md"
+authors = [
+    { name = "Tim Ruffing", email = "crypto@timruffing.de" },
+    { name = "Jonas Nick", email = "jonasd.nick@gmail.com" },
+    { name = "Sebastian Falbesoner", email = "sebastian.falbesoner@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
