@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from secp256k1proto.secp256k1 import GE, G, Scalar
-from secp256k1proto.util import tagged_hash
+from secp256k1lab.secp256k1 import GE, G, Scalar
+from secp256k1lab.util import tagged_hash
 
 from .util import tagged_hash_bip_dkg
 
