@@ -82,11 +82,16 @@ def test_vss_correctness():
             )
 
             vssc_tweaked, tweak, pubtweak = vss.commit().invalid_taproot_commit()
-            assert VSSCommitment.verify_secshare(vss.secret() + tweak, vss.commit().commitment_to_secret() + pubtweak)
+            assert VSSCommitment.verify_secshare(
+                vss.secret() + tweak, vss.commit().commitment_to_secret() + pubtweak
+            )
             assert all(
-                VSSCommitment.verify_secshare(secshares[i] + tweak, vssc_tweaked.pubshare(i))
+                VSSCommitment.verify_secshare(
+                    secshares[i] + tweak, vssc_tweaked.pubshare(i)
+                )
                 for i in range(n)
             )
+
 
 def simulate_simplpedpop(
     seeds, t, investigation: bool
