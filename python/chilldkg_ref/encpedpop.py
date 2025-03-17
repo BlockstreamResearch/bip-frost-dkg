@@ -3,7 +3,6 @@ from typing import Tuple, List, NamedTuple, NoReturn
 from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.ecdh import ecdh_libsecp256k1
 from secp256k1lab.keys import pubkey_gen_plain
-from secp256k1lab.util import int_from_bytes
 
 from . import simplpedpop
 from .util import (
@@ -29,15 +28,13 @@ def ecdh(
         data += their_pubkey + my_pubkey
     assert len(data) == 32 + 2 * 33
     data += context
-    return Scalar(int_from_bytes(tagged_hash_bip_dkg("encpedpop ecdh", data)))
+    return Scalar.from_bytes_wrapping(tagged_hash_bip_dkg("encpedpop ecdh", data))
 
 
 def self_pad(symkey: bytes, nonce: bytes, context: bytes) -> Scalar:
     # Pad for symmetric encryption to ourselves
-    return Scalar(
-        int_from_bytes(
-            tagged_hash_bip_dkg("encaps_multi self_pad", symkey + nonce + context)
-        )
+    return Scalar.from_bytes_wrapping(
+        tagged_hash_bip_dkg("encaps_multi self_pad", symkey + nonce + context)
     )
 
 

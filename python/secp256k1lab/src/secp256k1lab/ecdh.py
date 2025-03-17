@@ -5,7 +5,7 @@ from .secp256k1 import GE, Scalar
 
 def ecdh_compressed_in_raw_out(seckey: bytes, pubkey: bytes) -> GE:
     """TODO"""
-    shared_secret = Scalar.from_bytes(seckey) * GE.from_bytes_compressed(pubkey)
+    shared_secret = Scalar.from_bytes_checked(seckey) * GE.from_bytes_compressed(pubkey)
     assert not shared_secret.infinity  # prime-order group
     return shared_secret
 
