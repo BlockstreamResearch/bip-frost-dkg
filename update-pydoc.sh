@@ -30,6 +30,12 @@ for name in SessionParams DKGOutput; do
         sed -n "/^class $name(NamedTuple):/,/^$/p" |
         # Remove docstring
         sed '/^ *"""/,/^ *"""/d' |
+        # Remove method header lines (starting with four spaces and then "def" or "@")
+        sed '/^    \(def\|@\)/d' |
+        # Remove method body lines (lines indented with 8 or more spaces)
+        sed '/^ \{8,\}/d' |
+        # Remove code comment lines
+        sed '/^    #/d' |
         # Remove trailing newline
         sed -z '$ s/\n$//' |
         # Do the patching

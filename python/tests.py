@@ -168,7 +168,11 @@ def simulate_encpedpop(
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
-            pmsgs[faulty_idx[i]].enc_shares[i] += Scalar(17)
+            faulty_pmsg = encpedpop.ParticipantMsg.from_bytes_and_n(
+                pmsgs[faulty_idx[i]], n
+            )
+            faulty_pmsg.enc_shares[i] += Scalar(17)
+            pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
 
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_rets = [(cout, ceq)]
@@ -219,7 +223,11 @@ def simulate_chilldkg(
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
-            pmsgs[faulty_idx[i]].enc_pmsg.enc_shares[i] += Scalar(17)
+            faulty_pmsg = chilldkg.ParticipantMsg1.from_bytes_and_n(
+                pmsgs[faulty_idx[i]], n
+            )
+            faulty_pmsg.enc_pmsg.enc_shares[i] += Scalar(17)
+            pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
 
     cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs, params)
 
