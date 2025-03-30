@@ -373,6 +373,14 @@ class GE:
             return GE.from_bytes_uncompressed(b)
 
     @staticmethod
+    def from_bytes_with_infinity(b):
+        """Convert a compressed or uncompressed encoding to a group element, mapping zeros to infinity."""
+        if b == 33 * b"\x00":
+            return GE()
+        else:
+            return GE.from_bytes(b)
+
+    @staticmethod
     def from_bytes_xonly(b):
         """Convert a point given in xonly encoding to a group element."""
         assert len(b) == 32

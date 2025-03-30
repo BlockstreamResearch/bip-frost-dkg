@@ -1,4 +1,3 @@
-from secrets import token_bytes as random_bytes
 from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
 
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
@@ -37,7 +36,7 @@ def pop_msg(idx: int) -> bytes:
 
 def pop_prove(seckey: bytes, idx: int) -> Pop:
     sig = schnorr_sign(
-        pop_msg(idx), seckey, aux_rand=random_bytes(32), tag_prefix=POP_MSG_TAG
+        pop_msg(idx), seckey, aux_rand=b"\x00" * 32, tag_prefix=POP_MSG_TAG
     )
     return Pop(sig)
 
