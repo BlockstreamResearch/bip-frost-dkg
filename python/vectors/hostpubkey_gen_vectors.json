@@ -1,0 +1,34 @@
+{
+    "valid_test_cases": [
+        {
+            "hostseckey": "631C047D50A67E45E27ED1FF25FCE179CAF059A2120D346ACD9774C1F2BAB66F",
+            "expected_hostpubkey": "0290D2B2CE35F62C2D88003D1E3E2E43B4BBDE194E849C84E059B2455E9772BAC4",
+            "comment": "valid host secret key"
+        }
+    ],
+    "error_test_cases": [
+        {
+            "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
+            "error": {
+                "type": "HostSeckeyError"
+            },
+            "comment": "length of host secret key is not 32 bytes"
+        },
+        {
+            "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+            "error": {
+                "type": "ValueError",
+                "message": "The secret key must be an integer in the range 1..n-1."
+            },
+            "comment": "host secret key is out of range"
+        },
+        {
+            "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
+            "error": {
+                "type": "ValueError",
+                "message": "The secret key must be an integer in the range 1..n-1."
+            },
+            "comment": "zeroed host secret key"
+        }
+    ]
+}

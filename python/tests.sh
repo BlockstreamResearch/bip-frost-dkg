@@ -21,4 +21,5 @@ mypy --no-error-summary . || true
 # Be more strict in the reference code
 mypy --no-error-summary --strict --untyped-calls-exclude=secp256k1lab -p chilldkg_ref --follow-imports=silent || true
 
+python3 -m vector_generator.generate_vectors
 python3 tests.py

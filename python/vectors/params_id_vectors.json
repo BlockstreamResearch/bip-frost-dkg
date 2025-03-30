@@ -1,0 +1,87 @@
+{
+    "valid_test_cases": [
+        {
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 2
+            },
+            "expected_params_id": "566F4DA6A6E6875F2FFE99E988310417F6CCA3E5B8F46CB9980AE3D5B2570A2A"
+        },
+        {
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 1
+            },
+            "expected_params_id": "1FB80306427F73D9C7E904D6B09D49D15B6F4E499D4746D9EA952B28D51B6820",
+            "comment": "min threshold value"
+        },
+        {
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 3
+            },
+            "expected_params_id": "D22DDB63254A9A2DC0B33CD6BE7AC1133DE42133CB670FDBF2A35113092E89BA",
+            "comment": "max threshold value"
+        }
+    ],
+    "error_test_cases": [
+        {
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 0
+            },
+            "error": {
+                "type": "ThresholdOrCountError"
+            },
+            "comment": "invalid threshold value"
+        },
+        {
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7"
+                ],
+                "t": 2
+            },
+            "error": {
+                "type": "DuplicateHostPubkeyError",
+                "participant1": 1,
+                "participant2": 3
+            },
+            "comment": "hostpubkeys list contains duplicate values"
+        },
+        {
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "030000000000000000000000000000000000000000000000000000000000000005",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 2
+            },
+            "error": {
+                "type": "InvalidHostPubkeyError",
+                "participant": 1
+            },
+            "comment": "hostpubkeys list contains an invalid value"
+        }
+    ]
+}
