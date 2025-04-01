@@ -135,12 +135,28 @@ class APrimeFE:
         return int(self).to_bytes(32, 'big')
 
     @classmethod
-    def from_bytes(cls, b):
-        """Convert a 32-byte array to a field element (BE byte order, no overflow allowed)."""
-        v = int.from_bytes(b, 'big')
+    def from_int_checked(cls, v):
+        """Convert an integer to a field element (no overflow allowed)."""
         if v >= cls.SIZE:
             raise ValueError
         return cls(v)
+
+    @classmethod
+    def from_int_wrapping(cls, v):
+        """Convert an integer to a field element (reduced modulo SIZE)."""
+        return cls(v % cls.SIZE)
+
+    @classmethod
+    def from_bytes_checked(cls, b):
+        """Convert a 32-byte array to a field element (BE byte order, no overflow allowed)."""
+        v = int.from_bytes(b, 'big')
+        return cls.from_int_checked(v)
+
+    @classmethod
+    def from_bytes_wrapping(cls, b):
+        """Convert a 32-byte array to a field element (BE byte order, reduced modulo SIZE)."""
+        v = int.from_bytes(b, 'big')
+        return cls.from_int_wrapping(v)
 
     def __str__(self):
         """Convert this field element to a 64 character hex string."""
@@ -345,7 +361,7 @@ class GE:
         assert len(b) == 33
         if b[0] != 2 and b[0] != 3:
             raise ValueError
-        x = FE.from_bytes(b[1:])
+        x = FE.from_bytes_checked(b[1:])
         r = GE.lift_x(x)
         if b[0] == 3:
             r = -r
@@ -357,8 +373,8 @@ class GE:
         assert len(b) == 65
         if b[0] != 4:
             raise ValueError
-        x = FE.from_bytes(b[1:33])
-        y = FE.from_bytes(b[33:])
+        x = FE.from_bytes_checked(b[1:33])
+        y = FE.from_bytes_checked(b[33:])
         if y**2 != x**3 + 7:
             raise ValueError
         return GE(x, y)
@@ -376,7 +392,7 @@ class GE:
     def from_bytes_xonly(b):
         """Convert a point given in xonly encoding to a group element."""
         assert len(b) == 32
-        x = FE.from_bytes(b)
+        x = FE.from_bytes_checked(b)
         r = GE.lift_x(x)
         return r
 

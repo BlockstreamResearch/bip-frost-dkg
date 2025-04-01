@@ -7,9 +7,6 @@ from random import randint
 from typing import Tuple, List, Optional
 from secrets import token_bytes as random_bytes
 
-from secp256k1lab.secp256k1 import GE, G, Scalar
-from secp256k1lab.keys import pubkey_gen_plain
-
 from chilldkg_ref.util import (
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
@@ -20,6 +17,11 @@ from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
 import chilldkg_ref.simplpedpop as simplpedpop
 import chilldkg_ref.encpedpop as encpedpop
 import chilldkg_ref.chilldkg as chilldkg
+
+# Import from secp256k1lab after the chilldkg_ref imports because the latter
+# modifies sys.path to make sure the vendored copy of secp256k1lab is found.
+from secp256k1lab.secp256k1 import GE, G, Scalar
+from secp256k1lab.keys import pubkey_gen_plain
 
 from example import simulate_chilldkg_full as simulate_chilldkg_full_example
 
@@ -321,7 +323,7 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
 
     # Check that each secshare matches the corresponding pubshare
     secshares_scalar = [
-        None if secshare is None else Scalar.from_bytes(secshare)
+        None if secshare is None else Scalar.from_bytes_checked(secshare)
         for secshare in secshares
     ]
     for i in range(1, n + 1):
