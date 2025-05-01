@@ -28,14 +28,18 @@ def ecdh(
         data += their_pubkey + my_pubkey
     assert len(data) == 32 + 2 * 33
     data += context
-    return Scalar.from_bytes_wrapping(tagged_hash_bip_dkg("encpedpop ecdh", data))
+    ret: Scalar = Scalar.from_bytes_wrapping(
+        tagged_hash_bip_dkg("encpedpop ecdh", data)
+    )
+    return ret
 
 
 def self_pad(symkey: bytes, nonce: bytes, context: bytes) -> Scalar:
     # Pad for symmetric encryption to ourselves
-    return Scalar.from_bytes_wrapping(
+    pad: Scalar = Scalar.from_bytes_wrapping(
         tagged_hash_bip_dkg("encaps_multi self_pad", symkey + nonce + context)
     )
+    return pad
 
 
 def encaps_multi(
