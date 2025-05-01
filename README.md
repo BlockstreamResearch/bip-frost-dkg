@@ -713,7 +713,8 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if the
+  key is invalid.
 
 #### HostSeckeyError Exception
 
@@ -721,7 +722,9 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 class HostSeckeyError(ValueError)
 ```
 
-Raised if the length of a host secret key is not 32 bytes.
+Raised if the host secret key is invalid.
+
+This incluces the case that its length is not 32 bytes.
 
 #### SessionParams Tuples
 
@@ -891,8 +894,9 @@ Perform a participant's first step of a ChillDKG session.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if
-  `hostseckey` does not match any entry of `hostpubkeys`.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
+  key is invalid, or if the key does not match any entry of
+  `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
@@ -1157,9 +1161,9 @@ backup after data loss.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if
-  `hostseckey` does not match the recovery data. (This can also
-  occur if the recovery data is invalid.)
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
+  key is invalid, or if the key does not match the recovery data.
+  (This can also occur if the recovery data is invalid.)
 - `RecoveryDataError` - If recovery failed due to invalid recovery data.
 
 #### RecoveryDataError Exception

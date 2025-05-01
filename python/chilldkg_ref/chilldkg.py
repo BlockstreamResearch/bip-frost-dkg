@@ -149,16 +149,22 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
         The host public key (33 bytes).
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if the
+            key is invalid.
     """
     if len(hostseckey) != 32:
         raise HostSeckeyError
 
-    return pubkey_gen_plain(hostseckey)
+    try:
+        return pubkey_gen_plain(hostseckey)
+    except ValueError:
+        raise HostSeckeyError
 
 
 class HostSeckeyError(ValueError):
-    """Raised if the length of a host secret key is not 32 bytes."""
+    """Raised if the host secret key is invalid.
+
+    This incluces the case that its length is not 32 bytes."""
 
 
 ###
@@ -442,8 +448,9 @@ def participant_step1(
         ParticipantMsg1: The first message to be sent to the coordinator.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if
-            `hostseckey` does not match any entry of `hostpubkeys`.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
+            key is invalid, or if the key does not match any entry of
+            `hostpubkeys`.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
@@ -771,9 +778,9 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if
-            `hostseckey` does not match the recovery data. (This can also
-            occur if the recovery data is invalid.)
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
+            key is invalid, or if the key does not match the recovery data.
+            (This can also occur if the recovery data is invalid.)
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
     try:
