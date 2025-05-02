@@ -46,6 +46,7 @@ __all__ = [
     "InvalidHostPubkeyError",
     "DuplicateHostPubkeyError",
     "ThresholdOrCountError",
+    "RandomnessError",
     "ProtocolError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
@@ -455,6 +456,7 @@ def participant_step1(
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
+        RandomnessError: If the length of `random` is not 32 bytes.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
 
@@ -467,6 +469,9 @@ def participant_step1(
         raise HostSeckeyError(
             "Host secret key does not match any host public key"
         ) from e
+    if len(random) != 32:
+        raise RandomnessError
+
     enc_state, enc_pmsg = encpedpop.participant_step1(
         # We know that EncPedPop uses its seed only by feeding it to a hash
         # function. Thus, it is sufficient that the seed has a high entropy,
@@ -481,6 +486,10 @@ def participant_step1(
     )  # HostSeckeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
+
+
+class RandomnessError(ValueError):
+    """Raised if the length of the provided randomness is not 32 bytes."""
 
 
 def participant_step2(

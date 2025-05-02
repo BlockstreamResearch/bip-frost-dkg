@@ -901,6 +901,15 @@ Perform a participant's first step of a ChillDKG session.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
+- `RandomnessError` - If the length of `random` is not 32 bytes.
+
+#### RandomnessError Exception
+
+```python
+class RandomnessError(ValueError)
+```
+
+Raised if the length of the provided randomness is not 32 bytes.
 
 #### participant\_step2
 
