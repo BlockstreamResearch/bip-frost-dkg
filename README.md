@@ -951,6 +951,8 @@ data, from which this participant can recover the DKG output using the
 *Raises*:
 
 - `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `FaultyCoordinatorError` - If the coordinator is faulty. See the
+  documentation of the exception for further details.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. See the documentation of the exception for
   further details.
