@@ -8,7 +8,7 @@ from . import simplpedpop
 from .util import (
     UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
-    FaultyParticipantOrCoordinatorError,
+    FaultyParticipantError,
     FaultyCoordinatorError,
 )
 
@@ -297,7 +297,7 @@ def coordinator_step(
     pubnonces = [pmsg.pubnonce for pmsg in pmsgs]
     for i in range(n):
         if len(pmsgs[i].enc_shares) != n:
-            raise FaultyParticipantOrCoordinatorError(
+            raise FaultyParticipantError(
                 i, "Participant sent enc_shares with invalid length"
             )
     enc_secshares = [
