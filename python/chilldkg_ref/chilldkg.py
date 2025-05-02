@@ -535,6 +535,9 @@ def participant_step2(
             suspected participant. See the documentation of the exception for
             further details.
     """
+    if len(hostseckey) != 32:
+        raise HostSeckeyError
+
     params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
