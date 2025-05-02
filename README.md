@@ -992,6 +992,7 @@ recovery data to this participant.
 *Arguments*:
 
 - `state2` - The participant's state as output by `participant_step2`.
+- `cmsg2` - The second message received from the coordinator.
 
 
 *Returns*:
