@@ -242,6 +242,9 @@ def participant_investigate(
     partial_secshares: List[Scalar],
 ) -> NoReturn:
     n, idx, secshare, pubshare = error.inv_data
+    if len(partial_secshares) != n:
+        raise ValueError
+
     partial_pubshares = cinv.partial_pubshares
 
     if GE.sum(*partial_pubshares) != pubshare:
@@ -285,6 +288,8 @@ def participant_investigate(
 def coordinator_step(
     pmsgs: List[ParticipantMsg], t: int, n: int
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+    if len(pmsgs) != n:
+        raise ValueError
     # Sum the commitments to the i-th coefficients for i > 0
     #
     # This procedure corresponds to the one described by Pedersen in Section 5.1

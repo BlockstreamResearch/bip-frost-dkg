@@ -1050,7 +1050,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Arguments*:
 
-- `pmsgs1` - List of first messages received from the participants.
+- `pmsgs1` - List of first messages received from the participants. The
+  list's length must equal the total number of participants.
 - `params` - Common session parameters.
 
 
@@ -1099,7 +1100,8 @@ other participants via a communication channel beside the coordinator.
 *Arguments*:
 
 - `state` - The coordinator's session state as output by `coordinator_step1`.
-- `pmsgs2` - List of second messages received from the participants.
+- `pmsgs2` - List of second messages received from the participants. The
+  list's length must equal the total number of participants.
 
 
 *Returns*:

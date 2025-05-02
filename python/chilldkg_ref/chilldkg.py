@@ -660,7 +660,8 @@ def coordinator_step1(
     """Perform the coordinator's first step of a ChillDKG session.
 
     Arguments:
-        pmsgs1: List of first messages received from the participants.
+        pmsgs1: List of first messages received from the participants. The
+                list's length must equal the total number of participants.
         params: Common session parameters.
 
     Returns:
@@ -716,7 +717,8 @@ def coordinator_finalize(
 
     Arguments:
         state: The coordinator's session state as output by `coordinator_step1`.
-        pmsgs2: List of second messages received from the participants.
+        pmsgs2: List of second messages received from the participants. The
+                list's length must equal the total number of participants.
 
     Returns:
         CoordinatorMsg2: The second message to be sent to all participants.
@@ -730,6 +732,9 @@ def coordinator_finalize(
             details.
     """
     params, eq_input, dkg_output = state
+    if len(pmsgs2) != len(params.hostpubkeys):
+        raise ValueError
+
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     try:
         certeq_verify(params.hostpubkeys, eq_input, cert)
