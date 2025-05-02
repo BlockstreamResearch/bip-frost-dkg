@@ -176,9 +176,12 @@ def participant_step2(
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
 
-    assert len(coms_to_secrets) == n
-    assert len(sum_coms_to_nonconst_terms) == t - 1
-    assert len(pops) == n
+    if (
+        len(coms_to_secrets) != n
+        or len(sum_coms_to_nonconst_terms) != t - 1
+        or len(pops) != n
+    ):
+        raise ValueError
 
     if coms_to_secrets[idx] != com_to_secret:
         raise FaultyCoordinatorError(

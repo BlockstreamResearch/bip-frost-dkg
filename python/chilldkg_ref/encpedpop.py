@@ -85,7 +85,8 @@ def encrypt_multi(
     plaintexts: List[Scalar],
 ) -> List[Scalar]:
     pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
-    assert len(plaintexts) == len(pads)
+    if len(plaintexts) != len(pads):
+        raise ValueError
     ciphertexts = [plaintext + pad for plaintext, pad in zip(plaintexts, pads)]
     return ciphertexts
 
@@ -180,8 +181,10 @@ def participant_step1(
     idx: int,
     random: bytes,
 ) -> Tuple[ParticipantState, ParticipantMsg]:
-    assert t < 2 ** (4 * 8)
-    assert len(random) == 32
+    if t >= 2 ** (4 * 8):
+        raise ValueError
+    if len(random) != 32:
+        raise ValueError
     n = len(enckeys)
 
     # Derive an encryption nonce and a seed for SimplPedPop.
@@ -249,7 +252,8 @@ def participant_investigate(
 ) -> NoReturn:
     simpl_inv_data, enc_secshare, pads = error.inv_data
     enc_partial_secshares, partial_pubshares = cinv
-    assert len(enc_partial_secshares) == len(pads)
+    if len(enc_partial_secshares) != len(pads):
+        raise ValueError
     partial_secshares = [
         enc_partial_secshare - pad
         for enc_partial_secshare, pad in zip(enc_partial_secshares, pads)
