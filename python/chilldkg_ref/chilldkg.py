@@ -730,9 +730,8 @@ def coordinator_finalize(
         bytes: The serialized recovery data.
 
     Raises:
-        FaultyParticipantError: If another known participant or the coordinator
-            is faulty. See the documentation of the exception for further
-            details.
+        FaultyParticipantError: If another participant is faulty. See the
+            documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state
     if len(pmsgs2) != len(params.hostpubkeys):

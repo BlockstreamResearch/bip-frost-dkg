@@ -1117,9 +1117,8 @@ other participants via a communication channel beside the coordinator.
 
 *Raises*:
 
-- `FaultyParticipantError` - If another known participant or the coordinator
-  is faulty. See the documentation of the exception for further
-  details.
+- `FaultyParticipantError` - If another participant is faulty. See the
+  documentation of the exception for further details.
 
 #### coordinator\_investigate
 
