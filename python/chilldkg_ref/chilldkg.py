@@ -41,12 +41,15 @@ __all__ = [
     "coordinator_investigate",
     "recover",
     # Exceptions
+    "InvalidSignatureInCertificateError",
     "HostSeckeyError",
     "SessionParamsError",
     "InvalidHostPubkeyError",
     "DuplicateHostPubkeyError",
     "ThresholdOrCountError",
+    "RandomnessError",
     "ProtocolError",
+    "FaultyParticipantError",
     "FaultyParticipantOrCoordinatorError",
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
@@ -149,16 +152,22 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
         The host public key (33 bytes).
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if the
+            key is invalid.
     """
     if len(hostseckey) != 32:
         raise HostSeckeyError
 
-    return pubkey_gen_plain(hostseckey)
+    try:
+        return pubkey_gen_plain(hostseckey)
+    except ValueError:
+        raise HostSeckeyError
 
 
 class HostSeckeyError(ValueError):
-    """Raised if the length of a host secret key is not 32 bytes."""
+    """Raised if the host secret key is invalid.
+
+    This incluces the case that its length is not 32 bytes."""
 
 
 ###
@@ -442,12 +451,14 @@ def participant_step1(
         ParticipantMsg1: The first message to be sent to the coordinator.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if
-            `hostseckey` does not match any entry of `hostpubkeys`.
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
+            key is invalid, or if the key does not match any entry of
+            `hostpubkeys`.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
+        RandomnessError: If the length of `random` is not 32 bytes.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
 
@@ -460,6 +471,9 @@ def participant_step1(
         raise HostSeckeyError(
             "Host secret key does not match any host public key"
         ) from e
+    if len(random) != 32:
+        raise RandomnessError
+
     enc_state, enc_pmsg = encpedpop.participant_step1(
         # We know that EncPedPop uses its seed only by feeding it to a hash
         # function. Thus, it is sufficient that the seed has a high entropy,
@@ -474,6 +488,10 @@ def participant_step1(
     )  # HostSeckeyError if len(hostseckey) != 32
     state1 = ParticipantState1(params, idx, enc_state)
     return state1, ParticipantMsg1(enc_pmsg)
+
+
+class RandomnessError(ValueError):
+    """Raised if the length of the provided randomness is not 32 bytes."""
 
 
 def participant_step2(
@@ -510,6 +528,8 @@ def participant_step2(
 
     Raises:
         HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
+        FaultyCoordinatorError: If the coordinator is faulty. See the
+            documentation of the exception for further details.
         FaultyParticipantOrCoordinatorError: If another known participant or the
             coordinator is faulty. See the documentation of the exception for
             further details.
@@ -519,6 +539,9 @@ def participant_step2(
             suspected participant. See the documentation of the exception for
             further details.
     """
+    if len(hostseckey) != 32:
+        raise HostSeckeyError
+
     params, idx, enc_state = state1
     enc_cmsg, enc_secshares = cmsg1
 
@@ -565,6 +588,7 @@ def participant_finalize(
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
+        cmsg2: The second message received from the coordinator.
 
     Returns:
         DKGOutput: The DKG output.
@@ -639,7 +663,8 @@ def coordinator_step1(
     """Perform the coordinator's first step of a ChillDKG session.
 
     Arguments:
-        pmsgs1: List of first messages received from the participants.
+        pmsgs1: List of first messages received from the participants. The
+                list's length must equal the total number of participants.
         params: Common session parameters.
 
     Returns:
@@ -654,6 +679,8 @@ def coordinator_step1(
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
+        FaultyParticipantError: If another participant is faulty. See the
+            documentation of the exception for further details.
     """
     params_validate(params)
     hostpubkeys, t = params
@@ -695,7 +722,8 @@ def coordinator_finalize(
 
     Arguments:
         state: The coordinator's session state as output by `coordinator_step1`.
-        pmsgs2: List of second messages received from the participants.
+        pmsgs2: List of second messages received from the participants. The
+                list's length must equal the total number of participants.
 
     Returns:
         CoordinatorMsg2: The second message to be sent to all participants.
@@ -704,11 +732,13 @@ def coordinator_finalize(
         bytes: The serialized recovery data.
 
     Raises:
-        FaultyParticipantError: If another known participant or the coordinator
-            is faulty. See the documentation of the exception for further
-            details.
+        FaultyParticipantError: If another participant is faulty. See the
+            documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state
+    if len(pmsgs2) != len(params.hostpubkeys):
+        raise ValueError
+
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
     try:
         certeq_verify(params.hostpubkeys, eq_input, cert)
@@ -771,9 +801,9 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if
-            `hostseckey` does not match the recovery data. (This can also
-            occur if the recovery data is invalid.)
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
+            key is invalid, or if the key does not match the recovery data.
+            (This can also occur if the recovery data is invalid.)
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
     try:

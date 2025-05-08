@@ -176,9 +176,12 @@ def participant_step2(
     t, n, idx, com_to_secret = state
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
 
-    assert len(coms_to_secrets) == n
-    assert len(sum_coms_to_nonconst_terms) == t - 1
-    assert len(pops) == n
+    if (
+        len(coms_to_secrets) != n
+        or len(sum_coms_to_nonconst_terms) != t - 1
+        or len(pops) != n
+    ):
+        raise ValueError
 
     if coms_to_secrets[idx] != com_to_secret:
         raise FaultyCoordinatorError(
@@ -239,6 +242,9 @@ def participant_investigate(
     partial_secshares: List[Scalar],
 ) -> NoReturn:
     n, idx, secshare, pubshare = error.inv_data
+    if len(partial_secshares) != n:
+        raise ValueError
+
     partial_pubshares = cinv.partial_pubshares
 
     if GE.sum(*partial_pubshares) != pubshare:
@@ -282,6 +288,8 @@ def participant_investigate(
 def coordinator_step(
     pmsgs: List[ParticipantMsg], t: int, n: int
 ) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+    if len(pmsgs) != n:
+        raise ValueError
     # Sum the commitments to the i-th coefficients for i > 0
     #
     # This procedure corresponds to the one described by Pedersen in Section 5.1

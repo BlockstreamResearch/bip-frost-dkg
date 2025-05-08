@@ -713,7 +713,8 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if the
+  key is invalid.
 
 #### HostSeckeyError Exception
 
@@ -721,7 +722,9 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 class HostSeckeyError(ValueError)
 ```
 
-Raised if the length of a host secret key is not 32 bytes.
+Raised if the host secret key is invalid.
+
+This incluces the case that its length is not 32 bytes.
 
 #### SessionParams Tuples
 
@@ -891,12 +894,22 @@ Perform a participant's first step of a ChillDKG session.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if
-  `hostseckey` does not match any entry of `hostpubkeys`.
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
+  key is invalid, or if the key does not match any entry of
+  `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
+- `RandomnessError` - If the length of `random` is not 32 bytes.
+
+#### RandomnessError Exception
+
+```python
+class RandomnessError(ValueError)
+```
+
+Raised if the length of the provided randomness is not 32 bytes.
 
 #### participant\_step2
 
@@ -938,6 +951,8 @@ data, from which this participant can recover the DKG output using the
 *Raises*:
 
 - `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `FaultyCoordinatorError` - If the coordinator is faulty. See the
+  documentation of the exception for further details.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. See the documentation of the exception for
   further details.
@@ -977,6 +992,7 @@ recovery data to this participant.
 *Arguments*:
 
 - `state2` - The participant's state as output by `participant_step2`.
+- `cmsg2` - The second message received from the coordinator.
 
 
 *Returns*:
@@ -1035,7 +1051,8 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Arguments*:
 
-- `pmsgs1` - List of first messages received from the participants.
+- `pmsgs1` - List of first messages received from the participants. The
+  list's length must equal the total number of participants.
 - `params` - Common session parameters.
 
 
@@ -1054,6 +1071,8 @@ Perform the coordinator's first step of a ChillDKG session.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
+- `FaultyParticipantError` - If another participant is faulty. See the
+  documentation of the exception for further details.
 
 #### coordinator\_finalize
 
@@ -1084,7 +1103,8 @@ other participants via a communication channel beside the coordinator.
 *Arguments*:
 
 - `state` - The coordinator's session state as output by `coordinator_step1`.
-- `pmsgs2` - List of second messages received from the participants.
+- `pmsgs2` - List of second messages received from the participants. The
+  list's length must equal the total number of participants.
 
 
 *Returns*:
@@ -1097,9 +1117,8 @@ other participants via a communication channel beside the coordinator.
 
 *Raises*:
 
-- `FaultyParticipantError` - If another known participant or the coordinator
-  is faulty. See the documentation of the exception for further
-  details.
+- `FaultyParticipantError` - If another participant is faulty. See the
+  documentation of the exception for further details.
 
 #### coordinator\_investigate
 
@@ -1157,9 +1176,9 @@ backup after data loss.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if
-  `hostseckey` does not match the recovery data. (This can also
-  occur if the recovery data is invalid.)
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
+  key is invalid, or if the key does not match the recovery data.
+  (This can also occur if the recovery data is invalid.)
 - `RecoveryDataError` - If recovery failed due to invalid recovery data.
 
 #### RecoveryDataError Exception
