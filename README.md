@@ -48,7 +48,7 @@ However, the trusted dealer constitutes a single point of failure:
 a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all participants avoids the need for a trusted dealer.
-There exist a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
+There exists a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
 Most suitable for the use with FROST is the PedPop DKG protocol [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [CGRS23](https://eprint.iacr.org/2023/899)] ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3)] with proofs of possession"),
 which, like FROST, does not impose restrictions on the choice of `t` and `n`.
 
@@ -265,7 +265,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     (`secshare` is supposed to be equal to `f(i+1)`.)
 
     If the check fails, participant `i` aborts.
-    Assuming the coordinator is honest and has sent a correct `sums_coms` vector,
+    Assuming the coordinator is honest and has sent the correct data to derive a `sum_coms` vector,
     participant `i` knows that some participant contributed a wrong summand to `secshare`,
     but participant `i` does not have sufficient information to single out and blame the faulty participant.
     In this case, participant `i` can optionally investigate the error by asking the coordinator for the vector `partial_pubshares` defined as:
@@ -514,12 +514,12 @@ unlike deterministically derived secret keys [[BIP 32](https://github.com/bitcoi
 not be rederived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
-ChillDKG offers the possibility to recover a participant's DKG output from the participant's host secret key and the recovery data of the specific session,
+ChillDKG offers the possibility to recover a participant's DKG output from the participant's host secret key and the recovery data of the specific session.
 As a result, a full backup of a participant consists of the host secret key as well as the recovery data of all DKG sessions the participant has successfully participated in.
 
 Since the recovery data is the same for all participants,
 if a participant loses the backup of the recovery data of the DKG session,
-they can request it from any other participants or the coordinator.
+they can request it from any other participant or the coordinator.
 Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 
@@ -586,7 +586,7 @@ Any faulty party can make a ChillDKG session abort by sending a message that dev
 To help resolve the underlying problem, ChillDKG provides a *blame functionality*
 that enables honest protocol parties to identify and blame at least one participant suspected to be faulty:
  - If an honest participant aborts the session, then this participant will blame at least one participant or the coordinator.
- - If an honest coordinator aborts the session, then the coordinator then will blame at least one participant.
+ - If an honest coordinator aborts the session, then the coordinator will blame at least one participant.
 
 Moreover, a party which, instead of aborting after having received an invalid protocol message,
 aborts due to a timeout while waiting for a protocol message
@@ -601,7 +601,7 @@ and, in case of a participant blaming another participant, if the coordinator is
 the aborting party will be guaranteed that the blamed party is indeed faulty.
 
 It is important to understand that this guarantee is conditional.
-For example, assume that the condition of a honest coordinator is violated.
+For example, assume that the condition of an honest coordinator is violated.
 In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the blamed participant.
 
 In some cases,[^incorrect-shares] an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
@@ -663,7 +663,7 @@ which will allow the participant to blame a specific other participant (via the 
 Applications may choose to let the coordinator always create and send investigation messages,
 (i.e., even if not asked for by an aborting participant).
 While different aborting participants will need different investigation messages,
-an investigation message intended for some participant does not to be kept confidential from other participants.
+an investigation message intended for some participant does not need to be kept confidential from other participants.
 Thus, applications may additionally choose to let the coordinator send all `n` investigation messages to all `n` participants.
 
 ### API Documentation
