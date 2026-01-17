@@ -48,7 +48,7 @@ However, the trusted dealer constitutes a single point of failure:
 a compromised dealer can forge signatures arbitrarily.
 
 An interactive *distributed key generation* (DKG) protocol session by all participants avoids the need for a trusted dealer.
-There exists a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
+There exist a number of DKG protocols with different requirements and guarantees in the cryptographic literature.
 Most suitable for the use with FROST is the PedPop DKG protocol [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [CGRS23](https://eprint.iacr.org/2023/899)] ("Pedersen DKG [[Ped92](https://doi.org/10.1007/3-540-46766-1_9), [GJKR07](https://doi.org/10.1007/s00145-006-0347-3)] with proofs of possession"),
 which, like FROST, does not impose restrictions on the choice of `t` and `n`.
 
