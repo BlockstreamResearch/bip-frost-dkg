@@ -15,7 +15,9 @@ pydoc-markdown -I python/chilldkg_ref -m "$module" "{renderer: {type: markdown, 
     sed -z 's/Error Tuples/Error Exception/g' |
     # Replace bold (**) by italics (*), but not for **must**, **must not**,
     # **should**, or **should not**.
-    python3 -c "import re, sys; sys.stdout.write(re.sub(r'\*\*(?!must\*\*|should\*\*|must not\*\*|should not\*\*)(.*?)\*\*', r'*\1*', sys.stdin.read()))" >> pydoc.md
+    python3 -c "import re, sys; sys.stdout.write(re.sub(r'\*\*(?!must\*\*|should\*\*|must not\*\*|should not\*\*)(.*?)\*\*', r'*\1*', sys.stdin.read()))" |
+    # Remove MsgParseError section (internal class, not part of public API)
+    sed -z 's/#### MsgParseError Exception[^#]*####/####/' >> pydoc.md
 
 done
 

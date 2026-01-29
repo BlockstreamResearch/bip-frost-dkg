@@ -125,7 +125,7 @@ def simulate_simplpedpop(
         except UnknownFaultyParticipantOrCoordinatorError as e:
             if not investigation:
                 raise
-            inv_msgs = simplpedpop.coordinator_investigate(pmsgs)
+            inv_msgs = simplpedpop.coordinator_investigate(pmsgs, t)
             assert len(inv_msgs) == len(pmsgs)
             try:
                 simplpedpop.participant_investigate(e, inv_msgs[i], partial_secshares)
@@ -170,7 +170,11 @@ def simulate_encpedpop(
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
-            pmsgs[faulty_idx[i]].enc_shares[i] += Scalar(17)
+            faulty_pmsg = encpedpop.ParticipantMsg.from_bytes(
+                pmsgs[faulty_idx[i]], t, n
+            )
+            faulty_pmsg.enc_shares[i] += Scalar(17)
+            pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
 
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_rets = [(cout, ceq)]
@@ -183,7 +187,7 @@ def simulate_encpedpop(
         except UnknownFaultyParticipantOrCoordinatorError as e:
             if not investigation:
                 raise
-            inv_msgs = encpedpop.coordinator_investigate(pmsgs)
+            inv_msgs = encpedpop.coordinator_investigate(pmsgs, t)
             assert len(inv_msgs) == len(pmsgs)
             try:
                 encpedpop.participant_investigate(e, inv_msgs[i])
@@ -221,7 +225,11 @@ def simulate_chilldkg(
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
-            pmsgs[faulty_idx[i]].enc_pmsg.enc_shares[i] += Scalar(17)
+            faulty_pmsg = chilldkg.ParticipantMsg1.from_bytes(
+                pmsgs[faulty_idx[i]], t, n
+            )
+            faulty_pmsg.enc_pmsg.enc_shares[i] += Scalar(17)
+            pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
 
     cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs, params)
 
@@ -232,7 +240,7 @@ def simulate_chilldkg(
         except UnknownFaultyParticipantOrCoordinatorError as e:
             if not investigation:
                 raise
-            inv_msgs = chilldkg.coordinator_investigate(pmsgs)
+            inv_msgs = chilldkg.coordinator_investigate(pmsgs, params)
             assert len(inv_msgs) == len(pmsgs)
             try:
                 chilldkg.participant_investigate(e, inv_msgs[i])

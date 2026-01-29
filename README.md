@@ -871,7 +871,7 @@ Holds the outputs of a DKG session.
 #### participant\_step1
 
 ```python
-def participant_step1(hostseckey: bytes, params: SessionParams, random: bytes) -> Tuple[ParticipantState1, ParticipantMsg1]
+def participant_step1(hostseckey: bytes, params: SessionParams, random: bytes) -> Tuple[ParticipantState1, bytes]
 ```
 
 Perform a participant's first step of a ChillDKG session.
@@ -889,7 +889,7 @@ Perform a participant's first step of a ChillDKG session.
   be passed as an argument to `participant_step2`. The state **must
   not** be reused (i.e., it must be passed only to one
   `participant_step2` call).
-- `ParticipantMsg1` - The first message to be sent to the coordinator.
+- `bytes` - The first message to be sent to the coordinator.
 
 
 *Raises*:
@@ -914,7 +914,7 @@ Raised if the length of the provided randomness is not 32 bytes.
 #### participant\_step2
 
 ```python
-def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: CoordinatorMsg1) -> Tuple[ParticipantState2, ParticipantMsg2]
+def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: bytes) -> Tuple[ParticipantState2, bytes]
 ```
 
 Perform a participant's second step of a ChillDKG session.
@@ -945,7 +945,7 @@ data, from which this participant can recover the DKG output using the
   be passed as an argument to `participant_finalize`. The state **must
   not** be reused (i.e., it must be passed only to one
   `participant_finalize` call).
-- `ParticipantMsg2` - The second message to be sent to the coordinator.
+- `bytes` - The second message to be sent to the coordinator.
 
 
 *Raises*:
@@ -961,11 +961,12 @@ data, from which this participant can recover the DKG output using the
   investigation procedure of the protocol is necessary to determine a
   suspected participant. See the documentation of the exception for
   further details.
+- `CoordinatorMsgParseError` - If the coordinator message could not be parsed.
 
 #### participant\_finalize
 
 ```python
-def participant_finalize(state2: ParticipantState2, cmsg2: CoordinatorMsg2) -> Tuple[DKGOutput, RecoveryData]
+def participant_finalize(state2: ParticipantState2, cmsg2: bytes) -> Tuple[DKGOutput, RecoveryData]
 ```
 
 Perform a participant's final step of a ChillDKG session.
@@ -1006,14 +1007,12 @@ recovery data to this participant.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. Make sure to read the above warning, and see
   the documentation of the exception for further details.
-- `FaultyCoordinatorError` - If the coordinator is faulty. Make sure to read
-  the above warning, and see the documentation of the exception for
-  further details.
+- `CoordinatorMsgParseError` - If the coordinator message could not be parsed.
 
 #### participant\_investigate
 
 ```python
-def participant_investigate(error: UnknownFaultyParticipantOrCoordinatorError, cinv: CoordinatorInvestigationMsg) -> NoReturn
+def participant_investigate(error: UnknownFaultyParticipantOrCoordinatorError, cinv: bytes) -> NoReturn
 ```
 
 Investigate who is to blame for a failed ChillDKG session.
@@ -1040,11 +1039,13 @@ exceptions.
   further details.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
+- `CoordinatorMsgParseError` - If the investigation message could
+  not be parsed.
 
 #### coordinator\_step1
 
 ```python
-def coordinator_step1(pmsgs1: List[ParticipantMsg1], params: SessionParams) -> Tuple[CoordinatorState, CoordinatorMsg1]
+def coordinator_step1(pmsgs1: List[bytes], params: SessionParams) -> Tuple[CoordinatorState, bytes]
 ```
 
 Perform the coordinator's first step of a ChillDKG session.
@@ -1062,7 +1063,7 @@ Perform the coordinator's first step of a ChillDKG session.
   passed as an argument to `coordinator_finalize`. The state is not
   supposed to be reused (i.e., it should be passed only to one
   `coordinator_finalize` call).
-- `CoordinatorMsg1` - The first message to be sent to all participants.
+- `bytes` - The first message to be sent to all participants.
 
 
 *Raises*:
@@ -1073,11 +1074,12 @@ Perform the coordinator's first step of a ChillDKG session.
   not hold.
 - `FaultyParticipantError` - If another participant is faulty. See the
   documentation of the exception for further details.
+- `ParticipantMsgParseError` - If a participant message could not be parsed.
 
 #### coordinator\_finalize
 
 ```python
-def coordinator_finalize(state: CoordinatorState, pmsgs2: List[ParticipantMsg2]) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]
+def coordinator_finalize(state: CoordinatorState, pmsgs2: List[bytes]) -> Tuple[bytes, DKGOutput, RecoveryData]
 ```
 
 Perform the coordinator's final step of a ChillDKG session.
@@ -1109,7 +1111,7 @@ other participants via a communication channel beside the coordinator.
 
 *Returns*:
 
-- `CoordinatorMsg2` - The second message to be sent to all participants.
+- `bytes` - The second message to be sent to all participants.
 - `DKGOutput` - The DKG output. Since the coordinator does not have a secret
   share, the DKG output will have the `secshare` field set to `None`.
 - `bytes` - The serialized recovery data.
@@ -1119,11 +1121,12 @@ other participants via a communication channel beside the coordinator.
 
 - `FaultyParticipantError` - If another participant is faulty. See the
   documentation of the exception for further details.
+- `ParticipantMsgParseError` - If a participant message could not be parsed.
 
 #### coordinator\_investigate
 
 ```python
-def coordinator_investigate(pmsgs: List[ParticipantMsg1]) -> List[CoordinatorInvestigationMsg]
+def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[bytes]
 ```
 
 Generate investigation messages for a ChillDKG session.
@@ -1137,13 +1140,19 @@ information.
 
 *Arguments*:
 
-- `pmsgs` - List of first messages received from the participants.
+- `pmsgs` - List of serialized first messages received from the participants.
+- `params` - Common session parameters.
 
 
 *Returns*:
 
-- `List[CoordinatorInvestigationMsg]` - A list of investigation messages, each
-  intended for a single participant.
+- `List[bytes]` - A list of investigation messages, each intended for a single
+  participant.
+
+
+*Raises*:
+
+- `ParticipantMsgParseError` - If a participant message could not be parsed.
 
 #### recover
 
@@ -1288,6 +1297,26 @@ the coordinator (namely, sending invalid encrypted secret shares).
 *Attributes*:
 
 - `inv_data` - Information required to perform the investigation.
+
+#### ParticipantMsgParseError Exception
+
+```python
+class ParticipantMsgParseError(MsgParseError)
+```
+
+Raised when parsing a participant message fails.
+
+*Attributes*:
+
+- `participant` _int_ - Index of the participant whose message failed to parse.
+
+#### CoordinatorMsgParseError Exception
+
+```python
+class CoordinatorMsgParseError(MsgParseError)
+```
+
+Raised when parsing a coordinator message fails.
 <!--end of pydoc.md-->
 
 ## Changelog

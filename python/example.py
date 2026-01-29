@@ -26,6 +26,7 @@ from chilldkg_ref.chilldkg import (
     FaultyParticipantOrCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
 )
+import chilldkg_ref.chilldkg as chilldkg
 
 #
 # Network mocks to simulate full DKG sessions
@@ -155,7 +156,7 @@ async def coordinator(
     # If the coordinator implements the investigation procedure and it is
     # enabled, it sends an extra message to the participants.
     if investigation_procedure:
-        inv_msgs = coordinator_investigate(pmsgs1)
+        inv_msgs = coordinator_investigate(pmsgs1, params)
         for i in range(n):
             chans.send_to(i, inv_msgs[i])
 
@@ -178,15 +179,17 @@ async def coordinator(
 async def faulty_participant(
     chan: ParticipantChannel, hostseckey: bytes, params: SessionParams, idx: int
 ):
+    n = len(params.hostpubkeys)
     random = random_bytes(32)
     _, pmsg1 = participant_step1(hostseckey, params, random)
+    pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(pmsg1, params.t, n)
 
-    n = len(pmsg1.enc_pmsg.enc_shares)
+    assert len(pmsg1_parsed.enc_pmsg.enc_shares) == n
     # Pick random victim that is not this participant
     victim = (idx + randint(1, n - 1)) % n
-    pmsg1.enc_pmsg.enc_shares[victim] += 17
+    pmsg1_parsed.enc_pmsg.enc_shares[victim] += 17
 
-    chan.send(pmsg1)
+    chan.send(pmsg1_parsed.to_bytes())
 
 
 def simulate_chilldkg_full(
