@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from secrets import token_bytes as random_bytes
 from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
 
@@ -8,6 +10,9 @@ from .util import (
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
+    MsgParseError,
+    ParticipantMsgParseError,
+    CoordinatorMsgParseError,
 )
 from .vss import VSS, VSSCommitment
 
@@ -55,6 +60,33 @@ class ParticipantMsg(NamedTuple):
     com: VSSCommitment
     pop: Pop
 
+    def to_bytes(self) -> bytes:
+        return self.com.to_bytes() + self.pop
+
+    @staticmethod
+    def from_bytes(b: bytes, t: int) -> ParticipantMsg:
+        rest = b
+
+        # Read com (33*t bytes)
+        if len(rest) < 33 * t:
+            raise MsgParseError("missing VSS commitment")
+        try:
+            com, rest = (
+                VSSCommitment.from_bytes_and_t(rest[: 33 * t], t),
+                rest[33 * t :],
+            )
+        except ValueError as e:
+            raise MsgParseError("invalid VSS commitment") from e
+
+        # Read pop (64 bytes)
+        if len(rest) < 64:
+            raise MsgParseError("missing proof of possession")
+        pop, rest = Pop(rest[:64]), rest[64:]
+
+        if len(rest) != 0:
+            raise MsgParseError("incorrect input bytes length")
+        return ParticipantMsg(com, pop)
+
 
 class CoordinatorMsg(NamedTuple):
     coms_to_secrets: List[GE]
@@ -69,9 +101,78 @@ class CoordinatorMsg(NamedTuple):
             ]
         ) + b"".join(self.pops)
 
+    @staticmethod
+    def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg:
+        rest = b
+
+        # Read coms_to_secrets (33*n bytes)
+        if len(rest) < 33 * n:
+            raise MsgParseError("missing commitments to secrets")
+        try:
+            coms_to_secrets, rest = (
+                [
+                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                    for i in range(0, 33 * n, 33)
+                ],
+                rest[33 * n :],
+            )
+        except ValueError as e:
+            raise MsgParseError("invalid commitment to secret") from e
+
+        # Read sum_coms_to_nonconst_terms (33*(t-1) bytes)
+        if len(rest) < 33 * (t - 1):
+            raise MsgParseError("missing sum commitments to non-constant terms")
+        try:
+            sum_coms_to_nonconst_terms, rest = (
+                [
+                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                    for i in range(0, 33 * (t - 1), 33)
+                ],
+                rest[33 * (t - 1) :],
+            )
+        except ValueError as e:
+            raise MsgParseError("invalid sum commitment to non-constant term") from e
+
+        # Read pops (64*n bytes)
+        if len(rest) < 64 * n:
+            raise MsgParseError("missing proofs of possession")
+        pops = [Pop(rest[i : i + 64]) for i in range(0, 64 * n, 64)]
+        rest = rest[64 * n :]
+
+        if len(rest) != 0:
+            raise MsgParseError("incorrect input bytes length")
+        return CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
+
 
 class CoordinatorInvestigationMsg(NamedTuple):
     partial_pubshares: List[GE]
+
+    def to_bytes(self) -> bytes:
+        return b"".join(
+            [P.to_bytes_compressed_with_infinity() for P in self.partial_pubshares]
+        )
+
+    @staticmethod
+    def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
+        rest = b
+
+        # Read partial_pubshares (33*n bytes)
+        if len(rest) < 33 * n:
+            raise MsgParseError("missing partial pubshares")
+        try:
+            partial_pubshares, rest = (
+                [
+                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                    for i in range(0, 33 * n, 33)
+                ],
+                rest[33 * n :],
+            )
+        except ValueError as e:
+            raise MsgParseError("invalid partial pubshare") from e
+
+        if len(rest) != 0:
+            raise MsgParseError("incorrect input bytes length")
+        return CoordinatorInvestigationMsg(partial_pubshares)
 
 
 ###
@@ -122,7 +223,7 @@ def participant_step1(
     seed: bytes, t: int, n: int, idx: int
 ) -> Tuple[
     ParticipantState,
-    ParticipantMsg,
+    bytes,
     # The following return value is a list of n partial secret shares generated
     # by this participant. The item at index i is supposed to be made available
     # to participant i privately, e.g., via an external secure channel. See also
@@ -142,7 +243,7 @@ def participant_step1(
 
     com = vss.commit()
     com_to_secret = com.commitment_to_secret()
-    msg = ParticipantMsg(com, pop)
+    msg = ParticipantMsg(com, pop).to_bytes()
     state = ParticipantState(t, n, idx, com_to_secret)
     return state, msg, partial_secshares_from_me
 
@@ -170,18 +271,15 @@ def participant_step2_prepare_secshare(
 
 def participant_step2(
     state: ParticipantState,
-    cmsg: CoordinatorMsg,
+    cmsg: bytes,
     secshare: Scalar,
 ) -> Tuple[DKGOutput, bytes]:
     t, n, idx, com_to_secret = state
-    coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg
-
-    if (
-        len(coms_to_secrets) != n
-        or len(sum_coms_to_nonconst_terms) != t - 1
-        or len(pops) != n
-    ):
-        raise ValueError
+    try:
+        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t, n)
+    except MsgParseError as e:
+        raise CoordinatorMsgParseError(*e.args) from e
+    coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg_parsed
 
     if coms_to_secrets[idx] != com_to_secret:
         raise FaultyCoordinatorError(
@@ -238,14 +336,18 @@ def participant_step2(
 
 def participant_investigate(
     error: UnknownFaultyParticipantOrCoordinatorError,
-    cinv: CoordinatorInvestigationMsg,
+    cinv: bytes,
     partial_secshares: List[Scalar],
 ) -> NoReturn:
     n, idx, secshare, pubshare = error.inv_data
     if len(partial_secshares) != n:
         raise ValueError
 
-    partial_pubshares = cinv.partial_pubshares
+    try:
+        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n)
+    except MsgParseError as e:
+        raise CoordinatorMsgParseError(*e.args) from e
+    partial_pubshares = cinv_parsed.partial_pubshares
 
     if GE.sum(*partial_pubshares) != pubshare:
         raise FaultyCoordinatorError("Sum of partial pubshares not equal to pubshare")
@@ -286,24 +388,31 @@ def participant_investigate(
 
 
 def coordinator_step(
-    pmsgs: List[ParticipantMsg], t: int, n: int
-) -> Tuple[CoordinatorMsg, DKGOutput, bytes]:
+    pmsgs: List[bytes], t: int, n: int
+) -> Tuple[bytes, DKGOutput, bytes]:
     if len(pmsgs) != n:
         raise ValueError
+    pmsgs_parsed = []
+    for i, pmsg in enumerate(pmsgs):
+        try:
+            parsed = ParticipantMsg.from_bytes(pmsg, t)
+        except MsgParseError as e:
+            raise ParticipantMsgParseError(i, *e.args) from e
+        pmsgs_parsed.append(parsed)
     # Sum the commitments to the i-th coefficients for i > 0
     #
     # This procedure corresponds to the one described by Pedersen in Section 5.1
     # of "Non-Interactive and Information-Theoretic Secure Verifiable Secret
     # Sharing". However, we don't sum the commitments to the secrets (i == 0)
     # because they'll be necessary to check the pops.
-    coms_to_secrets = [pmsg.com.commitment_to_secret() for pmsg in pmsgs]
+    coms_to_secrets = [pmsg.com.commitment_to_secret() for pmsg in pmsgs_parsed]
     # But we can sum the commitments to the non-constant terms.
     sum_coms_to_nonconst_terms = [
-        GE.sum(*(pmsg.com.commitment_to_nonconst_terms()[j] for pmsg in pmsgs))
+        GE.sum(*(pmsg.com.commitment_to_nonconst_terms()[j] for pmsg in pmsgs_parsed))
         for j in range(t - 1)
     ]
-    pops = [pmsg.pop for pmsg in pmsgs]
-    cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
+    pops = [pmsg.pop for pmsg in pmsgs_parsed]
+    cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops).to_bytes()
 
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
     sum_coms_tweaked, _, _ = sum_coms.invalid_taproot_commit()
@@ -319,9 +428,13 @@ def coordinator_step(
     return cmsg, dkg_output, eq_input
 
 
-def coordinator_investigate(
-    pmsgs: List[ParticipantMsg],
-) -> List[CoordinatorInvestigationMsg]:
+def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
     n = len(pmsgs)
-    all_partial_pubshares = [[pmsg.com.pubshare(i) for pmsg in pmsgs] for i in range(n)]
-    return [CoordinatorInvestigationMsg(all_partial_pubshares[i]) for i in range(n)]
+    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t) for pmsg in pmsgs]
+    all_partial_pubshares = [
+        [pmsg.com.pubshare(i) for pmsg in pmsgs_parsed] for i in range(n)
+    ]
+    return [
+        CoordinatorInvestigationMsg(all_partial_pubshares[i]).to_bytes()
+        for i in range(n)
+    ]

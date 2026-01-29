@@ -8,6 +8,8 @@ their arguments and return values, and the exceptions they raise; see also the
 `__all__` list. All other definitions are internal.
 """
 
+from __future__ import annotations
+
 from secrets import token_bytes as random_bytes
 from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn, Dict
 
@@ -26,6 +28,9 @@ from .util import (
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
     FaultyParticipantError,
+    MsgParseError,
+    ParticipantMsgParseError,
+    CoordinatorMsgParseError,
 )
 
 __all__ = [
@@ -54,6 +59,8 @@ __all__ = [
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
     "RecoveryDataError",
+    "ParticipantMsgParseError",
+    "CoordinatorMsgParseError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -346,22 +353,98 @@ RecoveryData = NewType("RecoveryData", bytes)
 class ParticipantMsg1(NamedTuple):
     enc_pmsg: encpedpop.ParticipantMsg
 
+    def to_bytes(self) -> bytes:
+        return self.enc_pmsg.to_bytes()
+
+    @staticmethod
+    def from_bytes(b: bytes, t: int, n: int) -> ParticipantMsg1:
+        enc_pmsg = encpedpop.ParticipantMsg.from_bytes(
+            b, t, n
+        )  # MsgParseError if invalid
+        return ParticipantMsg1(enc_pmsg)
+
 
 class ParticipantMsg2(NamedTuple):
     sig: bytes
+
+    def to_bytes(self) -> bytes:
+        return self.sig
+
+    @staticmethod
+    def from_bytes(b: bytes) -> ParticipantMsg2:
+        if len(b) != 64:
+            raise MsgParseError("invalid signature length")
+        return ParticipantMsg2(b)
 
 
 class CoordinatorMsg1(NamedTuple):
     enc_cmsg: encpedpop.CoordinatorMsg
     enc_secshares: List[Scalar]
 
+    def to_bytes(self) -> bytes:
+        return self.enc_cmsg.to_bytes() + b"".join(
+            share.to_bytes() for share in self.enc_secshares
+        )
+
+    @staticmethod
+    def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg1:
+        rest = b
+
+        # Read enc_cmsg
+        enc_cmsg_len = 33 * n + 33 * (t - 1) + 64 * n + 33 * n
+        if len(rest) < enc_cmsg_len:
+            raise MsgParseError("message too short for encpedpop coordinator message")
+        enc_cmsg = encpedpop.CoordinatorMsg.from_bytes(
+            rest[:enc_cmsg_len], t, n
+        )  # MsgParseError if invalid
+        rest = rest[enc_cmsg_len:]
+
+        # Read enc_secshares (32*n bytes)
+        if len(rest) < 32 * n:
+            raise MsgParseError("missing encrypted secret shares")
+        try:
+            enc_secshares, rest = (
+                [
+                    Scalar.from_bytes_checked(
+                        rest[i : i + 32]
+                    )  # ValueError if overflow
+                    for i in range(0, 32 * n, 32)
+                ],
+                rest[32 * n :],
+            )
+        except ValueError as e:
+            raise MsgParseError("invalid encrypted secret shares") from e
+
+        if len(rest) != 0:
+            raise MsgParseError("incorrect input bytes length")
+        return CoordinatorMsg1(enc_cmsg, enc_secshares)
+
 
 class CoordinatorMsg2(NamedTuple):
     cert: bytes
 
+    def to_bytes(self) -> bytes:
+        return self.cert
+
+    @staticmethod
+    def from_bytes(b: bytes, n: int) -> CoordinatorMsg2:
+        if len(b) != certeq_cert_len(n):
+            raise MsgParseError("invalid certificate length")
+        return CoordinatorMsg2(b)
+
 
 class CoordinatorInvestigationMsg(NamedTuple):
     enc_cinv: encpedpop.CoordinatorInvestigationMsg
+
+    def to_bytes(self) -> bytes:
+        return self.enc_cinv.to_bytes()
+
+    @staticmethod
+    def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
+        enc_cinv = encpedpop.CoordinatorInvestigationMsg.from_bytes(
+            b, n
+        )  # MsgParseError if invalid
+        return CoordinatorInvestigationMsg(enc_cinv)
 
 
 def deserialize_recovery_data(
@@ -435,7 +518,7 @@ class ParticipantState2(NamedTuple):
 
 def participant_step1(
     hostseckey: bytes, params: SessionParams, random: bytes
-) -> Tuple[ParticipantState1, ParticipantMsg1]:
+) -> Tuple[ParticipantState1, bytes]:
     """Perform a participant's first step of a ChillDKG session.
 
     Arguments:
@@ -448,7 +531,7 @@ def participant_step1(
             be passed as an argument to `participant_step2`. The state **must
             not** be reused (i.e., it must be passed only to one
             `participant_step2` call).
-        ParticipantMsg1: The first message to be sent to the coordinator.
+        bytes: The first message to be sent to the coordinator.
 
     Raises:
         HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
@@ -486,8 +569,10 @@ def participant_step1(
         idx=idx,
         random=random,
     )  # HostSeckeyError if len(hostseckey) != 32
+
     state1 = ParticipantState1(params, idx, enc_state)
-    return state1, ParticipantMsg1(enc_pmsg)
+    pmsg1 = enc_pmsg
+    return state1, pmsg1
 
 
 class RandomnessError(ValueError):
@@ -497,8 +582,8 @@ class RandomnessError(ValueError):
 def participant_step2(
     hostseckey: bytes,
     state1: ParticipantState1,
-    cmsg1: CoordinatorMsg1,
-) -> Tuple[ParticipantState2, ParticipantMsg2]:
+    cmsg1: bytes,
+) -> Tuple[ParticipantState2, bytes]:
     """Perform a participant's second step of a ChillDKG session.
 
     **Warning:**
@@ -524,7 +609,7 @@ def participant_step2(
             be passed as an argument to `participant_finalize`. The state **must
             not** be reused (i.e., it must be passed only to one
             `participant_finalize` call).
-        ParticipantMsg2: The second message to be sent to the coordinator.
+        bytes: The second message to be sent to the coordinator.
 
     Raises:
         HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
@@ -538,17 +623,23 @@ def participant_step2(
             investigation procedure of the protocol is necessary to determine a
             suspected participant. See the documentation of the exception for
             further details.
+        CoordinatorMsgParseError: If the coordinator message could not be parsed.
     """
     if len(hostseckey) != 32:
         raise HostSeckeyError
 
     params, idx, enc_state = state1
-    enc_cmsg, enc_secshares = cmsg1
+    t = enc_state.simpl_state.t
+    try:
+        cmsg1_parsed = CoordinatorMsg1.from_bytes(cmsg1, t, len(params.hostpubkeys))
+    except MsgParseError as e:
+        raise CoordinatorMsgParseError(*e.args) from e
+    enc_cmsg, enc_secshares = cmsg1_parsed
 
     enc_dkg_output, eq_input = encpedpop.participant_step2(
         state=enc_state,
         deckey=hostseckey,
-        cmsg=enc_cmsg,
+        cmsg=enc_cmsg.to_bytes(),
         enc_secshare=enc_secshares[idx],
     )
 
@@ -558,12 +649,12 @@ def participant_step2(
     dkg_output = DKGOutput._make(enc_dkg_output)
     state2 = ParticipantState2(params, eq_input, dkg_output)
     sig = certeq_participant_step(hostseckey, idx, eq_input)
-    pmsg2 = ParticipantMsg2(sig)
+    pmsg2 = ParticipantMsg2(sig).to_bytes()
     return state2, pmsg2
 
 
 def participant_finalize(
-    state2: ParticipantState2, cmsg2: CoordinatorMsg2
+    state2: ParticipantState2, cmsg2: bytes
 ) -> Tuple[DKGOutput, RecoveryData]:
     """Perform a participant's final step of a ChillDKG session.
 
@@ -601,21 +692,25 @@ def participant_finalize(
         FaultyCoordinatorError: If the coordinator is faulty. Make sure to read
             the above warning, and see the documentation of the exception for
             further details.
+        CoordinatorMsgParseError: If the coordinator message could not be parsed.
     """
     params, eq_input, dkg_output = state2
     try:
-        certeq_verify(params.hostpubkeys, eq_input, cmsg2.cert)
+        cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, len(params.hostpubkeys))
+        certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
+    except MsgParseError as e:
+        raise CoordinatorMsgParseError(*e.args) from e
     except InvalidSignatureInCertificateError as e:
         raise FaultyParticipantOrCoordinatorError(
             e.participant,
             "Participant has provided an invalid signature for the certificate",
         ) from e
-    return dkg_output, RecoveryData(eq_input + cmsg2.cert)
+    return dkg_output, RecoveryData(eq_input + cmsg2_parsed.cert)
 
 
 def participant_investigate(
     error: UnknownFaultyParticipantOrCoordinatorError,
-    cinv: CoordinatorInvestigationMsg,
+    cinv: bytes,
 ) -> NoReturn:
     """Investigate who is to blame for a failed ChillDKG session.
 
@@ -638,11 +733,18 @@ def participant_investigate(
             further details.
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
+        CoordinatorMsgParseError: If the investigation message could
+            not be parsed.
     """
     assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
+    n = error.inv_data.simpl_bstate.n
+    try:
+        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n)
+    except MsgParseError as e:
+        raise CoordinatorMsgParseError(*e.args) from e
     encpedpop.participant_investigate(
         error=error,
-        cinv=cinv.enc_cinv,
+        cinv=cinv_parsed.enc_cinv.to_bytes(),
     )
 
 
@@ -658,8 +760,8 @@ class CoordinatorState(NamedTuple):
 
 
 def coordinator_step1(
-    pmsgs1: List[ParticipantMsg1], params: SessionParams
-) -> Tuple[CoordinatorState, CoordinatorMsg1]:
+    pmsgs1: List[bytes], params: SessionParams
+) -> Tuple[CoordinatorState, bytes]:
     """Perform the coordinator's first step of a ChillDKG session.
 
     Arguments:
@@ -672,7 +774,7 @@ def coordinator_step1(
             passed as an argument to `coordinator_finalize`. The state is not
             supposed to be reused (i.e., it should be passed only to one
             `coordinator_finalize` call).
-        CoordinatorMsg1: The first message to be sent to all participants.
+        bytes: The first message to be sent to all participants.
 
     Raises:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
@@ -681,25 +783,37 @@ def coordinator_step1(
             not hold.
         FaultyParticipantError: If another participant is faulty. See the
             documentation of the exception for further details.
+        ParticipantMsgParseError: If a participant message could not be parsed.
     """
     params_validate(params)
     hostpubkeys, t = params
+    if len(pmsgs1) != len(hostpubkeys):
+        raise ValueError
+
+    pmsgs1_parsed = []
+    for idx, pmsg1 in enumerate(pmsgs1):
+        try:
+            parsed = ParticipantMsg1.from_bytes(pmsg1, t, len(hostpubkeys))
+        except MsgParseError as e:
+            raise ParticipantMsgParseError(idx, *e.args) from e
+        pmsgs1_parsed.append(parsed)
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
-        pmsgs=[pmsg1.enc_pmsg for pmsg1 in pmsgs1],
+        pmsgs=[pmsg1.enc_pmsg.to_bytes() for pmsg1 in pmsgs1_parsed],
         t=t,
         enckeys=hostpubkeys,
     )
+    enc_cmsg_parsed = encpedpop.CoordinatorMsg.from_bytes(enc_cmsg, t, len(hostpubkeys))
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
     state = CoordinatorState(params, eq_input, dkg_output)
-    cmsg1 = CoordinatorMsg1(enc_cmsg, enc_secshares)
+    cmsg1 = CoordinatorMsg1(enc_cmsg_parsed, enc_secshares).to_bytes()
     return state, cmsg1
 
 
 def coordinator_finalize(
-    state: CoordinatorState, pmsgs2: List[ParticipantMsg2]
-) -> Tuple[CoordinatorMsg2, DKGOutput, RecoveryData]:
+    state: CoordinatorState, pmsgs2: List[bytes]
+) -> Tuple[bytes, DKGOutput, RecoveryData]:
     """Perform the coordinator's final step of a ChillDKG session.
 
     If this function returns properly (without an exception), then the
@@ -726,7 +840,7 @@ def coordinator_finalize(
                 list's length must equal the total number of participants.
 
     Returns:
-        CoordinatorMsg2: The second message to be sent to all participants.
+        bytes: The second message to be sent to all participants.
         DKGOutput: The DKG output. Since the coordinator does not have a secret
             share, the DKG output will have the `secshare` field set to `None`.
         bytes: The serialized recovery data.
@@ -734,12 +848,20 @@ def coordinator_finalize(
     Raises:
         FaultyParticipantError: If another participant is faulty. See the
             documentation of the exception for further details.
+        ParticipantMsgParseError: If a participant message could not be parsed.
     """
     params, eq_input, dkg_output = state
     if len(pmsgs2) != len(params.hostpubkeys):
         raise ValueError
 
-    cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2])
+    pmsgs2_parsed = []
+    for idx, pmsg2 in enumerate(pmsgs2):
+        try:
+            parsed = ParticipantMsg2.from_bytes(pmsg2)
+        except MsgParseError as e:
+            raise ParticipantMsgParseError(idx, *e.args) from e
+        pmsgs2_parsed.append(parsed)
+    cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2_parsed])
     try:
         certeq_verify(params.hostpubkeys, eq_input, cert)
     except InvalidSignatureInCertificateError as e:
@@ -747,12 +869,11 @@ def coordinator_finalize(
             e.participant,
             "Participant has provided an invalid signature for the certificate",
         ) from e
-    return CoordinatorMsg2(cert), dkg_output, RecoveryData(eq_input + cert)
+    cmsg2 = CoordinatorMsg2(cert).to_bytes()
+    return cmsg2, dkg_output, RecoveryData(eq_input + cert)
 
 
-def coordinator_investigate(
-    pmsgs: List[ParticipantMsg1],
-) -> List[CoordinatorInvestigationMsg]:
+def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[bytes]:
     """Generate investigation messages for a ChillDKG session.
 
     The investigation messages will allow the participants to investigate who is
@@ -763,14 +884,29 @@ def coordinator_investigate(
     information.
 
     Arguments:
-        pmsgs: List of first messages received from the participants.
+        pmsgs: List of serialized first messages received from the participants.
+        params: Common session parameters.
 
     Returns:
-        List[CoordinatorInvestigationMsg]: A list of investigation messages, each
-            intended for a single participant.
+        List[bytes]: A list of investigation messages, each intended for a single
+            participant.
+
+    Raises:
+        ParticipantMsgParseError: If a participant message could not be parsed.
     """
-    enc_cinvs = encpedpop.coordinator_investigate([pmsg.enc_pmsg for pmsg in pmsgs])
-    return [CoordinatorInvestigationMsg(enc_cinv) for enc_cinv in enc_cinvs]
+    n = len(pmsgs)
+    t = params.t
+    pmsgs_parsed = []
+    for idx, pmsg in enumerate(pmsgs):
+        try:
+            parsed = ParticipantMsg1.from_bytes(pmsg, t, n)
+        except MsgParseError as e:
+            raise ParticipantMsgParseError(idx, *e.args) from e
+        pmsgs_parsed.append(parsed)
+    enc_cinvs = encpedpop.coordinator_investigate(
+        [pmsg.enc_pmsg.to_bytes() for pmsg in pmsgs_parsed], t
+    )
+    return enc_cinvs
 
 
 ###

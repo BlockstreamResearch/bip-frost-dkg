@@ -101,3 +101,23 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
     def __init__(self, inv_data: Any, *args: Any):
         self.inv_data = inv_data
         super().__init__(*args)
+
+
+class MsgParseError(ValueError):
+    """Raised when parsing a serialized message fails."""
+
+
+class ParticipantMsgParseError(MsgParseError):
+    """Raised when parsing a participant message fails.
+
+    Attributes:
+        participant (int): Index of the participant whose message failed to parse.
+    """
+
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)
+
+
+class CoordinatorMsgParseError(MsgParseError):
+    """Raised when parsing a coordinator message fails."""
