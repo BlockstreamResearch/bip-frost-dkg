@@ -448,14 +448,6 @@ class GE:
             return 0  # 0 is not a valid x coordinate
         return int(self.x)
 
-    @staticmethod
-    def from_bytes_compressed_with_infinity(b):
-        """Convert a compressed to a group element, mapping zeros to infinity."""
-        if b == 33 * b"\x00":
-            return GE()
-        else:
-            return GE.from_bytes_compressed(b)
-
 
 # The secp256k1 generator point
 G = GE.lift_x(0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798)
