@@ -335,7 +335,9 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
         for secshare in secshares
     ]
     for i in range(1, n + 1):
-        assert secshares_scalar[i] * G == GE.from_bytes_compressed(pubshares[0][i - 1])
+        s = secshares_scalar[i]
+        assert s is not None
+        assert s * G == GE.from_bytes_compressed(pubshares[0][i - 1])
 
     # Check that all combinations of t participants can recover the threshold pubkey
     for tsubset in combinations(range(1, n + 1), t):
