@@ -388,31 +388,25 @@ def deserialize_recovery_data(
         raise ValueError
 
     # Read hostpubkeys (33*n bytes)
-    if len(rest) < 33 * n:
-        raise ValueError
+    assert len(rest) >= 33 * n
     hostpubkeys, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
 
     # Read pubnonces (33*n bytes)
-    if len(rest) < 33 * n:
-        raise ValueError
+    assert len(rest) >= 33 * n
     pubnonces, rest = [rest[i : i + 33] for i in range(0, 33 * n, 33)], rest[33 * n :]
 
     # Read enc_secshares (32*n bytes)
-    if len(rest) < 32 * n:
-        raise ValueError
+    assert len(rest) >= 32 * n
     enc_secshares, rest = (
         [Scalar.from_bytes_checked(rest[i : i + 32]) for i in range(0, 32 * n, 32)],
         rest[32 * n :],
     )
 
-    # Read cert
-    cert_len = certeq_cert_len(n)
-    if len(rest) < cert_len:
-        raise ValueError
-    cert, rest = rest[:cert_len], rest[cert_len:]
+    # Read cert (64*n bytes)
+    assert len(rest) >= 64 * n
+    cert, rest = rest[: 64 * n], rest[64 * n :]
 
-    if len(rest) != 0:
-        raise ValueError
+    assert len(rest) == 0
     return (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert)
 
 
