@@ -961,7 +961,6 @@ data, from which this participant can recover the DKG output using the
   investigation procedure of the protocol is necessary to determine a
   suspected participant. See the documentation of the exception for
   further details.
-- `CoordinatorMsgParseError` - If the coordinator message could not be parsed.
 
 #### participant\_finalize
 
@@ -1007,7 +1006,8 @@ recovery data to this participant.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. Make sure to read the above warning, and see
   the documentation of the exception for further details.
-- `CoordinatorMsgParseError` - If the coordinator message could not be parsed.
+- `FaultyCoordinatorError` - If the coordinator is faulty. See the
+  documentation of the exception for further details.
 
 #### participant\_investigate
 
@@ -1039,8 +1039,6 @@ exceptions.
   further details.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
-- `CoordinatorMsgParseError` - If the investigation message could
-  not be parsed.
 
 #### coordinator\_step1
 
@@ -1074,7 +1072,6 @@ Perform the coordinator's first step of a ChillDKG session.
   not hold.
 - `FaultyParticipantError` - If another participant is faulty. See the
   documentation of the exception for further details.
-- `ParticipantMsgParseError` - If a participant message could not be parsed.
 
 #### coordinator\_finalize
 
@@ -1121,7 +1118,6 @@ other participants via a communication channel beside the coordinator.
 
 - `FaultyParticipantError` - If another participant is faulty. See the
   documentation of the exception for further details.
-- `ParticipantMsgParseError` - If a participant message could not be parsed.
 
 #### coordinator\_investigate
 
@@ -1152,7 +1148,8 @@ information.
 
 *Raises*:
 
-- `ParticipantMsgParseError` - If a participant message could not be parsed.
+- `FaultyParticipantError` - If another participant is faulty. See the
+  documentation of the exception for further details.
 
 #### recover
 
@@ -1297,26 +1294,6 @@ the coordinator (namely, sending invalid encrypted secret shares).
 *Attributes*:
 
 - `inv_data` - Information required to perform the investigation.
-
-#### ParticipantMsgParseError Exception
-
-```python
-class ParticipantMsgParseError(MsgParseError)
-```
-
-Raised when parsing a participant message fails.
-
-*Attributes*:
-
-- `participant` _int_ - Index of the participant whose message failed to parse.
-
-#### CoordinatorMsgParseError Exception
-
-```python
-class CoordinatorMsgParseError(MsgParseError)
-```
-
-Raised when parsing a coordinator message fails.
 <!--end of pydoc.md-->
 
 ## Changelog

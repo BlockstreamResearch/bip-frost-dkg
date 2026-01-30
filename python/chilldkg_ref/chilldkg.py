@@ -59,8 +59,6 @@ __all__ = [
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
     "RecoveryDataError",
-    "ParticipantMsgParseError",
-    "CoordinatorMsgParseError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -617,7 +615,6 @@ def participant_step2(
             investigation procedure of the protocol is necessary to determine a
             suspected participant. See the documentation of the exception for
             further details.
-        CoordinatorMsgParseError: If the coordinator message could not be parsed.
     """
     if len(hostseckey) != 32:
         raise HostSeckeyError
@@ -683,7 +680,8 @@ def participant_finalize(
         FaultyParticipantOrCoordinatorError: If another known participant or the
             coordinator is faulty. Make sure to read the above warning, and see
             the documentation of the exception for further details.
-        CoordinatorMsgParseError: If the coordinator message could not be parsed.
+        FaultyCoordinatorError: If the coordinator is faulty. See the
+            documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state2
     try:
@@ -724,8 +722,6 @@ def participant_investigate(
             further details.
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
-        CoordinatorMsgParseError: If the investigation message could
-            not be parsed.
     """
     assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
     n = error.inv_data.simpl_bstate.n
@@ -774,7 +770,6 @@ def coordinator_step1(
             not hold.
         FaultyParticipantError: If another participant is faulty. See the
             documentation of the exception for further details.
-        ParticipantMsgParseError: If a participant message could not be parsed.
     """
     params_validate(params)
     hostpubkeys, t = params
@@ -839,7 +834,6 @@ def coordinator_finalize(
     Raises:
         FaultyParticipantError: If another participant is faulty. See the
             documentation of the exception for further details.
-        ParticipantMsgParseError: If a participant message could not be parsed.
     """
     params, eq_input, dkg_output = state
     if len(pmsgs2) != len(params.hostpubkeys):
@@ -883,7 +877,8 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
             participant.
 
     Raises:
-        ParticipantMsgParseError: If a participant message could not be parsed.
+        FaultyParticipantError: If another participant is faulty. See the
+            documentation of the exception for further details.
     """
     n = len(pmsgs)
     t = params.t
