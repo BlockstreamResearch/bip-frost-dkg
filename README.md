@@ -3,6 +3,7 @@ BIP:
 Title: ChillDKG: Distributed Key Generation for FROST
 Author: Tim Ruffing <crypto@timruffing.de>
         Jonas Nick <jonas@n-ck.net>
+        Sivaram Dhakshinamoorthy <siv2ram@gmail.com>
 Status: Draft
 License: CC0-1.0
 License-Code: MIT
@@ -1336,4 +1337,4 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
 
 ## Acknowledgments
 
-We thank Lloyd Fournier (LLFourn) and Sivaram (siv2r) for their comments and contributions to this document.
+We thank Lloyd Fournier (LLFourn) for their comments and contributions to this document.
