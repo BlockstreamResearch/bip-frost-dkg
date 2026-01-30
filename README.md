@@ -32,11 +32,11 @@ The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](ht
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
 FROST remains unforgeable as long as at most `t-1` participants are compromised
 and remain functional as long as `t` honest participants do not lose their secret key material.
-Notably, FROST can be made compatible with [BIP 340](bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
+Notably, FROST can be made compatible with [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
 
 [^t-edge-cases]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
-In the case of `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 [[BIP 327](bip-0327.mediawiki)] instead of FROST avoids the need for an interactive DKG.
-The case `t = 1` can be realized by letting one participant generate an ordinary [BIP 340](bip-0340.mediawiki) key pair and transmitting the key pair to every other participant, who can check its consistency and then simply use the ordinary [BIP 340](bip-0340.mediawiki) signing algorithm.
+In the case of `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)] instead of FROST avoids the need for an interactive DKG.
+The case `t = 1` can be realized by letting one participant generate an ordinary [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) key pair and transmitting the key pair to every other participant, who can check its consistency and then simply use the ordinary [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) signing algorithm.
 Participants still need to ensure that they agree on a key pair. A detailed specification is not in the scope of this document.
 
 As a result, threshold signatures increase both security and availability,
@@ -266,7 +266,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     (`secshare` is supposed to be equal to `f(i+1)`.)
 
     If the check fails, participant `i` aborts.
-    Assuming the coordinator is honest and has sent a correct `sums_coms` vector,
+    Assuming the coordinator is honest and has sent the correct data to derive a `sum_coms` vector,
     participant `i` knows that some participant contributed a wrong summand to `secshare`,
     but participant `i` does not have sufficient information to single out and blame the faulty participant.
     In this case, participant `i` can optionally investigate the error by asking the coordinator for the vector `partial_pubshares` defined as:
@@ -406,7 +406,7 @@ This verification can occur at any time before the DKG session is finalized, in 
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this requirement is implicit in other schemes as well.
-For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP 327](bip-0327.mediawiki)]
+For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)]
 also requires the assumption that all participants have authentic copies of each other's individual public keys.
 
 #### Equality Check Protocol CertEq
@@ -420,11 +420,11 @@ i.e., a full list of valid signatures from all `n` participants (including thems
 [^multisig-cert]: Abstractly, the required primitive is a multi-signature scheme, i.e., `n` participants signing the same message `eq_input`.
 We have chosen the naive scheme of collecting a list of `n` individual signatures for simplicity.
 Other multi-signatures schemes,
-e.g., MuSig2 [[BIP 327](bip-0327.mediawiki)] or a scheme based on Schnorr signature half aggregation [[Halfagg-BIP-Draft](https://github.com/BlockstreamResearch/cross-input-aggregation/blob/master/half-aggregation.mediawiki), [CGKN21](https://eprint.iacr.org/2021/350), [CZ22](https://eprint.iacr.org/2022/222)],
+e.g., MuSig2 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)] or a scheme based on Schnorr signature half aggregation [[Halfagg-BIP-Draft](https://github.com/BlockstreamResearch/cross-input-aggregation/blob/master/half-aggregation.mediawiki), [CGKN21](https://eprint.iacr.org/2021/350), [CZ22](https://eprint.iacr.org/2022/222)],
 could be used instead to reduce the size of the success certificate.
 These methods are out of scope of this document.
 
-[^certeq-literature]: CertEq can be viewed as a signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[CGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].)
+[^certeq-literature]: CertEq can be viewed as a signed variant of the Goldwasser-Lindell echo broadcast protocol [[GL05](https://eprint.iacr.org/2002/040), Protocol 1], or alternatively, as a unanimous variant of Signed Echo Broadcast [[Rei94](https://doi.org/10.1145/191177.191194), Section 4], [[CGR11](https://doi.org/10.1007/978-3-642-15260-3), Algorithm 3.17].
 
 This termination rule immediately implies the integrity property:
 Unless a signature has been forged, if some honest participant with input `eq_input` terminates successfully,
@@ -515,12 +515,12 @@ unlike deterministically derived secret keys [[BIP 32](https://github.com/bitcoi
 not be rederived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
-ChillDKG offers the possibility to recover a participant's DKG output from the participant's host secret key and the recovery data of the specific session,
+ChillDKG offers the possibility to recover a participant's DKG output from the participant's host secret key and the recovery data of the specific session.
 As a result, a full backup of a participant consists of the host secret key as well as the recovery data of all DKG sessions the participant has successfully participated in.
 
 Since the recovery data is the same for all participants,
 if a participant loses the backup of the recovery data of the DKG session,
-they can request it from any other participants or the coordinator.
+they can request it from any other participant or the coordinator.
 Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 
@@ -587,7 +587,7 @@ Any faulty party can make a ChillDKG session abort by sending a message that dev
 To help resolve the underlying problem, ChillDKG provides a *blame functionality*
 that enables honest protocol parties to identify and blame at least one participant suspected to be faulty:
  - If an honest participant aborts the session, then this participant will blame at least one participant or the coordinator.
- - If an honest coordinator aborts the session, then the coordinator then will blame at least one participant.
+ - If an honest coordinator aborts the session, then the coordinator will blame at least one participant.
 
 Moreover, a party which, instead of aborting after having received an invalid protocol message,
 aborts due to a timeout while waiting for a protocol message
@@ -602,7 +602,7 @@ and, in case of a participant blaming another participant, if the coordinator is
 the aborting party will be guaranteed that the blamed party is indeed faulty.
 
 It is important to understand that this guarantee is conditional.
-For example, assume that the condition of a honest coordinator is violated.
+For example, assume that the condition of an honest coordinator is violated.
 In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the blamed participant.
 
 In some cases,[^incorrect-shares] an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
@@ -613,7 +613,7 @@ in order to single out and blame another participant (see [Overview of a ChillDK
 ### Threat Model and Security Goals
 
 We expect ChillDKG to provide the following informal security goals when it is used to set up keys for the FROST threshold signature scheme.
-If a participant deems a protocol session successful (as defined in [Inputs and Outputs](#inputs-and-outputs)), then this participant is assured that:
+If a participant deems a protocol session successful (as defined in [Inputs and Output](#inputs-and-output)), then this participant is assured that:
  - A coalition of at most `t - 1` faulty participants and a faulty coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least one honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
@@ -664,7 +664,7 @@ which will allow the participant to blame a specific other participant (via the 
 Applications may choose to let the coordinator always create and send investigation messages,
 (i.e., even if not asked for by an aborting participant).
 While different aborting participants will need different investigation messages,
-an investigation message intended for some participant does not to be kept confidential from other participants.
+an investigation message intended for some participant does not need to be kept confidential from other participants.
 Thus, applications may additionally choose to let the coordinator send all `n` investigation messages to all `n` participants.
 
 ### API Documentation

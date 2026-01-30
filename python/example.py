@@ -113,7 +113,7 @@ async def participant(
 
     # Participants can implement an optional investigation procedure. This
     # allows the participant to determine which participant is faulty when an
-    # `UnknownFaultyParticipantOrCoordinatorError` is raised. The investiation
+    # `UnknownFaultyParticipantOrCoordinatorError` is raised. The investigation
     # procedure requires the participant to receive an extra "investigation
     # message" from the coordinator that contains necessary information.
     #
