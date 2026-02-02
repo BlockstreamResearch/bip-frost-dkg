@@ -370,7 +370,7 @@ def participant_step2(
         # Translate simplpedpop.ParticipantInvestigationData into our own
         # encpedpop.ParticipantInvestigationData.
         inv_data = ParticipantInvestigationData(e.inv_data, enc_secshare, pads)
-        raise UnknownFaultyParticipantOrCoordinatorError(inv_data, e.args) from e
+        raise UnknownFaultyParticipantOrCoordinatorError(inv_data, *e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input
