@@ -10,7 +10,6 @@ their arguments and return values, and the exceptions they raise; see also the
 
 from __future__ import annotations
 
-from secrets import token_bytes as random_bytes
 from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn, Dict
 
 from secp256k1lab.secp256k1 import Scalar, GE
@@ -88,9 +87,11 @@ def certeq_message(x: bytes, idx: int) -> bytes:
     return prefix + idx.to_bytes(4, "big") + x
 
 
-def certeq_participant_step(hostseckey: bytes, idx: int, x: bytes) -> bytes:
+def certeq_participant_step(
+    hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes
+) -> bytes:
     msg = certeq_message(x, idx)
-    return schnorr_sign(msg, hostseckey, aux_rand=random_bytes(32))
+    return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
 def certeq_cert_len(n: int) -> int:
@@ -577,6 +578,7 @@ def participant_step2(
     hostseckey: bytes,
     state1: ParticipantState1,
     cmsg1: bytes,
+    aux_rand: bytes,
 ) -> Tuple[ParticipantState2, bytes]:
     """Perform a participant's second step of a ChillDKG session.
 
@@ -597,6 +599,9 @@ def participant_step2(
         state1: The participant's session state as output by
             `participant_step1`.
         cmsg1: The first message received from the coordinator.
+        aux_rand: Auxiliary randomness (32 bytes). FRESH 32-byte randomness
+            is optimal, but 16 random bytes or a counter padded to 32 bytes
+            is acceptable (see BIP 340).
 
     Returns:
         ParticipantState2: The participant's session state after this step, to
@@ -607,6 +612,7 @@ def participant_step2(
 
     Raises:
         HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
+        RandomnessError: If the length of `aux_rand` is not 32 bytes.
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
         FaultyParticipantOrCoordinatorError: If another known participant or the
@@ -621,6 +627,8 @@ def participant_step2(
     """
     if len(hostseckey) != 32:
         raise HostSeckeyError
+    if len(aux_rand) != 32:
+        raise RandomnessError
 
     params, idx, enc_state = state1
     t = enc_state.simpl_state.t
@@ -642,7 +650,7 @@ def participant_step2(
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)
     state2 = ParticipantState2(params, eq_input, dkg_output)
-    sig = certeq_participant_step(hostseckey, idx, eq_input)
+    sig = certeq_participant_step(hostseckey, idx, eq_input, aux_rand)
     pmsg2 = ParticipantMsg2(sig).to_bytes()
     return state2, pmsg2
 

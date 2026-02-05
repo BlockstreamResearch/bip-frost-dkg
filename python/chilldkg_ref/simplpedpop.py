@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from secrets import token_bytes as random_bytes
 from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
 
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
@@ -40,10 +39,8 @@ def pop_msg(idx: int) -> bytes:
     return idx.to_bytes(4, byteorder="big")
 
 
-def pop_prove(seckey: bytes, idx: int) -> Pop:
-    sig = schnorr_sign(
-        pop_msg(idx), seckey, aux_rand=random_bytes(32), tag_prefix=POP_MSG_TAG
-    )
+def pop_prove(seckey: bytes, idx: int, aux_rand: bytes) -> Pop:
+    sig = schnorr_sign(pop_msg(idx), seckey, aux_rand=aux_rand, tag_prefix=POP_MSG_TAG)
     return Pop(sig)
 
 
@@ -220,7 +217,7 @@ class ParticipantInvestigationData(NamedTuple):
 
 
 def participant_step1(
-    seed: bytes, t: int, n: int, idx: int
+    seed: bytes, t: int, n: int, idx: int, aux_rand: bytes
 ) -> Tuple[
     ParticipantState,
     bytes,
@@ -236,10 +233,12 @@ def participant_step1(
         raise IndexError
     if len(seed) != 32:
         raise ValueError
+    if len(aux_rand) != 32:
+        raise ValueError
 
     vss = VSS.generate(seed, t)  # OverflowError if t >= 2**32
     partial_secshares_from_me = vss.secshares(n)
-    pop = pop_prove(vss.secret().to_bytes(), idx)
+    pop = pop_prove(vss.secret().to_bytes(), idx, aux_rand)
 
     com = vss.commit()
     com_to_secret = com.commitment_to_secret()

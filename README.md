@@ -915,7 +915,7 @@ Raised if the length of the provided randomness is not 32 bytes.
 #### participant\_step2
 
 ```python
-def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: bytes) -> Tuple[ParticipantState2, bytes]
+def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: bytes, aux_rand: bytes) -> Tuple[ParticipantState2, bytes]
 ```
 
 Perform a participant's second step of a ChillDKG session.
@@ -938,6 +938,9 @@ data, from which this participant can recover the DKG output using the
 - `state1` - The participant's session state as output by
   `participant_step1`.
 - `cmsg1` - The first message received from the coordinator.
+- `aux_rand` - Auxiliary randomness (32 bytes). FRESH 32-byte randomness
+  is optimal, but 16 random bytes or a counter padded to 32 bytes
+  is acceptable (see BIP 340).
 
 
 *Returns*:
@@ -952,6 +955,7 @@ data, from which this participant can recover the DKG output using the
 *Raises*:
 
 - `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
+- `RandomnessError` - If the length of `aux_rand` is not 32 bytes.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
