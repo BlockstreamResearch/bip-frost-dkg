@@ -101,7 +101,8 @@ def simulate_simplpedpop(
     n = len(seeds)
     prets = []
     for i in range(n):
-        prets += [simplpedpop.participant_step1(seeds[i], t, n, i)]
+        random = random_bytes(32)
+        prets += [simplpedpop.participant_step1(seeds[i], t, n, i, random)]
 
     pstates = [pstate for (pstate, _, _) in prets]
     pmsgs = [pmsg for (_, pmsg, _) in prets]
@@ -236,7 +237,10 @@ def simulate_chilldkg(
     prets2 = []
     for i in range(n):
         try:
-            prets2 += [chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg1)]
+            random = random_bytes(32)
+            prets2 += [
+                chilldkg.participant_step2(hostseckeys[i], pstates1[i], cmsg1, random)
+            ]
         except UnknownFaultyParticipantOrCoordinatorError as e:
             if not investigation:
                 raise
