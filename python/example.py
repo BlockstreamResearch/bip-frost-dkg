@@ -125,7 +125,8 @@ async def participant(
         cinv = await chan.receive()
 
     try:
-        state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1)
+        random = random_bytes(32)
+        state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1, random)
     except UnknownFaultyParticipantOrCoordinatorError as e:
         if investigation_procedure:
             participant_investigate(e, cinv)

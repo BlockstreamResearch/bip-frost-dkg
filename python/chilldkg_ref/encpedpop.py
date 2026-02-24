@@ -322,11 +322,12 @@ def participant_step1(
     # derive the nonce from simpl_seed.
     enc_context = serialize_enc_context(t, enckeys)
     simpl_seed = tagged_hash_bip_dkg("encpedpop seed", seed + random + enc_context)
+    simpl_aux_rand = tagged_hash_bip_dkg("simplpedpop aux", simpl_seed)
     secnonce = tagged_hash_bip_dkg("encpedpop secnonce", simpl_seed)
     pubnonce = pubkey_gen_plain(secnonce)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
-        simpl_seed, t, n, idx
+        simpl_seed, t, n, idx, simpl_aux_rand
     )
     assert len(shares) == n
 
@@ -370,7 +371,7 @@ def participant_step2(
         # Translate simplpedpop.ParticipantInvestigationData into our own
         # encpedpop.ParticipantInvestigationData.
         inv_data = ParticipantInvestigationData(e.inv_data, enc_secshare, pads)
-        raise UnknownFaultyParticipantOrCoordinatorError(inv_data, e.args) from e
+        raise UnknownFaultyParticipantOrCoordinatorError(inv_data, *e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
     return dkg_output, eq_input
