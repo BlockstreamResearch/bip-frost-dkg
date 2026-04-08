@@ -190,6 +190,7 @@ class SessionParams(NamedTuple):
 
     Attributes:
         hostpubkeys: Ordered list of the host public keys of all participants.
+            The list must contain at least 2 host public keys.
         t: The participation threshold `t`.
             This is the number of participants that will be required to sign.
             It must hold that `1 <= t <= len(hostpubkeys) <= 2**32 - 1`.
@@ -226,7 +227,7 @@ class SessionParams(NamedTuple):
 def params_validate(params: SessionParams) -> None:
     (hostpubkeys, t) = params
 
-    if not (1 <= t <= len(hostpubkeys) <= 2**32 - 1):
+    if not (2 <= len(hostpubkeys) <= 2**32 - 1 and 1 <= t <= len(hostpubkeys)):
         raise ThresholdOrCountError
 
     # Check that all hostpubkeys are valid
@@ -266,7 +267,7 @@ def params_id(params: SessionParams) -> bytes:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
-            not hold.
+            not hold or if `len(hostpubkeys) < 2`
     """
     params_validate(params)
     hostpubkeys, t = params
@@ -322,7 +323,7 @@ class InvalidHostPubkeyError(SessionParamsError):
 
 
 class ThresholdOrCountError(SessionParamsError):
-    """Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold."""
+    """Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold, or if `len(hostpubkeys) < 2`."""
 
 
 # This is really the same definition as in simplpedpop and encpedpop. We repeat
@@ -533,7 +534,7 @@ def participant_step1(
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
-            not hold.
+            not hold, or if `len(hostpubkeys) < 2`.
         RandomnessError: If the length of `random` is not 32 bytes.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
@@ -775,7 +776,7 @@ def coordinator_step1(
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
-            not hold.
+            not hold, or if `len(hostpubkeys) < 2`.
         FaultyParticipantError: If another participant is faulty. See the
             documentation of the exception for further details.
     """

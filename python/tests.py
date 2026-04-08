@@ -67,6 +67,13 @@ def test_chilldkg_params_validate():
     else:
         assert False, "Expected exception"
 
+    try:
+        _ = chilldkg.params_id(chilldkg.SessionParams([hostpubkeys[0]], 1))
+    except chilldkg.ThresholdOrCountError:
+        pass
+    else:
+        assert False, "Expected exception"
+
 
 def test_vss_correctness():
     def rand_polynomial(t):
@@ -381,7 +388,7 @@ def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
 test_chilldkg_params_validate()
 test_vss_correctness()
 test_recover_secret()
-for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
+for t, n in [(1, 2), (1, 3), (2, 2), (2, 3), (2, 5)]:
     test_correctness(t, n, simulate_simplpedpop)
     test_correctness(t, n, simulate_simplpedpop, investigation=True)
     test_correctness(t, n, simulate_encpedpop)
