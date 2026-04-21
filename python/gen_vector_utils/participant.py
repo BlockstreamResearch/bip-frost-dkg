@@ -15,6 +15,7 @@ from chilldkg_ref.chilldkg import (
     participant_finalize,
     participant_investigate,
 )
+from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
 import chilldkg_ref.chilldkg as chilldkg
 
 
@@ -37,17 +38,9 @@ def generate_participant_step1_vectors():
     error_cases = []
     tc_id = 0
 
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
-    random = bytes.fromhex(
-        "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC"
-    )
+    random = bytes.fromhex(RANDOMS_HEX[0])
 
     # --- Valid test case 0 ---
     tc_id += 1
@@ -207,22 +200,10 @@ def generate_participant_step2_vectors():
     error_cases = []
     tc_id = 0
 
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:3])
     assert len(randoms) == len(hostpubkeys)
     pstates1 = []
     pmsgs1 = []
@@ -231,9 +212,7 @@ def generate_participant_step2_vectors():
         pstates1.append(state)
         pmsgs1.append(msg)
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
 
     # --- Valid test case 0 ---
     tc_id += 1
@@ -396,26 +375,12 @@ def generate_participant_finalize_vectors():
         "  Call participant_finalize(pstate2, cmsg2).",
         "  Verify it raises an exception matching expected_error.",
     ]
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:3])
     assert len(randoms) == len(hostpubkeys)
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
@@ -533,26 +498,12 @@ def generate_participant_investigate_vectors():
         "All test cases are error cases (this function never returns successfully).",
         "Error objects contain 'type' and optionally 'participant' (index of the blamed party).",
     ]
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:3])
     assert len(randoms) == len(hostpubkeys)
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
