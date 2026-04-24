@@ -18,3 +18,10 @@ RANDOMS_HEX = [
 
 # Auxiliary randomness supplied by participant 0 during participant_step2.
 AUX_RAND_HEX = "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
+
+# (t, n, description) tuples defining the threshold configurations to test.
+THRESHOLD_CONFIGS = [
+    (2, 3),
+    (1, 3),
+    (3, 3),
+]
