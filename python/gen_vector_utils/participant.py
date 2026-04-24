@@ -15,25 +15,27 @@ from chilldkg_ref.chilldkg import (
     participant_finalize,
     participant_investigate,
 )
-from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
+from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX
 import chilldkg_ref.chilldkg as chilldkg
 
 
-def generate_participant_step1_vectors():
-    description = [
-        "Test vectors for participant_step1(hostseckey, params, random).",
-        "Executes the first round of DKG from a participant's perspective.",
-        "Takes the participant's host secret key, session parameters, and 32 bytes of fresh randomness.",
-        "Returns an opaque state object and a participant message (pmsg1) to send to the coordinator.",
-        "",
-        "For each valid test case:",
-        "  Call participant_step1(hostseckey, params, random).",
-        "  Verify the returned pmsg1 equals expected_pmsg1.",
-        "",
-        "For each error test case:",
-        "  Call participant_step1(hostseckey, params, random).",
-        "  Verify it raises an exception matching expected_error.",
-    ]
+PARTICIPANT_STEP1_DESCRIPTION = [
+    "Test vectors for participant_step1(hostseckey, params, random).",
+    "Executes the first round of DKG from a participant's perspective.",
+    "Takes the participant's host secret key, session parameters, and 32 bytes of fresh randomness.",
+    "Returns an opaque state object and a participant message (pmsg1) to send to the coordinator.",
+    "",
+    "For each valid test case:",
+    "  Call participant_step1(hostseckey, params, random).",
+    "  Verify the returned pmsg1 equals expected_pmsg1.",
+    "",
+    "For each error test case:",
+    "  Call participant_step1(hostseckey, params, random).",
+    "  Verify it raises an exception matching expected_error.",
+]
+
+
+def generate_participant_step1_group():
     valid_cases = []
     error_cases = []
     tc_id = 0
@@ -168,34 +170,47 @@ def generate_participant_step1_vectors():
     )
 
     return {
-        "description": description,
         "total_tests": tc_id,
         "valid_test_cases": valid_cases,
         "error_test_cases": error_cases,
     }
 
 
-def generate_participant_step2_vectors():
-    description = [
-        "Test vectors for participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "Executes the second round of DKG from a participant's perspective.",
-        "Processes the coordinator's aggregated message (cmsg1) and produces a partial signature (pmsg2).",
-        "",
-        "Harness setup (re-derive state from prior round):",
-        "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
-        "  2. Assert pmsg1_out == pmsg1 (verifies your step1 implementation before testing step2).",
-        "",
-        "For each valid test case:",
-        "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "  Verify the returned pmsg2 equals expected_pmsg2.",
-        "",
-        "For each error test case:",
-        "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "  Verify it raises an exception matching expected_error.",
-        "  Error objects contain 'type' (exception class name) and optionally:",
-        "    - 'participant': index of the blamed party (for FaultyParticipantOrCoordinatorError)",
-        "    - 'message': human-readable description (informational, not required to match exactly)",
-    ]
+def generate_participant_step1_vectors():
+    groups = []
+    group = generate_participant_step1_group()
+    tc_id = len(group["valid_test_cases"]) + len(group["error_test_cases"])
+    groups.append(group)
+    return {
+        "description": PARTICIPANT_STEP1_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
+    }
+
+
+PARTICIPANT_STEP2_DESCRIPTION = [
+    "Test vectors for participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
+    "Executes the second round of DKG from a participant's perspective.",
+    "Processes the coordinator's aggregated message (cmsg1) and produces a partial signature (pmsg2).",
+    "",
+    "Harness setup (re-derive state from prior round):",
+    "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
+    "  2. Assert pmsg1_out == pmsg1 (verifies your step1 implementation before testing step2).",
+    "",
+    "For each valid test case:",
+    "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
+    "  Verify the returned pmsg2 equals expected_pmsg2.",
+    "",
+    "For each error test case:",
+    "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
+    "  Verify it raises an exception matching expected_error.",
+    "  Error objects contain 'type' (exception class name) and optionally:",
+    "    - 'participant': index of the blamed party (for FaultyParticipantOrCoordinatorError)",
+    "    - 'message': human-readable description (informational, not required to match exactly)",
+]
+
+
+def generate_participant_step2_group():
     valid_cases = []
     error_cases = []
     tc_id = 0
@@ -343,7 +358,6 @@ def generate_participant_step2_vectors():
     )
 
     return {
-        "description": description,
         "total_tests": tc_id,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
@@ -355,26 +369,40 @@ def generate_participant_step2_vectors():
     }
 
 
-def generate_participant_finalize_vectors():
-    description = [
-        "Test vectors for participant_finalize(pstate2, cmsg2).",
-        "Finalizes the DKG protocol from a participant's perspective.",
-        "Verifies the coordinator's certificate (cmsg2) and outputs the DKG result and recovery data.",
-        "",
-        "Harness setup (re-derive state through two prior rounds):",
-        "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
-        "     Assert pmsg1_out == pmsg1.",
-        "  2. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand) to obtain (pstate2, pmsg2_out).",
-        "     Assert pmsg2_out == pmsg2.",
-        "",
-        "For each valid test case:",
-        "  Call participant_finalize(pstate2, cmsg2).",
-        "  Verify the result matches expected_output (dkg_output and recovery_data).",
-        "",
-        "For each error test case:",
-        "  Call participant_finalize(pstate2, cmsg2).",
-        "  Verify it raises an exception matching expected_error.",
-    ]
+def generate_participant_step2_vectors():
+    groups = []
+    group = generate_participant_step2_group()
+    tc_id = len(group["valid_test_cases"]) + len(group["error_test_cases"])
+    groups.append(group)
+    return {
+        "description": PARTICIPANT_STEP2_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
+    }
+
+
+PARTICIPANT_FINALIZE_DESCRIPTION = [
+    "Test vectors for participant_finalize(pstate2, cmsg2).",
+    "Finalizes the DKG protocol from a participant's perspective.",
+    "Verifies the coordinator's certificate (cmsg2) and outputs the DKG result and recovery data.",
+    "",
+    "Harness setup (re-derive state through two prior rounds):",
+    "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
+    "     Assert pmsg1_out == pmsg1.",
+    "  2. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand) to obtain (pstate2, pmsg2_out).",
+    "     Assert pmsg2_out == pmsg2.",
+    "",
+    "For each valid test case:",
+    "  Call participant_finalize(pstate2, cmsg2).",
+    "  Verify the result matches expected_output (dkg_output and recovery_data).",
+    "",
+    "For each error test case:",
+    "  Call participant_finalize(pstate2, cmsg2).",
+    "  Verify it raises an exception matching expected_error.",
+]
+
+
+def generate_participant_finalize_group():
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
@@ -401,7 +429,6 @@ def generate_participant_finalize_vectors():
     error_cases = []
 
     vectors = {
-        "description": description,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
@@ -467,7 +494,6 @@ def generate_participant_finalize_vectors():
     )
 
     return {
-        "description": vectors["description"],
         "total_tests": tc_id,
         "params": vectors["params"],
         "hostseckey": vectors["hostseckey"],
@@ -481,23 +507,37 @@ def generate_participant_finalize_vectors():
     }
 
 
-def generate_participant_investigate_vectors():
-    description = [
-        "Test vectors for participant_investigate(error, cinv_msg).",
-        "Narrows down a faulty party after participant_step2 raised UnknownFaultyParticipantOrCoordinatorError.",
-        "This function always raises an exception (FaultyParticipantOrCoordinatorError or FaultyCoordinatorError).",
-        "",
-        "Harness setup:",
-        "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
-        "     Assert pmsg1_out == pmsg1.",
-        "  2. Per test case: look up cmsg1 from cmsg1_pool using cmsg1_index.",
-        "  3. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "     It must raise UnknownFaultyParticipantOrCoordinatorError. Capture that error object.",
-        "  4. Call participant_investigate(error, cinv_msg) and verify it raises expected_error.",
-        "",
-        "All test cases are error cases (this function never returns successfully).",
-        "Error objects contain 'type' and optionally 'participant' (index of the blamed party).",
-    ]
+def generate_participant_finalize_vectors():
+    groups = []
+    group = generate_participant_finalize_group()
+    tc_id = len(group["valid_test_cases"]) + len(group["error_test_cases"])
+    groups.append(group)
+    return {
+        "description": PARTICIPANT_FINALIZE_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
+    }
+
+
+PARTICIPANT_INVESTIGATE_DESCRIPTION = [
+    "Test vectors for participant_investigate(error, cinv_msg).",
+    "Narrows down a faulty party after participant_step2 raised UnknownFaultyParticipantOrCoordinatorError.",
+    "This function always raises an exception (FaultyParticipantOrCoordinatorError or FaultyCoordinatorError).",
+    "",
+    "Harness setup:",
+    "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
+    "     Assert pmsg1_out == pmsg1.",
+    "  2. Per test case: look up cmsg1 from cmsg1_pool using cmsg1_index.",
+    "  3. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
+    "     It must raise UnknownFaultyParticipantOrCoordinatorError. Capture that error object.",
+    "  4. Call participant_investigate(error, cinv_msg) and verify it raises expected_error.",
+    "",
+    "All test cases are error cases (this function never returns successfully).",
+    "Error objects contain 'type' and optionally 'participant' (index of the blamed party).",
+]
+
+
+def generate_participant_investigate_group():
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
@@ -645,7 +685,6 @@ def generate_participant_investigate_vectors():
     # TODO: add runtime_error test case
 
     return {
-        "description": description,
         "total_tests": tc_id,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
@@ -654,4 +693,16 @@ def generate_participant_investigate_vectors():
         "pmsg1": bytes_to_hex(pmsgs1[0]),
         "cmsg1_pool": cmsg1_pool,
         "error_test_cases": error_cases,
+    }
+
+
+def generate_participant_investigate_vectors():
+    groups = []
+    group = generate_participant_investigate_group()
+    tc_id = len(group["error_test_cases"])
+    groups.append(group)
+    return {
+        "description": PARTICIPANT_INVESTIGATE_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
     }

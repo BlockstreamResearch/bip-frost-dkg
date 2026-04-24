@@ -14,28 +14,30 @@ from chilldkg_ref.chilldkg import (
     coordinator_finalize,
     coordinator_investigate,
 )
-from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
+from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX
 import chilldkg_ref.chilldkg as chilldkg
 
 
-def generate_coordinator_step1_vectors():
-    description = [
-        "Test vectors for coordinator_step1(pmsgs1, params).",
-        "Aggregates participant round-1 messages and produces the coordinator's broadcast message (cmsg1).",
-        "",
-        "Assemble the pmsgs1 list from pmsg1_pool using pmsg1_indices:",
-        "  pmsgs1 = [pmsg1_pool[i] for i in pmsg1_indices]",
-        "  Pool entries at indices 0..n-1 are well-formed messages; higher indices may be malformed.",
-        "",
-        "For each valid test case:",
-        "  Call coordinator_step1(pmsgs1, params).",
-        "  Verify the returned cmsg1 equals expected_cmsg1.",
-        "",
-        "For each error test case:",
-        "  Call coordinator_step1(pmsgs1, params).",
-        "  Verify it raises an exception matching expected_error.",
-        "  Error objects may include 'participant' (index of the faulty party).",
-    ]
+COORDINATOR_STEP1_DESCRIPTION = [
+    "Test vectors for coordinator_step1(pmsgs1, params).",
+    "Aggregates participant round-1 messages and produces the coordinator's broadcast message (cmsg1).",
+    "",
+    "Assemble the pmsgs1 list from pmsg1_pool using pmsg1_indices:",
+    "  pmsgs1 = [pmsg1_pool[i] for i in pmsg1_indices]",
+    "  Pool entries at indices 0..n-1 are well-formed messages; higher indices may be malformed.",
+    "",
+    "For each valid test case:",
+    "  Call coordinator_step1(pmsgs1, params).",
+    "  Verify the returned cmsg1 equals expected_cmsg1.",
+    "",
+    "For each error test case:",
+    "  Call coordinator_step1(pmsgs1, params).",
+    "  Verify it raises an exception matching expected_error.",
+    "  Error objects may include 'participant' (index of the faulty party).",
+]
+
+
+def generate_coordinator_step1_group():
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
@@ -153,7 +155,6 @@ def generate_coordinator_step1_vectors():
     )
 
     return {
-        "description": description,
         "total_tests": tc_id,
         "pmsg1_pool": pmsg1_pool,
         "valid_test_cases": valid_cases,
@@ -161,7 +162,40 @@ def generate_coordinator_step1_vectors():
     }
 
 
-def generate_coordinator_finalize_vectors():
+def generate_coordinator_step1_vectors():
+    groups = []
+    group = generate_coordinator_step1_group()
+    tc_id = len(group["valid_test_cases"]) + len(group["error_test_cases"])
+    groups.append(group)
+    return {
+        "description": COORDINATOR_STEP1_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
+    }
+
+
+COORDINATOR_FINALIZE_DESCRIPTION = [
+    "Test vectors for coordinator_finalize(cstate, pmsgs2).",
+    "Collects participant round-2 signatures and produces the final certificate (cmsg2).",
+    "",
+    "Harness setup:",
+    "  1. Call coordinator_step1(pmsgs1, params) to obtain (cstate, cmsg1_out).",
+    "     Assert cmsg1_out == cmsg1.",
+    "",
+    "Assemble the pmsgs2 list from pmsg2_pool using pmsg2_indices:",
+    "  pmsgs2 = [pmsg2_pool[i] for i in pmsg2_indices]",
+    "",
+    "For each valid test case:",
+    "  Call coordinator_finalize(cstate, pmsgs2).",
+    "  Verify the result matches expected_output (cmsg2, dkg_output, recovery_data).",
+    "",
+    "For each error test case:",
+    "  Call coordinator_finalize(cstate, pmsgs2).",
+    "  Verify it raises an exception matching expected_error.",
+]
+
+
+def generate_coordinator_finalize_group():
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
@@ -242,25 +276,6 @@ def generate_coordinator_finalize_vectors():
     )
 
     return {
-        "description": [
-            "Test vectors for coordinator_finalize(cstate, pmsgs2).",
-            "Collects participant round-2 signatures and produces the final certificate (cmsg2).",
-            "",
-            "Harness setup:",
-            "  1. Call coordinator_step1(pmsgs1, params) to obtain (cstate, cmsg1_out).",
-            "     Assert cmsg1_out == cmsg1.",
-            "",
-            "Assemble the pmsgs2 list from pmsg2_pool using pmsg2_indices:",
-            "  pmsgs2 = [pmsg2_pool[i] for i in pmsg2_indices]",
-            "",
-            "For each valid test case:",
-            "  Call coordinator_finalize(cstate, pmsgs2).",
-            "  Verify the result matches expected_output (cmsg2, dkg_output, recovery_data).",
-            "",
-            "For each error test case:",
-            "  Call coordinator_finalize(cstate, pmsgs2).",
-            "  Verify it raises an exception matching expected_error.",
-        ],
         "total_tests": tc_id,
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
@@ -271,7 +286,30 @@ def generate_coordinator_finalize_vectors():
     }
 
 
-def generate_coordinator_investigate_vectors():
+def generate_coordinator_finalize_vectors():
+    groups = []
+    group = generate_coordinator_finalize_group()
+    tc_id = len(group["valid_test_cases"]) + len(group["error_test_cases"])
+    groups.append(group)
+    return {
+        "description": COORDINATOR_FINALIZE_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
+    }
+
+
+COORDINATOR_INVESTIGATE_DESCRIPTION = [
+    "Test vectors for coordinator_investigate(pmsgs1, params).",
+    "Generates investigation messages to help participants identify faulty parties.",
+    "Called when a participant reports UnknownFaultyParticipantOrCoordinatorError.",
+    "",
+    "For each valid test case:",
+    "  Call coordinator_investigate(pmsgs1, params).",
+    "  Verify the returned list of investigation messages equals expected_cinv_msgs.",
+]
+
+
+def generate_coordinator_investigate_group():
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
@@ -297,18 +335,21 @@ def generate_coordinator_investigate_vectors():
     ]
 
     return {
-        "description": [
-            "Test vectors for coordinator_investigate(pmsgs1, params).",
-            "Generates investigation messages to help participants identify faulty parties.",
-            "Called when a participant reports UnknownFaultyParticipantOrCoordinatorError.",
-            "",
-            "For each valid test case:",
-            "  Call coordinator_investigate(pmsgs1, params).",
-            "  Verify the returned list of investigation messages equals expected_cinv_msgs.",
-        ],
         "total_tests": tc_id,
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
         "valid_test_cases": valid_cases,
         "error_test_cases": [],
+    }
+
+
+def generate_coordinator_investigate_vectors():
+    groups = []
+    group = generate_coordinator_investigate_group()
+    tc_id = len(group["valid_test_cases"])
+    groups.append(group)
+    return {
+        "description": COORDINATOR_INVESTIGATE_DESCRIPTION,
+        "total_tests": tc_id,
+        "testGroups": groups,
     }
