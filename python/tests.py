@@ -435,7 +435,7 @@ def test_participant_step1_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         for test_case in group["valid_test_cases"]:
             hostseckey = bytes.fromhex(test_case["hostseckey"])
             params = params_from_dict(test_case["params"])
@@ -444,6 +444,7 @@ def test_participant_step1_vectors():
             _, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
             assert expected_pmsg1 == pmsg1
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
         for test_case in group["error_test_cases"]:
             hostseckey = bytes.fromhex(test_case["hostseckey"])
@@ -455,6 +456,7 @@ def test_participant_step1_vectors():
                 expected_error,
             )
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
@@ -465,7 +467,7 @@ def test_participant_step2_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         # common fields for all test cases
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
@@ -481,6 +483,7 @@ def test_participant_step2_vectors():
             _, pmsg2 = chilldkg.participant_step2(hostseckey, state1, cmsg1, aux_rand)
             assert expected_pmsg2 == pmsg2
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
         for test_case in group["error_test_cases"]:
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
@@ -490,6 +493,7 @@ def test_participant_step2_vectors():
                 expected_error,
             )
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
@@ -500,7 +504,7 @@ def test_participant_finalize_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         # common fields for all test cases
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
@@ -523,6 +527,7 @@ def test_participant_finalize_vectors():
             assert expected_pout == dkg_output_asdict(pout)
             assert expected_prec == prec
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
         for test_case in group["error_test_cases"]:
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
@@ -531,6 +536,7 @@ def test_participant_finalize_vectors():
                 lambda: chilldkg.participant_finalize(state2, cmsg2), expected_error
             )
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
@@ -541,7 +547,7 @@ def test_participant_investigate_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         # common fields for all test cases
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
@@ -569,6 +575,7 @@ def test_participant_investigate_vectors():
             else:
                 raise AssertionError("Expected exception")
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
@@ -579,7 +586,7 @@ def test_coordinator_step1_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         pmsg1_pool = group["pmsg1_pool"]
 
         for test_case in group["valid_test_cases"]:
@@ -589,6 +596,7 @@ def test_coordinator_step1_vectors():
             _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
             assert bytes.fromhex(expected_cmsg1) == cmsg1
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
         for test_case in group["error_test_cases"]:
             pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1_indices"]]
@@ -598,6 +606,7 @@ def test_coordinator_step1_vectors():
                 lambda: chilldkg.coordinator_step1(pmsgs1, params), expected_error
             )
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
@@ -609,7 +618,7 @@ def test_coordinator_finalize_vectors():
 
     total_cases = 0
 
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         params = params_from_dict(group["params"])
         pmsgs1 = [bytes.fromhex(m) for m in group["pmsgs1"]]
         pmsg2_pool = group["pmsg2_pool"]
@@ -627,6 +636,7 @@ def test_coordinator_finalize_vectors():
             assert expected_cout == dkg_output_asdict(cout)
             assert bytes.fromhex(expected_crec) == crec
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
         for test_case in group["error_test_cases"]:
             pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2_indices"]]
@@ -635,6 +645,7 @@ def test_coordinator_finalize_vectors():
                 lambda: chilldkg.coordinator_finalize(state, pmsgs2), expected_error
             )
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
@@ -646,7 +657,7 @@ def test_coordinator_investigate_vectors():
 
     total_cases = 0
 
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         params = params_from_dict(group["params"])
         pmsgs1 = [bytes.fromhex(m) for m in group["pmsgs1"]]
 
@@ -655,6 +666,7 @@ def test_coordinator_investigate_vectors():
             expected_cinv_msgs = test_case["expected_cinv_msgs"]
             assert [bytes.fromhex(m) for m in expected_cinv_msgs] == cinv_msgs
             total_cases += 1
+            assert test_case["tcId"] == total_cases
 
     assert test_data["total_tests"] == total_cases
 
