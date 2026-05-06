@@ -28,8 +28,6 @@ from .util import (
     UnknownFaultyParticipantOrCoordinatorError,
     FaultyParticipantError,
     MsgParseError,
-    ParticipantMsgParseError,
-    CoordinatorMsgParseError,
 )
 
 __all__ = [
@@ -631,7 +629,7 @@ def participant_step2(
     try:
         cmsg1_parsed = CoordinatorMsg1.from_bytes(cmsg1, t, len(params.hostpubkeys))
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     enc_cmsg, enc_secshares = cmsg1_parsed
 
     enc_dkg_output, eq_input = encpedpop.participant_step2(
@@ -695,7 +693,7 @@ def participant_finalize(
         cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, len(params.hostpubkeys))
         certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     except InvalidSignatureInCertificateError as e:
         raise FaultyParticipantOrCoordinatorError(
             e.participant,
@@ -735,7 +733,7 @@ def participant_investigate(
     try:
         cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n)
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     encpedpop.participant_investigate(
         error=error,
         cinv=cinv_parsed.enc_cinv.to_bytes(),
@@ -788,7 +786,7 @@ def coordinator_step1(
         try:
             parsed = ParticipantMsg1.from_bytes(pmsg1, t, len(hostpubkeys))
         except MsgParseError as e:
-            raise ParticipantMsgParseError(idx, *e.args) from e
+            raise FaultyParticipantError(idx, *e.args) from e
         pmsgs1_parsed.append(parsed)
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
@@ -851,7 +849,7 @@ def coordinator_finalize(
         try:
             parsed = ParticipantMsg2.from_bytes(pmsg2)
         except MsgParseError as e:
-            raise ParticipantMsgParseError(idx, *e.args) from e
+            raise FaultyParticipantError(idx, *e.args) from e
         pmsgs2_parsed.append(parsed)
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2_parsed])
     try:
@@ -894,7 +892,7 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
         try:
             parsed = ParticipantMsg1.from_bytes(pmsg, t, n)
         except MsgParseError as e:
-            raise ParticipantMsgParseError(idx, *e.args) from e
+            raise FaultyParticipantError(idx, *e.args) from e
         pmsgs_parsed.append(parsed)
     enc_cinvs = encpedpop.coordinator_investigate(
         [pmsg.enc_pmsg.to_bytes() for pmsg in pmsgs_parsed], t

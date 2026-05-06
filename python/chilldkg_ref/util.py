@@ -105,11 +105,3 @@ class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
 
 class MsgParseError(ValueError):
     pass
-
-
-class ParticipantMsgParseError(FaultyParticipantError):
-    pass
-
-
-class CoordinatorMsgParseError(FaultyCoordinatorError):
-    pass

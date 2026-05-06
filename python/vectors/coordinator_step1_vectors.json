@@ -124,7 +124,7 @@
                 "t": 2
             },
             "expected_error": {
-                "type": "ParticipantMsgParseError",
+                "type": "FaultyParticipantError",
                 "participant": 1,
                 "message": "missing encrypted secret shares"
             },

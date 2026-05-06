@@ -57,7 +57,7 @@
             "tc_id": 2,
             "cmsg2": "A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B54",
             "expected_error": {
-                "type": "CoordinatorMsgParseError",
+                "type": "FaultyCoordinatorError",
                 "message": "invalid certificate length"
             },
             "comment": "invalid cmsg2: length is invalid (missing last signature)"
