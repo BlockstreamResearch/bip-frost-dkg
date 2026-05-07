@@ -11,9 +11,8 @@ from .util import (
     UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
     FaultyCoordinatorError,
+    FaultyParticipantError,
     MsgParseError,
-    ParticipantMsgParseError,
-    CoordinatorMsgParseError,
 )
 
 
@@ -351,7 +350,7 @@ def participant_step2(
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, simpl_state.t, len(enckeys))
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     simpl_cmsg, pubnonces = cmsg_parsed
 
     reported_pubnonce = pubnonces[idx]
@@ -385,7 +384,7 @@ def participant_investigate(
     try:
         cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, simpl_inv_data.n)
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     enc_partial_secshares, partial_pubshares = cinv_parsed
     partial_secshares = [
         enc_partial_secshare - pad
@@ -430,7 +429,7 @@ def coordinator_step(
         try:
             parsed = ParticipantMsg.from_bytes(pmsg, t, n)
         except MsgParseError as e:
-            raise ParticipantMsgParseError(i, *e.args) from e
+            raise FaultyParticipantError(i, *e.args) from e
         pmsgs_parsed.append(parsed)
     simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
         pmsgs=[pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed], t=t, n=n

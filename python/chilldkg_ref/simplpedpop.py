@@ -9,9 +9,8 @@ from .util import (
     FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
+    FaultyParticipantError,
     MsgParseError,
-    ParticipantMsgParseError,
-    CoordinatorMsgParseError,
 )
 from .vss import VSS, VSSCommitment
 
@@ -277,7 +276,7 @@ def participant_step2(
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t, n)
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg_parsed
 
     if coms_to_secrets[idx] != com_to_secret:
@@ -345,7 +344,7 @@ def participant_investigate(
     try:
         cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n)
     except MsgParseError as e:
-        raise CoordinatorMsgParseError(*e.args) from e
+        raise FaultyCoordinatorError(*e.args) from e
     partial_pubshares = cinv_parsed.partial_pubshares
 
     if GE.sum(*partial_pubshares) != pubshare:
@@ -396,7 +395,7 @@ def coordinator_step(
         try:
             parsed = ParticipantMsg.from_bytes(pmsg, t)
         except MsgParseError as e:
-            raise ParticipantMsgParseError(i, *e.args) from e
+            raise FaultyParticipantError(i, *e.args) from e
         pmsgs_parsed.append(parsed)
     # Sum the commitments to the i-th coefficients for i > 0
     #
