@@ -42,6 +42,8 @@ __all__ = [
     "coordinator_finalize",
     "coordinator_investigate",
     "recover",
+    "participant_recovery_ack_sign",
+    "participant_recovery_acks_verify",
     # Exceptions
     "HostSeckeyError",
     "SessionParamsError",
@@ -55,6 +57,7 @@ __all__ = [
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
     "RecoveryDataError",
+    "InvalidRecoveryAckError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -117,6 +120,25 @@ class InvalidSignatureInCertificateError(ValueError):
     def __init__(self, participant: int, *args: Any):
         self.participant = participant
         super().__init__(participant, *args)
+
+
+###
+### Recovery acknowledgment helpers
+###
+
+
+def recovery_ack_message(x: bytes, idx: int) -> bytes:
+    # Domain separation as described in BIP 340
+    prefix = (BIP_TAG + "recovery acknowledgment").encode()
+    prefix = prefix + b"\x00" * (33 - len(prefix))
+    return prefix + idx.to_bytes(4, "big") + x
+
+
+def recovery_ack_sign(
+    hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes
+) -> bytes:
+    msg = recovery_ack_message(x, idx)
+    return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
 ###
@@ -996,3 +1018,134 @@ def recover(
 
 class RecoveryDataError(ValueError):
     """Raised if the recovery data is invalid."""
+
+
+###
+### Recovery acknowledgment
+###
+
+
+def participant_recovery_ack_sign(
+    hostseckey: bytes, recovery_data: RecoveryData, params: SessionParams, aux_rand: bytes
+) -> bytes:
+    """Sign recovery data to create a recovery acknowledgment.
+
+    This function allows a participant to create an explicit confirmation
+    signature on the recovery data. This can be used for an optional
+    confirmation round where participants acknowledge that they have
+    successfully received the complete recovery data.
+
+    Arguments:
+        hostseckey: Participant's long-term host secret key (32 bytes).
+        recovery_data: Recovery data from a successful session.
+        params: Common session parameters.
+        aux_rand: Auxiliary randomness (32 bytes). FRESH 32-byte randomness
+            is optimal, but 16 random bytes or a counter padded to 32 bytes
+            is acceptable (see BIP 340).
+
+    Returns:
+        bytes: Acknowledgment signature (64 bytes).
+
+    Raises:
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
+            key is invalid, or if the key does not match any host public key.
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
+        RandomnessError: If the length of `aux_rand` is not 32 bytes.
+        RecoveryDataError: If the recovery data is invalid or does not match
+            the provided parameters.
+    """
+    hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
+
+    params_validate(params)
+    (hostpubkeys, t) = params
+
+    try:
+        idx = hostpubkeys.index(hostpubkey)
+    except ValueError as e:
+        raise HostSeckeyError(
+            "Host secret key does not match any host public key"
+        ) from e
+    if len(aux_rand) != 32:
+        raise RandomnessError
+
+    try:
+        (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
+    except Exception as e:
+        raise RecoveryDataError("Failed to deserialize recovery data") from e
+
+    if t_rec != t or hostpubkeys_rec != hostpubkeys:
+        raise RecoveryDataError(
+            "Recovery data does not match the provided session parameters"
+        )
+
+    sig = recovery_ack_sign(hostseckey, idx, recovery_data, aux_rand)
+    return sig
+
+
+def participant_recovery_acks_verify(
+    recovery_data: RecoveryData, params: SessionParams, ack_sigs: List[bytes]
+) -> None:
+    """Verify recovery acknowledgment signatures from all participants.
+
+    This function is used to ensure that all participants have
+    received the recovery data before the threshold public key is used
+    (e.g., before funds are sent to it).
+
+    Arguments:
+        recovery_data: Recovery data from a successful session.
+        params: Common session parameters.
+        ack_sigs: List of acknowledgment signatures (64 bytes each)
+            from all participants, in the same order as `hostpubkeys`.
+
+    Raises:
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
+        RecoveryDataError: If the recovery data is invalid or does not match
+            the provided parameters.
+        InvalidRecoveryAckError: If any recovery acknowledgment signature is
+            invalid.
+    """
+    params_validate(params)
+    (hostpubkeys, t) = params
+
+    if len(ack_sigs) != len(hostpubkeys):
+        raise ValueError
+
+    try:
+        (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
+    except Exception as e:
+        raise RecoveryDataError("Failed to deserialize recovery data") from e
+
+    if t_rec != t or hostpubkeys_rec != hostpubkeys:
+        raise RecoveryDataError(
+            "Recovery data does not match the provided session parameters"
+        )
+
+    for i, sig in enumerate(ack_sigs):
+        if len(sig) != 64:
+            raise InvalidRecoveryAckError(i)
+        msg = recovery_ack_message(recovery_data, i)
+        valid = schnorr_verify(
+            msg,
+            hostpubkeys[i][1:33],
+            sig,
+        )
+        if not valid:
+            raise InvalidRecoveryAckError(i)
+
+
+class InvalidRecoveryAckError(ValueError):
+    """Raised if a recovery acknowledgment signature is invalid.
+
+    Attributes:
+        participant (int): Index of the participant whose signature is invalid.
+    """
+
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)

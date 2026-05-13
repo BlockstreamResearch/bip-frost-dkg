@@ -583,6 +583,9 @@ e.g., stop sending additional funds to addresses derived from it.
 it will still be possible to spend the funds,
 and even recovered participants can participate in signing sessions.)
 
+To facilitate this confirmation process,
+ChillDKG provides optional functionality for creating and verifying acknowledgment signatures on the recovery data.
+
 ### Blaming Faulty Parties
 
 Any faulty party can make a ChillDKG session abort by sending a message that deviates from the protocol specification.
@@ -1199,6 +1202,89 @@ class RecoveryDataError(ValueError)
 ```
 
 Raised if the recovery data is invalid.
+
+#### participant\_recovery\_ack\_sign
+
+```python
+def participant_recovery_ack_sign(hostseckey: bytes, recovery_data: RecoveryData, params: SessionParams, aux_rand: bytes) -> bytes
+```
+
+Sign recovery data to create a recovery acknowledgment.
+
+This function allows a participant to create an explicit confirmation
+signature on the recovery data. This can be used for an optional
+confirmation round where participants acknowledge that they have
+successfully received the complete recovery data.
+
+*Arguments*:
+
+- `hostseckey` - Participant's long-term host secret key (32 bytes).
+- `recovery_data` - Recovery data from a successful session.
+- `params` - Common session parameters.
+- `aux_rand` - Auxiliary randomness (32 bytes). FRESH 32-byte randomness
+  is optimal, but 16 random bytes or a counter padded to 32 bytes
+  is acceptable (see BIP 340).
+
+
+*Returns*:
+
+- `bytes` - Acknowledgment signature (64 bytes).
+
+
+*Raises*:
+
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
+  key is invalid, or if the key does not match any host public key.
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
+- `RandomnessError` - If the length of `aux_rand` is not 32 bytes.
+- `RecoveryDataError` - If the recovery data is invalid or does not match
+  the provided parameters.
+
+#### participant\_recovery\_acks\_verify
+
+```python
+def participant_recovery_acks_verify(recovery_data: RecoveryData, params: SessionParams, ack_sigs: List[bytes]) -> None
+```
+
+Verify recovery acknowledgment signatures from all participants.
+
+This function is used to ensure that all participants have
+received the recovery data before the threshold public key is used
+(e.g., before funds are sent to it).
+
+*Arguments*:
+
+- `recovery_data` - Recovery data from a successful session.
+- `params` - Common session parameters.
+- `ack_sigs` - List of acknowledgment signatures (64 bytes each)
+  from all participants, in the same order as `hostpubkeys`.
+
+
+*Raises*:
+
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
+- `RecoveryDataError` - If the recovery data is invalid or does not match
+  the provided parameters.
+- `InvalidRecoveryAckError` - If any recovery acknowledgment signature is
+  invalid.
+
+#### InvalidRecoveryAckError Exception
+
+```python
+class InvalidRecoveryAckError(ValueError)
+```
+
+Raised if a recovery acknowledgment signature is invalid.
+
+*Attributes*:
+
+- `participant` _int_ - Index of the participant whose signature is invalid.
 
 #### ProtocolError Exception
 
