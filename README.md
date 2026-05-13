@@ -508,6 +508,7 @@ Moreover, all parties obtain *recovery data* (common to all participants and the
 
 To participate in the FROST signing protocol, signers need their DKG output and their index in the host public key list, although the full list of host public keys is not required for signing.
 Additionally, the set of indices of all participating signers within the host public key list is required to initiate a signing session.
+Note that the participant with index `i` in `hostpubkeys` holds the secret share computed by evaluating the polynomial at point `i+1`. This evaluation point must be used as the participant's identifier when computing Lagrange coefficients in FROST signing sessions.
 
 ### Backup and Recovery
 
