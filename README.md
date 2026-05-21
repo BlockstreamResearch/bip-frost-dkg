@@ -1075,7 +1075,7 @@ Perform the coordinator's first step of a ChillDKG session.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
-- `FaultyParticipantError` - If another participant is faulty. See the
+- `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
 
 #### coordinator\_finalize
@@ -1121,7 +1121,7 @@ other participants via a communication channel beside the coordinator.
 
 *Raises*:
 
-- `FaultyParticipantError` - If another participant is faulty. See the
+- `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
 
 #### coordinator\_investigate
@@ -1153,7 +1153,7 @@ information.
 
 *Raises*:
 
-- `FaultyParticipantError` - If another participant is faulty. See the
+- `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
 
 #### recover
