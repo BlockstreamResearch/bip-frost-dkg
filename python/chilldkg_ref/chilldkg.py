@@ -773,7 +773,7 @@ def coordinator_step1(
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
-        FaultyParticipantError: If another participant is faulty. See the
+        FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
     """
     params_validate(params)
@@ -837,7 +837,7 @@ def coordinator_finalize(
         bytes: The serialized recovery data.
 
     Raises:
-        FaultyParticipantError: If another participant is faulty. See the
+        FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state
@@ -882,7 +882,7 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
             participant.
 
     Raises:
-        FaultyParticipantError: If another participant is faulty. See the
+        FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
     """
     n = len(pmsgs)
