@@ -70,7 +70,7 @@ def dkg_output_asdict(dkg_output: DKGOutput) -> dict:
     secshare = bytes_to_hex(dkg_output.secshare) if dkg_output.secshare else None
     return {
         "secshare": secshare,
-        "threshold_pubkey": bytes_to_hex(dkg_output.threshold_pubkey),
+        "thresholdPubkey": bytes_to_hex(dkg_output.threshold_pubkey),
         "pubshares": bytes_list_to_hex(dkg_output.pubshares),
     }
 

@@ -4,18 +4,18 @@
         "Computes a unique 32-byte identifier for session parameters (hostpubkeys, threshold).",
         "",
         "For each valid test case:",
-        "  Call params_id(params) and verify the result equals expected_params_id.",
+        "  Call params_id(params) and verify the result equals expectedParamsId.",
         "",
         "For each error test case:",
-        "  Call params_id(params) and verify it raises an exception matching expected_error.",
-        "  The expected_error object contains 'type' (the exception class name).",
+        "  Call params_id(params) and verify it raises an exception matching expectedError.",
+        "  The expectedError object contains 'type' (the exception class name).",
         "  Some errors include 'participant' (index of the offending key)",
         "  or 'participant1'/'participant2' (indices for duplicate keys)."
     ],
-    "total_tests": 6,
-    "valid_test_cases": [
+    "totalTests": 6,
+    "validTestCases": [
         {
-            "tc_id": 1,
+            "tcId": 1,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -24,11 +24,11 @@
                 ],
                 "t": 2
             },
-            "expected_params_id": "566F4DA6A6E6875F2FFE99E988310417F6CCA3E5B8F46CB9980AE3D5B2570A2A",
+            "expectedParamsId": "566F4DA6A6E6875F2FFE99E988310417F6CCA3E5B8F46CB9980AE3D5B2570A2A",
             "comment": "standard 2-of-3 threshold"
         },
         {
-            "tc_id": 2,
+            "tcId": 2,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -37,11 +37,11 @@
                 ],
                 "t": 1
             },
-            "expected_params_id": "1FB80306427F73D9C7E904D6B09D49D15B6F4E499D4746D9EA952B28D51B6820",
+            "expectedParamsId": "1FB80306427F73D9C7E904D6B09D49D15B6F4E499D4746D9EA952B28D51B6820",
             "comment": "min threshold value"
         },
         {
-            "tc_id": 3,
+            "tcId": 3,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -50,13 +50,13 @@
                 ],
                 "t": 3
             },
-            "expected_params_id": "D22DDB63254A9A2DC0B33CD6BE7AC1133DE42133CB670FDBF2A35113092E89BA",
+            "expectedParamsId": "D22DDB63254A9A2DC0B33CD6BE7AC1133DE42133CB670FDBF2A35113092E89BA",
             "comment": "max threshold value"
         }
     ],
-    "error_test_cases": [
+    "errorTestCases": [
         {
-            "tc_id": 4,
+            "tcId": 4,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -65,13 +65,13 @@
                 ],
                 "t": 0
             },
-            "expected_error": {
+            "expectedError": {
                 "type": "ThresholdOrCountError"
             },
             "comment": "invalid threshold value"
         },
         {
-            "tc_id": 5,
+            "tcId": 5,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -80,14 +80,14 @@
                 ],
                 "t": 2
             },
-            "expected_error": {
+            "expectedError": {
                 "type": "InvalidHostPubkeyError",
                 "participant": 1
             },
             "comment": "hostpubkeys list contains an invalid value"
         },
         {
-            "tc_id": 6,
+            "tcId": 6,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -97,7 +97,7 @@
                 ],
                 "t": 2
             },
-            "expected_error": {
+            "expectedError": {
                 "type": "DuplicateHostPubkeyError",
                 "participant1": 1,
                 "participant2": 3
