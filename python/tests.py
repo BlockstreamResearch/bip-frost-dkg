@@ -486,10 +486,16 @@ def test_participant_step2_vectors():
             assert test_case["tcId"] == total_cases
 
         for test_case in group["errorTestCases"]:
+            case_hostseckey = bytes.fromhex(
+                test_case.get("hostseckey", group["hostseckey"])
+            )
+            case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
             expected_error = test_case["expectedError"]
             assert_raises(
-                lambda: chilldkg.participant_step2(hostseckey, state1, cmsg1, aux_rand),
+                lambda: chilldkg.participant_step2(
+                    case_hostseckey, state1, cmsg1, case_aux_rand
+                ),
                 expected_error,
             )
             total_cases += 1

@@ -30,7 +30,7 @@ def generate_hostpubkey_vectors():
     error_cases = []
     tc_id = 0
 
-    # --- Valid test case 0 ---
+    # --- Valid test case ---
     tc_id += 1
     hostseckey = bytes.fromhex(
         "631C047D50A67E45E27ED1FF25FCE179CAF059A2120D346ACD9774C1F2BAB66F"
@@ -45,13 +45,11 @@ def generate_hostpubkey_vectors():
         }
     )
 
-    # --- Error test case 0: Wrong length ---
+    # --- Error test case: Wrong length ---
     tc_id += 1
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
-    error = expect_exception(
-        lambda: hostpubkey_gen(short_hostseckey), chilldkg.HostSeckeyError
-    )
+    error = expect_exception(lambda: hostpubkey_gen(short_hostseckey), ValueError)
     error_cases.append(
         {
             "tcId": tc_id,
@@ -60,10 +58,12 @@ def generate_hostpubkey_vectors():
             "comment": "length of host secret key is not 32 bytes",
         }
     )
-    # --- Error test case 1: Out-of-range hostseckey ---
+    # --- Error test case: Out-of-range hostseckey ---
     tc_id += 1
     invalid_hostseckey = bytes_from_int(Scalar.SIZE)
-    error = expect_exception(lambda: hostpubkey_gen(invalid_hostseckey), ValueError)
+    error = expect_exception(
+        lambda: hostpubkey_gen(invalid_hostseckey), chilldkg.HostSeckeyError
+    )
     error_cases.append(
         {
             "tcId": tc_id,
@@ -72,10 +72,12 @@ def generate_hostpubkey_vectors():
             "comment": "host secret key is out of range",
         }
     )
-    # --- Error test case 2: zeroed hostseckey ---
+    # --- Error test case: zeroed hostseckey ---
     tc_id += 1
     zeroed_hostseckey = b"\x00" * 32
-    error = expect_exception(lambda: hostpubkey_gen(zeroed_hostseckey), ValueError)
+    error = expect_exception(
+        lambda: hostpubkey_gen(zeroed_hostseckey), chilldkg.HostSeckeyError
+    )
     error_cases.append(
         {
             "tcId": tc_id,
@@ -133,7 +135,7 @@ def generate_params_id_vectors():
         }
         valid_cases.append(test_case)
 
-    # --- Error test case 0: Invalid threshold ---
+    # --- Error test case: Invalid threshold ---
     tc_id += 1
     t = 0
     invalid_params = chilldkg.SessionParams(hostpubkeys, t)
@@ -148,7 +150,7 @@ def generate_params_id_vectors():
             "comment": "invalid threshold value",
         }
     )
-    # --- Error test case 1: hostpubkeys list contains an invalid value ---
+    # --- Error test case: hostpubkeys list contains an invalid value ---
     tc_id += 1
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     t = 2
@@ -165,7 +167,7 @@ def generate_params_id_vectors():
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
-    # --- Error test case 2: hostpubkeys list contains duplicate values ---
+    # --- Error test case: hostpubkeys list contains duplicate values ---
     tc_id += 1
     t = 2
     with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
@@ -235,7 +237,7 @@ def generate_recover_vectors():
     pout, prec = chilldkg.participant_finalize(pstates2[0], cmsg2)
     assert prec == crec
 
-    # --- Valid test case 0: participant recovery ---
+    # --- Valid test case: participant recovery ---
     tc_id += 1
     pout_rec, params_rec = recover(hostseckeys[0], prec)
     assert pout_rec == pout
@@ -252,7 +254,7 @@ def generate_recover_vectors():
             "comment": "participant recovery",
         }
     )
-    # --- Valid test case 1: coordinator recovery ---
+    # --- Valid test case: coordinator recovery ---
     tc_id += 1
     cout_rec, params_rec = recover(None, crec)
     assert cout_rec == cout
@@ -270,7 +272,7 @@ def generate_recover_vectors():
         }
     )
 
-    # --- Error test case 0: recovery data of invalid length ---
+    # --- Error test case: recovery data of invalid length ---
     tc_id += 1
     invalid_crec = crec[1:]
     error = expect_exception(
@@ -285,7 +287,7 @@ def generate_recover_vectors():
             "comment": "recovery data of invalid length",
         }
     )
-    # --- Error test case 1: first coefficient of sum_coms is invalid ---
+    # --- Error test case: first coefficient of sum_coms is invalid ---
     tc_id += 1
     invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     invalid_crec = crec[:4] + invalid_ge + crec[4 + 33 :]
@@ -301,7 +303,7 @@ def generate_recover_vectors():
             "comment": "first coefficient of sum_coms is invalid",
         }
     )
-    # --- Error test case 2: last share in enc_secshare list is out of range ---
+    # --- Error test case: last share in enc_secshare list is out of range ---
     tc_id += 1
     n = len(hostpubkeys)
     cert_len = chilldkg.certeq_cert_len(n)
@@ -321,7 +323,7 @@ def generate_recover_vectors():
             "comment": "last share in enc_secshare list is invalid",
         }
     )
-    # --- Error test case 3: invalid threshold ---
+    # --- Error test case: invalid threshold ---
     tc_id += 1
     t = params.t
     invalid_crec = b"\x00" * 4 + crec[4 + 33 * t :]
@@ -337,7 +339,7 @@ def generate_recover_vectors():
             "comment": "invalid threshold",
         }
     )
-    # --- Error test case 4: first pubkey in the hostpubkey list is invalid ---
+    # --- Error test case: first pubkey in the hostpubkey list is invalid ---
     tc_id += 1
     invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"
     invalid_crec = crec[: 4 + 33 * t] + invalid_ge + crec[4 + 33 * t + 33 :]
@@ -353,7 +355,7 @@ def generate_recover_vectors():
             "comment": "first pubkey in the hostpubkey list is invalid",
         }
     )
-    # --- Error test case 5: last pubnonce in the pubnonces list was tampered with ---
+    # --- Error test case: last pubnonce in the pubnonces list was tampered with ---
     tc_id += 1
     n = len(hostpubkeys)
     cert_len = chilldkg.certeq_cert_len(n)
@@ -375,7 +377,7 @@ def generate_recover_vectors():
             "comment": "last pubnonce in the pubnonces list was tampered with (doesn't match signed certificate)",
         }
     )
-    # --- Error test case 6: last signature in the certificate is invalid ---
+    # --- Error test case: last signature in the certificate is invalid ---
     tc_id += 1
     rand_sig = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
@@ -393,13 +395,11 @@ def generate_recover_vectors():
             "comment": "last signature in the certificate is invalid",
         }
     )
-    # --- Error test case 7: invalid hostseckey ---
+    # --- Error test case: invalid hostseckey ---
     tc_id += 1
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
-    error = expect_exception(
-        lambda: recover(short_hostseckey, crec), chilldkg.HostSeckeyError
-    )
+    error = expect_exception(lambda: recover(short_hostseckey, crec), ValueError)
     error_cases.append(
         {
             "tcId": tc_id,
@@ -409,7 +409,7 @@ def generate_recover_vectors():
             "comment": "invalid hostseckey",
         }
     )
-    # --- Error test case 8: hostseckey doesn't match any hostpubkey ---
+    # --- Error test case: hostseckey doesn't match any hostpubkey ---
     tc_id += 1
     rand_hostseckey = bytes.fromhex(
         "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7"
@@ -424,6 +424,39 @@ def generate_recover_vectors():
             "recoveryData": bytes_to_hex(crec),
             "expectedError": error,
             "comment": "host secret key doesn't match any hostpubkey",
+        }
+    )
+    # --- Error test case: zero hostseckey ---
+    tc_id += 1
+    zero_hostseckey = b"\x00" * 32
+    error = expect_exception(
+        lambda: recover(zero_hostseckey, crec),
+        chilldkg.HostSeckeyError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "hostseckey": bytes_to_hex(zero_hostseckey),
+            "recoveryData": bytes_to_hex(crec),
+            "expectedError": error,
+            "comment": "host secret key is zero",
+        }
+    )
+
+    # --- Error test case: out-of-range hostseckey ---
+    tc_id += 1
+    overflow_hostseckey = bytes_from_int(Scalar.SIZE)
+    error = expect_exception(
+        lambda: recover(overflow_hostseckey, crec),
+        chilldkg.HostSeckeyError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "hostseckey": bytes_to_hex(overflow_hostseckey),
+            "recoveryData": bytes_to_hex(crec),
+            "expectedError": error,
+            "comment": "host secret key is out of range",
         }
     )
 
