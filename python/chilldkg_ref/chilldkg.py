@@ -6,6 +6,11 @@ not use for anything but tests.
 The public API consists of all functions with docstrings, including the types in
 their arguments and return values, and the exceptions they raise; see also the
 `__all__` list. All other definitions are internal.
+
+In addition to the exceptions documented for each function, all public API
+functions may raise built-in exceptions such as `TypeError` or `ValueError` when
+called with arguments of unexpected structure (e.g., wrong type or wrong
+length). These structural errors are not documented per-function.
 """
 
 from __future__ import annotations
@@ -155,11 +160,10 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
         The host public key (33 bytes).
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes or if the
-            key is invalid.
+        HostSeckeyError: If the host secret key is invalid.
     """
     if len(hostseckey) != 32:
-        raise HostSeckeyError
+        raise ValueError
 
     try:
         return pubkey_gen_plain(hostseckey)
@@ -168,9 +172,7 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
 
 
 class HostSeckeyError(ValueError):
-    """Raised if the host secret key is invalid.
-
-    This incluces the case that its length is not 32 bytes."""
+    """Raised if the host secret key is invalid."""
 
 
 ###
@@ -524,16 +526,16 @@ def participant_step1(
         bytes: The first message to be sent to the coordinator.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
-            key is invalid, or if the key does not match any entry of
-            `hostpubkeys`.
+        HostSeckeyError: If the host secret key is invalid, or if the key does not
+            match any entry of `hostpubkeys`.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
-        RandomnessError: If the length of `random` is not 32 bytes.
+        RandomnessError: If `random` is all zeroes (i.e., b"\\x00" * 32). This check
+            guards against the case of a malfunctioning random number generator.
     """
-    hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # ValueError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
@@ -545,6 +547,8 @@ def participant_step1(
             "Host secret key does not match any host public key"
         ) from e
     if len(random) != 32:
+        raise ValueError
+    if random == b"\x00" * 32:
         raise RandomnessError
 
     enc_state, enc_pmsg = encpedpop.participant_step1(
@@ -558,7 +562,7 @@ def participant_step1(
         enckeys=hostpubkeys,
         idx=idx,
         random=random,
-    )  # HostSeckeyError if len(hostseckey) != 32
+    )
 
     state1 = ParticipantState1(params, idx, enc_state)
     pmsg1 = enc_pmsg
@@ -566,7 +570,7 @@ def participant_step1(
 
 
 class RandomnessError(ValueError):
-    """Raised if the length of the provided randomness is not 32 bytes."""
+    """Raised if the provided randomness is all zeroes (i.e., b"\\x00" * 32)."""
 
 
 def participant_step2(
@@ -606,8 +610,8 @@ def participant_step2(
         bytes: The second message to be sent to the coordinator.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes.
-        RandomnessError: If the length of `aux_rand` is not 32 bytes.
+        HostSeckeyError: If the host secret key is invalid or if it does not match the one
+            used in `participant_step1`.
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
         FaultyParticipantOrCoordinatorError: If another known participant or the
@@ -619,12 +623,17 @@ def participant_step2(
             suspected participant. See the documentation of the exception for
             further details.
     """
-    if len(hostseckey) != 32:
-        raise HostSeckeyError
+    hostpubkey = hostpubkey_gen(
+        hostseckey
+    )  # HostSeckeyError if invalid or ValueError if len(hostseckey) != 32
     if len(aux_rand) != 32:
-        raise RandomnessError
+        raise ValueError
 
     params, idx, enc_state = state1
+    if hostpubkey != params.hostpubkeys[idx]:
+        raise HostSeckeyError(
+            "Host secret key does not match the one used in participant_step1"
+        )
     t = enc_state.simpl_state.t
     try:
         cmsg1_parsed = CoordinatorMsg1.from_bytes(cmsg1, t, len(params.hostpubkeys))
@@ -666,7 +675,7 @@ def participant_finalize(
     **Warning:**
     Changing perspectives, this implies that, even when obtaining an exception,
     this participant **must not** conclude that the DKG session has failed, and
-    as a consequence, this particiant **must not** erase the hostseckey. The
+    as a consequence, this participant **must not** erase the hostseckey. The
     underlying reason is that some other participant may deem the DKG session
     successful and use the resulting threshold public key (e.g., by sending
     funds to it). That other participant can, at any point in the future,
@@ -928,8 +937,8 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
-            key is invalid, or if the key does not match the recovery data.
+        HostSeckeyError: If the host secret key is invalid, or if the key does not
+            match the recovery data.
             (This can also occur if the recovery data is invalid.)
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
@@ -960,7 +969,7 @@ def recover(
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
     if hostseckey:
-        hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError
+        hostpubkey = hostpubkey_gen(hostseckey)  # ValueError or HostSeckeyError
         try:
             idx = hostpubkeys.index(hostpubkey)
         except ValueError as e:
