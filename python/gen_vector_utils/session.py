@@ -11,6 +11,7 @@ import chilldkg_ref.chilldkg as chilldkg
 
 from secp256k1lab.secp256k1 import Scalar
 from secp256k1lab.util import bytes_from_int
+from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX
 
 
 def generate_hostpubkey_vectors():
@@ -19,11 +20,11 @@ def generate_hostpubkey_vectors():
         "Generates a compressed public key (33 bytes) from a 32-byte host secret key.",
         "",
         "For each valid test case:",
-        "  Call hostpubkey_gen(hostseckey) and verify the result equals expected_hostpubkey.",
+        "  Call hostpubkey_gen(hostseckey) and verify the result equals expectedHostpubkey.",
         "",
         "For each error test case:",
-        "  Call hostpubkey_gen(hostseckey) and verify it raises an exception matching expected_error.",
-        "  The expected_error object contains 'type' (the exception class name).",
+        "  Call hostpubkey_gen(hostseckey) and verify it raises an exception matching expectedError.",
+        "  The expectedError object contains 'type' (the exception class name).",
     ]
     valid_cases = []
     error_cases = []
@@ -37,9 +38,9 @@ def generate_hostpubkey_vectors():
     expected_pubkey = hostpubkey_gen(hostseckey)
     valid_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckey),
-            "expected_hostpubkey": bytes_to_hex(expected_pubkey),
+            "expectedHostpubkey": bytes_to_hex(expected_pubkey),
             "comment": "valid host secret key",
         }
     )
@@ -53,9 +54,9 @@ def generate_hostpubkey_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(short_hostseckey),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "length of host secret key is not 32 bytes",
         }
     )
@@ -65,9 +66,9 @@ def generate_hostpubkey_vectors():
     error = expect_exception(lambda: hostpubkey_gen(invalid_hostseckey), ValueError)
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(invalid_hostseckey),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "host secret key is out of range",
         }
     )
@@ -77,18 +78,18 @@ def generate_hostpubkey_vectors():
     error = expect_exception(lambda: hostpubkey_gen(zeroed_hostseckey), ValueError)
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(zeroed_hostseckey),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "zeroed host secret key",
         }
     )
 
     return {
         "description": description,
-        "total_tests": tc_id,
-        "valid_test_cases": valid_cases,
-        "error_test_cases": error_cases,
+        "totalTests": tc_id,
+        "validTestCases": valid_cases,
+        "errorTestCases": error_cases,
     }
 
 
@@ -98,24 +99,18 @@ def generate_params_id_vectors():
         "Computes a unique 32-byte identifier for session parameters (hostpubkeys, threshold).",
         "",
         "For each valid test case:",
-        "  Call params_id(params) and verify the result equals expected_params_id.",
+        "  Call params_id(params) and verify the result equals expectedParamsId.",
         "",
         "For each error test case:",
-        "  Call params_id(params) and verify it raises an exception matching expected_error.",
-        "  The expected_error object contains 'type' (the exception class name).",
+        "  Call params_id(params) and verify it raises an exception matching expectedError.",
+        "  The expectedError object contains 'type' (the exception class name).",
         "  Some errors include 'participant' (index of the offending key)",
         "  or 'participant1'/'participant2' (indices for duplicate keys).",
     ]
     valid_cases = []
     error_cases = []
     tc_id = 0
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [hostpubkey_gen(sk) for sk in hostseckeys]
 
     # --- Valid test cases ---
@@ -131,9 +126,9 @@ def generate_params_id_vectors():
         params = chilldkg.SessionParams(hostpubkeys, t)
         expected_params_id = params_id(params)
         test_case = {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "params": params_asdict(params),
-            "expected_params_id": bytes_to_hex(expected_params_id),
+            "expectedParamsId": bytes_to_hex(expected_params_id),
             "comment": case["comment"],
         }
         valid_cases.append(test_case)
@@ -147,9 +142,9 @@ def generate_params_id_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "params": params_asdict(invalid_params),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid threshold value",
         }
     )
@@ -164,9 +159,9 @@ def generate_params_id_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "params": params_asdict(invalid_params),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
@@ -180,18 +175,18 @@ def generate_params_id_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "params": params_asdict(duplicate_params),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
 
     return {
         "description": description,
-        "total_tests": tc_id,
-        "valid_test_cases": valid_cases,
-        "error_test_cases": error_cases,
+        "totalTests": tc_id,
+        "validTestCases": valid_cases,
+        "errorTestCases": error_cases,
     }
 
 
@@ -203,33 +198,21 @@ def generate_recover_vectors():
         "If hostseckey is a 32-byte hex string, recovery is performed as the corresponding participant.",
         "",
         "For each valid test case:",
-        "  Call recover(hostseckey, recovery_data) and verify the result matches expected_output.",
-        "  expected_output contains 'dkg_output' (with secshare, threshold_pubkey, pubshares)",
+        "  Call recover(hostseckey, recoveryData) and verify the result matches expectedOutput.",
+        "  expectedOutput contains 'dkgOutput' (with secshare, thresholdPubkey, pubshares)",
         "  and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",
-        "  Call recover(hostseckey, recovery_data) and verify it raises an exception matching expected_error.",
+        "  Call recover(hostseckey, recoveryData) and verify it raises an exception matching expectedError.",
     ]
     valid_cases = []
     error_cases = []
     tc_id = 0
 
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:3])
     assert len(randoms) == len(hostpubkeys)
     pstates1 = []
     pmsgs1 = []
@@ -239,9 +222,7 @@ def generate_recover_vectors():
         pmsgs1.append(msg)
     cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
 
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
     pstates2 = []
     pmsgs2 = []
     for i in range(len(hostpubkeys)):
@@ -261,11 +242,11 @@ def generate_recover_vectors():
     assert params_rec == params
     valid_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
-            "recovery_data": bytes_to_hex(prec),
-            "expected_output": {
-                "dkg_output": dkg_output_asdict(pout_rec),
+            "recoveryData": bytes_to_hex(prec),
+            "expectedOutput": {
+                "dkgOutput": dkg_output_asdict(pout_rec),
                 "params": params_asdict(params_rec),
             },
             "comment": "participant recovery",
@@ -278,11 +259,11 @@ def generate_recover_vectors():
     assert params_rec == params
     valid_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(crec),
-            "expected_output": {
-                "dkg_output": dkg_output_asdict(cout_rec),
+            "recoveryData": bytes_to_hex(crec),
+            "expectedOutput": {
+                "dkgOutput": dkg_output_asdict(cout_rec),
                 "params": params_asdict(params_rec),
             },
             "comment": "coordinator recovery",
@@ -297,10 +278,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "recovery data of invalid length",
         }
     )
@@ -313,10 +294,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "first coefficient of sum_coms is invalid",
         }
     )
@@ -333,10 +314,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "last share in enc_secshare list is invalid",
         }
     )
@@ -349,10 +330,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "invalid threshold",
         }
     )
@@ -365,10 +346,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "first pubkey in the hostpubkey list is invalid",
         }
     )
@@ -387,10 +368,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "last pubnonce in the pubnonces list was tampered with (doesn't match signed certificate)",
         }
     )
@@ -405,10 +386,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": None,
-            "recovery_data": bytes_to_hex(invalid_crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(invalid_crec),
+            "expectedError": error,
             "comment": "last signature in the certificate is invalid",
         }
     )
@@ -421,10 +402,10 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(short_hostseckey),
-            "recovery_data": bytes_to_hex(crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(crec),
+            "expectedError": error,
             "comment": "invalid hostseckey",
         }
     )
@@ -438,17 +419,17 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(rand_hostseckey),
-            "recovery_data": bytes_to_hex(crec),
-            "expected_error": error,
+            "recoveryData": bytes_to_hex(crec),
+            "expectedError": error,
             "comment": "host secret key doesn't match any hostpubkey",
         }
     )
 
     return {
         "description": description,
-        "total_tests": tc_id,
-        "valid_test_cases": valid_cases,
-        "error_test_cases": error_cases,
+        "totalTests": tc_id,
+        "validTestCases": valid_cases,
+        "errorTestCases": error_cases,
     }

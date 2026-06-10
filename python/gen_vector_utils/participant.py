@@ -15,51 +15,46 @@ from chilldkg_ref.chilldkg import (
     participant_finalize,
     participant_investigate,
 )
+from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
 import chilldkg_ref.chilldkg as chilldkg
 
 
-def generate_participant_step1_vectors():
-    description = [
-        "Test vectors for participant_step1(hostseckey, params, random).",
-        "Executes the first round of DKG from a participant's perspective.",
-        "Takes the participant's host secret key, session parameters, and 32 bytes of fresh randomness.",
-        "Returns an opaque state object and a participant message (pmsg1) to send to the coordinator.",
-        "",
-        "For each valid test case:",
-        "  Call participant_step1(hostseckey, params, random).",
-        "  Verify the returned pmsg1 equals expected_pmsg1.",
-        "",
-        "For each error test case:",
-        "  Call participant_step1(hostseckey, params, random).",
-        "  Verify it raises an exception matching expected_error.",
-    ]
+PARTICIPANT_STEP1_DESCRIPTION = [
+    "Test vectors for participant_step1(hostseckey, params, random).",
+    "Executes the first round of DKG from a participant's perspective.",
+    "Takes the participant's host secret key, session parameters, and 32 bytes of fresh randomness.",
+    "Returns an opaque state object and a participant message (pmsg1) to send to the coordinator.",
+    "",
+    "For each valid test case:",
+    "  Call participant_step1(hostseckey, params, random).",
+    "  Verify the returned pmsg1 equals expectedPmsg1.",
+    "",
+    "For each error test case:",
+    "  Call participant_step1(hostseckey, params, random).",
+    "  Verify it raises an exception matching expectedError.",
+]
+
+
+def generate_participant_step1_group(t, n, tc_id_init=0):
     valid_cases = []
     error_cases = []
-    tc_id = 0
+    tc_id = tc_id_init
 
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
-    random = bytes.fromhex(
-        "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC"
-    )
+    random = bytes.fromhex(RANDOMS_HEX[0])
 
     # --- Valid test case 0 ---
     tc_id += 1
-    params = chilldkg.SessionParams(hostpubkeys, 2)
+    params = chilldkg.SessionParams(hostpubkeys, t)
     _, expected_pmsg1 = chilldkg.participant_step1(hostseckeys[0], params, random)
     valid_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expected_pmsg1": bytes_to_hex(expected_pmsg1),
+            "expectedPmsg1": bytes_to_hex(expected_pmsg1),
             "comment": "valid participant step1",
         }
     )
@@ -74,11 +69,11 @@ def generate_participant_step1_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(short_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "length of host secret key is not 32 bytes",
         }
     )
@@ -91,48 +86,48 @@ def generate_participant_step1_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid threshold value",
         }
     )
     # --- Error test case 2: hostpubkeys list contains an invalid value ---
     tc_id += 1
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
-    with_invalid = [hostpubkeys[0], invalid_hostpubkey, hostpubkeys[2]]
-    invalid_params = chilldkg.SessionParams(with_invalid, 2)
+    with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
+    invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
         lambda: participant_step1(hostseckeys[0], invalid_params, random),
         chilldkg.InvalidHostPubkeyError,
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
     # --- Error test case 3: hostpubkeys list contains duplicate values ---
     tc_id += 1
-    with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
-    duplicate_params = chilldkg.SessionParams(with_duplicate, 2)
+    with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
+    duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
         lambda: participant_step1(hostseckeys[0], duplicate_params, random),
         chilldkg.DuplicateHostPubkeyError,
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(duplicate_params),
             "random": bytes_to_hex(random),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
@@ -147,11 +142,11 @@ def generate_participant_step1_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(rand_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "host secret key doesn't match any hostpubkey",
         }
     )
@@ -165,64 +160,67 @@ def generate_participant_step1_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(short_random),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "length of randomness is not 32 bytes",
         }
     )
 
     return {
-        "description": description,
-        "total_tests": tc_id,
-        "valid_test_cases": valid_cases,
-        "error_test_cases": error_cases,
+        "totalTests": tc_id - tc_id_init,
+        "validTestCases": valid_cases,
+        "errorTestCases": error_cases,
     }
 
 
-def generate_participant_step2_vectors():
-    description = [
-        "Test vectors for participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "Executes the second round of DKG from a participant's perspective.",
-        "Processes the coordinator's aggregated message (cmsg1) and produces a partial signature (pmsg2).",
-        "",
-        "Harness setup (re-derive state from prior round):",
-        "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
-        "  2. Assert pmsg1_out == pmsg1 (verifies your step1 implementation before testing step2).",
-        "",
-        "For each valid test case:",
-        "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "  Verify the returned pmsg2 equals expected_pmsg2.",
-        "",
-        "For each error test case:",
-        "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "  Verify it raises an exception matching expected_error.",
-        "  Error objects contain 'type' (exception class name) and optionally:",
-        "    - 'participant': index of the blamed party (for FaultyParticipantOrCoordinatorError)",
-        "    - 'message': human-readable description (informational, not required to match exactly)",
-    ]
+def generate_participant_step1_vectors():
+    groups = []
+    total_tests = 0
+    for t, n in THRESHOLD_CONFIGS:
+        group = generate_participant_step1_group(t, n, tc_id_init=total_tests)
+        total_tests += len(group["validTestCases"]) + len(group["errorTestCases"])
+        groups.append(group)
+    return {
+        "description": PARTICIPANT_STEP1_DESCRIPTION,
+        "totalTests": total_tests,
+        "testGroups": groups,
+    }
+
+
+PARTICIPANT_STEP2_DESCRIPTION = [
+    "Test vectors for participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "Executes the second round of DKG from a participant's perspective.",
+    "Processes the coordinator's aggregated message (cmsg1) and produces a partial signature (pmsg2).",
+    "",
+    "Harness setup (re-derive state from prior round):",
+    "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
+    "  2. Assert pmsg1_out == pmsg1 (verifies your step1 implementation before testing step2).",
+    "",
+    "For each valid test case:",
+    "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "  Verify the returned pmsg2 equals expectedPmsg2.",
+    "",
+    "For each error test case:",
+    "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "  Verify it raises an exception matching expectedError.",
+    "  Error objects contain 'type' (exception class name) and optionally:",
+    "    - 'participant': index of the blamed party (for FaultyParticipantOrCoordinatorError)",
+    "    - 'message': human-readable description (informational, not required to match exactly)",
+]
+
+
+def generate_participant_step2_group(t, n, tc_id_init=0):
     valid_cases = []
     error_cases = []
-    tc_id = 0
+    tc_id = tc_id_init
 
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
-    params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    params = chilldkg.SessionParams(hostpubkeys, t)
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:n])
     assert len(randoms) == len(hostpubkeys)
     pstates1 = []
     pmsgs1 = []
@@ -231,18 +229,16 @@ def generate_participant_step2_vectors():
         pstates1.append(state)
         pmsgs1.append(msg)
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
 
     # --- Valid test case 0 ---
     tc_id += 1
     _, pmsg2 = participant_step2(hostseckeys[0], pstates1[0], cmsg1, aux_rand)
     valid_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg1": bytes_to_hex(cmsg1),
-            "expected_pmsg2": bytes_to_hex(pmsg2),
+            "expectedPmsg2": bytes_to_hex(pmsg2),
             "comment": "valid participant step2",
         }
     )
@@ -261,9 +257,9 @@ def generate_participant_step2_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid cmsg1: pubnonces list has an invalid value at index 0",
         }
     )
@@ -280,9 +276,9 @@ def generate_participant_step2_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid cmsg1: coms_to_secret list has an invalid value at index 0",
         }
     )
@@ -297,9 +293,9 @@ def generate_participant_step2_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid cmsg1: coms_to_secret list has infinity at index 1",
         }
     )
@@ -316,31 +312,36 @@ def generate_participant_step2_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid cmsg1: pop list has an invalid value at index 1",
         }
     )
-    # --- Error Test Case 4: sum_coms_to_nonconst_terms has an invalid value at index 0 ---
-    tc_id += 1
-    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
-    invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms[0] = GE.lift_x(
-        0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073
-    )  # random GE
-    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
-    error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
-        chilldkg.UnknownFaultyParticipantOrCoordinatorError,
-    )
-    error_cases.append(
-        {
-            "tc_id": tc_id,
-            "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expected_error": error,
-            "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an invalid value at index 0",
-        }
-    )
+    if t > 1:
+        # --- Error Test Case 4: sum_coms_to_nonconst_terms has an invalid value at index 0 ---
+        tc_id += 1
+        invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+        invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms[0] = (
+            GE.lift_x(
+                0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073
+            )  # random GE
+        )
+        invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+        error = expect_exception(
+            lambda: participant_step2(
+                hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+            ),
+            chilldkg.UnknownFaultyParticipantOrCoordinatorError,
+        )
+        error_cases.append(
+            {
+                "tcId": tc_id,
+                "cmsg1": bytes_to_hex(invalid_cmsg1),
+                "expectedError": error,
+                "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an invalid value at index 0",
+            }
+        )
     # --- Error Test Case 5: Participant 1 sent an invalid secshare for participant 0 ---
     tc_id += 1
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
@@ -356,66 +357,67 @@ def generate_participant_step2_vectors():
     )
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid cmsg1: participant 1 sent an invalid secshare for participant 0",
         }
     )
 
     return {
-        "description": description,
-        "total_tests": tc_id,
+        "totalTests": tc_id - tc_id_init,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
-        "aux_rand": bytes_to_hex(aux_rand),
+        "auxRand": bytes_to_hex(aux_rand),
         "pmsg1": bytes_to_hex(pmsgs1[0]),
-        "valid_test_cases": valid_cases,
-        "error_test_cases": error_cases,
+        "validTestCases": valid_cases,
+        "errorTestCases": error_cases,
     }
 
 
-def generate_participant_finalize_vectors():
-    description = [
-        "Test vectors for participant_finalize(pstate2, cmsg2).",
-        "Finalizes the DKG protocol from a participant's perspective.",
-        "Verifies the coordinator's certificate (cmsg2) and outputs the DKG result and recovery data.",
-        "",
-        "Harness setup (re-derive state through two prior rounds):",
-        "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
-        "     Assert pmsg1_out == pmsg1.",
-        "  2. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand) to obtain (pstate2, pmsg2_out).",
-        "     Assert pmsg2_out == pmsg2.",
-        "",
-        "For each valid test case:",
-        "  Call participant_finalize(pstate2, cmsg2).",
-        "  Verify the result matches expected_output (dkg_output and recovery_data).",
-        "",
-        "For each error test case:",
-        "  Call participant_finalize(pstate2, cmsg2).",
-        "  Verify it raises an exception matching expected_error.",
-    ]
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+def generate_participant_step2_vectors():
+    groups = []
+    total_tests = 0
+    for t, n in THRESHOLD_CONFIGS:
+        group = generate_participant_step2_group(t, n, tc_id_init=total_tests)
+        total_tests += len(group["validTestCases"]) + len(group["errorTestCases"])
+        groups.append(group)
+    return {
+        "description": PARTICIPANT_STEP2_DESCRIPTION,
+        "totalTests": total_tests,
+        "testGroups": groups,
+    }
+
+
+PARTICIPANT_FINALIZE_DESCRIPTION = [
+    "Test vectors for participant_finalize(pstate2, cmsg2).",
+    "Finalizes the DKG protocol from a participant's perspective.",
+    "Verifies the coordinator's certificate (cmsg2) and outputs the DKG result and recovery data.",
+    "",
+    "Harness setup (re-derive state through two prior rounds):",
+    "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
+    "     Assert pmsg1_out == pmsg1.",
+    "  2. Call participant_step2(hostseckey, pstate1, cmsg1, auxRand) to obtain (pstate2, pmsg2_out).",
+    "     Assert pmsg2_out == pmsg2.",
+    "",
+    "For each valid test case:",
+    "  Call participant_finalize(pstate2, cmsg2).",
+    "  Verify the result matches expectedOutput (dkgOutput and recoveryData).",
+    "",
+    "For each error test case:",
+    "  Call participant_finalize(pstate2, cmsg2).",
+    "  Verify it raises an exception matching expectedError.",
+]
+
+
+def generate_participant_finalize_group(t, n, tc_id_init=0):
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
-    params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    params = chilldkg.SessionParams(hostpubkeys, t)
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:n])
     assert len(randoms) == len(hostpubkeys)
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
@@ -431,16 +433,15 @@ def generate_participant_finalize_vectors():
         pstates2.append(state)
         pmsgs2.append(msg)
 
-    tc_id = 0
+    tc_id = tc_id_init
     valid_cases = []
     error_cases = []
 
     vectors = {
-        "description": description,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
-        "aux_rand": bytes_to_hex(aux_rand),
+        "auxRand": bytes_to_hex(aux_rand),
         "pmsg1": bytes_to_hex(pmsgs1[0]),
         "cmsg1": bytes_to_hex(cmsg1),
         "pmsg2": bytes_to_hex(pmsgs2[0]),
@@ -453,11 +454,11 @@ def generate_participant_finalize_vectors():
     tc_id += 1
     valid_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg2": bytes_to_hex(cmsg2),
-            "expected_output": {
-                "dkg_output": dkg_output_asdict(pout),
-                "recovery_data": bytes_to_hex(prec),
+            "expectedOutput": {
+                "dkgOutput": dkg_output_asdict(pout),
+                "recoveryData": bytes_to_hex(prec),
             },
             "comment": "valid participant finalize",
         }
@@ -474,14 +475,14 @@ def generate_participant_finalize_vectors():
     tc_id += 1
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg2": bytes_to_hex(invalid_cmsg2),
-            "expected_error": error,
+            "expectedError": error,
             "comment": "invalid cmsg2: length is invalid (missing last signature)",
         }
     )
 
-    # --- Error Test Case 1: cmsg2 has invalid signature at index 2 ---
+    # --- Error Test Case 1: cmsg2 has invalid last signature ---
     random_sig = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
     )
@@ -494,65 +495,66 @@ def generate_participant_finalize_vectors():
     tc_id += 1
     error_cases.append(
         {
-            "tc_id": tc_id,
+            "tcId": tc_id,
             "cmsg2": bytes_to_hex(invalid_cmsg2_2),
-            "expected_error": error2,
+            "expectedError": error2,
             "comment": "invalid cmsg2: last signature is invalid",
         }
     )
 
     return {
-        "description": vectors["description"],
-        "total_tests": tc_id,
+        "totalTests": tc_id - tc_id_init,
         "params": vectors["params"],
         "hostseckey": vectors["hostseckey"],
         "random": vectors["random"],
-        "aux_rand": vectors["aux_rand"],
+        "auxRand": vectors["auxRand"],
         "pmsg1": vectors["pmsg1"],
         "cmsg1": vectors["cmsg1"],
         "pmsg2": vectors["pmsg2"],
-        "valid_test_cases": valid_cases,
-        "error_test_cases": error_cases,
+        "validTestCases": valid_cases,
+        "errorTestCases": error_cases,
     }
 
 
-def generate_participant_investigate_vectors():
-    description = [
-        "Test vectors for participant_investigate(error, cinv_msg).",
-        "Narrows down a faulty party after participant_step2 raised UnknownFaultyParticipantOrCoordinatorError.",
-        "This function always raises an exception (FaultyParticipantOrCoordinatorError or FaultyCoordinatorError).",
-        "",
-        "Harness setup:",
-        "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
-        "     Assert pmsg1_out == pmsg1.",
-        "  2. Per test case: look up cmsg1 from cmsg1_pool using cmsg1_index.",
-        "  3. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
-        "     It must raise UnknownFaultyParticipantOrCoordinatorError. Capture that error object.",
-        "  4. Call participant_investigate(error, cinv_msg) and verify it raises expected_error.",
-        "",
-        "All test cases are error cases (this function never returns successfully).",
-        "Error objects contain 'type' and optionally 'participant' (index of the blamed party).",
-    ]
-    hostseckeys = hex_list_to_bytes(
-        [
-            "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
-            "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
-            "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
-        ]
-    )
+def generate_participant_finalize_vectors():
+    groups = []
+    total_tests = 0
+    for t, n in THRESHOLD_CONFIGS:
+        group = generate_participant_finalize_group(t, n, tc_id_init=total_tests)
+        total_tests += len(group["validTestCases"]) + len(group["errorTestCases"])
+        groups.append(group)
+    return {
+        "description": PARTICIPANT_FINALIZE_DESCRIPTION,
+        "totalTests": total_tests,
+        "testGroups": groups,
+    }
+
+
+PARTICIPANT_INVESTIGATE_DESCRIPTION = [
+    "Test vectors for participant_investigate(error, cinv_msg).",
+    "Narrows down a faulty party after participant_step2 raised UnknownFaultyParticipantOrCoordinatorError.",
+    "This function always raises an exception (FaultyParticipantOrCoordinatorError or FaultyCoordinatorError).",
+    "",
+    "Harness setup:",
+    "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
+    "     Assert pmsg1_out == pmsg1.",
+    "  2. Per test case: look up cmsg1 from cmsg1Pool using cmsg1Index.",
+    "  3. Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "     It must raise UnknownFaultyParticipantOrCoordinatorError. Capture that error object.",
+    "  4. Call participant_investigate(error, cinvMsg) and verify it raises expectedError.",
+    "",
+    "All test cases are error cases (this function never returns successfully).",
+    "Error objects contain 'type' and optionally 'participant' (index of the blamed party).",
+]
+
+
+def generate_participant_investigate_group(t, n, tc_id_init=0):
+    hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
-    params = chilldkg.SessionParams(hostpubkeys, 2)
-    randoms = hex_list_to_bytes(
-        [
-            "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
-            "FDE223740111491D5E60BEFB447A2D8C0B12D4B1CE1A0D6BF5A16CBA7E420153",
-            "E5CFC54DA8EE57BA97C389060D00BB840A9DDF6BF1E32AE3D3598373EF384EE7",
-        ]
-    )
+    params = chilldkg.SessionParams(hostpubkeys, t)
+    randoms = hex_list_to_bytes(RANDOMS_HEX[:n])
     assert len(randoms) == len(hostpubkeys)
-    aux_rand = bytes.fromhex(
-        "005F5C3A69BB274F4559490AD754F1F5AFFABAED4C71AD5D8ACBAEFC2B491573"
-    )
+    aux_rand = bytes.fromhex(AUX_RAND_HEX)
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
@@ -562,7 +564,7 @@ def generate_participant_investigate_vectors():
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
 
     cmsg1_pool = []
-    tc_id = 0
+    tc_id = tc_id_init
     error_cases = []
 
     # --- Error Test Case 0: Participant 1 sent an invalid secshare for participant 0 ---
@@ -588,10 +590,10 @@ def generate_participant_investigate_vectors():
     tc_id += 1
     error_cases.append(
         {
-            "tc_id": tc_id,
-            "cmsg1_index": 0,
-            "cinv_msg": bytes_to_hex(cinv_msgs[0]),
-            "expected_error": error,
+            "tcId": tc_id,
+            "cmsg1Index": 0,
+            "cinvMsg": bytes_to_hex(cinv_msgs[0]),
+            "expectedError": error,
             "comment": "participant 1 sent an invalid secshare for participant 0",
         }
     )
@@ -619,10 +621,10 @@ def generate_participant_investigate_vectors():
     tc_id += 1
     error_cases.append(
         {
-            "tc_id": tc_id,
-            "cmsg1_index": 1,
-            "cinv_msg": bytes_to_hex(cinv_msgs[0]),
-            "expected_error": error,
+            "tcId": tc_id,
+            "cmsg1Index": 1,
+            "cinvMsg": bytes_to_hex(cinv_msgs[0]),
+            "expectedError": error,
             "comment": "coordinator tampered with participant 0's encrypted secshare",
         }
     )
@@ -651,10 +653,10 @@ def generate_participant_investigate_vectors():
     tc_id += 1
     error_cases.append(
         {
-            "tc_id": tc_id,
-            "cmsg1_index": 1,
-            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
-            "expected_error": error,
+            "tcId": tc_id,
+            "cmsg1Index": 1,
+            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
+            "expectedError": error,
             "comment": "coordinator tampered with self-encrypted partial secshare (participant 0)",
         }
     )
@@ -683,10 +685,10 @@ def generate_participant_investigate_vectors():
     tc_id += 1
     error_cases.append(
         {
-            "tc_id": tc_id,
-            "cmsg1_index": 1,
-            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
-            "expected_error": error,
+            "tcId": tc_id,
+            "cmsg1Index": 1,
+            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
+            "expectedError": error,
             "comment": "partial pubshares list in cinv_msg has an invalid value at index 1",
         }
     )
@@ -694,13 +696,26 @@ def generate_participant_investigate_vectors():
     # TODO: add runtime_error test case
 
     return {
-        "description": description,
-        "total_tests": tc_id,
+        "totalTests": tc_id - tc_id_init,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
-        "aux_rand": bytes_to_hex(aux_rand),
+        "auxRand": bytes_to_hex(aux_rand),
         "pmsg1": bytes_to_hex(pmsgs1[0]),
-        "cmsg1_pool": cmsg1_pool,
-        "error_test_cases": error_cases,
+        "cmsg1Pool": cmsg1_pool,
+        "errorTestCases": error_cases,
+    }
+
+
+def generate_participant_investigate_vectors():
+    groups = []
+    total_tests = 0
+    for t, n in THRESHOLD_CONFIGS:
+        group = generate_participant_investigate_group(t, n, tc_id_init=total_tests)
+        total_tests += len(group["errorTestCases"])
+        groups.append(group)
+    return {
+        "description": PARTICIPANT_INVESTIGATE_DESCRIPTION,
+        "totalTests": total_tests,
+        "testGroups": groups,
     }
