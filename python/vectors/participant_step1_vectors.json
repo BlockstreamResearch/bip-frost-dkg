@@ -13,10 +13,10 @@
         "  Call participant_step1(hostseckey, params, random).",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 40,
+    "totalTests": 44,
     "testGroups": [
         {
-            "totalTests": 10,
+            "totalTests": 11,
             "validTestCases": [
                 {
                     "tcId": 1,
@@ -110,6 +110,23 @@
                         "hostpubkeys": [
                             "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
                             "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 4
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "threshold exceeds the number of participants"
+                },
+                {
+                    "tcId": 7,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
                             "030000000000000000000000000000000000000000000000000000000000000005"
                         ],
                         "t": 2
@@ -122,7 +139,7 @@
                     "comment": "hostpubkeys list contains an invalid value"
                 },
                 {
-                    "tcId": 7,
+                    "tcId": 8,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -141,7 +158,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 8,
+                    "tcId": 9,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -159,7 +176,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 10,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -176,7 +193,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 10,
+                    "tcId": 11,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -195,10 +212,10 @@
             ]
         },
         {
-            "totalTests": 10,
+            "totalTests": 11,
             "validTestCases": [
                 {
-                    "tcId": 11,
+                    "tcId": 12,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -215,7 +232,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 12,
+                    "tcId": 13,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -232,7 +249,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 13,
+                    "tcId": 14,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -249,7 +266,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 14,
+                    "tcId": 15,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -266,7 +283,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 15,
+                    "tcId": 16,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -283,7 +300,24 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 16,
+                    "tcId": 17,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 4
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "threshold exceeds the number of participants"
+                },
+                {
+                    "tcId": 18,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -301,7 +335,7 @@
                     "comment": "hostpubkeys list contains an invalid value"
                 },
                 {
-                    "tcId": 17,
+                    "tcId": 19,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -320,7 +354,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 18,
+                    "tcId": 20,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -338,7 +372,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 19,
+                    "tcId": 21,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -355,7 +389,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 20,
+                    "tcId": 22,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -374,10 +408,10 @@
             ]
         },
         {
-            "totalTests": 10,
+            "totalTests": 11,
             "validTestCases": [
                 {
-                    "tcId": 21,
+                    "tcId": 23,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -394,7 +428,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 22,
+                    "tcId": 24,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -411,7 +445,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 23,
+                    "tcId": 25,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -428,7 +462,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 24,
+                    "tcId": 26,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -445,7 +479,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 25,
+                    "tcId": 27,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -462,7 +496,24 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 26,
+                    "tcId": 28,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 4
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "threshold exceeds the number of participants"
+                },
+                {
+                    "tcId": 29,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -480,7 +531,7 @@
                     "comment": "hostpubkeys list contains an invalid value"
                 },
                 {
-                    "tcId": 27,
+                    "tcId": 30,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -499,7 +550,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 28,
+                    "tcId": 31,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -517,7 +568,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 29,
+                    "tcId": 32,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -534,7 +585,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 30,
+                    "tcId": 33,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -553,10 +604,10 @@
             ]
         },
         {
-            "totalTests": 10,
+            "totalTests": 11,
             "validTestCases": [
                 {
-                    "tcId": 31,
+                    "tcId": 34,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -574,7 +625,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 32,
+                    "tcId": 35,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -592,7 +643,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 33,
+                    "tcId": 36,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -610,7 +661,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 34,
+                    "tcId": 37,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -628,7 +679,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 35,
+                    "tcId": 38,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -646,7 +697,25 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 36,
+                    "tcId": 39,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 5
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "threshold exceeds the number of participants"
+                },
+                {
+                    "tcId": 40,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -665,7 +734,7 @@
                     "comment": "hostpubkeys list contains an invalid value"
                 },
                 {
-                    "tcId": 37,
+                    "tcId": 41,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -685,7 +754,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 38,
+                    "tcId": 42,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -704,7 +773,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 39,
+                    "tcId": 43,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -722,7 +791,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 40,
+                    "tcId": 44,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [

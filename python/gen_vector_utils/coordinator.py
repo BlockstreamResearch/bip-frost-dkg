@@ -237,7 +237,7 @@ def generate_coordinator_finalize_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error test case: short pmsgs2 (n-1 instead of n) ---
+    # --- Error test case: invalid pmsgs2 (n-1 entries instead of n) ---
     invalid_pmsgs2_short = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_short.pop()
     error_case = expect_exception(
@@ -249,7 +249,22 @@ def generate_coordinator_finalize_group(t, n, tc_id_init=0):
             "tcId": tc_id,
             "pmsg2Indices": list(range(len(pmsgs2) - 1)),  # [0, ..., n - 2]
             "expectedError": error_case,
-            "comment": f"only {len(pmsgs2) - 1} pmsgs2 provided instead of {len(pmsgs2)}",
+            "comment": "invalid pmsgs2: fewer entries than participants",
+        }
+    )
+
+    # --- Error test case: invalid pmsgs2 (n+1 entries instead of n) ---
+    invalid_pmsgs2_long = pmsgs2 + [pmsgs2[0]]
+    error_case = expect_exception(
+        lambda: coordinator_finalize(cstate, invalid_pmsgs2_long), ValueError
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg2Indices": list(range(len(pmsgs2))) + [0],  # [0, 1, ..., n-1, 0]
+            "expectedError": error_case,
+            "comment": "invalid pmsgs2: more entries than participants",
         }
     )
 

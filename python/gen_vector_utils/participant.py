@@ -19,6 +19,8 @@ from chilldkg_ref.chilldkg import (
 from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
 import chilldkg_ref.chilldkg as chilldkg
 
+# Arbitrary EC point x-coordinate used as a hardcoded wrong value in test vectors.
+ARBITRARY_POINT_X = 0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073
 
 PARTICIPANT_STEP1_DESCRIPTION = [
     "Test vectors for participant_step1(hostseckey, params, random).",
@@ -127,6 +129,23 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
             "random": bytes_to_hex(random),
             "expectedError": error,
             "comment": "invalid threshold value",
+        }
+    )
+    # --- Error test case: t > n ---
+    tc_id += 1
+    invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
+    error = expect_exception(
+        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        chilldkg.ThresholdOrCountError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "hostseckey": bytes_to_hex(hostseckeys[0]),
+            "params": params_asdict(invalid_params),
+            "random": bytes_to_hex(random),
+            "expectedError": error,
+            "comment": "threshold exceeds the number of participants",
         }
     )
     # --- Error test case: hostpubkeys list contains an invalid value ---
@@ -333,7 +352,7 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     # --- Error test case: pubnonces list in cmsg1 has an invalid value at index 0 ---
     tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
-    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\xeb" * 32  # random pubnonce
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\xeb" * 33  # invalid pubnonce
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
@@ -347,12 +366,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
             "comment": "invalid cmsg1: pubnonces list has an invalid value at index 0",
         }
     )
-    # --- Error test case: coms_to_secret list in cmsg1 has an invalid value at index 0 ---
+    # --- Error test case: pubnonces list in cmsg1 has an arbitrary value at index 0 ---
     tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
-    invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[0] = GE.lift_x(
-        0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073
-    )  # random GE
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = GE.lift_x(
+        ARBITRARY_POINT_X
+    ).to_bytes_compressed()
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
@@ -363,10 +382,63 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
             "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
-            "comment": "invalid cmsg1: coms_to_secret list has an invalid value at index 0",
+            "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 0",
         }
     )
-    # --- Error test case: coms_to_secret list in cmsg1 has infinity at index 1 ---
+    # --- Error test case: pubnonces list in cmsg1 has duplicate values ---
+    tc_id += 1
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = (
+        invalid_cmsg1_parsed.enc_cmsg.pubnonces[0]
+    )
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.UnknownFaultyParticipantOrCoordinatorError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has duplicate values",
+        }
+    )
+    # --- Error test case: missing encrypted secret shares ---
+    tc_id += 1
+    invalid_cmsg1 = cmsg1[:-1]
+    error = expect_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyCoordinatorError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: missing encrypted secret shares",
+        }
+    )
+    # --- Error test case: coms_to_secrets list in cmsg1 has an arbitrary value at index 0 ---
+    tc_id += 1
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[0] = GE.lift_x(
+        ARBITRARY_POINT_X
+    )
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyCoordinatorError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: coms_to_secrets list has an arbitrary value at index 0",
+        }
+    )
+    # --- Error test case: coms_to_secrets list in cmsg1 has infinity at index 1 ---
     tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[1] = GE()  # infinity
@@ -380,7 +452,7 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
             "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
-            "comment": "invalid cmsg1: coms_to_secret list has infinity at index 1",
+            "comment": "invalid cmsg1: coms_to_secrets list has infinity at index 1",
         }
     )
     # --- Error test case: pop list in cmsg1 has an invalid value at index 1 ---
@@ -403,13 +475,11 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
         }
     )
     if t > 1:
-        # --- Error test case: sum_coms_to_nonconst_terms has an invalid value at index 0 ---
+        # --- Error test case: sum_coms_to_nonconst_terms has an arbitrary value at index 0 ---
         tc_id += 1
         invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
         invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms[0] = (
-            GE.lift_x(
-                0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073
-            )  # random GE
+            GE.lift_x(ARBITRARY_POINT_X)
         )
         invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
         error = expect_exception(
@@ -423,7 +493,7 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
                 "tcId": tc_id,
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
                 "expectedError": error,
-                "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an invalid value at index 0",
+                "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an arbitrary value at index 0",
             }
         )
     # --- Error test case: Participant 1 sent an invalid secshare for participant 0 ---
@@ -563,6 +633,21 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
             "cmsg2": bytes_to_hex(invalid_cmsg2),
             "expectedError": error,
             "comment": "invalid cmsg2: length is invalid (missing last signature)",
+        }
+    )
+    # --- Error test case: cmsg2 is too long ---
+    invalid_cmsg2 = chilldkg.CoordinatorMsg2(cmsg2 + bytes(64)).to_bytes()
+    error = expect_exception(
+        lambda: participant_finalize(pstates2[0], invalid_cmsg2),
+        chilldkg.FaultyCoordinatorError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "cmsg2": bytes_to_hex(invalid_cmsg2),
+            "expectedError": error,
+            "comment": "invalid cmsg2: length is invalid (extra data appended)",
         }
     )
 
@@ -745,7 +830,7 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error test case: partial pubshares list in cinv_msg has an invalid value at index 1 ---
+    # --- Error test case: partial pubshares list in cinv_msg has an arbitrary value at index 1 ---
     try:
         # using the prior invalid_cmsg1 to trigger the error
         participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
@@ -756,8 +841,8 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
         )
         invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg_parsed)
         invalid_cinv_msg0_parsed.enc_cinv.partial_pubshares[1] = GE.lift_x(
-            0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073
-        )  # random GE
+            ARBITRARY_POINT_X
+        )
         invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
         error = expect_exception(
             lambda e=e: participant_investigate(e, invalid_cinv_msg0),
@@ -773,7 +858,7 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
             "cmsg1Index": 1,
             "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
             "expectedError": error,
-            "comment": "partial pubshares list in cinv_msg has an invalid value at index 1",
+            "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1",
         }
     )
 

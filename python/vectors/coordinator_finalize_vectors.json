@@ -18,10 +18,10 @@
         "  Call coordinator_finalize(cstate, pmsgs2).",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 12,
+    "totalTests": 16,
     "testGroups": [
         {
-            "totalTests": 3,
+            "totalTests": 4,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -76,10 +76,23 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "only 2 pmsgs2 provided instead of 3"
+                    "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
                     "tcId": 3,
+                    "pmsg2Indices": [
+                        0,
+                        1,
+                        2,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "invalid pmsgs2: more entries than participants"
+                },
+                {
+                    "tcId": 4,
                     "pmsg2Indices": [
                         0,
                         3,
@@ -95,7 +108,7 @@
             ]
         },
         {
-            "totalTests": 3,
+            "totalTests": 4,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -118,7 +131,7 @@
             ],
             "validTestCases": [
                 {
-                    "tcId": 4,
+                    "tcId": 5,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -142,7 +155,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 5,
+                    "tcId": 6,
                     "pmsg2Indices": [
                         0,
                         1
@@ -150,10 +163,23 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "only 2 pmsgs2 provided instead of 3"
+                    "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 6,
+                    "tcId": 7,
+                    "pmsg2Indices": [
+                        0,
+                        1,
+                        2,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "invalid pmsgs2: more entries than participants"
+                },
+                {
+                    "tcId": 8,
                     "pmsg2Indices": [
                         0,
                         3,
@@ -169,7 +195,7 @@
             ]
         },
         {
-            "totalTests": 3,
+            "totalTests": 4,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -192,7 +218,7 @@
             ],
             "validTestCases": [
                 {
-                    "tcId": 7,
+                    "tcId": 9,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -216,7 +242,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 8,
+                    "tcId": 10,
                     "pmsg2Indices": [
                         0,
                         1
@@ -224,10 +250,23 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "only 2 pmsgs2 provided instead of 3"
+                    "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 11,
+                    "pmsg2Indices": [
+                        0,
+                        1,
+                        2,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "invalid pmsgs2: more entries than participants"
+                },
+                {
+                    "tcId": 12,
                     "pmsg2Indices": [
                         0,
                         3,
@@ -243,7 +282,7 @@
             ]
         },
         {
-            "totalTests": 3,
+            "totalTests": 4,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -269,7 +308,7 @@
             ],
             "validTestCases": [
                 {
-                    "tcId": 10,
+                    "tcId": 13,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -295,7 +334,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 11,
+                    "tcId": 14,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -304,10 +343,24 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "only 3 pmsgs2 provided instead of 4"
+                    "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 12,
+                    "tcId": 15,
+                    "pmsg2Indices": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "invalid pmsgs2: more entries than participants"
+                },
+                {
+                    "tcId": 16,
                     "pmsg2Indices": [
                         0,
                         4,
