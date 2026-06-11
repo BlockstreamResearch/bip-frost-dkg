@@ -583,6 +583,9 @@ e.g., stop sending additional funds to addresses derived from it.
 it will still be possible to spend the funds,
 and even recovered participants can participate in signing sessions.)
 
+To facilitate this confirmation process,
+ChillDKG provides optional functionality for creating and verifying acknowledgment signatures on the recovery data.
+
 ### Blaming Faulty Parties
 
 Any faulty party can make a ChillDKG session abort by sending a message that deviates from the protocol specification.
@@ -984,6 +987,27 @@ the future (e.g., when initiating a signing session), be convinced to deem
 the session successful by presenting the recovery data to them, from which
 they can recover the DKG outputs using the `recover` function.
 
+Since returning successfully does not imply that other participants deem
+the DKG session successful, returning successfully also does not imply
+that redundant copies of the recovery data exist. For example, it could
+be the case that other participants raised an exception instead, and this
+participant will be the only one that obtained the recovery data. In that
+case, if this participant's storage fails, the only copy of the recovery
+data is lost. As a result, this participant will not be able to convince
+any other participants to deem the DKG session successful, and it will
+not be possible to create a signature.
+
+To protect against this scenario, callers should ensure that all
+participants deem the DKG session successful (which also implies that
+they have a redundant copy of the recovery data) before using the
+threshold public key (e.g., before sending funds to it). The recommended
+way of doing so is by collecting acknowledgment signatures via
+`participant_recovery_ack_sign`. Callers can alternatively employ some
+other means to ensure that they will always have access to the recovery
+data (which can be used to convince other participants that the DKG
+session was successful). For example, they could use a custom redundant
+way of backing up the recovery data.
+
 *Warning:*
 Changing perspectives, this implies that, even when obtaining an exception,
 this participant **must not** conclude that the DKG session has failed, and
@@ -1199,6 +1223,92 @@ class RecoveryDataError(ValueError)
 ```
 
 Raised if the recovery data is invalid.
+
+#### participant\_recovery\_ack\_sign
+
+```python
+def participant_recovery_ack_sign(hostseckey: bytes, recovery_data: RecoveryData, params: SessionParams, aux_rand: bytes) -> bytes
+```
+
+Sign recovery data to create a recovery acknowledgment.
+
+This function allows a participant to create an explicit acknowledgment
+signature on the recovery data. This can be used for an optional
+acknowledgment round where participants acknowledge that they have
+successfully received the complete recovery data.
+
+*Arguments*:
+
+- `hostseckey` - Participant's long-term host secret key (32 bytes).
+- `recovery_data` - Recovery data from a successful session.
+- `params` - Common session parameters.
+- `aux_rand` - Auxiliary randomness (32 bytes). FRESH 32-byte randomness
+  is optimal, but 16 random bytes or a counter padded to 32 bytes
+  is acceptable (see BIP 340).
+
+
+*Returns*:
+
+- `bytes` - Acknowledgment signature (64 bytes).
+
+
+*Raises*:
+
+- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
+  key is invalid, or if the key does not match any host public key.
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
+- `RandomnessError` - If the length of `aux_rand` is not 32 bytes.
+- `RecoveryDataError` - If the recovery data is invalid or does not match
+  the provided parameters.
+
+#### participant\_recovery\_acks\_verify
+
+```python
+def participant_recovery_acks_verify(recovery_data: RecoveryData, params: SessionParams, ack_sigs: List[bytes]) -> None
+```
+
+Verify recovery acknowledgment signatures from all participants.
+
+This function is used to ensure that all participants have
+received the recovery data before the threshold public key is used
+(e.g., before funds are sent to it).
+
+*Arguments*:
+
+- `recovery_data` - Recovery data from a successful session.
+- `params` - Common session parameters.
+- `ack_sigs` - List of acknowledgment signatures (64 bytes each)
+  from all participants, in the same order as `hostpubkeys`.
+
+
+*Raises*:
+
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+  not hold.
+- `RecoveryDataError` - If the recovery data is invalid or does not match
+  the provided parameters.
+- `InvalidRecoveryAckError` - If any recovery acknowledgment signature is
+  invalid. Note that this does NOT mean the DKG failed
+  (reaching this point implies the DKG itself was successful).
+  It only means it cannot be confirmed that all participants
+  have a copy of the recovery data.
+
+#### InvalidRecoveryAckError Exception
+
+```python
+class InvalidRecoveryAckError(FaultyParticipantError)
+```
+
+Raised if a recovery acknowledgment signature is invalid.
+
+*Attributes*:
+
+- `participant` _int_ - Index of the participant whose signature is invalid.
 
 #### ProtocolError Exception
 

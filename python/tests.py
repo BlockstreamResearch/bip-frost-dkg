@@ -677,9 +677,142 @@ def test_recover_vectors():
         )
 
 
+def test_recovery_acknowledgment():
+    t, n = 2, 3
+    hostseckeys = [random_bytes(32) for _ in range(n)]
+    hostpubkeys = [chilldkg.hostpubkey_gen(hostseckey) for hostseckey in hostseckeys]
+    params = chilldkg.SessionParams(hostpubkeys, t)
+
+    results = simulate_chilldkg(hostseckeys, t, investigation=False)
+    recovery_data = results[1][1]  # First participant's recovery data
+    dkg_outputs = [result[0] for result in results[1:]]  # All participants' DKG outputs
+
+    ack_sigs = []
+    for i in range(n):
+        ack_sig = chilldkg.participant_recovery_ack_sign(
+            hostseckeys[i], recovery_data, params, random_bytes(32)
+        )
+        assert len(ack_sig) == 64
+        ack_sigs.append(ack_sig)
+
+    chilldkg.participant_recovery_acks_verify(recovery_data, params, ack_sigs)
+
+    # Wrong hostseckey length
+    try:
+        chilldkg.participant_recovery_ack_sign(random_bytes(16), recovery_data, params, random_bytes(32))
+    except chilldkg.HostSeckeyError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Invalid hostpubkey in params
+    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"
+    invalid_params = chilldkg.SessionParams([hostpubkeys[0], invalid_hostpubkey], t)
+    try:
+        chilldkg.participant_recovery_ack_sign(hostseckeys[0], recovery_data, invalid_params, random_bytes(32))
+    except chilldkg.InvalidHostPubkeyError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        chilldkg.participant_recovery_acks_verify(recovery_data, invalid_params, ack_sigs)
+    except chilldkg.InvalidHostPubkeyError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Duplicate hostpubkey in params
+    invalid_params = chilldkg.SessionParams([hostpubkeys[0], hostpubkeys[0]], t)
+    try:
+        chilldkg.participant_recovery_ack_sign(hostseckeys[0], recovery_data, invalid_params, random_bytes(32))
+    except chilldkg.DuplicateHostPubkeyError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Invalid threshold in params
+    invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
+    try:
+        chilldkg.participant_recovery_ack_sign(hostseckeys[0], recovery_data, invalid_params, random_bytes(32))
+    except chilldkg.ThresholdOrCountError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Wrong hostseckey
+    try:
+        chilldkg.participant_recovery_ack_sign(random_bytes(32), recovery_data, params, random_bytes(32))
+    except chilldkg.HostSeckeyError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Invalid randomness length
+    try:
+        chilldkg.participant_recovery_ack_sign(hostseckeys[0], recovery_data, params, random_bytes(16))
+    except chilldkg.RandomnessError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Mismatched params
+    invalid_params = chilldkg.SessionParams(hostpubkeys, t + 1)
+    try:
+        chilldkg.participant_recovery_ack_sign(hostseckeys[0], recovery_data, invalid_params, random_bytes(32))
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        chilldkg.participant_recovery_acks_verify(recovery_data, invalid_params, ack_sigs)
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Corrupted recovery data
+    corrupted_recovery_data = random_bytes(len(recovery_data))
+    try:
+        chilldkg.participant_recovery_ack_sign(hostseckeys[0], corrupted_recovery_data, params, random_bytes(32))
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        chilldkg.participant_recovery_acks_verify(corrupted_recovery_data, params, ack_sigs)
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # Invalid signature
+    invalid_ack_sigs = ack_sigs[:]
+    invalid_ack_sigs[1] = random_bytes(64)
+    try:
+        chilldkg.participant_recovery_acks_verify(recovery_data, params, invalid_ack_sigs)
+    except chilldkg.InvalidRecoveryAckError as e:
+        assert e.participant == 1
+    else:
+        assert False, "Expected exception"
+
+    # Wrong signature length
+    wrong_length_sigs = ack_sigs[:]
+    wrong_length_sigs[0] = random_bytes(32)
+    try:
+        chilldkg.participant_recovery_acks_verify(recovery_data, params, wrong_length_sigs)
+    except chilldkg.InvalidRecoveryAckError as e:
+        assert e.participant == 0
+    else:
+        assert False, "Expected exception"
+
+
 test_chilldkg_params_validate()
 test_vss_correctness()
 test_recover_secret()
+test_recovery_acknowledgment()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     test_correctness(t, n, simulate_simplpedpop)
     test_correctness(t, n, simulate_simplpedpop, investigation=True)
