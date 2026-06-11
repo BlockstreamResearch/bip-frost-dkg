@@ -24,7 +24,7 @@
             "tcId": 2,
             "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
             "expectedError": {
-                "type": "HostSeckeyError"
+                "type": "ValueError"
             },
             "comment": "length of host secret key is not 32 bytes"
         },

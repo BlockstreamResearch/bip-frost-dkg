@@ -714,8 +714,7 @@ TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes or if the
-  key is invalid.
+- `HostSeckeyError` - If the host secret key is invalid.
 
 #### HostSeckeyError Exception
 
@@ -724,8 +723,6 @@ class HostSeckeyError(ValueError)
 ```
 
 Raised if the host secret key is invalid.
-
-This incluces the case that its length is not 32 bytes.
 
 #### SessionParams Tuples
 
@@ -895,14 +892,14 @@ Perform a participant's first step of a ChillDKG session.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
-  key is invalid, or if the key does not match any entry of
-  `hostpubkeys`.
+- `HostSeckeyError` - If the host secret key is invalid, or if the key does not
+  match any entry of `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
-- `RandomnessError` - If the length of `random` is not 32 bytes.
+- `RandomnessError` - If `random` is all zeroes (i.e., b"\x00" * 32). This check
+  guards against the case of a malfunctioning random number generator.
 
 #### RandomnessError Exception
 
@@ -910,7 +907,7 @@ Perform a participant's first step of a ChillDKG session.
 class RandomnessError(ValueError)
 ```
 
-Raised if the length of the provided randomness is not 32 bytes.
+Raised if the provided randomness is all zeroes (i.e., b"\x00" * 32).
 
 #### participant\_step2
 
@@ -954,8 +951,8 @@ data, from which this participant can recover the DKG output using the
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes.
-- `RandomnessError` - If the length of `aux_rand` is not 32 bytes.
+- `HostSeckeyError` - If the host secret key is invalid or if it does not match the one
+  used in `participant_step1`.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
@@ -987,7 +984,7 @@ they can recover the DKG outputs using the `recover` function.
 *Warning:*
 Changing perspectives, this implies that, even when obtaining an exception,
 this participant **must not** conclude that the DKG session has failed, and
-as a consequence, this particiant **must not** erase the hostseckey. The
+as a consequence, this participant **must not** erase the hostseckey. The
 underlying reason is that some other participant may deem the DKG session
 successful and use the resulting threshold public key (e.g., by sending
 funds to it). That other participant can, at any point in the future,
@@ -1187,8 +1184,8 @@ backup after data loss.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
-  key is invalid, or if the key does not match the recovery data.
+- `HostSeckeyError` - If the host secret key is invalid, or if the key does not
+  match the recovery data.
   (This can also occur if the recovery data is invalid.)
 - `RecoveryDataError` - If recovery failed due to invalid recovery data.
 

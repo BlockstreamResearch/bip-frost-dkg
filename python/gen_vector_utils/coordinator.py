@@ -60,7 +60,7 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
     valid_cases = []
     error_cases = []
 
-    # --- Valid Test Case 0 ---
+    # --- Valid test case ---
     tc_id += 1
     valid_cases.append(
         {
@@ -72,7 +72,7 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error Test Case 0: Invalid threshold ---
+    # --- Error test case: Invalid threshold ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
     error = expect_exception(
         lambda: coordinator_step1(pmsgs1, invalid_params),
@@ -89,7 +89,7 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error Test Case 1: hostpubkeys list contains an invalid value ---
+    # --- Error test case: hostpubkeys list contains an invalid value ---
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
@@ -108,7 +108,7 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error Test Case 2: hostpubkeys list contains duplicate values ---
+    # --- Error test case: hostpubkeys list contains duplicate values ---
     with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
@@ -126,7 +126,7 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error Test Case 3: Participant (index 1) message has an enc_shares list of invalid length ---
+    # --- Error test case: Participant (index 1) message has an enc_shares list of invalid length ---
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     invalid_pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(
         invalid_pmsgs1[1], params.t, len(params.hostpubkeys)
@@ -222,7 +222,7 @@ def generate_coordinator_finalize_group(t, n, tc_id_init=0):
     valid_cases = []
     error_cases = []
 
-    # --- Valid Test Case 0 ---
+    # --- Valid test case ---
     tc_id += 1
     valid_cases.append(
         {
@@ -237,7 +237,7 @@ def generate_coordinator_finalize_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error Test Case 0: short pmsgs2 (n-1 instead of n) ---
+    # --- Error test case: short pmsgs2 (n-1 instead of n) ---
     invalid_pmsgs2_short = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_short.pop()
     error_case = expect_exception(
@@ -253,7 +253,7 @@ def generate_coordinator_finalize_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error Test Case 1: participant at index 1 sent an invalid signature ---
+    # --- Error test case: participant at index 1 sent an invalid signature ---
     invalid_pmsgs2_sig = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_sig[1] = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
@@ -328,7 +328,7 @@ def generate_coordinator_investigate_group(t, n, tc_id_init=0):
 
     tc_id = tc_id_init
 
-    # --- Valid Test Case ---
+    # --- Valid test case ---
     tc_id += 1
     valid_cases = [
         {
