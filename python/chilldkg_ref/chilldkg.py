@@ -47,6 +47,8 @@ __all__ = [
     "coordinator_finalize",
     "coordinator_investigate",
     "recover",
+    "participant_recovery_ack_sign",
+    "participant_recovery_acks_verify",
     # Exceptions
     "HostSeckeyError",
     "SessionParamsError",
@@ -60,6 +62,7 @@ __all__ = [
     "FaultyCoordinatorError",
     "UnknownFaultyParticipantOrCoordinatorError",
     "RecoveryDataError",
+    "InvalidRecoveryAckError",
     # Types
     "SessionParams",
     "DKGOutput",
@@ -84,6 +87,7 @@ def certeq_message(x: bytes, idx: int) -> bytes:
     # Domain separation as described in BIP 340
     prefix = (BIP_TAG + "certeq message").encode()
     prefix = prefix + b"\x00" * (33 - len(prefix))
+    assert len(prefix) == 33
     return prefix + idx.to_bytes(4, "big") + x
 
 
@@ -122,6 +126,26 @@ class InvalidSignatureInCertificateError(ValueError):
     def __init__(self, participant: int, *args: Any):
         self.participant = participant
         super().__init__(participant, *args)
+
+
+###
+### Recovery acknowledgment helpers
+###
+
+
+def recovery_ack_message(x: bytes, idx: int) -> bytes:
+    # Domain separation as described in BIP 340
+    prefix = (BIP_TAG + "recovery acknowledgment").encode()
+    prefix = prefix + b"\x00" * (33 - len(prefix))
+    assert len(prefix) == 33
+    return prefix + idx.to_bytes(4, "big") + x
+
+
+def recovery_ack_sign(
+    hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes
+) -> bytes:
+    msg = recovery_ack_message(x, idx)
+    return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
 ###
@@ -672,6 +696,27 @@ def participant_finalize(
     the session successful by presenting the recovery data to them, from which
     they can recover the DKG outputs using the `recover` function.
 
+    Since returning successfully does not imply that other participants deem
+    the DKG session successful, returning successfully also does not imply
+    that redundant copies of the recovery data exist. For example, it could
+    be the case that other participants raised an exception instead, and this
+    participant will be the only one that obtained the recovery data. In that
+    case, if this participant's storage fails, the only copy of the recovery
+    data is lost. As a result, this participant will not be able to convince
+    any other participants to deem the DKG session successful, and it will
+    not be possible to create a signature.
+
+    To protect against this scenario, callers should ensure that all
+    participants deem the DKG session successful (which also implies that
+    they have a redundant copy of the recovery data) before using the
+    threshold public key (e.g., before sending funds to it). The recommended
+    way of doing so is by collecting acknowledgment signatures via
+    `participant_recovery_ack_sign`. Callers can alternatively employ some
+    other means to ensure that they will always have access to the recovery
+    data (which can be used to convince other participants that the DKG
+    session was successful). For example, they could use a custom redundant
+    way of backing up the recovery data.
+
     **Warning:**
     Changing perspectives, this implies that, even when obtaining an exception,
     this participant **must not** conclude that the DKG session has failed, and
@@ -1005,3 +1050,137 @@ def recover(
 
 class RecoveryDataError(ValueError):
     """Raised if the recovery data is invalid."""
+
+
+###
+### Recovery acknowledgment
+###
+
+
+def participant_recovery_ack_sign(
+    hostseckey: bytes, recovery_data: RecoveryData, params: SessionParams, aux_rand: bytes
+) -> bytes:
+    """Sign recovery data to create a recovery acknowledgment.
+
+    This function allows a participant to create an explicit acknowledgment
+    signature on the recovery data. This can be used for an optional
+    acknowledgment round where participants acknowledge that they have
+    successfully received the complete recovery data.
+
+    Arguments:
+        hostseckey: Participant's long-term host secret key (32 bytes).
+        recovery_data: Recovery data from a successful session.
+        params: Common session parameters.
+        aux_rand: Auxiliary randomness (32 bytes). FRESH 32-byte randomness
+            is optimal, but 16 random bytes or a counter padded to 32 bytes
+            is acceptable (see BIP 340).
+
+    Returns:
+        bytes: Acknowledgment signature (64 bytes).
+
+    Raises:
+        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
+            key is invalid, or if the key does not match any host public key.
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
+        RandomnessError: If the length of `aux_rand` is not 32 bytes.
+        RecoveryDataError: If the recovery data is invalid or does not match
+            the provided parameters.
+    """
+    hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
+
+    params_validate(params)
+    (hostpubkeys, t) = params
+
+    try:
+        idx = hostpubkeys.index(hostpubkey)
+    except ValueError as e:
+        raise HostSeckeyError(
+            "Host secret key does not match any host public key"
+        ) from e
+    if len(aux_rand) != 32:
+        raise RandomnessError
+
+    try:
+        (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
+    except Exception as e:
+        raise RecoveryDataError("Failed to deserialize recovery data") from e
+
+    if t_rec != t or hostpubkeys_rec != hostpubkeys:
+        raise RecoveryDataError(
+            "Recovery data does not match the provided session parameters"
+        )
+
+    sig = recovery_ack_sign(hostseckey, idx, recovery_data, aux_rand)
+    return sig
+
+
+def participant_recovery_acks_verify(
+    recovery_data: RecoveryData, params: SessionParams, ack_sigs: List[bytes]
+) -> None:
+    """Verify recovery acknowledgment signatures from all participants.
+
+    This function is used to ensure that all participants have
+    received the recovery data before the threshold public key is used
+    (e.g., before funds are sent to it).
+
+    Arguments:
+        recovery_data: Recovery data from a successful session.
+        params: Common session parameters.
+        ack_sigs: List of acknowledgment signatures (64 bytes each)
+            from all participants, in the same order as `hostpubkeys`.
+
+    Raises:
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+            not hold.
+        RecoveryDataError: If the recovery data is invalid or does not match
+            the provided parameters.
+        InvalidRecoveryAckError: If any recovery acknowledgment signature is
+            invalid. Note that this does NOT mean the DKG failed
+            (reaching this point implies the DKG itself was successful).
+            It only means it cannot be confirmed that all participants
+            have a copy of the recovery data.
+    """
+    params_validate(params)
+    (hostpubkeys, t) = params
+
+    if len(ack_sigs) != len(hostpubkeys):
+        raise ValueError
+
+    try:
+        (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
+    except Exception as e:
+        raise RecoveryDataError("Failed to deserialize recovery data") from e
+
+    if t_rec != t or hostpubkeys_rec != hostpubkeys:
+        raise RecoveryDataError(
+            "Recovery data does not match the provided session parameters"
+        )
+
+    for i, sig in enumerate(ack_sigs):
+        if len(sig) != 64:
+            raise InvalidRecoveryAckError(i)
+        msg = recovery_ack_message(recovery_data, i)
+        valid = schnorr_verify(
+            msg,
+            hostpubkeys[i][1:33],
+            sig,
+        )
+        if not valid:
+            raise InvalidRecoveryAckError(i)
+
+
+class InvalidRecoveryAckError(FaultyParticipantError):
+    """Raised if a recovery acknowledgment signature is invalid.
+
+    Attributes:
+        participant (int): Index of the participant whose signature is invalid.
+    """
+
+    def __init__(self, participant: int, *args: Any):
+        self.participant = participant
+        super().__init__(participant, *args)
