@@ -1251,13 +1251,12 @@ successfully received the complete recovery data.
 
 *Raises*:
 
-- `HostSeckeyError` - If the length of `hostseckey` is not 32 bytes, if the
-  key is invalid, or if the key does not match any host public key.
+- `HostSeckeyError` - If the host secret key is invalid, or if it does not match
+  any host public key.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
-- `RandomnessError` - If the length of `aux_rand` is not 32 bytes.
 - `RecoveryDataError` - If the recovery data is invalid or does not match
   the provided parameters.
 
