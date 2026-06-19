@@ -74,6 +74,7 @@ __all__ = [
     "CoordinatorMsg1",
     "CoordinatorMsg2",
     "CoordinatorState",
+    "RecoveryAckMsg",
     "RecoveryData",
 ]
 
@@ -141,9 +142,7 @@ def recovery_ack_message(x: bytes, idx: int) -> bytes:
     return prefix + idx.to_bytes(4, "big") + x
 
 
-def recovery_ack_sign(
-    hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes
-) -> bytes:
+def recovery_ack_sign(hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes) -> bytes:
     msg = recovery_ack_message(x, idx)
     return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
@@ -467,6 +466,19 @@ class CoordinatorInvestigationMsg(NamedTuple):
             b, n
         )  # MsgParseError if invalid
         return CoordinatorInvestigationMsg(enc_cinv)
+
+
+class RecoveryAckMsg(NamedTuple):
+    sig: bytes
+
+    def to_bytes(self) -> bytes:
+        return self.sig
+
+    @staticmethod
+    def from_bytes(b: bytes) -> RecoveryAckMsg:
+        if len(b) != 64:
+            raise MsgParseError("invalid recovery acknowledgment signature length")
+        return RecoveryAckMsg(b)
 
 
 def deserialize_recovery_data(
@@ -1058,7 +1070,10 @@ class RecoveryDataError(ValueError):
 
 
 def participant_recovery_ack_sign(
-    hostseckey: bytes, recovery_data: RecoveryData, params: SessionParams, aux_rand: bytes
+    hostseckey: bytes,
+    recovery_data: RecoveryData,
+    params: SessionParams,
+    aux_rand: bytes,
 ) -> bytes:
     """Sign recovery data to create a recovery acknowledgment.
 
@@ -1079,17 +1094,16 @@ def participant_recovery_ack_sign(
         bytes: Acknowledgment signature (64 bytes).
 
     Raises:
-        HostSeckeyError: If the length of `hostseckey` is not 32 bytes, if the
-            key is invalid, or if the key does not match any host public key.
+        HostSeckeyError: If the host secret key is invalid, or if it does not match
+            any host public key.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
-        RandomnessError: If the length of `aux_rand` is not 32 bytes.
         RecoveryDataError: If the recovery data is invalid or does not match
             the provided parameters.
     """
-    hostpubkey = hostpubkey_gen(hostseckey)  # HostSeckeyError if len(hostseckey) != 32
+    hostpubkey = hostpubkey_gen(hostseckey)  # ValueError if len(hostseckey) != 32
 
     params_validate(params)
     (hostpubkeys, t) = params
@@ -1101,7 +1115,7 @@ def participant_recovery_ack_sign(
             "Host secret key does not match any host public key"
         ) from e
     if len(aux_rand) != 32:
-        raise RandomnessError
+        raise ValueError
 
     try:
         (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
@@ -1114,7 +1128,8 @@ def participant_recovery_ack_sign(
         )
 
     sig = recovery_ack_sign(hostseckey, idx, recovery_data, aux_rand)
-    return sig
+    rmsg = RecoveryAckMsg(sig).to_bytes()
+    return rmsg
 
 
 def participant_recovery_acks_verify(
@@ -1162,13 +1177,15 @@ def participant_recovery_acks_verify(
         )
 
     for i, sig in enumerate(ack_sigs):
-        if len(sig) != 64:
-            raise InvalidRecoveryAckError(i)
+        try:
+            rmsg = RecoveryAckMsg.from_bytes(sig)
+        except MsgParseError as e:
+            raise InvalidRecoveryAckError(i) from e
         msg = recovery_ack_message(recovery_data, i)
         valid = schnorr_verify(
             msg,
             hostpubkeys[i][1:33],
-            sig,
+            rmsg.sig,
         )
         if not valid:
             raise InvalidRecoveryAckError(i)
