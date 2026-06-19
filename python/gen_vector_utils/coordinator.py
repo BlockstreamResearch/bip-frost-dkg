@@ -89,6 +89,23 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
+    # --- Error test case: t > n ---
+    invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
+    error = expect_exception(
+        lambda: coordinator_step1(pmsgs1, invalid_params),
+        chilldkg.ThresholdOrCountError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg1Indices": list(range(len(pmsgs1))),  # same valid pmsgs1
+            "params": params_asdict(invalid_params),  # t = n + 1
+            "expectedError": error,
+            "comment": "invalid threshold value t > n",
+        }
+    )
+
     # --- Error test case: hostpubkeys list contains an invalid value ---
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
@@ -126,7 +143,41 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
-    # --- Error test case: Participant (index 1) message has an enc_shares list of invalid length ---
+    # --- Error test case: invalid pmsgs2 (n-1 entries instead of n) ---
+    short_pmsgs1 = pmsgs1[: n - 1]
+    error = expect_exception(
+        lambda: coordinator_step1(short_pmsgs1, params),
+        ValueError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg1Indices": list(range(n - 1)),
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "invalid pmsgs1: fewer entries than participants",
+        }
+    )
+
+    # --- Error test case: invalid pmsgs2 (n+1 entries instead of n) ---
+    long_pmsgs1 = pmsgs1 + [pmsgs1[0]]  # Add an extra entry
+    error = expect_exception(
+        lambda: coordinator_step1(long_pmsgs1, params),
+        ValueError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg1Indices": list(range(n)) + [0],
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "invalid pmsgs1: more entries than participants",
+        }
+    )
+
+    # --- Error test case: participant (index 1) message has an enc_shares list of invalid length ---
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     invalid_pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(
         invalid_pmsgs1[1], params.t, len(params.hostpubkeys)
@@ -149,6 +200,50 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "participant (index 1) message has an enc_shares list of invalid length",
+        }
+    )
+
+    # --- Error test case: pmsg1 (index 0) is empty ---
+    empty_pmsgs1 = b""
+    pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index n + 1
+    invalid_pmsgs1 = [empty_pmsgs1] + pmsgs1[1:]
+    error = expect_exception(
+        lambda: coordinator_step1(invalid_pmsgs1, params),
+        chilldkg.FaultyParticipantError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg1Indices": [
+                len(pmsg1_pool) - 1 if i == 0 else i for i in range(n)
+            ],  # [n + 1, 1, 2,..., n - 1] — index 0 replaced
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "missing simplpedpop participant message at index 0",
+        }
+    )
+
+    # --- Error test case: pmsg1 (index 1) truncated before pubnonce ---
+    simpl_pmsg_len = 33 * params.t + 64
+    truncated_pmsg1 = pmsgs1[1][:simpl_pmsg_len]
+    pmsg1_pool.append(bytes_to_hex(truncated_pmsg1))  # index n + 2
+    invalid_pmsgs1 = list(pmsgs1)
+    invalid_pmsgs1[1] = truncated_pmsg1
+    error = expect_exception(
+        lambda: coordinator_step1(invalid_pmsgs1, params),
+        chilldkg.FaultyParticipantError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg1Indices": [
+                len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
+            ],  # [0, n + 2, 2,..., n - 1] — index 1 replaced
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "missing public nonce in pmsg1 (index 1)",
         }
     )
 
@@ -234,6 +329,28 @@ def generate_coordinator_finalize_group(t, n, tc_id_init=0):
                 "recoveryData": bytes_to_hex(crec),
             },
             "comment": "valid coordinator finalize",
+        }
+    )
+
+    # --- Error test case: participant at index 1 has a short signature ---
+    invalid_pmsgs2_short_sig = copy.deepcopy(pmsgs2)
+    invalid_pmsgs2_short_sig[1] = invalid_pmsgs2_short_sig[1][
+        :63
+    ]  # truncate sig to 63 bytes
+    error_case = expect_exception(
+        lambda: coordinator_finalize(cstate, invalid_pmsgs2_short_sig),
+        chilldkg.FaultyParticipantError,
+    )
+    pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_short_sig[1]))  # index n
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg2Indices": [
+                len(pmsg2_pool) - 1 if i == 1 else i for i in range(n)
+            ],  # [0, n, 2, ..., n-1] — index 1 replaced with bad pmsg
+            "expectedError": error_case,
+            "comment": "participant at index 1 sent a short signature",
         }
     )
 
