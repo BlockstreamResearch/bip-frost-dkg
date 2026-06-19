@@ -75,7 +75,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an invalid value at index 1"
+                    "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
                 }
             ]
         },
@@ -137,7 +137,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an invalid value at index 1"
+                    "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
                 }
             ]
         },
@@ -199,7 +199,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an invalid value at index 1"
+                    "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
                 }
             ]
         },
@@ -262,7 +262,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an invalid value at index 1"
+                    "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
                 }
             ]
         }
