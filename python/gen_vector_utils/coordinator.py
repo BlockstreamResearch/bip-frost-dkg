@@ -143,6 +143,25 @@ def generate_coordinator_step1_group(t, n, tc_id_init=0):
         }
     )
 
+    # --- Error test case: hostpubkeys list contains infinite value ---
+    infinity_hostpubkey = b"\x00" * 33  # Infinite point
+    with_infinity = hostpubkeys[:-1] + [infinity_hostpubkey]
+    invalid_params = chilldkg.SessionParams(with_infinity, t)
+    error = expect_exception(
+        lambda: coordinator_step1(pmsgs1, invalid_params),
+        chilldkg.InvalidHostPubkeyError,
+    )
+    tc_id += 1
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "pmsg1Indices": list(range(len(pmsgs1))),
+            "params": params_asdict(invalid_params),
+            "expectedError": error,
+            "comment": "hostpubkeys list contains an infinity point",
+        }
+    )
+
     # --- Error test case: invalid pmsgs2 (n-1 entries instead of n) ---
     short_pmsgs1 = pmsgs1[: n - 1]
     error = expect_exception(
