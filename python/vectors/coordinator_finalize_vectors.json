@@ -18,10 +18,10 @@
         "  Call coordinator_finalize(cstate, pmsgs2).",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 16,
+    "totalTests": 20,
     "testGroups": [
         {
-            "totalTests": 4,
+            "totalTests": 5,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -40,6 +40,7 @@
                 "A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE",
                 "3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B54",
                 "79195E7CBE22A8B53C41012ABEA37F0B59579E43EDC6477E8CC5C7EB9F3C8BF7AEC850C63A659FADD91C9063908054FC4D193594E132ADFBE1F24BE74C8BEA7A",
+                "3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B",
                 "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
             ],
             "validTestCases": [
@@ -71,6 +72,20 @@
                     "tcId": 2,
                     "pmsg2Indices": [
                         0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "participant": 1,
+                        "message": "invalid signature length"
+                    },
+                    "comment": "participant at index 1 sent a short signature"
+                },
+                {
+                    "tcId": 3,
+                    "pmsg2Indices": [
+                        0,
                         1
                     ],
                     "expectedError": {
@@ -79,7 +94,7 @@
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 3,
+                    "tcId": 4,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -92,10 +107,10 @@
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 4,
+                    "tcId": 5,
                     "pmsg2Indices": [
                         0,
-                        3,
+                        4,
                         2
                     ],
                     "expectedError": {
@@ -108,7 +123,7 @@
             ]
         },
         {
-            "totalTests": 4,
+            "totalTests": 5,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -127,11 +142,12 @@
                 "82E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06",
                 "B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EE",
                 "A9B4EADAC901B2D6A24ADFF77FBFA1A948F8846CA445E7A7E970D26EA440370F1AD8302DDB489191F5536CA4B102EF5535406BBB1D4003AAA6AEF8E83F7D2AD6",
+                "B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334",
                 "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
             ],
             "validTestCases": [
                 {
-                    "tcId": 5,
+                    "tcId": 6,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -155,7 +171,21 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 6,
+                    "tcId": 7,
+                    "pmsg2Indices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "participant": 1,
+                        "message": "invalid signature length"
+                    },
+                    "comment": "participant at index 1 sent a short signature"
+                },
+                {
+                    "tcId": 8,
                     "pmsg2Indices": [
                         0,
                         1
@@ -166,7 +196,7 @@
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 7,
+                    "tcId": 9,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -179,10 +209,10 @@
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 8,
+                    "tcId": 10,
                     "pmsg2Indices": [
                         0,
-                        3,
+                        4,
                         2
                     ],
                     "expectedError": {
@@ -195,7 +225,7 @@
             ]
         },
         {
-            "totalTests": 4,
+            "totalTests": 5,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -214,11 +244,12 @@
                 "BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B",
                 "0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E7",
                 "E27651C1E2907EDFA9CA3310332C9BE64A22B78FF873C307632E855E9E24E86C6F9E10F7D135A06F5B6839DFAA2F78973DAD89179131016D55D4E7B7FF2837F5",
+                "0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8",
                 "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
             ],
             "validTestCases": [
                 {
-                    "tcId": 9,
+                    "tcId": 11,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -242,7 +273,21 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 10,
+                    "tcId": 12,
+                    "pmsg2Indices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "participant": 1,
+                        "message": "invalid signature length"
+                    },
+                    "comment": "participant at index 1 sent a short signature"
+                },
+                {
+                    "tcId": 13,
                     "pmsg2Indices": [
                         0,
                         1
@@ -253,7 +298,7 @@
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 11,
+                    "tcId": 14,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -266,10 +311,10 @@
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 12,
+                    "tcId": 15,
                     "pmsg2Indices": [
                         0,
-                        3,
+                        4,
                         2
                     ],
                     "expectedError": {
@@ -282,7 +327,7 @@
             ]
         },
         {
-            "totalTests": 4,
+            "totalTests": 5,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -304,11 +349,12 @@
                 "978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF",
                 "8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE48",
                 "5AD6B8D354A6D89F067A859AB1941E403E8C72413D61E11EC49588C977831CCB37224C44A482EC53A2373F5BD2B38041797C77C85CC14AB25E4F6226FFA6CAA5",
+                "978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933",
                 "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
             ],
             "validTestCases": [
                 {
-                    "tcId": 13,
+                    "tcId": 16,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -334,7 +380,22 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 14,
+                    "tcId": 17,
+                    "pmsg2Indices": [
+                        0,
+                        4,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "participant": 1,
+                        "message": "invalid signature length"
+                    },
+                    "comment": "participant at index 1 sent a short signature"
+                },
+                {
+                    "tcId": 18,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -346,7 +407,7 @@
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 15,
+                    "tcId": 19,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -360,10 +421,10 @@
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 16,
+                    "tcId": 20,
                     "pmsg2Indices": [
                         0,
-                        4,
+                        5,
                         2,
                         3
                     ],
