@@ -167,6 +167,25 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
+    # --- Error test case: hostpubkeys list contains an infinite value ---
+    tc_id += 1
+    infinity_hostpubkey = b"\x00" * 33  # Infinite point
+    with_infinity = hostpubkeys[:-1] + [infinity_hostpubkey]
+    invalid_params = chilldkg.SessionParams(with_infinity, t)
+    error = expect_exception(
+        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        chilldkg.InvalidHostPubkeyError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "hostseckey": bytes_to_hex(hostseckeys[0]),
+            "params": params_asdict(invalid_params),
+            "random": bytes_to_hex(random),
+            "expectedError": error,
+            "comment": "hostpubkeys list contains an infinity point",
+        }
+    )
     # --- Error test case: hostpubkeys list contains duplicate values ---
     tc_id += 1
     with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
@@ -385,6 +404,23 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
             "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 0",
         }
     )
+    # --- Error test case: pubnonces list in cmsg1 has an infinite value at index 0 ---
+    tc_id += 1
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\x00" * 33  # infinity
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyCoordinatorError,
+    )
+    error_cases.append(
+        {
+            "tcId": tc_id,
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has the infinity point at index 0",
+        }
+    )
     # --- Error test case: pubnonces list in cmsg1 has duplicate values ---
     tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
@@ -494,6 +530,27 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
                 "expectedError": error,
                 "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an arbitrary value at index 0",
+            }
+        )
+        # --- Error test case: sum_coms_to_nonconst_terms has an infinite value at index 0 ---
+        tc_id += 1
+        invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+        invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms[0] = (
+            GE()  # Infinity
+        )
+        invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+        error = expect_exception(
+            lambda: participant_step2(
+                hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+            ),
+            chilldkg.UnknownFaultyParticipantOrCoordinatorError,
+        )
+        error_cases.append(
+            {
+                "tcId": tc_id,
+                "cmsg1": bytes_to_hex(invalid_cmsg1),
+                "expectedError": error,
+                "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has the infinity point at index 0",
             }
         )
     # --- Error test case: Participant 1 sent an invalid secshare for participant 0 ---
