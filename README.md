@@ -402,15 +402,6 @@ and it repurposes the host secret key as the seed required by EncPedPop.
 [^joint-security]: Schnorr signatures and ECDH-based KEMs are known to be jointly secure [Theorem 2, [DLPSS11](https://eprint.iacr.org/2011/615)]
 under the combination of the gap-DH and gap-DL assumptions, and this result can be adapted to the MR-KEM used in EncPedPop.
 
-ChillDKG requires that all participants have authentic copies of the other participants' host public keys.[^trust-anchor]
-Authenticity of the host public keys can be verified through pairwise out-of-band comparisons between every pair of participants.
-This verification can occur at any time before the DKG session is finalized, in particular before the start of the session.
-
-[^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
-Note that this requirement is implicit in other schemes as well.
-For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)]
-also requires the assumption that all participants have authentic copies of each other's individual public keys.
-
 #### Equality Check Protocol CertEq
 
 The CertEq protocol is straightforward:[^certeq-literature]
@@ -436,7 +427,7 @@ The key insight to ensuring conditional agreement is that any participant termin
 obtains a *success certificate* `cert` consisting of the collected list of all `n` signatures on `eq_input`.
 This certificate will, by the above termination rule, convince every other honest participant (who, by integrity, has received `eq_input` as input) to terminate successfully.
 Crucially, this other honest participant will be convinced even after having received invalid or no signatures during the actual run of CertEq,
-due to unreliable networks, a faulty coordinator, or faulty participants signing more than one value.
+due to unreliable communication links, a faulty coordinator, or faulty participants signing more than one value.
 
 Thus, the certificate does not need to be sent during a normal run of CertEq,
 but can instead be presented to other participants later,
@@ -487,21 +478,44 @@ without careful further consideration, which is not in the scope of this documen
 
 [^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
 
-### Protocol Parties and Network Setup
+### DKG Parties and Inputs
 
-There are `n >= 1` *participants*, `t` of which will be required to produce a signature.
-Each participant has a point-to-point communication link to the *coordinator*
-(but participants do not have direct communication links to each other).
-
+A DKG session comprises `n >= 1` *participants*,
+some number `t <= n` of which will be required to produce a signature.
+Additionally, each session requires a helper party called the *coordinator*.
 If there is no dedicated coordinator, one of the participants can act as the coordinator.
 
-Each participant and the coordinator, and the communication links may either be *honest*, i.e., reliable and adhering to the protocol, or *faulty*, i.e., controlled by an attacker or unreliable (e.g., due to software bugs).
+Each participant holds a long-term *host key pair* consisting of a *host public key* and a *host secret key*.
+The `n` participants in a DKG session are represented by an ordered list of their host public keys.
+The list must not contain duplicate entries,
+and thus the list assigns each participant a unique index in the range of `0` to `n - 1` according to the position of their host public key in the list.
 
-### Inputs and Output
+The list of host public keys and the signing threshold `t` together
+form the public *session parameters*, the common input to all participants and the coordinator.
 
-The inputs of a session consist of a long-term *host secret key* (individual to each participant, not provided by the coordinator) and public *session parameters* (common to all participants and the coordinator).
+ChillDKG requires that all participants have authentic copies of all other participants' host public keys.[^trust-anchor]
+Authenticity of the host public keys can be verified through pairwise out-of-band comparisons between every pair of participants.
+This verification can occur at any time before the DKG session is finalized, in particular before the start of the session.
 
-If a session ChillDKG returns an output to a participant or the coordinator,
+[^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
+Note that this requirement is implicit in other schemes as well.
+For example, setting up a multi-signature wallet via non-interactive key aggregation in MuSig2 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)]
+also requires the assumption that all participants have authentic copies of each other's individual public keys.
+
+Each party (i.e., participant or coordinator) is assumed to be either *honest* (i.e., reliable and adhering to the protocol)
+or *faulty* (i.e., controlled by an attacker or defective).
+
+### Network Setup
+
+Each participant has a point-to-point communication link to the coordinator
+(but participants do not need direct communication links to each other).
+
+Transmission errors may hamper functionality (i.e., a DKG session may fail),
+but even an attacker in full control of communication links will not be able to hamper security.
+
+### DKG Outputs
+
+If a ChillDKG session returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
 In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).
 Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
@@ -618,7 +632,7 @@ in order to single out and blame another participant (see [Overview of a ChillDK
 ### Threat Model and Security Goals
 
 We expect ChillDKG to provide the following informal security goals when it is used to set up keys for the FROST threshold signature scheme.
-If a participant deems a protocol session successful (as defined in [Inputs and Output](#inputs-and-output)), then this participant is assured that:
+If a participant deems a protocol session successful (as defined in [DKG Outputs](#dkg-outputs)), then this participant is assured that:
  - A coalition of at most `t - 1` faulty participants and a faulty coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least one honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
    In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
