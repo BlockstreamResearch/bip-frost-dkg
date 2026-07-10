@@ -603,21 +603,23 @@ ChillDKG provides optional functionality for creating and verifying acknowledgme
 ### Blaming Faulty Parties
 
 Any faulty party can make a ChillDKG session abort by sending a message that deviates from the protocol specification.
-To help resolve the underlying problem, ChillDKG provides a *blame functionality*
-that enables honest protocol parties to identify and blame at least one participant suspected to be faulty:
+In order to resolve such situations, ChillDKG offers a *blame functionality*.
+Under the assumption that communication links are reliable,
+the blame functionality enables honest protocol parties to identify and blame at least one participant suspected to be faulty:
  - If an honest participant aborts the session, then this participant will blame at least one participant or the coordinator.
  - If an honest coordinator aborts the session, then the coordinator will blame at least one participant.
 
-Moreover, a party which, instead of aborting after having received an invalid protocol message,
-aborts due to a timeout while waiting for a protocol message
+Moreover, a party which aborts due to a timeout while waiting for a protocol message
+(instead of aborting after having received an invalid protocol message)
 will trivially blame the party who is supposed to send the outstanding message.
 
 The guarantees provided by the blame functionality are limited,
 and its primary purpose is to support manual investigation and debugging efforts.
 Different parties, even if honest, are not guaranteed to blame the same party,
 and there is, in general, no way to verify an accusation by some party that another party is to blame.
-Nevertheless, if all messages in the ChillDKG session have been transmitted correctly over the communication links,
-and, in case of a participant blaming another participant, if the coordinator is additionally honest,
+
+Nevertheless, under the condition that all messages in the ChillDKG session have been transmitted correctly over the communication links,
+and, in case of a participant blaming another participant, under the additional condition that the coordinator is honest,
 the aborting party will be guaranteed that the blamed party is indeed faulty.
 
 It is important to understand that this guarantee is conditional.
