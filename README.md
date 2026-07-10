@@ -693,7 +693,6 @@ starting with 0x02 or 0x03). This is the key generation procedure
 traditionally used in Bitcoin, e.g., for ECDSA. In other words, this
 function is equivalent to `IndividualPubkey` as defined in
 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
-TODO Refer to the FROST signing BIP instead, once that one has a number.
 
 *Arguments*:
 

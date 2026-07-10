@@ -164,7 +164,6 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
     traditionally used in Bitcoin, e.g., for ECDSA. In other words, this
     function is equivalent to `IndividualPubkey` as defined in
     [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
-    TODO Refer to the FROST signing BIP instead, once that one has a number.
 
     Arguments:
         hostseckey: This participant's long-term secret key (32 bytes).
