@@ -28,20 +28,21 @@ The accompanying source code is licensed under the [MIT license](https://opensou
 
 ### Motivation
 
-The FROST signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ21](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr threshold signatures,
+The FROST threshold signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ21](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr signatures,
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
-FROST remains unforgeable as long as at most `t-1` participants are compromised
-and remain functional as long as `t` honest participants do not lose their secret key material.
-Notably, FROST can be made compatible with [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signatures and does not put any restrictions on the choice of `t` and `n` (as long as `1 <= t <= n`).[^t-edge-cases]
+FROST guarantees unforgeability as long as at most `t - 1` participants are compromised
+and remains functional as long as `t` honest participants do not lose their secret key material,
+where `t` and `n` can be chosen arbitrarily (as long as `1 <= t <= n`).[^t-edge-cases]
+As a result, threshold signatures increase both security and availability,
+enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
 
 [^t-edge-cases]: While `t = n` and `t = 1` are in principle supported, simpler alternatives are available in these cases.
 In the case of `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)] instead of FROST avoids the need for an interactive DKG.
 The case `t = 1` can be realized by letting one participant generate an ordinary [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) key pair and transmitting the key pair to every other participant, who can check its consistency and then simply use the ordinary [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) signing algorithm.
 Participants still need to ensure that they agree on a key pair. A detailed specification is not in the scope of this document.
 
-As a result, threshold signatures increase both security and availability,
-enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
-Before being able to create signatures, the participants need to generate a shared *threshold public key* (representing the entire group with its `t`-of-`n` policy),
+[BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md) provides a specification of the FROST signing protocol tailored to [BIP 340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signatures as deployed in Bitcoin.
+However, in order to use the specified protocol, the participants need to generate a shared *threshold public key* (representing the entire group with its `t`-of-`n` policy),
 together with `n` corresponding *secret shares* (held by the `n` participants) that allow to sign under the threshold public key.
 This key generation can, in principle, be performed by a trusted dealer who takes care of generating the threshold public key as well as all `n` secret shares,
 which are then distributed to the `n` participants via secure channels.
@@ -469,11 +470,11 @@ should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ### Use ChillDKG only for FROST
 
-ChillDKG is designed for usage with the FROST Schnorr signature scheme,
+ChillDKG is designed for usage with the FROST signing protocol as specified in [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md),
 and its security depends on the specifics of FROST.
 We stress that ChillDKG is not a general-purpose DKG protocol,[^no-simulatable-dkg]
 and **must not** be combined with other threshold cryptographic schemes,
-e.g., threshold signature schemes other than FROST, or threshold decryption schemes,
+e.g., FROST specifications other than [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), threshold signature schemes other than FROST, or threshold decryption schemes,
 without careful further consideration, which is not in the scope of this document.
 
 [^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
@@ -518,10 +519,9 @@ but even an attacker in full control of communication links will not be able to 
 If a ChillDKG session returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
 In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).
-Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
+See [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md) for details on signing.
 
-To participate in the FROST signing protocol, signers need their DKG output and their index in the host public key list, although the full list of host public keys is not required for signing.
-Additionally, the set of indices of all participating signers within the host public key list is required to initiate a signing session.
+Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
 
 ### Backup and Recovery
 
