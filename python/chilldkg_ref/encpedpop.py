@@ -402,7 +402,7 @@ def participant_investigate(
         # The secshare is not equal to the sum of the partial secshares in the
         # investigation message. Since the encryption is additively homomorphic,
         # this can only happen if the sum of the *encrypted* secshare is not
-        # equal to the sum of the encrypted partial sechares, which is the
+        # equal to the sum of the encrypted partial secshares, which is the
         # coordinator's fault.
         assert Scalar.sum(*enc_partial_secshares) != enc_secshare
         raise FaultyCoordinatorError(
