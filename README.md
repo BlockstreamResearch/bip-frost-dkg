@@ -211,7 +211,7 @@ We make the following modifications as compared to the original SimplPedPop prop
  - To prevent a malicious participant from embedding a Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable script path.
  - The proofs of possession are omitted from the data for the equality check.[^pop-eq] This reduces the size of the backups in ChillDKG.
 
-[^pop-eq]: An inspection of the security proof [CRGS23] shows that this modification does affect security.
+[^pop-eq]: An inspection of the security proof [[CGRS23](https://eprint.iacr.org/2023/899)] shows that this modification does not affect security.
 
 Our variant of the SimplPedPop protocol then works as follows:
 
