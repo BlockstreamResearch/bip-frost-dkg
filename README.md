@@ -321,46 +321,44 @@ Every participant derives from this seed a static, long-term ECDH key pair consi
 It is assumed that every participant has an authentic copy of every other participant's encryption key.
 
 The encryption relies on ephemeral-static ECDH key exchange.
-Every participant derives from fresh randomness an ephemeral encryption nonce pair consisting of a secret nonce and the corresponding public nonce.
+Every participant derives, from their long-term seed, fresh randomness, and the session context (the threshold `t` and the static encryption keys of all participants), an ephemeral *session seed*, which is passed down to SimplPedPop.
+From this session seed, the participant further derives an ephemeral encryption nonce pair consisting of a secret nonce and the corresponding public nonce.
+Deriving the nonce pair from the session seed, rather than directly and independently from fresh randomness, ensures that different sets of participants will have different SimplPedPop sessions with distinct nonces, even in the case that the randomness is accidentally reused.
 This will enable every pair of sending participant `i` and recipient participant `j != i`
 to perform an ECDH key exchange between the ephemeral encryption nonce pair of participant `i` and the static encryption key pair of participant `j`
 in order to establish a shared secret pad `pad_ij` only known to participants `i` and `j`.
 The derivation of `pad_ij` from the raw ECDH output uses a tagged hash and includes
-additional context, namely the static encryption key and the index `j` of the recipient.[^mr-kem]
+additional context, namely the index `j` of the recipient, the threshold `t`, and the static encryption keys of all `n` participants.[^mr-kem]
 
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
 
 When `j = i` (i.e., when a participant encrypts a VSS share for themselves), the computationally expensive ECDH key exchange is unnecessary.
 Instead, the participant repurposes the secret decryption key as a symmetric key, such that `pad_ii` is computed as the tagged hash of the decryption key, public encryption nonce, and context.
 
-Every participant derives an ephemeral *session seed* passed down to SimplPedPop from their long-term seed and their public encryption nonce.
-Moreover, all encryption keys of all participants are included in the derivation to ensure that different sets of participants will have different SimplPedPop sessions,
-even in the case that the randomness for deriving the encryption nonce pair is accidentally reused.
-
 EncPedPop then works like SimplPedPop with the following differences:
-Participant `i` will additionally transmit their public encryption nonce and an encrypted VSS share `shares[j] + pad_ij` for every other participant `j`
+Participant `i` will additionally transmit their public encryption nonce and, for every participant `j` (including themselves, i.e., `j = i`), an encrypted VSS share `shares[j] + pad_ij`
 as part of the first message to the coordinator.
 The coordinator collects all encrypted VSS shares,
 and computes the sum `enc_secshare[i]` of all shares intended for every participant `i`.
 The coordinator sends all public encryption nonces along with the sum `enc_secshare[i]` to participant `i`.
 Participant `i` stores the sum as `enc_secshare`,
-derives the pads `pad_0i`, ..., `pad_ni` as described above,
-obtains the value `secshare = enc_secshare - (pad_0i + ... + pad_ni)`,
+derives the pads `pad_0i`, ..., `pad_(n-1)i` as described above,
+obtains the value `secshare = enc_secshare - (pad_0i + ... + pad_(n-1)i)`,
 and passes it down to SimplPedPop.
 
 If SimplPedPop raises an error because this `secshare` value fails VSS verification,
 then participant `i` can optionally investigate the error
 by asking the coordinator for the vector `enc_partial_secshares` of the individual contributions of all participants to `enc_secshare`.
 Participant `i` obtains the vector `partial_secshares`, which SimplPedPop requires for investigating the error,
-by decrypting the components of `enc_partial_secshares` via `partial_secshares[j] = enc_partial_secshares[j] - pad_ji` for every other participant `j`.
+by decrypting the components of `enc_partial_secshares` via `partial_secshares[j] = enc_partial_secshares[j] - pad_ji` for every participant `j`.
 Then, participant `i` can pass `partial_secshares` down to SimplPedPop,
 which, after additionally obtaining the vector `partial_pubshares` from the coordinator,
 has all the information required to determine and blame a faulty participant.
 
 Otherwise, i.e., if SimplPedPop does not raise an error,
-EncPedPop appends to the transcript `eq_input` of SimplPedPop the `n` public encryption nonces,
-and also all the `n` static encryption keys to ensure that the participants agree on their identities.
-The inclusion of the latter excludes man-in-the-middle attacks if Eq authenticates participants,
+EncPedPop appends to the transcript `eq_input` of SimplPedPop all the `n` static encryption keys and also the `n` public encryption nonces.
+The inclusion of the static encryption keys ensures that participants agree on their identities
+and excludes man-in-the-middle attacks if Eq authenticates participants,
 e.g., if the Eq protocol messages are signed under long-term public keys of the participants.
 
 ### Background on Equality Checks
