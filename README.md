@@ -28,7 +28,7 @@ The accompanying source code is licensed under the [MIT license](https://opensou
 
 ### Motivation
 
-The FROST threshold signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ21](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr signatures,
+The FROST threshold signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ22](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr signatures,
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
 FROST guarantees unforgeability as long as at most `t - 1` participants are compromised
 and remains functional as long as `t` honest participants do not lose their secret key material,
@@ -477,7 +477,7 @@ and **must not** be combined with other threshold cryptographic schemes,
 e.g., FROST specifications other than [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), threshold signature schemes other than FROST, or threshold decryption schemes,
 without careful further consideration, which is not in the scope of this document.
 
-[^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
+[^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [[GJKR07](https://doi.org/10.1007/s00145-006-0347-3)]. Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [[CGRS23](https://eprint.iacr.org/2023/899)].
 
 ### DKG Parties and Inputs
 
