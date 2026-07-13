@@ -439,6 +439,9 @@ e.g., during a request to participate in a FROST signing session.
 #### Facilitating Backup and Recovery
 
 ChillDKG constructs a transcript `eq_input` by appending to the transcript of EncPedPop the vector `enc_secshare`.
+Since every participant needs to include the *entire* vector `enc_secshare` in their own `eq_input`,
+unlike plain EncPedPop (where the coordinator sends each participant only their own entry `enc_secshare[i]`),
+the ChillDKG coordinator broadcasts the complete vector to every participant.
 This ensures that all participants agree on all encrypted shares,
 and as a consequence,
 the entire DKG output of a successful ChillDKG participant can be deterministically reproduced from a per-participant *host secret key* and the transcript.
