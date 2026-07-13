@@ -8,6 +8,7 @@ from .util import (
     expect_exception,
     params_asdict,
     dkg_output_asdict,
+    assign_tc_ids,
 )
 
 from chilldkg_ref.chilldkg import (
@@ -38,22 +39,19 @@ PARTICIPANT_STEP1_DESCRIPTION = [
 ]
 
 
-def generate_participant_step1_group(t, n, tc_id_init=0):
+def generate_participant_step1_group(t, n):
     valid_cases = []
     error_cases = []
-    tc_id = tc_id_init
 
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     random = bytes.fromhex(RANDOMS_HEX[0])
 
     # --- Valid test case ---
-    tc_id += 1
     params = chilldkg.SessionParams(hostpubkeys, t)
     _, expected_pmsg1 = chilldkg.participant_step1(hostseckeys[0], params, random)
     valid_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
@@ -63,7 +61,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
 
     # --- Error test case: Wrong hostseckey length ---
-    tc_id += 1
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
     error = expect_exception(
@@ -72,7 +69,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(short_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
@@ -81,7 +77,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: zero hostseckey ---
-    tc_id += 1
     zero_hostseckey = b"\x00" * 32
     error = expect_exception(
         lambda: participant_step1(zero_hostseckey, params, random),
@@ -89,7 +84,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(zero_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
@@ -98,7 +92,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: Out-of-range hostseckey ---
-    tc_id += 1
     invalid_hostseckey = bytes_from_int(Scalar.SIZE)
     error = expect_exception(
         lambda: participant_step1(invalid_hostseckey, params, random),
@@ -106,7 +99,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(invalid_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
@@ -115,7 +107,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: Invalid threshold ---
-    tc_id += 1
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
     error = expect_exception(
         lambda: participant_step1(hostseckeys[0], invalid_params, random),
@@ -123,7 +114,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
@@ -132,7 +122,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: t > n ---
-    tc_id += 1
     invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
     error = expect_exception(
         lambda: participant_step1(hostseckeys[0], invalid_params, random),
@@ -140,7 +129,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
@@ -149,7 +137,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: hostpubkeys list contains an invalid value ---
-    tc_id += 1
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
@@ -159,7 +146,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
@@ -168,7 +154,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: hostpubkeys list contains an infinite value ---
-    tc_id += 1
     infinity_hostpubkey = b"\x00" * 33  # Infinite point
     with_infinity = hostpubkeys[:-1] + [infinity_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_infinity, t)
@@ -178,7 +163,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
@@ -187,7 +171,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: hostpubkeys list contains duplicate values ---
-    tc_id += 1
     with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
@@ -196,7 +179,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(duplicate_params),
             "random": bytes_to_hex(random),
@@ -205,7 +187,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: hostseckey doesn't match any hostpubkey ---
-    tc_id += 1
     rand_hostseckey = bytes.fromhex(
         "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7"
     )
@@ -215,7 +196,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(rand_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
@@ -224,7 +204,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: Wrong randomness length ---
-    tc_id += 1
     short_random = bytes.fromhex("42B53D62E27380D6F7096EDA1C28C57D")  # 16 bytes
     assert len(short_random) == 16
     error = expect_exception(
@@ -233,7 +212,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(short_random),
@@ -242,7 +220,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: Zero randomness ---
-    tc_id += 1
     zero_random = b"\x00" * 32
     error = expect_exception(
         lambda: participant_step1(hostseckeys[0], params, zero_random),
@@ -250,7 +227,6 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(zero_random),
@@ -260,19 +236,14 @@ def generate_participant_step1_group(t, n, tc_id_init=0):
     )
 
     return {
-        "totalTests": tc_id - tc_id_init,
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
     }
 
 
 def generate_participant_step1_vectors():
-    groups = []
-    total_tests = 0
-    for t, n in THRESHOLD_CONFIGS:
-        group = generate_participant_step1_group(t, n, tc_id_init=total_tests)
-        total_tests += len(group["validTestCases"]) + len(group["errorTestCases"])
-        groups.append(group)
+    groups = [generate_participant_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_STEP1_DESCRIPTION,
         "totalTests": total_tests,
@@ -302,10 +273,9 @@ PARTICIPANT_STEP2_DESCRIPTION = [
 ]
 
 
-def generate_participant_step2_group(t, n, tc_id_init=0):
+def generate_participant_step2_group(t, n):
     valid_cases = []
     error_cases = []
-    tc_id = tc_id_init
 
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
@@ -322,11 +292,9 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     aux_rand = bytes.fromhex(AUX_RAND_HEX)
 
     # --- Valid test case ---
-    tc_id += 1
     _, pmsg2 = participant_step2(hostseckeys[0], pstates1[0], cmsg1, aux_rand)
     valid_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(cmsg1),
             "expectedPmsg2": bytes_to_hex(pmsg2),
             "comment": "valid participant step2",
@@ -337,7 +305,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
         cmsg1, params.t, len(params.hostpubkeys)
     )
     # --- Error test case: Wrong aux randomness length ---
-    tc_id += 1
     short_aux_rand = bytes.fromhex("42B53D62E27380D6F7096EDA1C28C57D")
     error = expect_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], cmsg1, short_aux_rand),
@@ -345,7 +312,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "auxRand": bytes_to_hex(short_aux_rand),
             "cmsg1": bytes_to_hex(cmsg1),
             "expectedError": error,
@@ -353,7 +319,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: hostseckey does not match the one in state1 ---
-    tc_id += 1
     mismatched_hostseckey = hostseckeys[1]
     error = expect_exception(
         lambda: participant_step2(mismatched_hostseckey, pstates1[0], cmsg1, aux_rand),
@@ -361,7 +326,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(mismatched_hostseckey),
             "cmsg1": bytes_to_hex(cmsg1),
             "expectedError": error,
@@ -369,7 +333,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
         }
     )
     # --- Error test case: pubnonces list in cmsg1 has an invalid value at index 0 ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\xeb" * 33  # invalid pubnonce
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
@@ -379,14 +342,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: pubnonces list has an invalid value at index 0",
         }
     )
     # --- Error test case: pubnonces list in cmsg1 has an arbitrary value at index 0 ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = GE.lift_x(
         ARBITRARY_POINT_X
@@ -398,14 +359,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 0",
         }
     )
     # --- Error test case: pubnonces list in cmsg1 has an infinite value at index 0 ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\x00" * 33  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
@@ -415,14 +374,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: pubnonces list has the infinity point at index 0",
         }
     )
     # --- Error test case: pubnonces list in cmsg1 has duplicate values ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = (
         invalid_cmsg1_parsed.enc_cmsg.pubnonces[0]
@@ -434,14 +391,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: pubnonces list has duplicate values",
         }
     )
     # --- Error test case: missing encrypted secret shares ---
-    tc_id += 1
     invalid_cmsg1 = cmsg1[:-1]
     error = expect_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
@@ -449,14 +404,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: missing encrypted secret shares",
         }
     )
     # --- Error test case: coms_to_secrets list in cmsg1 has an arbitrary value at index 0 ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[0] = GE.lift_x(
         ARBITRARY_POINT_X
@@ -468,14 +421,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: coms_to_secrets list has an arbitrary value at index 0",
         }
     )
     # --- Error test case: coms_to_secrets list in cmsg1 has infinity at index 1 ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[1] = GE()  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
@@ -485,14 +436,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: coms_to_secrets list has infinity at index 1",
         }
     )
     # --- Error test case: pop list in cmsg1 has an invalid value at index 1 ---
-    tc_id += 1
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.pops[1] = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
@@ -504,7 +453,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: pop list has an invalid value at index 1",
@@ -512,7 +460,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     if t > 1:
         # --- Error test case: sum_coms_to_nonconst_terms has an arbitrary value at index 0 ---
-        tc_id += 1
         invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
         invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms[0] = (
             GE.lift_x(ARBITRARY_POINT_X)
@@ -526,14 +473,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
         )
         error_cases.append(
             {
-                "tcId": tc_id,
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
                 "expectedError": error,
                 "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an arbitrary value at index 0",
             }
         )
         # --- Error test case: sum_coms_to_nonconst_terms has an infinite value at index 0 ---
-        tc_id += 1
         invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
         invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.sum_coms_to_nonconst_terms[0] = (
             GE()  # Infinity
@@ -547,14 +492,12 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
         )
         error_cases.append(
             {
-                "tcId": tc_id,
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
                 "expectedError": error,
                 "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has the infinity point at index 0",
             }
         )
     # --- Error test case: Participant 1 sent an invalid secshare for participant 0 ---
-    tc_id += 1
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     pmsgs11_parsed = chilldkg.ParticipantMsg1.from_bytes(
         pmsgs1[1], params.t, len(params.hostpubkeys)
@@ -568,7 +511,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
             "comment": "invalid cmsg1: participant 1 sent an invalid secshare for participant 0",
@@ -576,7 +518,6 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
     )
 
     return {
-        "totalTests": tc_id - tc_id_init,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
@@ -588,12 +529,8 @@ def generate_participant_step2_group(t, n, tc_id_init=0):
 
 
 def generate_participant_step2_vectors():
-    groups = []
-    total_tests = 0
-    for t, n in THRESHOLD_CONFIGS:
-        group = generate_participant_step2_group(t, n, tc_id_init=total_tests)
-        total_tests += len(group["validTestCases"]) + len(group["errorTestCases"])
-        groups.append(group)
+    groups = [generate_participant_step2_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_STEP2_DESCRIPTION,
         "totalTests": total_tests,
@@ -622,7 +559,7 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
 ]
 
 
-def generate_participant_finalize_group(t, n, tc_id_init=0):
+def generate_participant_finalize_group(t, n):
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, t)
@@ -644,7 +581,6 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
         pstates2.append(state)
         pmsgs2.append(msg)
 
-    tc_id = tc_id_init
     valid_cases = []
     error_cases = []
 
@@ -662,10 +598,8 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
     cmsg2, _, _ = chilldkg.coordinator_finalize(cstate, pmsgs2)
     pout, prec = participant_finalize(pstates2[0], cmsg2)
 
-    tc_id += 1
     valid_cases.append(
         {
-            "tcId": tc_id,
             "cmsg2": bytes_to_hex(cmsg2),
             "expectedOutput": {
                 "dkgOutput": dkg_output_asdict(pout),
@@ -683,10 +617,8 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
         lambda: participant_finalize(pstates2[0], invalid_cmsg2),
         chilldkg.FaultyCoordinatorError,
     )
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg2": bytes_to_hex(invalid_cmsg2),
             "expectedError": error,
             "comment": "invalid cmsg2: length is invalid (missing last signature)",
@@ -698,10 +630,8 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
         lambda: participant_finalize(pstates2[0], invalid_cmsg2),
         chilldkg.FaultyCoordinatorError,
     )
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg2": bytes_to_hex(invalid_cmsg2),
             "expectedError": error,
             "comment": "invalid cmsg2: length is invalid (extra data appended)",
@@ -718,10 +648,8 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
         lambda: participant_finalize(pstates2[0], invalid_cmsg2_2),
         chilldkg.FaultyParticipantOrCoordinatorError,
     )
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg2": bytes_to_hex(invalid_cmsg2_2),
             "expectedError": error2,
             "comment": "invalid cmsg2: last signature is invalid",
@@ -729,7 +657,6 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
     )
 
     return {
-        "totalTests": tc_id - tc_id_init,
         "params": vectors["params"],
         "hostseckey": vectors["hostseckey"],
         "random": vectors["random"],
@@ -743,12 +670,8 @@ def generate_participant_finalize_group(t, n, tc_id_init=0):
 
 
 def generate_participant_finalize_vectors():
-    groups = []
-    total_tests = 0
-    for t, n in THRESHOLD_CONFIGS:
-        group = generate_participant_finalize_group(t, n, tc_id_init=total_tests)
-        total_tests += len(group["validTestCases"]) + len(group["errorTestCases"])
-        groups.append(group)
+    groups = [generate_participant_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_FINALIZE_DESCRIPTION,
         "totalTests": total_tests,
@@ -774,7 +697,7 @@ PARTICIPANT_INVESTIGATE_DESCRIPTION = [
 ]
 
 
-def generate_participant_investigate_group(t, n, tc_id_init=0):
+def generate_participant_investigate_group(t, n):
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:n])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     params = chilldkg.SessionParams(hostpubkeys, t)
@@ -790,7 +713,6 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
 
     cmsg1_pool = []
-    tc_id = tc_id_init
     error_cases = []
 
     # --- Error test case: Participant 1 sent an invalid secshare for participant 0 ---
@@ -813,10 +735,8 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
         assert False, "Expected exception"
 
     cmsg1_pool.append(bytes_to_hex(invalid_cmsg1))  # index 0
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1Index": 0,
             "cinvMsg": bytes_to_hex(cinv_msgs[0]),
             "expectedError": error,
@@ -844,10 +764,8 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
         assert False, "Expected exception"
 
     cmsg1_pool.append(bytes_to_hex(invalid_cmsg1))  # index 1
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1Index": 1,
             "cinvMsg": bytes_to_hex(cinv_msgs[0]),
             "expectedError": error,
@@ -876,10 +794,8 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
     else:
         assert False, "Expected exception"
 
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1Index": 1,
             "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
             "expectedError": error,
@@ -908,10 +824,8 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
     else:
         assert False, "Expected exception"
 
-    tc_id += 1
     error_cases.append(
         {
-            "tcId": tc_id,
             "cmsg1Index": 1,
             "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
             "expectedError": error,
@@ -922,7 +836,6 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
     # TODO: add runtime_error test case
 
     return {
-        "totalTests": tc_id - tc_id_init,
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
@@ -934,12 +847,10 @@ def generate_participant_investigate_group(t, n, tc_id_init=0):
 
 
 def generate_participant_investigate_vectors():
-    groups = []
-    total_tests = 0
-    for t, n in THRESHOLD_CONFIGS:
-        group = generate_participant_investigate_group(t, n, tc_id_init=total_tests)
-        total_tests += len(group["errorTestCases"])
-        groups.append(group)
+    groups = [
+        generate_participant_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
+    ]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_INVESTIGATE_DESCRIPTION,
         "totalTests": total_tests,

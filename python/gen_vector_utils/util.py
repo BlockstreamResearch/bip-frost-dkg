@@ -75,6 +75,17 @@ def dkg_output_asdict(dkg_output: DKGOutput) -> dict:
     }
 
 
+def assign_tc_ids(groups):
+    tc_id = 1
+    for group in groups:
+        for key in ("validTestCases", "errorTestCases"):
+            for i, case in enumerate(group.get(key, [])):
+                assert "tcId" not in case
+                group[key][i] = {"tcId": tc_id, **case}
+                tc_id += 1
+    return tc_id - 1
+
+
 # functions below are used to test JSON vectors with chilldkg_ref
 # in tests.py
 

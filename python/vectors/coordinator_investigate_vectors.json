@@ -11,7 +11,6 @@
     "totalTests": 4,
     "testGroups": [
         {
-            "totalTests": 1,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -39,7 +38,6 @@
             "errorTestCases": []
         },
         {
-            "totalTests": 1,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -67,7 +65,6 @@
             "errorTestCases": []
         },
         {
-            "totalTests": 1,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
@@ -95,7 +92,6 @@
             "errorTestCases": []
         },
         {
-            "totalTests": 1,
             "params": {
                 "hostpubkeys": [
                     "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
