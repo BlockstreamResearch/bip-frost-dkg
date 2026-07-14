@@ -2,7 +2,7 @@
 BIP: ?
 Title: ChillDKG: Distributed Key Generation for FROST
 Layer: Applications
-Authors: Tim Ruffing <crypto@timruffing.de>
+Authors: Tim Ruffing <me@real-or-random.org>
          Jonas Nick <jonas@n-ck.net>
          Illia Melnyk <mazylia6@gmail.com>
          Mariia Zhvanko <mariia.zhvanko@gmail.com>
