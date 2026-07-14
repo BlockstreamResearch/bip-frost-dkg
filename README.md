@@ -4,6 +4,8 @@ Title: ChillDKG: Distributed Key Generation for FROST
 Layer: Applications
 Authors: Tim Ruffing <crypto@timruffing.de>
          Jonas Nick <jonas@n-ck.net>
+         Illia Melnyk <mazylia6@gmail.com>
+         Mariia Zhvanko <mariia.zhvanko@gmail.com>
          Sivaram Dhakshinamoorthy <siv2ram@gmail.com>
 Status: Draft
 Type: Specification
