@@ -521,7 +521,7 @@ then we say that this party *deems the protocol session successful*.
 In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).[^index-position-mapping]
 See [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md) for details on signing.
 
-[^index-position-mapping]: The secret sharing is as expected by [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t-1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant `i` has secret share `f(i + 1)`.
+[^index-position-mapping]: The secret sharing is as expected by [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t - 1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant `i` has secret share `f(i + 1)`.
 
 Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
 
