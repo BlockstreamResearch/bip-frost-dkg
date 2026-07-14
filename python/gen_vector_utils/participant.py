@@ -6,6 +6,7 @@ from .util import (
     bytes_to_hex,
     hex_list_to_bytes,
     expect_exception,
+    expect_faulty_exception,
     params_asdict,
     dkg_output_asdict,
     assign_tc_ids,
@@ -430,9 +431,10 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[1] = GE()  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
-    error = expect_exception(
+    error = expect_faulty_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
         chilldkg.FaultyParticipantOrCoordinatorError,
+        1,
     )
     error_cases.append(
         {
@@ -447,9 +449,10 @@ def generate_participant_step2_group(t, n):
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
     )  # random 64 bytes (not a valid signature for any key)
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
-    error = expect_exception(
+    error = expect_faulty_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
         chilldkg.FaultyParticipantOrCoordinatorError,
+        1,
     )
     error_cases.append(
         {
@@ -644,9 +647,10 @@ def generate_participant_finalize_group(t, n):
     )
     assert len(random_sig) == 64
     invalid_cmsg2_2 = chilldkg.CoordinatorMsg2(cmsg2[:-64] + random_sig).to_bytes()
-    error2 = expect_exception(
+    error2 = expect_faulty_exception(
         lambda: participant_finalize(pstates2[0], invalid_cmsg2_2),
         chilldkg.FaultyParticipantOrCoordinatorError,
+        n - 1,
     )
     error_cases.append(
         {
@@ -727,9 +731,10 @@ def generate_participant_investigate_group(t, n):
         participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(invalid_pmsgs1, params)
-        error = expect_exception(
+        error = expect_faulty_exception(
             lambda e=e: participant_investigate(e, cinv_msgs[0]),
             chilldkg.FaultyParticipantOrCoordinatorError,
+            1,
         )
     else:
         assert False, "Expected exception"

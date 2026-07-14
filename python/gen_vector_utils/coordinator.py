@@ -3,6 +3,7 @@ from .util import (
     bytes_to_hex,
     hex_list_to_bytes,
     expect_exception,
+    expect_faulty_exception,
     params_asdict,
     dkg_output_asdict,
     assign_tc_ids,
@@ -188,9 +189,10 @@ def generate_coordinator_step1_group(t, n):
     invalid_pmsg1_parsed.enc_pmsg.enc_shares.pop()
     invalid_pmsgs1[1] = invalid_pmsg1_parsed.to_bytes()
 
-    error = expect_exception(
+    error = expect_faulty_exception(
         lambda: coordinator_step1(invalid_pmsgs1, params),
         chilldkg.FaultyParticipantError,
+        1,
     )
     pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n
     error_cases.append(
@@ -208,9 +210,10 @@ def generate_coordinator_step1_group(t, n):
     empty_pmsgs1 = b""
     pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index n + 1
     invalid_pmsgs1 = [empty_pmsgs1] + pmsgs1[1:]
-    error = expect_exception(
+    error = expect_faulty_exception(
         lambda: coordinator_step1(invalid_pmsgs1, params),
         chilldkg.FaultyParticipantError,
+        0,
     )
     error_cases.append(
         {
@@ -229,9 +232,10 @@ def generate_coordinator_step1_group(t, n):
     pmsg1_pool.append(bytes_to_hex(truncated_pmsg1))  # index n + 2
     invalid_pmsgs1 = list(pmsgs1)
     invalid_pmsgs1[1] = truncated_pmsg1
-    error = expect_exception(
+    error = expect_faulty_exception(
         lambda: coordinator_step1(invalid_pmsgs1, params),
         chilldkg.FaultyParticipantError,
+        1,
     )
     error_cases.append(
         {
@@ -326,9 +330,10 @@ def generate_coordinator_finalize_group(t, n):
     invalid_pmsgs2_short_sig[1] = invalid_pmsgs2_short_sig[1][
         :63
     ]  # truncate sig to 63 bytes
-    error_case = expect_exception(
+    error_case = expect_faulty_exception(
         lambda: coordinator_finalize(cstate, invalid_pmsgs2_short_sig),
         chilldkg.FaultyParticipantError,
+        1,
     )
     pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_short_sig[1]))  # index n
     error_cases.append(
@@ -373,9 +378,10 @@ def generate_coordinator_finalize_group(t, n):
     invalid_pmsgs2_sig[1] = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
     )  # random sig
-    error_case = expect_exception(
+    error_case = expect_faulty_exception(
         lambda: coordinator_finalize(cstate, invalid_pmsgs2_sig),
         chilldkg.FaultyParticipantError,
+        1,
     )
 
     # add adversarial entry to pool

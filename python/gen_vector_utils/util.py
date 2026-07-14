@@ -62,6 +62,15 @@ def expect_exception(try_fn, expected_exception):
         raise AssertionError("Expected exception")
 
 
+def expect_faulty_exception(try_fn, expected_exception, expected_participant):
+    error = expect_exception(try_fn, expected_exception)
+    actual = error.get("participant")
+    assert actual == expected_participant, (
+        f"expected faulty participant {expected_participant}, got {actual}"
+    )
+    return error
+
+
 def params_asdict(params: SessionParams) -> dict:
     return {"hostpubkeys": bytes_list_to_hex(params.hostpubkeys), "t": params.t}
 
