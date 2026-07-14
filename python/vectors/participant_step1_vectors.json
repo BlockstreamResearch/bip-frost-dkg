@@ -16,7 +16,6 @@
     "totalTests": 48,
     "testGroups": [
         {
-            "totalTests": 12,
             "validTestCases": [
                 {
                     "tcId": 1,
@@ -230,7 +229,6 @@
             ]
         },
         {
-            "totalTests": 12,
             "validTestCases": [
                 {
                     "tcId": 13,
@@ -444,7 +442,6 @@
             ]
         },
         {
-            "totalTests": 12,
             "validTestCases": [
                 {
                     "tcId": 25,
@@ -658,7 +655,6 @@
             ]
         },
         {
-            "totalTests": 12,
             "validTestCases": [
                 {
                     "tcId": 37,

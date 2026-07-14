@@ -4,6 +4,7 @@ from .util import (
     expect_exception,
     params_asdict,
     dkg_output_asdict,
+    assign_tc_ids,
 )
 
 from chilldkg_ref.chilldkg import hostpubkey_gen, params_id, recover
@@ -28,17 +29,14 @@ def generate_hostpubkey_vectors():
     ]
     valid_cases = []
     error_cases = []
-    tc_id = 0
 
     # --- Valid test case ---
-    tc_id += 1
     hostseckey = bytes.fromhex(
         "631C047D50A67E45E27ED1FF25FCE179CAF059A2120D346ACD9774C1F2BAB66F"
     )
     expected_pubkey = hostpubkey_gen(hostseckey)
     valid_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckey),
             "expectedHostpubkey": bytes_to_hex(expected_pubkey),
             "comment": "valid host secret key",
@@ -46,50 +44,46 @@ def generate_hostpubkey_vectors():
     )
 
     # --- Error test case: Wrong length ---
-    tc_id += 1
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
     error = expect_exception(lambda: hostpubkey_gen(short_hostseckey), ValueError)
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(short_hostseckey),
             "expectedError": error,
             "comment": "length of host secret key is not 32 bytes",
         }
     )
     # --- Error test case: Out-of-range hostseckey ---
-    tc_id += 1
     invalid_hostseckey = bytes_from_int(Scalar.SIZE)
     error = expect_exception(
         lambda: hostpubkey_gen(invalid_hostseckey), chilldkg.HostSeckeyError
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(invalid_hostseckey),
             "expectedError": error,
             "comment": "host secret key is out of range",
         }
     )
     # --- Error test case: zeroed hostseckey ---
-    tc_id += 1
     zeroed_hostseckey = b"\x00" * 32
     error = expect_exception(
         lambda: hostpubkey_gen(zeroed_hostseckey), chilldkg.HostSeckeyError
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(zeroed_hostseckey),
             "expectedError": error,
             "comment": "zeroed host secret key",
         }
     )
 
+    groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": tc_id,
+        "totalTests": total_tests,
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
     }
@@ -111,7 +105,6 @@ def generate_params_id_vectors():
     ]
     valid_cases = []
     error_cases = []
-    tc_id = 0
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [hostpubkey_gen(sk) for sk in hostseckeys]
 
@@ -123,12 +116,10 @@ def generate_params_id_vectors():
     ]
 
     for case in cases:
-        tc_id += 1
         t = case["t"]
         params = chilldkg.SessionParams(hostpubkeys, t)
         expected_params_id = params_id(params)
         test_case = {
-            "tcId": tc_id,
             "params": params_asdict(params),
             "expectedParamsId": bytes_to_hex(expected_params_id),
             "comment": case["comment"],
@@ -136,7 +127,6 @@ def generate_params_id_vectors():
         valid_cases.append(test_case)
 
     # --- Error test case: Invalid threshold ---
-    tc_id += 1
     t = 0
     invalid_params = chilldkg.SessionParams(hostpubkeys, t)
     error = expect_exception(
@@ -144,14 +134,12 @@ def generate_params_id_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "params": params_asdict(invalid_params),
             "expectedError": error,
             "comment": "invalid threshold value",
         }
     )
     # --- Error test case: hostpubkeys list contains an invalid value ---
-    tc_id += 1
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     t = 2
     with_invalid = [hostpubkeys[0], invalid_hostpubkey, hostpubkeys[2]]
@@ -161,14 +149,12 @@ def generate_params_id_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "params": params_asdict(invalid_params),
             "expectedError": error,
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
     # --- Error test case: hostpubkeys list contains duplicate values ---
-    tc_id += 1
     t = 2
     with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
@@ -177,16 +163,17 @@ def generate_params_id_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "params": params_asdict(duplicate_params),
             "expectedError": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
 
+    groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": tc_id,
+        "totalTests": total_tests,
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
     }
@@ -209,7 +196,6 @@ def generate_recover_vectors():
     ]
     valid_cases = []
     error_cases = []
-    tc_id = 0
 
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
@@ -238,13 +224,11 @@ def generate_recover_vectors():
     assert prec == crec
 
     # --- Valid test case: participant recovery ---
-    tc_id += 1
     pout_rec, params_rec = recover(hostseckeys[0], prec)
     assert pout_rec == pout
     assert params_rec == params
     valid_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "recoveryData": bytes_to_hex(prec),
             "expectedOutput": {
@@ -255,13 +239,11 @@ def generate_recover_vectors():
         }
     )
     # --- Valid test case: coordinator recovery ---
-    tc_id += 1
     cout_rec, params_rec = recover(None, crec)
     assert cout_rec == cout
     assert params_rec == params
     valid_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(crec),
             "expectedOutput": {
@@ -273,14 +255,12 @@ def generate_recover_vectors():
     )
 
     # --- Error test case: recovery data of invalid length ---
-    tc_id += 1
     invalid_crec = crec[1:]
     error = expect_exception(
         lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -288,7 +268,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: first coefficient of sum_coms is invalid ---
-    tc_id += 1
     invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     invalid_crec = crec[:4] + invalid_ge + crec[4 + 33 :]
     error = expect_exception(
@@ -296,7 +275,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -304,7 +282,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: last share in enc_secshare list is out of range ---
-    tc_id += 1
     n = len(hostpubkeys)
     cert_len = chilldkg.certeq_cert_len(n)
     invalid_encshare = bytes.fromhex(
@@ -316,7 +293,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -324,7 +300,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: invalid threshold ---
-    tc_id += 1
     t = params.t
     invalid_crec = b"\x00" * 4 + crec[4 + 33 * t :]
     error = expect_exception(
@@ -332,7 +307,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -340,7 +314,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: first pubkey in the hostpubkey list is invalid ---
-    tc_id += 1
     invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"
     invalid_crec = crec[: 4 + 33 * t] + invalid_ge + crec[4 + 33 * t + 33 :]
     error = expect_exception(
@@ -348,7 +321,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -356,7 +328,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: last pubnonce in the pubnonces list was tampered with ---
-    tc_id += 1
     n = len(hostpubkeys)
     cert_len = chilldkg.certeq_cert_len(n)
     rand_ge = bytes.fromhex(
@@ -370,7 +341,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -378,7 +348,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: last signature in the certificate is invalid ---
-    tc_id += 1
     rand_sig = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
     )
@@ -388,7 +357,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": None,
             "recoveryData": bytes_to_hex(invalid_crec),
             "expectedError": error,
@@ -396,13 +364,11 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: invalid hostseckey ---
-    tc_id += 1
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
     error = expect_exception(lambda: recover(short_hostseckey, crec), ValueError)
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(short_hostseckey),
             "recoveryData": bytes_to_hex(crec),
             "expectedError": error,
@@ -410,7 +376,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: hostseckey doesn't match any hostpubkey ---
-    tc_id += 1
     rand_hostseckey = bytes.fromhex(
         "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7"
     )
@@ -419,7 +384,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(rand_hostseckey),
             "recoveryData": bytes_to_hex(crec),
             "expectedError": error,
@@ -427,7 +391,6 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: zero hostseckey ---
-    tc_id += 1
     zero_hostseckey = b"\x00" * 32
     error = expect_exception(
         lambda: recover(zero_hostseckey, crec),
@@ -435,16 +398,13 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(zero_hostseckey),
             "recoveryData": bytes_to_hex(crec),
             "expectedError": error,
             "comment": "host secret key is zero",
         }
     )
-
     # --- Error test case: out-of-range hostseckey ---
-    tc_id += 1
     overflow_hostseckey = bytes_from_int(Scalar.SIZE)
     error = expect_exception(
         lambda: recover(overflow_hostseckey, crec),
@@ -452,7 +412,6 @@ def generate_recover_vectors():
     )
     error_cases.append(
         {
-            "tcId": tc_id,
             "hostseckey": bytes_to_hex(overflow_hostseckey),
             "recoveryData": bytes_to_hex(crec),
             "expectedError": error,
@@ -460,9 +419,11 @@ def generate_recover_vectors():
         }
     )
 
+    groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    total_tests = assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": tc_id,
+        "totalTests": total_tests,
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
     }

@@ -62,6 +62,15 @@ def expect_exception(try_fn, expected_exception):
         raise AssertionError("Expected exception")
 
 
+def expect_faulty_exception(try_fn, expected_exception, expected_participant):
+    error = expect_exception(try_fn, expected_exception)
+    actual = error.get("participant")
+    assert actual == expected_participant, (
+        f"expected faulty participant {expected_participant}, got {actual}"
+    )
+    return error
+
+
 def params_asdict(params: SessionParams) -> dict:
     return {"hostpubkeys": bytes_list_to_hex(params.hostpubkeys), "t": params.t}
 
@@ -73,6 +82,17 @@ def dkg_output_asdict(dkg_output: DKGOutput) -> dict:
         "thresholdPubkey": bytes_to_hex(dkg_output.threshold_pubkey),
         "pubshares": bytes_list_to_hex(dkg_output.pubshares),
     }
+
+
+def assign_tc_ids(groups):
+    tc_id = 1
+    for group in groups:
+        for key in ("validTestCases", "errorTestCases"):
+            for i, case in enumerate(group.get(key, [])):
+                assert "tcId" not in case
+                group[key][i] = {"tcId": tc_id, **case}
+                tc_id += 1
+    return tc_id - 1
 
 
 # functions below are used to test JSON vectors with chilldkg_ref
