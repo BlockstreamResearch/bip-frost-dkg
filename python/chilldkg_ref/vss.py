@@ -96,7 +96,7 @@ class VSSCommitment:
         # must be added to all secret shares of the commitment.
         pk = self.commitment_to_secret()
         secshare_tweak = Scalar.from_bytes_checked(
-            tagged_hash("TapTweak", pk.to_bytes_compressed())
+            tagged_hash("TapTweak", pk.to_bytes_xonly())
         )
         pubshare_tweak = secshare_tweak * G
         vss_tweak = VSSCommitment([pubshare_tweak] + [GE()] * (self.t() - 1))
