@@ -79,24 +79,24 @@ class VSSCommitment:
         # Return a modified VSS commitment such that the threshold public key
         # generated from it has an unspendable BIP 341 Taproot script path.
         #
-        # Specifically, for a VSS commitment `com`, we have:
-        # `com.invalid_taproot_commit().commitment_to_secret() = com.commitment_to_secret() + t*G`.
-        #
-        # The tweak `t` commits to an empty message, which is invalid according
-        # to BIP 341 for Taproot script spends. This follows BIP 341's
+        # Specifically, for a VSS commitment `com`, we have
+        # `com.invalid_taproot_commit().commitment_to_secret() = com.commitment_to_secret() + t*G`,
+        # where the tweak `t` commits to an empty message, which is invalid
+        # according to BIP 341 for Taproot script spends. This follows BIP 341's
         # recommended approach for committing to an unspendable script path.
         #
-        # This prevents a malicious participant from secretly inserting a *valid*
-        # Taproot commitment to a script path into the summed VSS commitment during
-        # the DKG protocol. If the resulting threshold public key was used directly
-        # in a BIP 341 Taproot output, the malicious participant would be able to
-        # spend the output using their hidden script path.
+        # This prevents a malicious participant from secretly inserting a
+        # *valid* Taproot commitment to a script path into the summed VSS
+        # commitment during the DKG protocol. If the resulting threshold public
+        # key was used directly in a BIP 341 Taproot output, the malicious
+        # participant would be able to spend the output using their hidden
+        # script path.
         #
-        # The function returns the updated VSS commitment and the tweak `t` which
-        # must be added to all secret shares of the commitment.
+        # The function returns the updated VSS commitment and the tweak `t`
+        # which must be added to all secret shares of the commitment.
         pk = self.commitment_to_secret()
         secshare_tweak = Scalar.from_bytes_checked(
-            tagged_hash("TapTweak", pk.to_bytes_compressed())
+            tagged_hash("TapTweak", pk.to_bytes_xonly())
         )
         pubshare_tweak = secshare_tweak * G
         vss_tweak = VSSCommitment([pubshare_tweak] + [GE()] * (self.t() - 1))

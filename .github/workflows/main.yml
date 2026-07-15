@@ -19,5 +19,7 @@ jobs:
         run: ./python/tests.sh
       - name: Run example
         run: ./python/example.py && ./python/example.py --faulty-participant
+      - name: Check that test vectors are up to date
+        run: ./python/gen_vectors.py && git diff --exit-code
       - name: Check if README.md has latest pydoc export
         run: ./update-pydoc.sh && git diff --exit-code
