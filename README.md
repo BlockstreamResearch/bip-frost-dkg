@@ -1,16 +1,20 @@
 ```
-BIP:
+BIP: ?
 Title: ChillDKG: Distributed Key Generation for FROST
-Author: Tim Ruffing <crypto@timruffing.de>
-        Jonas Nick <jonas@n-ck.net>
-        Sivaram Dhakshinamoorthy <siv2ram@gmail.com>
+Layer: Applications
+Authors: Tim Ruffing <me@real-or-random.org>
+         Jonas Nick <jonas@n-ck.net>
+         Illia Melnyk <mazylia6@gmail.com>
+         Mariia Zhvanko <mariia.zhvanko@gmail.com>
+         Sivaram Dhakshinamoorthy <siv2ram@gmail.com>
 Status: Draft
+Type: Specification
+Assigned: ?
 License: CC0-1.0
 License-Code: MIT
-Type: Informational
-Created:
-Post-History:
-Comments-URI:
+Discussion: 2024-07-08: https://groups.google.com/g/bitcoindev/c/HE3HSnGTpoQ/m/euZvPxKeAQAJ
+Version: 0.2.0-dev
+Requires: 445
 ```
 
 # ChillDKG: Distributed Key Generation for FROST
