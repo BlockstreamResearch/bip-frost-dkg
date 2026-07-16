@@ -163,7 +163,7 @@ def hostpubkey_gen(hostseckey: bytes) -> bytes:
     starting with 0x02 or 0x03). This is the key generation procedure
     traditionally used in Bitcoin, e.g., for ECDSA. In other words, this
     function is equivalent to `IndividualPubkey` as defined in
-    [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-generation-of-an-individual-signer)].
+    [[BIP 327](bip-0327.mediawiki#key-generation-of-an-individual-signer)].
 
     Arguments:
         hostseckey: This participant's long-term secret key (32 bytes).
@@ -219,13 +219,12 @@ class SessionParams(NamedTuple):
     participants' host public keys before the start of the session, e.g., by
     confirming authenticity of each host public key with the expected key
     holder out of band. This is analogous to traditional threshold signatures
-    (known as "multisig" in the Bitcoin community), [[BIP
-    383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)], where
-    a signer needs the other signers' authentic extended public keys ("xpubs")
-    to generate multisig addresses, or MuSig2 [[BIP
-    327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)], where
-    a signer needs the other participants' authentic individual public keys to
-    generate an aggregated public key.
+    (known as "multisig" in the Bitcoin community),
+    [[BIP 383](bip-0383.mediawiki)], where a signer needs the other signers'
+    authentic extended public keys ("xpubs") to generate multisig addresses,
+    or MuSig2 [[BIP 327](bip-0327.mediawiki)], where a signer needs the other
+    participants' authentic individual public keys to generate an aggregated
+    public key.
 
     A DKG session will fail if the participants and the coordinator in a session
     don't have the `hostpubkeys` in the same order. This will make sure that
@@ -235,8 +234,7 @@ class SessionParams(NamedTuple):
     others are fallback participants). If there is no canonical order of the
     participants in the application, the caller can sort the list of host public
     keys with the [KeySort algorithm specified in
-    BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki#key-sorting)
-    to abstract away from the order.
+    BIP 327](bip-0327.mediawiki#key-sorting) to abstract away from the order.
     """
 
     hostpubkeys: List[bytes]
