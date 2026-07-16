@@ -215,18 +215,17 @@ class SessionParams(NamedTuple):
             This is the number of participants that will be required to sign.
             It must hold that `1 <= t <= len(hostpubkeys) <= 2**32 - 1`.
 
-    Participants **must** ensure that they have obtained authentic host
-    public keys of all the other participants in the session to make
-    sure that they run the DKG and generate a threshold public key with
-    the intended set of participants. This is analogous to traditional
-    threshold signatures (known as "multisig" in the Bitcoin community),
-    [[BIP 383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)],
-    where the participants need to obtain authentic extended public keys
-    ("xpubs") from the other participants to generate multisig
-    addresses, or MuSig2
-    [[BIP 327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)],
-    where the participants need to obtain authentic individual public
-    keys of the other participants to generate an aggregated public key.
+    Each participant **must** ensure to have authentic copies of all other
+    participants' host public keys before the start of the session, e.g., by
+    confirming authenticity of each host public key with the expected key
+    holder out of band. This is analogous to traditional threshold signatures
+    (known as "multisig" in the Bitcoin community), [[BIP
+    383](https://github.com/bitcoin/bips/blob/master/bip-0383.mediawiki)], where
+    a signer needs the other signers' authentic extended public keys ("xpubs")
+    to generate multisig addresses, or MuSig2 [[BIP
+    327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)], where
+    a signer needs the other participants' authentic individual public keys to
+    generate an aggregated public key.
 
     A DKG session will fail if the participants and the coordinator in a session
     don't have the `hostpubkeys` in the same order. This will make sure that
