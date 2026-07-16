@@ -951,7 +951,7 @@ public key (e.g., by sending funds to it). If the coordinator reply remains
 missing, that other participant can, at any point in the future, convince
 this participant of the success of the DKG session by presenting recovery
 data, from which this participant can recover the DKG output using the
-`recover` function.
+`participant_recover` function.
 
 *Arguments*:
 
@@ -1003,7 +1003,7 @@ them raise an exception instead, or that they have not received a `cmsg2`
 from the coordinator at all. These participants can, at any point in time in
 the future (e.g., when initiating a signing session), be convinced to deem
 the session successful by presenting the recovery data to them, from which
-they can recover the DKG outputs using the `recover` function.
+they can recover the DKG outputs using the `participant_recover` function.
 
 Since returning successfully does not imply that other participants deem
 the DKG session successful, returning successfully also does not imply
@@ -1137,14 +1137,15 @@ some participants pass a wrong and invalid message to `participant_finalize`
 can, at any point in time in the future (e.g., when initiating a signing
 session), be convinced to deem the session successful by presenting the
 recovery data to them, from which they can recover the DKG outputs using the
-`recover` function.
+`participant_recover` function.
 
 If this function raises an exception, then the DKG session was not
 successful from the perspective of the coordinator. In this case, it is, in
 principle, possible to recover the DKG outputs of the coordinator using the
-recovery data from a successful participant, should one exist. Any such
-successful participant is either faulty, or has received messages from
-other participants via a communication channel beside the coordinator.
+`coordinator_recover` function together with the recovery data from a
+successful participant, should one exist. Any such successful participant
+is either faulty, or has received messages from other participants via a
+communication channel beside the coordinator.
 
 *Arguments*:
 
@@ -1198,26 +1199,24 @@ information.
 - `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
 
-#### recover
+#### participant\_recover
 
 ```python
-def recover(hostseckey: Optional[bytes], recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
+def participant_recover(hostseckey: bytes, recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
 ```
 
-Recover the DKG output of a ChillDKG session.
+Recover the DKG output of a participant of a ChillDKG session.
 
 This function serves two different purposes:
-1. To recover from an exception in `participant_finalize` or
-`coordinator_finalize`, after obtaining the recovery data from another
-participant or the coordinator. See `participant_finalize` and
-`coordinator_finalize` for background.
+1. To recover from an exception in `participant_finalize`, after
+obtaining the recovery data from another participant or the
+coordinator. See `participant_finalize` for background.
 2. To reproduce the DKG outputs on a new device, e.g., to recover from a
 backup after data loss.
 
 *Arguments*:
 
-- `hostseckey` - This participant's long-term host secret key (32 bytes) or
-  `None` if recovering the coordinator.
+- `hostseckey` - This participant's long-term host secret key (32 bytes).
 - `recovery_data` - Recovery data from a successful session.
 
 
@@ -1232,6 +1231,38 @@ backup after data loss.
 - `HostSeckeyError` - If the host secret key is invalid, or if the key does not
   match the recovery data.
   (This can also occur if the recovery data is invalid.)
+- `RecoveryDataError` - If recovery failed due to invalid recovery data.
+
+#### coordinator\_recover
+
+```python
+def coordinator_recover(recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
+```
+
+Recover the DKG output of the coordinator of a ChillDKG session.
+
+This function serves two different purposes:
+1. To recover from an exception in `coordinator_finalize`, after
+obtaining the recovery data from a participant. See
+`coordinator_finalize` for background.
+2. To reproduce the DKG outputs on a new device, e.g., to recover from a
+backup after data loss.
+
+*Arguments*:
+
+- `recovery_data` - Recovery data from a successful session.
+
+
+*Returns*:
+
+- `DKGOutput` - The recovered DKG output. Since the coordinator does not
+  have a secret share, the DKG output will have the `secshare`
+  field set to `None`.
+- `SessionParams` - The common parameters of the recovered session.
+
+
+*Raises*:
+
 - `RecoveryDataError` - If recovery failed due to invalid recovery data.
 
 #### RecoveryDataError Exception

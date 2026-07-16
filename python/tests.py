@@ -378,9 +378,17 @@ def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
 
     if recovery:
         rec = eqs_or_recs[0]
-        # Check correctness of chilldkg.recover
+        # Check correctness of chilldkg.participant_recover /
+        # chilldkg.coordinator_recover
         for i in range(n + 1):
-            (secshare, threshold_pubkey, pubshares), _ = chilldkg.recover(seeds[i], rec)
+            if seeds[i] is None:
+                (secshare, threshold_pubkey, pubshares), _ = (
+                    chilldkg.coordinator_recover(rec)
+                )
+            else:
+                (secshare, threshold_pubkey, pubshares), _ = (
+                    chilldkg.participant_recover(seeds[i], rec)
+                )
             assert secshare == dkg_outputs[i][0]
             assert threshold_pubkey == dkg_outputs[i][1]
             assert pubshares == dkg_outputs[i][2]
@@ -691,7 +699,10 @@ def test_recover_vectors():
             bytes.fromhex(test_case["hostseckey"]) if test_case["hostseckey"] else None
         )
         recovery_data = bytes.fromhex(test_case["recoveryData"])
-        out, params = chilldkg.recover(hostseckey, recovery_data)
+        if hostseckey is None:
+            out, params = chilldkg.coordinator_recover(recovery_data)
+        else:
+            out, params = chilldkg.participant_recover(hostseckey, recovery_data)
         expected_out = test_case["expectedOutput"]["dkgOutput"]
         expected_params = test_case["expectedOutput"]["params"]
         assert expected_out == dkg_output_asdict(out)
@@ -703,9 +714,15 @@ def test_recover_vectors():
         )
         recovery_data = bytes.fromhex(test_case["recoveryData"])
         expected_error = test_case["expectedError"]
-        assert_raises(
-            lambda: chilldkg.recover(hostseckey, recovery_data), expected_error
-        )
+        if hostseckey is None:
+            assert_raises(
+                lambda: chilldkg.coordinator_recover(recovery_data), expected_error
+            )
+        else:
+            assert_raises(
+                lambda: chilldkg.participant_recover(hostseckey, recovery_data),
+                expected_error,
+            )
 
 
 def test_recovery_acknowledgment():
