@@ -111,6 +111,9 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
         msg = certeq_message(x, i)
         valid = schnorr_verify(
             msg,
+            # Dropping the sign byte from hostpubkeys[i] is okay because msg
+            # commits on the full hostpubkeys[i]: it encodes all hostpubkeys
+            # together with the index i.
             hostpubkeys[i][1:33],
             cert[i * 64 : (i + 1) * 64],
         )
@@ -1182,6 +1185,9 @@ def participant_recovery_acks_verify(
         msg = recovery_ack_message(recovery_data, i)
         valid = schnorr_verify(
             msg,
+            # Dropping the sign byte from hostpubkeys[i] is okay because msg
+            # commits on the full hostpubkeys[i]: it encodes all hostpubkeys
+            # together with the index i.
             hostpubkeys[i][1:33],
             rmsg.sig,
         )
