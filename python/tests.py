@@ -859,8 +859,8 @@ def test_recovery_acknowledgment():
         chilldkg.participant_recovery_acks_verify(
             recovery_data, params, wrong_length_sigs
         )
-    except chilldkg.InvalidRecoveryAckError as e:
-        assert e.participant == 0
+    except ValueError:
+        pass
     else:
         assert False, "Expected exception"
 

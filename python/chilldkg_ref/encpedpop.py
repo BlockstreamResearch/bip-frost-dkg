@@ -143,6 +143,10 @@ class ParticipantMsg(NamedTuple):
     pubnonce: bytes
     enc_shares: List[Scalar]
 
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return simplpedpop.ParticipantMsg.len_bytes(t=t) + 33 + 32 * n
+
     def to_bytes(self) -> bytes:
         return (
             self.simpl_pmsg.to_bytes()
@@ -152,42 +156,28 @@ class ParticipantMsg(NamedTuple):
 
     @staticmethod
     def from_bytes(b: bytes, t: int, n: int) -> ParticipantMsg:
-        rest = b
+        if len(b) != ParticipantMsg.len_bytes(t=t, n=n):
+            raise ValueError
 
         # Read simpl_pmsg
-        simpl_pmsg_len = 33 * t + 64
-        if len(rest) < simpl_pmsg_len:
-            raise MsgParseError("missing simplpedpop participant message")
+        simpl_pmsg_len = simplpedpop.ParticipantMsg.len_bytes(t=t)
         simpl_pmsg, rest = (
-            simplpedpop.ParticipantMsg.from_bytes(
-                rest[:simpl_pmsg_len], t
-            ),  # MsgParseError if invalid
-            rest[simpl_pmsg_len:],
-        )
+            simplpedpop.ParticipantMsg.from_bytes(b[:simpl_pmsg_len], t),
+            b[simpl_pmsg_len:],
+        )  # MsgParseError if invalid
 
         # Read pubnonce (33 bytes)
-        if len(rest) < 33:
-            raise MsgParseError("missing public nonce")
         pubnonce, rest = rest[:33], rest[33:]
 
         # Read enc_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted secret shares")
         try:
-            enc_secshares, rest = (
-                [
-                    Scalar.from_bytes_checked(
-                        rest[i : i + 32]
-                    )  # ValueError if overflow
-                    for i in range(0, 32 * n, 32)
-                ],
-                rest[32 * n :],
-            )
+            enc_secshares = [
+                Scalar.from_bytes_checked(rest[i : i + 32])  # ValueError if overflow
+                for i in range(0, 32 * n, 32)
+            ]
         except ValueError as e:
             raise MsgParseError("invalid encrypted secret share") from e
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return ParticipantMsg(simpl_pmsg, pubnonce, enc_secshares)
 
 
@@ -195,39 +185,38 @@ class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
     pubnonces: List[bytes]
 
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n) + 33 * n
+
     def to_bytes(self) -> bytes:
         return self.simpl_cmsg.to_bytes() + b"".join(self.pubnonces)
 
     @staticmethod
     def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg:
-        rest = b
+        if len(b) != CoordinatorMsg.len_bytes(t=t, n=n):
+            raise ValueError
 
         # Read simpl_cmsg
-        simpl_cmsg_len = 33 * n + 33 * (t - 1) + 64 * n
-        if len(rest) < simpl_cmsg_len:
-            raise MsgParseError("missing simplpedpop coordinator message")
+        simpl_cmsg_len = simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n)
         simpl_cmsg, rest = (
-            simplpedpop.CoordinatorMsg.from_bytes(
-                rest[:simpl_cmsg_len], t, n
-            ),  # MsgParseError if invalid
-            rest[simpl_cmsg_len:],
-        )
-        # Read pubnonces (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing public nonces")
-        pubnonces, rest = (
-            [rest[i : i + 33] for i in range(0, 33 * n, 33)],
-            rest[33 * n :],
-        )
+            simplpedpop.CoordinatorMsg.from_bytes(b[:simpl_cmsg_len], t, n),
+            b[simpl_cmsg_len:],
+        )  # MsgParseError if invalid
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
+        # Read pubnonces (33*n bytes)
+        pubnonces = [rest[i : i + 33] for i in range(0, 33 * n, 33)]
+
         return CoordinatorMsg(simpl_cmsg, pubnonces)
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
     enc_partial_secshares: List[Scalar]
     partial_pubshares: List[GE]
+
+    @staticmethod
+    def len_bytes(*, n: int) -> int:
+        return simplpedpop.CoordinatorInvestigationMsg.len_bytes(n=n) + 32 * n
 
     def to_bytes(self) -> bytes:
         secshares_bytes = b"".join(
@@ -240,38 +229,30 @@ class CoordinatorInvestigationMsg(NamedTuple):
 
     @staticmethod
     def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
-        rest = b
+        if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
+            raise ValueError
 
         # Read enc_partial_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted partial secshares")
         try:
             enc_partial_secshares, rest = (
                 [
-                    Scalar.from_bytes_checked(rest[i : i + 32])
+                    Scalar.from_bytes_checked(b[i : i + 32])
                     for i in range(0, 32 * n, 32)
                 ],  # ValueError if overflow
-                rest[32 * n :],
+                b[32 * n :],
             )
         except ValueError as e:
             raise MsgParseError("invalid encrypted partial secshare") from e
 
         # Read partial_pubshares (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing partial pubshares")
         try:
-            partial_pubshares, rest = (
-                [
-                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
-                    for i in range(0, 33 * n, 33)
-                ],
-                rest[33 * n :],
-            )
+            partial_pubshares = [
+                GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                for i in range(0, 33 * n, 33)
+            ]
         except ValueError as e:
             raise MsgParseError("invalid partial pubshare") from e
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return CoordinatorInvestigationMsg(enc_partial_secshares, partial_pubshares)
 
 

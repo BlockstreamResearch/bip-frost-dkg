@@ -66,15 +66,9 @@ __all__ = [
     # Types
     "SessionParams",
     "DKGOutput",
-    "ParticipantMsg1",
-    "ParticipantMsg2",
-    "CoordinatorInvestigationMsg",
     "ParticipantState1",
     "ParticipantState2",
-    "CoordinatorMsg1",
-    "CoordinatorMsg2",
     "CoordinatorState",
-    "RecoveryAckMsg",
     "RecoveryData",
 ]
 
@@ -373,11 +367,17 @@ RecoveryData = NewType("RecoveryData", bytes)
 class ParticipantMsg1(NamedTuple):
     enc_pmsg: encpedpop.ParticipantMsg
 
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return encpedpop.ParticipantMsg.len_bytes(t=t, n=n)
+
     def to_bytes(self) -> bytes:
         return self.enc_pmsg.to_bytes()
 
     @staticmethod
     def from_bytes(b: bytes, t: int, n: int) -> ParticipantMsg1:
+        if len(b) != ParticipantMsg1.len_bytes(t=t, n=n):
+            raise ValueError
         enc_pmsg = encpedpop.ParticipantMsg.from_bytes(
             b, t, n
         )  # MsgParseError if invalid
@@ -387,19 +387,27 @@ class ParticipantMsg1(NamedTuple):
 class ParticipantMsg2(NamedTuple):
     sig: bytes
 
+    @staticmethod
+    def len_bytes() -> int:
+        return 64
+
     def to_bytes(self) -> bytes:
         return self.sig
 
     @staticmethod
     def from_bytes(b: bytes) -> ParticipantMsg2:
-        if len(b) != 64:
-            raise MsgParseError("invalid signature length")
+        if len(b) != ParticipantMsg2.len_bytes():
+            raise ValueError
         return ParticipantMsg2(b)
 
 
 class CoordinatorMsg1(NamedTuple):
     enc_cmsg: encpedpop.CoordinatorMsg
     enc_secshares: List[Scalar]
+
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return encpedpop.CoordinatorMsg.len_bytes(t=t, n=n) + 32 * n
 
     def to_bytes(self) -> bytes:
         return self.enc_cmsg.to_bytes() + b"".join(
@@ -408,59 +416,59 @@ class CoordinatorMsg1(NamedTuple):
 
     @staticmethod
     def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg1:
-        rest = b
+        if len(b) != CoordinatorMsg1.len_bytes(t=t, n=n):
+            raise ValueError
 
         # Read enc_cmsg
-        enc_cmsg_len = 33 * n + 33 * (t - 1) + 64 * n + 33 * n
-        if len(rest) < enc_cmsg_len:
-            raise MsgParseError("message too short for encpedpop coordinator message")
-        enc_cmsg = encpedpop.CoordinatorMsg.from_bytes(
-            rest[:enc_cmsg_len], t, n
+        enc_cmsg_len = encpedpop.CoordinatorMsg.len_bytes(t=t, n=n)
+        enc_cmsg, rest = (
+            encpedpop.CoordinatorMsg.from_bytes(b[:enc_cmsg_len], t, n),
+            b[enc_cmsg_len:],
         )  # MsgParseError if invalid
-        rest = rest[enc_cmsg_len:]
 
         # Read enc_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted secret shares")
         try:
-            enc_secshares, rest = (
-                [
-                    Scalar.from_bytes_checked(
-                        rest[i : i + 32]
-                    )  # ValueError if overflow
-                    for i in range(0, 32 * n, 32)
-                ],
-                rest[32 * n :],
-            )
+            enc_secshares = [
+                Scalar.from_bytes_checked(rest[i : i + 32])  # ValueError if overflow
+                for i in range(0, 32 * n, 32)
+            ]
         except ValueError as e:
             raise MsgParseError("invalid encrypted secret shares") from e
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return CoordinatorMsg1(enc_cmsg, enc_secshares)
 
 
 class CoordinatorMsg2(NamedTuple):
     cert: bytes
 
+    @staticmethod
+    def len_bytes(*, n: int) -> int:
+        return certeq_cert_len(n)
+
     def to_bytes(self) -> bytes:
         return self.cert
 
     @staticmethod
     def from_bytes(b: bytes, n: int) -> CoordinatorMsg2:
-        if len(b) != certeq_cert_len(n):
-            raise MsgParseError("invalid certificate length")
+        if len(b) != CoordinatorMsg2.len_bytes(n=n):
+            raise ValueError
         return CoordinatorMsg2(b)
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
     enc_cinv: encpedpop.CoordinatorInvestigationMsg
 
+    @staticmethod
+    def len_bytes(*, n: int) -> int:
+        return encpedpop.CoordinatorInvestigationMsg.len_bytes(n=n)
+
     def to_bytes(self) -> bytes:
         return self.enc_cinv.to_bytes()
 
     @staticmethod
     def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
+        if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
+            raise ValueError
         enc_cinv = encpedpop.CoordinatorInvestigationMsg.from_bytes(
             b, n
         )  # MsgParseError if invalid
@@ -470,13 +478,17 @@ class CoordinatorInvestigationMsg(NamedTuple):
 class RecoveryAckMsg(NamedTuple):
     sig: bytes
 
+    @staticmethod
+    def len_bytes() -> int:
+        return 64
+
     def to_bytes(self) -> bytes:
         return self.sig
 
     @staticmethod
     def from_bytes(b: bytes) -> RecoveryAckMsg:
-        if len(b) != 64:
-            raise MsgParseError("invalid recovery acknowledgment signature length")
+        if len(b) != RecoveryAckMsg.len_bytes():
+            raise ValueError
         return RecoveryAckMsg(b)
 
 
@@ -558,7 +570,8 @@ def participant_step1(
             be passed as an argument to `participant_step2`. The state **must
             not** be reused (i.e., it must be passed only to one
             `participant_step2` call).
-        bytes: The first message to be sent to the coordinator.
+        bytes: The first message to be sent to the coordinator
+            (`33*t + 32*n + 97` bytes).
 
     Raises:
         HostSeckeyError: If the host secret key is invalid, or if the key does not
@@ -632,7 +645,8 @@ def participant_step2(
         hostseckey: Participant's long-term host secret key (32 bytes).
         state1: The participant's session state as output by
             `participant_step1`.
-        cmsg1: The first message received from the coordinator.
+        cmsg1: The first message received from the coordinator
+            (`162*n + 33*(t-1)` bytes).
         aux_rand: Auxiliary randomness (32 bytes). FRESH 32-byte randomness
             is optimal, but 16 random bytes or a counter padded to 32 bytes
             is acceptable (see BIP 340).
@@ -642,7 +656,7 @@ def participant_step2(
             be passed as an argument to `participant_finalize`. The state **must
             not** be reused (i.e., it must be passed only to one
             `participant_finalize` call).
-        bytes: The second message to be sent to the coordinator.
+        bytes: The second message to be sent to the coordinator (64 bytes).
 
     Raises:
         HostSeckeyError: If the host secret key is invalid or if it does not match the one
@@ -740,7 +754,8 @@ def participant_finalize(
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
-        cmsg2: The second message received from the coordinator.
+        cmsg2: The second message received from the coordinator
+            (`64*n` bytes).
 
     Returns:
         DKGOutput: The DKG output.
@@ -754,11 +769,9 @@ def participant_finalize(
             documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state2
+    cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, len(params.hostpubkeys))
     try:
-        cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, len(params.hostpubkeys))
         certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
-    except MsgParseError as e:
-        raise FaultyCoordinatorError(*e.args) from e
     except InvalidSignatureInCertificateError as e:
         raise FaultyParticipantOrCoordinatorError(
             e.participant,
@@ -784,7 +797,7 @@ def participant_investigate(
         error: `UnknownFaultyParticipantOrCoordinatorError` raised by
             `participant_step2`.
         cinv: Coordinator investigation message for this participant as output
-            by `coordinator_investigate`.
+            by `coordinator_investigate` (`65*n` bytes).
 
     Raises:
         FaultyParticipantOrCoordinatorError: If another known participant or the
@@ -822,8 +835,9 @@ def coordinator_step1(
     """Perform the coordinator's first step of a ChillDKG session.
 
     Arguments:
-        pmsgs1: List of first messages received from the participants. The
-                list's length must equal the total number of participants.
+        pmsgs1: List of first messages received from the participants
+                (`33*t + 32*n + 97` bytes each). The list's length must equal
+                the total number of participants.
         params: Common session parameters.
 
     Returns:
@@ -831,7 +845,8 @@ def coordinator_step1(
             passed as an argument to `coordinator_finalize`. The state is not
             supposed to be reused (i.e., it should be passed only to one
             `coordinator_finalize` call).
-        bytes: The first message to be sent to all participants.
+        bytes: The first message to be sent to all participants
+            (`162*n + 33*(t-1)` bytes).
 
     Raises:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
@@ -892,11 +907,12 @@ def coordinator_finalize(
 
     Arguments:
         state: The coordinator's session state as output by `coordinator_step1`.
-        pmsgs2: List of second messages received from the participants. The
-                list's length must equal the total number of participants.
+        pmsgs2: List of second messages received from the participants
+                (64 bytes each). The list's length must equal the total number
+                of participants.
 
     Returns:
-        bytes: The second message to be sent to all participants.
+        bytes: The second message to be sent to all participants (`64*n` bytes).
         DKGOutput: The DKG output. Since the coordinator does not have a secret
             share, the DKG output will have the `secshare` field set to `None`.
         bytes: The serialized recovery data.
@@ -909,13 +925,7 @@ def coordinator_finalize(
     if len(pmsgs2) != len(params.hostpubkeys):
         raise ValueError
 
-    pmsgs2_parsed = []
-    for idx, pmsg2 in enumerate(pmsgs2):
-        try:
-            parsed = ParticipantMsg2.from_bytes(pmsg2)
-        except MsgParseError as e:
-            raise FaultyParticipantError(idx, *e.args) from e
-        pmsgs2_parsed.append(parsed)
+    pmsgs2_parsed = [ParticipantMsg2.from_bytes(pmsg2) for pmsg2 in pmsgs2]
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2_parsed])
     try:
         certeq_verify(params.hostpubkeys, eq_input, cert)
@@ -939,12 +949,13 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
     information.
 
     Arguments:
-        pmsgs: List of serialized first messages received from the participants.
+        pmsgs: List of serialized first messages received from the participants
+               (`33*t + 32*n + 97` bytes each).
         params: Common session parameters.
 
     Returns:
         List[bytes]: A list of investigation messages, each intended for a single
-            participant.
+            participant (`65*n` bytes each).
 
     Raises:
         FaultyParticipantError: If a participant is faulty. See the
@@ -1176,10 +1187,7 @@ def participant_recovery_acks_verify(
         )
 
     for i, sig in enumerate(ack_sigs):
-        try:
-            rmsg = RecoveryAckMsg.from_bytes(sig)
-        except MsgParseError as e:
-            raise InvalidRecoveryAckError(i) from e
+        rmsg = RecoveryAckMsg.from_bytes(sig)
         msg = recovery_ack_message(recovery_data, i)
         valid = schnorr_verify(
             msg,

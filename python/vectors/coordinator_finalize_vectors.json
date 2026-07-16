@@ -75,9 +75,7 @@
                         2
                     ],
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "invalid signature length"
+                        "type": "ValueError"
                     },
                     "comment": "participant at index 1 sent a short signature"
                 },
@@ -176,9 +174,7 @@
                         2
                     ],
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "invalid signature length"
+                        "type": "ValueError"
                     },
                     "comment": "participant at index 1 sent a short signature"
                 },
@@ -277,9 +273,7 @@
                         2
                     ],
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "invalid signature length"
+                        "type": "ValueError"
                     },
                     "comment": "participant at index 1 sent a short signature"
                 },
@@ -384,9 +378,7 @@
                         3
                     ],
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "invalid signature length"
+                        "type": "ValueError"
                     },
                     "comment": "participant at index 1 sent a short signature"
                 },

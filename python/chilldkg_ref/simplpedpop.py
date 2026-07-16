@@ -56,31 +56,26 @@ class ParticipantMsg(NamedTuple):
     com: VSSCommitment
     pop: Pop
 
+    @staticmethod
+    def len_bytes(*, t: int) -> int:
+        return 33 * t + 64
+
     def to_bytes(self) -> bytes:
         return self.com.to_bytes() + self.pop
 
     @staticmethod
     def from_bytes(b: bytes, t: int) -> ParticipantMsg:
-        rest = b
+        if len(b) != ParticipantMsg.len_bytes(t=t):
+            raise ValueError
 
         # Read com (33*t bytes)
-        if len(rest) < 33 * t:
-            raise MsgParseError("missing VSS commitment")
         try:
-            com, rest = (
-                VSSCommitment.from_bytes_and_t(rest[: 33 * t], t),
-                rest[33 * t :],
-            )
+            com = VSSCommitment.from_bytes_and_t(b[: 33 * t], t)
         except ValueError as e:
             raise MsgParseError("invalid VSS commitment") from e
-
         # Read pop (64 bytes)
-        if len(rest) < 64:
-            raise MsgParseError("missing proof of possession")
-        pop, rest = Pop(rest[:64]), rest[64:]
+        pop = Pop(b[33 * t :])
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return ParticipantMsg(com, pop)
 
 
@@ -88,6 +83,10 @@ class CoordinatorMsg(NamedTuple):
     coms_to_secrets: List[GE]
     sum_coms_to_nonconst_terms: List[GE]
     pops: List[Pop]
+
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return 97 * n + 33 * (t - 1)
 
     def to_bytes(self) -> bytes:
         return b"".join(
@@ -99,25 +98,22 @@ class CoordinatorMsg(NamedTuple):
 
     @staticmethod
     def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg:
-        rest = b
+        if len(b) != CoordinatorMsg.len_bytes(t=t, n=n):
+            raise ValueError
 
         # Read coms_to_secrets (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing commitments to secrets")
         try:
             coms_to_secrets, rest = (
                 [
-                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                    GE.from_bytes_compressed_with_infinity(b[i : i + 33])
                     for i in range(0, 33 * n, 33)
                 ],
-                rest[33 * n :],
+                b[33 * n :],
             )
         except ValueError as e:
             raise MsgParseError("invalid commitment to secret") from e
 
         # Read sum_coms_to_nonconst_terms (33*(t-1) bytes)
-        if len(rest) < 33 * (t - 1):
-            raise MsgParseError("missing sum commitments to non-constant terms")
         try:
             sum_coms_to_nonconst_terms, rest = (
                 [
@@ -130,18 +126,17 @@ class CoordinatorMsg(NamedTuple):
             raise MsgParseError("invalid sum commitment to non-constant term") from e
 
         # Read pops (64*n bytes)
-        if len(rest) < 64 * n:
-            raise MsgParseError("missing proofs of possession")
         pops = [Pop(rest[i : i + 64]) for i in range(0, 64 * n, 64)]
-        rest = rest[64 * n :]
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
     partial_pubshares: List[GE]
+
+    @staticmethod
+    def len_bytes(*, n: int) -> int:
+        return 33 * n
 
     def to_bytes(self) -> bytes:
         return b"".join(
@@ -150,24 +145,18 @@ class CoordinatorInvestigationMsg(NamedTuple):
 
     @staticmethod
     def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
-        rest = b
+        if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
+            raise ValueError
 
         # Read partial_pubshares (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing partial pubshares")
         try:
-            partial_pubshares, rest = (
-                [
-                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
-                    for i in range(0, 33 * n, 33)
-                ],
-                rest[33 * n :],
-            )
+            partial_pubshares = [
+                GE.from_bytes_compressed_with_infinity(b[i : i + 33])
+                for i in range(0, 33 * n, 33)
+            ]
         except ValueError as e:
             raise MsgParseError("invalid partial pubshare") from e
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return CoordinatorInvestigationMsg(partial_pubshares)
 
 

@@ -208,9 +208,7 @@
                         "t": 2
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing encrypted secret shares"
+                        "type": "ValueError"
                     },
                     "comment": "participant (index 1) message has an enc_shares list of invalid length"
                 },
@@ -230,9 +228,7 @@
                         "t": 2
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 0,
-                        "message": "missing simplpedpop participant message"
+                        "type": "ValueError"
                     },
                     "comment": "missing simplpedpop participant message at index 0"
                 },
@@ -252,9 +248,7 @@
                         "t": 2
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing public nonce"
+                        "type": "ValueError"
                     },
                     "comment": "missing public nonce in pmsg1 (index 1)"
                 }
@@ -450,9 +444,7 @@
                         "t": 1
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing encrypted secret shares"
+                        "type": "ValueError"
                     },
                     "comment": "participant (index 1) message has an enc_shares list of invalid length"
                 },
@@ -472,9 +464,7 @@
                         "t": 1
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 0,
-                        "message": "missing simplpedpop participant message"
+                        "type": "ValueError"
                     },
                     "comment": "missing simplpedpop participant message at index 0"
                 },
@@ -494,9 +484,7 @@
                         "t": 1
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing public nonce"
+                        "type": "ValueError"
                     },
                     "comment": "missing public nonce in pmsg1 (index 1)"
                 }
@@ -692,9 +680,7 @@
                         "t": 3
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing encrypted secret shares"
+                        "type": "ValueError"
                     },
                     "comment": "participant (index 1) message has an enc_shares list of invalid length"
                 },
@@ -714,9 +700,7 @@
                         "t": 3
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 0,
-                        "message": "missing simplpedpop participant message"
+                        "type": "ValueError"
                     },
                     "comment": "missing simplpedpop participant message at index 0"
                 },
@@ -736,9 +720,7 @@
                         "t": 3
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing public nonce"
+                        "type": "ValueError"
                     },
                     "comment": "missing public nonce in pmsg1 (index 1)"
                 }
@@ -953,9 +935,7 @@
                         "t": 2
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing encrypted secret shares"
+                        "type": "ValueError"
                     },
                     "comment": "participant (index 1) message has an enc_shares list of invalid length"
                 },
@@ -977,9 +957,7 @@
                         "t": 2
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 0,
-                        "message": "missing simplpedpop participant message"
+                        "type": "ValueError"
                     },
                     "comment": "missing simplpedpop participant message at index 0"
                 },
@@ -1001,9 +979,7 @@
                         "t": 2
                     },
                     "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "missing public nonce"
+                        "type": "ValueError"
                     },
                     "comment": "missing public nonce in pmsg1 (index 1)"
                 }

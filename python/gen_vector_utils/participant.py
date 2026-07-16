@@ -401,7 +401,7 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1 = cmsg1[:-1]
     error = expect_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
-        chilldkg.FaultyCoordinatorError,
+        ValueError,
     )
     error_cases.append(
         {
@@ -618,7 +618,7 @@ def generate_participant_finalize_group(t, n):
     ).to_bytes()  # remove last signature
     error = expect_exception(
         lambda: participant_finalize(pstates2[0], invalid_cmsg2),
-        chilldkg.FaultyCoordinatorError,
+        ValueError,
     )
     error_cases.append(
         {
@@ -631,7 +631,7 @@ def generate_participant_finalize_group(t, n):
     invalid_cmsg2 = chilldkg.CoordinatorMsg2(cmsg2 + bytes(64)).to_bytes()
     error = expect_exception(
         lambda: participant_finalize(pstates2[0], invalid_cmsg2),
-        chilldkg.FaultyCoordinatorError,
+        ValueError,
     )
     error_cases.append(
         {
