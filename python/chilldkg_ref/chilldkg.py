@@ -8,9 +8,9 @@ their arguments and return values, and the exceptions they raise; see also the
 `__all__` list. All other definitions are internal.
 
 In addition to the exceptions documented for each function, all public API
-functions may raise built-in exceptions such as `TypeError` or `ValueError` when
-called with arguments of unexpected structure (e.g., wrong type or wrong
-length). These structural errors are not documented per-function.
+functions may raise Python built-in exceptions such as `TypeError` or
+`ValueError` when called with arguments of unexpected structure (e.g., wrong
+type or wrong length). These structural errors are not documented per function.
 """
 
 from __future__ import annotations

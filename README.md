@@ -695,6 +695,8 @@ Thus, applications may additionally choose to let the coordinator send all `n` i
 This subsection is an export of the API documentation generated from the docstrings in the reference implementation
 (see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
+In addition to the exceptions documented for each function below, all public API functions may raise Python built-in exceptions such as `TypeError` or `ValueError` when called with arguments of unexpected structure (e.g., wrong type or wrong length). These structural errors are not documented per function.
+
 <!--pydoc.md-->
 #### hostpubkey\_gen
 
