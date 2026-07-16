@@ -972,29 +972,9 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
 ###
 
 
-def _recover(
+def recover(
     hostseckey: Optional[bytes], recovery_data: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of a ChillDKG session.
-
-    This is an internal helper used by `participant_recover` and
-    `coordinator_recover`.
-
-    Arguments:
-        hostseckey: This participant's long-term host secret key (32 bytes) or
-            `None` if recovering the coordinator.
-        recovery_data: Recovery data from a successful session.
-
-    Returns:
-        DKGOutput: The recovered DKG output.
-        SessionParams: The common parameters of the recovered session.
-
-    Raises:
-        HostSeckeyError: If the host secret key is invalid, or if the key does not
-            match the recovery data.
-            (This can also occur if the recovery data is invalid.)
-        RecoveryDataError: If recovery failed due to invalid recovery data.
-    """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
             deserialize_recovery_data(recovery_data)
@@ -1082,7 +1062,7 @@ def participant_recover(
             (This can also occur if the recovery data is invalid.)
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
-    return _recover(hostseckey, recovery_data)
+    return recover(hostseckey, recovery_data)
 
 
 def coordinator_recover(
@@ -1109,7 +1089,7 @@ def coordinator_recover(
     Raises:
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
-    dkg_output, params = _recover(None, recovery_data)
+    dkg_output, params = recover(None, recovery_data)
     return dkg_output, params
 
 
