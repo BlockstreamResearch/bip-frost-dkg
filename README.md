@@ -32,7 +32,7 @@ The accompanying source code is licensed under the [MIT license](https://opensou
 
 ### Motivation
 
-The FROST threshold signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ21](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr signatures,
+The FROST threshold signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ22](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr signatures,
 in which some threshold `t` of a group of `n` participants is required to produce a signature.
 FROST guarantees unforgeability as long as at most `t - 1` participants are compromised
 and remains functional as long as `t` honest participants do not lose their secret key material,
@@ -135,7 +135,7 @@ While [BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki) 
 
 If a ChillDKG session fails due to the participants or the coordinator deviating from the protocol,
 any aborting party will be able to identify and blame a single party responsible for the failure
-(assuming the network, and, depending on the circumstances, the coordinator, is reliable).
+(assuming the network, and, depending on the circumstances, the coordinator, are reliable).
 
 These features make ChillDKG usable in a wide range of applications.
 As a consequence of this broad applicability, there will necessarily be scenarios in which specialized protocols need less communication overhead and fewer rounds,
@@ -145,13 +145,13 @@ In summary, we aim for the following design goals:
 
  - **Standalone**: ChillDKG is fully specified, requiring no external secure channels or consensus mechanism.
  - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
- - **No restriction on threshold**:  Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
- - **Broad applicability**:  ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
+ - **No restriction on threshold**: Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
+ - **Broad applicability**: ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
  - **Simple backups**: ChillDKG allows recovering the DKG output using the host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A faulty coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
  - **Per-participant public shares**: ChillDKG supports partial signature verification in FROST signing sessions.
  - **Taproot-safe threshold public key**: ChillDKG prevents malicious participants from embedding a hidden Taproot commitment to a script path in the threshold public key.
- - **Blame functionality**: If a ChillDKG session aborts, it is possible to identify and blame a single party responsible for the failure (assuming the network, and, depending on the circumstances, the coordinator, is reliable).
+ - **Blame functionality**: If a ChillDKG session aborts, it is possible to identify and blame a single party responsible for the failure (assuming the network, and, depending on the circumstances, the coordinator, are reliable).
 
 In summary, ChillDKG incorporates solutions for both secure channels and consensus and simplifies backups in practice.
 As a result, it fits a wide range of application scenarios,
@@ -215,7 +215,7 @@ We make the following modifications as compared to the original SimplPedPop prop
  - To prevent a malicious participant from embedding a Taproot script path in the threshold public key, the participants tweak the VSS commitment such that the corresponding threshold public key has an unspendable script path.
  - The proofs of possession are omitted from the data for the equality check.[^pop-eq] This reduces the size of the backups in ChillDKG.
 
-[^pop-eq]: An inspection of the security proof [CRGS23] shows that this modification does affect security.
+[^pop-eq]: An inspection of the security proof [[CGRS23](https://eprint.iacr.org/2023/899)] shows that this modification does not affect security.
 
 Our variant of the SimplPedPop protocol then works as follows:
 
@@ -223,7 +223,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     This involves generating random coefficients `a_i[0], ..., a_i[t-1]` of a polynomial `f_i` of degree `t-1` in the scalar group:
 
     ```
-    f_i(Z) = a_i[0] + a_i[1] * Z + ... a_i[t-1] * Z^(t-1)
+    f_i(Z) = a_i[0] + a_i[1] * Z + ... + a_i[t-1] * Z^(t-1)
     ```
 
     Here, `f_i(0) = a_i[0]` acts as the secret scalar to be shared.
@@ -232,7 +232,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     (This will be realized in EncPedPop using encryption.)
 
     Participant `i` then sends a VSS commitment,
-    which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ...,  a_i[t-1] * G)` of group elements,
+    which is a vector `com = (com[0], ...,  com[t-1]) = (a_i[0] * G, ..., a_i[t-1] * G)` of group elements,
     where `G` is the base point of the secp256k1 elliptic curve,
     and a BIP 340 Schnorr signature `pop` on message "`i`" with secret key `a_i[0]` to the coordinator.
     (The Schnorr signature acts as a *proof of possession*,
@@ -282,7 +282,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     ```
     With this vector at hand, participant `i` verifies each component of `partial_secshares` individually
     by checking for which participant `j` the equation `partial_secshares[j] * G = partial_pubshares[j]` does not hold.
-    Participant `i` blames this participant `j` .
+    Participant `i` blames this participant `j`.
 
     Otherwise, i.e., in the successful case that the equation `secshare * G = pubshare` holds, participant `i` proceeds as follows.
     In order to obtain a threshold public key with an unspendable Taproot script path [[BIP 341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)],
@@ -361,7 +361,7 @@ Otherwise, i.e., if SimplPedPop does not raise an error,
 EncPedPop appends to the transcript `eq_input` of SimplPedPop the `n` public encryption nonces,
 and also all the `n` static encryption keys to ensure that the participants agree on their identities.
 The inclusion of the latter excludes man-in-the-middle attacks if Eq authenticates participants,
-e.g, if the Eq protocol messages are signed under long-term public keys of the participants.
+e.g., if the Eq protocol messages are signed under long-term public keys of the participants.
 
 ### Background on Equality Checks
 
@@ -481,7 +481,7 @@ and **must not** be combined with other threshold cryptographic schemes,
 e.g., FROST specifications other than [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), threshold signature schemes other than FROST, or threshold decryption schemes,
 without careful further consideration, which is not in the scope of this document.
 
-[^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [GJKR07](https://doi.org/10.1007/s00145-006-0347-3). Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [CGRS23](https://eprint.iacr.org/2023/899).
+[^no-simulatable-dkg]: As a variant of Pedersen DKG, ChillDKG does not provide simulation-based security [[GJKR07](https://doi.org/10.1007/s00145-006-0347-3)]. Roughly speaking, if ChillDKG is combined with some threshold cryptographic scheme, the security of the combination is not automatically implied by the security of the two components. Instead, the security of every combination must be analyzed separately. The security of the specific combination of SimplPedPop (as the core building block of ChillDKG) and FROST has been analyzed [[CGRS23](https://eprint.iacr.org/2023/899)].
 
 ### DKG Parties and Inputs
 
@@ -525,7 +525,7 @@ then we say that this party *deems the protocol session successful*.
 In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).[^index-position-mapping]
 See [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md) for details on signing.
 
-[^index-position-mapping]: The secret sharing is as expected by [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t-1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant `i` has secret share `f(i + 1)`.
+[^index-position-mapping]: The secret sharing is as expected by [BIP 445](https://github.com/bitcoin/bips/blob/master/bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t - 1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant `i` has secret share `f(i + 1)`.
 
 Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
 
@@ -592,7 +592,7 @@ One simple method of obtaining confirmation is to collect signed confirmation me
 
 Depending on the application, other methods may be appropriate.
 For example, in a scenario where a single user employs multiple signing devices in the same room to set up a threshold wallet,
-the user could check that all `n` devices signal confirmation via its display.
+the user could check that all `n` devices signal confirmation via their display.
 Alternatively, the user could check all `n` devices when generating a receiving address for the first time,
 which constitutes the first use of the threshold public key.
 
@@ -663,7 +663,7 @@ Each message sent by the coordinator is a broadcast message,
 i.e., the coordinator sends the same message to each participant.[^no-reliable-broadcast]
 Unless participants abort due to errors, all participants run the same code and send messages in the same steps.
 
-[^no-reliable-broadcast]: Recall that we do not assume a *reliable* broadcast channel but instead that the coordinator has separate a point-to-point communication links to each participant. In other words, the protocol prescribes that an honest coordinator sends the same message to every participant, but the security of the protocol does not depend on the coordinator adhering to that prescribe.
+[^no-reliable-broadcast]: Recall that we do not assume a *reliable* broadcast channel but instead that the coordinator has separate point-to-point communication links to each participant. In other words, the protocol prescribes that an honest coordinator sends the same message to every participant, but the security of the protocol does not depend on the coordinator adhering to that prescription.
 
 ![The figure shows the message flow between a participant and a coordinator.
 The first of two phases named "Generation of host public keys" involves the participant invoking the hostpubkey_gen function with parameter hostseckey and sending the returned hostpubkey to the coordinator.
@@ -681,7 +681,7 @@ Multiple sessions may be run concurrently.
 Whenever an invoked function fails and raises an error, the corresponding party will abort the session and,
 in most cases, blame a participant or the coordinator for the failure of the session.
 However, if a participant aborts during the `participant_step2` function,
-there may be insufficient information determine another participant to blame.
+there may be insufficient information to determine another participant to blame.
 In this case, an optional *investigation procedure* is available:
 The aborting participant can ask the coordinator for an auxiliary *investigation message* (generated via the `coordinator_investigate` function),
 which will allow the participant to blame a specific other participant (via the `participant_investigate` function).
