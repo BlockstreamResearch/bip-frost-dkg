@@ -375,11 +375,11 @@ class ParticipantMsg1(NamedTuple):
         return self.enc_pmsg.to_bytes()
 
     @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> ParticipantMsg1:
+    def from_bytes(b: bytes, *, t: int, n: int) -> ParticipantMsg1:
         if len(b) != ParticipantMsg1.len_bytes(t=t, n=n):
             raise ValueError
         enc_pmsg = encpedpop.ParticipantMsg.from_bytes(
-            b, t, n
+            b, t=t, n=n
         )  # MsgParseError if invalid
         return ParticipantMsg1(enc_pmsg)
 
@@ -415,14 +415,14 @@ class CoordinatorMsg1(NamedTuple):
         )
 
     @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg1:
+    def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg1:
         if len(b) != CoordinatorMsg1.len_bytes(t=t, n=n):
             raise ValueError
 
         # Read enc_cmsg
         enc_cmsg_len = encpedpop.CoordinatorMsg.len_bytes(t=t, n=n)
         enc_cmsg, rest = (
-            encpedpop.CoordinatorMsg.from_bytes(b[:enc_cmsg_len], t, n),
+            encpedpop.CoordinatorMsg.from_bytes(b[:enc_cmsg_len], t=t, n=n),
             b[enc_cmsg_len:],
         )  # MsgParseError if invalid
 
@@ -449,7 +449,7 @@ class CoordinatorMsg2(NamedTuple):
         return self.cert
 
     @staticmethod
-    def from_bytes(b: bytes, n: int) -> CoordinatorMsg2:
+    def from_bytes(b: bytes, *, n: int) -> CoordinatorMsg2:
         if len(b) != CoordinatorMsg2.len_bytes(n=n):
             raise ValueError
         return CoordinatorMsg2(b)
@@ -466,11 +466,11 @@ class CoordinatorInvestigationMsg(NamedTuple):
         return self.enc_cinv.to_bytes()
 
     @staticmethod
-    def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
+    def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
         if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
             raise ValueError
         enc_cinv = encpedpop.CoordinatorInvestigationMsg.from_bytes(
-            b, n
+            b, n=n
         )  # MsgParseError if invalid
         return CoordinatorInvestigationMsg(enc_cinv)
 
@@ -506,7 +506,7 @@ def deserialize_recovery_data(
     if len(rest) < 33 * t:
         raise ValueError
     sum_coms, rest = (
-        VSSCommitment.from_bytes_and_t(rest[: 33 * t], t),
+        VSSCommitment.from_bytes(rest[: 33 * t], t=t),
         rest[33 * t :],
     )
 
@@ -685,7 +685,7 @@ def participant_step2(
         )
     t = enc_state.simpl_state.t
     try:
-        cmsg1_parsed = CoordinatorMsg1.from_bytes(cmsg1, t, len(params.hostpubkeys))
+        cmsg1_parsed = CoordinatorMsg1.from_bytes(cmsg1, t=t, n=len(params.hostpubkeys))
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     enc_cmsg, enc_secshares = cmsg1_parsed
@@ -769,7 +769,7 @@ def participant_finalize(
             documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state2
-    cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, len(params.hostpubkeys))
+    cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, n=len(params.hostpubkeys))
     try:
         certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
     except InvalidSignatureInCertificateError as e:
@@ -809,7 +809,7 @@ def participant_investigate(
     assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
     n = error.inv_data.simpl_bstate.n
     try:
-        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n)
+        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n=n)
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     encpedpop.participant_investigate(
@@ -864,7 +864,7 @@ def coordinator_step1(
     pmsgs1_parsed = []
     for idx, pmsg1 in enumerate(pmsgs1):
         try:
-            parsed = ParticipantMsg1.from_bytes(pmsg1, t, len(hostpubkeys))
+            parsed = ParticipantMsg1.from_bytes(pmsg1, t=t, n=len(hostpubkeys))
         except MsgParseError as e:
             raise FaultyParticipantError(idx, *e.args) from e
         pmsgs1_parsed.append(parsed)
@@ -874,7 +874,9 @@ def coordinator_step1(
         t=t,
         enckeys=hostpubkeys,
     )
-    enc_cmsg_parsed = encpedpop.CoordinatorMsg.from_bytes(enc_cmsg, t, len(hostpubkeys))
+    enc_cmsg_parsed = encpedpop.CoordinatorMsg.from_bytes(
+        enc_cmsg, t=t, n=len(hostpubkeys)
+    )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
     state = CoordinatorState(params, eq_input, dkg_output)
@@ -966,7 +968,7 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
     pmsgs_parsed = []
     for idx, pmsg in enumerate(pmsgs):
         try:
-            parsed = ParticipantMsg1.from_bytes(pmsg, t, n)
+            parsed = ParticipantMsg1.from_bytes(pmsg, t=t, n=n)
         except MsgParseError as e:
             raise FaultyParticipantError(idx, *e.args) from e
         pmsgs_parsed.append(parsed)

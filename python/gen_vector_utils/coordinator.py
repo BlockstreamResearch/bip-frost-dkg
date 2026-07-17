@@ -184,7 +184,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: participant (index 1) message has an enc_shares list of invalid length ---
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     invalid_pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(
-        invalid_pmsgs1[1], params.t, len(params.hostpubkeys)
+        invalid_pmsgs1[1], t=params.t, n=len(params.hostpubkeys)
     )
     invalid_pmsg1_parsed.enc_pmsg.enc_shares.pop()
     invalid_pmsgs1[1] = invalid_pmsg1_parsed.to_bytes()

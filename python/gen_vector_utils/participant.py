@@ -303,7 +303,7 @@ def generate_participant_step2_group(t, n):
     )
 
     cmsg1_parsed = chilldkg.CoordinatorMsg1.from_bytes(
-        cmsg1, params.t, len(params.hostpubkeys)
+        cmsg1, t=params.t, n=len(params.hostpubkeys)
     )
     # --- Error test case: Wrong aux randomness length ---
     short_aux_rand = bytes.fromhex("42B53D62E27380D6F7096EDA1C28C57D")
@@ -503,7 +503,7 @@ def generate_participant_step2_group(t, n):
     # --- Error test case: Participant 1 sent an invalid secshare for participant 0 ---
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     pmsgs11_parsed = chilldkg.ParticipantMsg1.from_bytes(
-        pmsgs1[1], params.t, len(params.hostpubkeys)
+        pmsgs1[1], t=params.t, n=len(params.hostpubkeys)
     )
     pmsgs11_parsed.enc_pmsg.enc_shares[0] += Scalar(17)
     invalid_pmsgs1[1] = pmsgs11_parsed.to_bytes()
@@ -722,7 +722,7 @@ def generate_participant_investigate_group(t, n):
     # --- Error test case: Participant 1 sent an invalid secshare for participant 0 ---
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     invalid_pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(
-        invalid_pmsgs1[1], params.t, len(params.hostpubkeys)
+        invalid_pmsgs1[1], t=params.t, n=len(params.hostpubkeys)
     )
     invalid_pmsg1_parsed.enc_pmsg.enc_shares[0] += Scalar(17)
     invalid_pmsgs1[1] = invalid_pmsg1_parsed.to_bytes()
@@ -751,7 +751,7 @@ def generate_participant_investigate_group(t, n):
 
     # --- Error test case: Coordinator tampered with participant 0's encrypted secshare ---
     cmsg1_parsed = chilldkg.CoordinatorMsg1.from_bytes(
-        cmsg1, params.t, len(params.hostpubkeys)
+        cmsg1, t=params.t, n=len(params.hostpubkeys)
     )
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_secshares[0] += Scalar(17)
@@ -785,7 +785,7 @@ def generate_participant_investigate_group(t, n):
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
         cinv_msg_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
-            cinv_msgs[0], len(params.hostpubkeys)
+            cinv_msgs[0], n=len(params.hostpubkeys)
         )
         invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg_parsed)
         invalid_cinv_msg0_parsed.enc_cinv.enc_partial_secshares[0] += Scalar(
@@ -815,7 +815,7 @@ def generate_participant_investigate_group(t, n):
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
         cinv_msg_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
-            cinv_msgs[0], len(params.hostpubkeys)
+            cinv_msgs[0], n=len(params.hostpubkeys)
         )
         invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg_parsed)
         invalid_cinv_msg0_parsed.enc_cinv.partial_pubshares[1] = GE.lift_x(

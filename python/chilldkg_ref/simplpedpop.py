@@ -64,13 +64,13 @@ class ParticipantMsg(NamedTuple):
         return self.com.to_bytes() + self.pop
 
     @staticmethod
-    def from_bytes(b: bytes, t: int) -> ParticipantMsg:
+    def from_bytes(b: bytes, *, t: int) -> ParticipantMsg:
         if len(b) != ParticipantMsg.len_bytes(t=t):
             raise ValueError
 
         # Read com (33*t bytes)
         try:
-            com = VSSCommitment.from_bytes_and_t(b[: 33 * t], t)
+            com = VSSCommitment.from_bytes(b[: 33 * t], t=t)
         except ValueError as e:
             raise MsgParseError("invalid VSS commitment") from e
         # Read pop (64 bytes)
@@ -97,7 +97,7 @@ class CoordinatorMsg(NamedTuple):
         ) + b"".join(self.pops)
 
     @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg:
+    def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg:
         if len(b) != CoordinatorMsg.len_bytes(t=t, n=n):
             raise ValueError
 
@@ -144,7 +144,7 @@ class CoordinatorInvestigationMsg(NamedTuple):
         )
 
     @staticmethod
-    def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
+    def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
         if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
             raise ValueError
 
@@ -263,7 +263,7 @@ def participant_step2(
 ) -> Tuple[DKGOutput, bytes]:
     t, n, idx, com_to_secret = state
     try:
-        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t, n)
+        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=t, n=n)
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg_parsed
@@ -331,7 +331,7 @@ def participant_investigate(
         raise ValueError
 
     try:
-        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n)
+        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n=n)
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     partial_pubshares = cinv_parsed.partial_pubshares
@@ -382,7 +382,7 @@ def coordinator_step(
     pmsgs_parsed = []
     for i, pmsg in enumerate(pmsgs):
         try:
-            parsed = ParticipantMsg.from_bytes(pmsg, t)
+            parsed = ParticipantMsg.from_bytes(pmsg, t=t)
         except MsgParseError as e:
             raise FaultyParticipantError(i, *e.args) from e
         pmsgs_parsed.append(parsed)
@@ -417,7 +417,7 @@ def coordinator_step(
 
 def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
     n = len(pmsgs)
-    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t) for pmsg in pmsgs]
+    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t=t) for pmsg in pmsgs]
     all_partial_pubshares = [
         [pmsg.com.pubshare(i) for pmsg in pmsgs_parsed] for i in range(n)
     ]
