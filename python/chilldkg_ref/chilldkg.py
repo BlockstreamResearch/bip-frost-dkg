@@ -1089,8 +1089,7 @@ def coordinator_recover(
     Raises:
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
-    dkg_output, params = recover(None, recovery_data)
-    return dkg_output, params
+    return recover(None, recovery_data)
 
 
 class RecoveryDataError(ValueError):
