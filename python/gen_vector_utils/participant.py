@@ -138,7 +138,7 @@ def generate_participant_step1_group(t, n):
         }
     )
     # --- Error test case: hostpubkeys list contains an invalid value ---
-    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
+    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # invalid x-coordinate
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
@@ -151,11 +151,11 @@ def generate_participant_step1_group(t, n):
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
             "expectedError": error,
-            "comment": "hostpubkeys list contains an invalid value",
+            "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate",
         }
     )
     # --- Error test case: hostpubkeys list contains an infinite value ---
-    infinity_hostpubkey = b"\x00" * 33  # Infinite point
+    infinity_hostpubkey = b"\x00" * 33  # infinity
     with_infinity = hostpubkeys[:-1] + [infinity_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_infinity, t)
     error = expect_exception(
@@ -333,9 +333,9 @@ def generate_participant_step2_group(t, n):
             "comment": "hostseckey does not match the one used in participant_step1",
         }
     )
-    # --- Error test case: pubnonces list in cmsg1 has an invalid value at index 0 ---
+    # --- Error test case: pubnonces list in cmsg1 has an invalid prefix at index 0 (own pubnonce) ---
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
-    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\xeb" * 33  # invalid pubnonce
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\xeb" * 33  # invalid prefix
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
         lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
@@ -345,10 +345,61 @@ def generate_participant_step2_group(t, n):
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
-            "comment": "invalid cmsg1: pubnonces list has an invalid value at index 0",
+            "comment": "invalid cmsg1: pubnonces list has an invalid prefix at index 0 (own pubnonce)",
         }
     )
-    # --- Error test case: pubnonces list in cmsg1 has an arbitrary value at index 0 ---
+    # --- Error test case: pubnonces list in cmsg1 has an invalid prefix at index 1 ---
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = b"\xeb" * 33  # invalid prefix
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_faulty_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyParticipantOrCoordinatorError,
+        1,
+    )
+    error_cases.append(
+        {
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has an invalid prefix at index 1",
+        }
+    )
+    # --- Error test case: pubnonces list in cmsg1 has an off-curve x-coordinate at index 0 (own pubnonce) ---
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = (
+        b"\x03" + 31 * b"\x00" + b"\x05"
+    )  # Invalid x-coordinate
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyCoordinatorError,
+    )
+    error_cases.append(
+        {
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has an off-curve x-coordinate at index 0 (own pubnonce)",
+        }
+    )
+    # --- Error test case: pubnonces list in cmsg1 has an off-curve x-coordinate at index 1 ---
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = (
+        b"\x03" + 31 * b"\x00" + b"\x05"
+    )  # Invalid x-coordinate
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_faulty_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyParticipantOrCoordinatorError,
+        1,
+    )
+    error_cases.append(
+        {
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has an off-curve x-coordinate at index 1",
+        }
+    )
+    # --- Error test case: pubnonces list in cmsg1 has an arbitrary value at index 0 (own pubnonce) ---
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = GE.lift_x(
         ARBITRARY_POINT_X
@@ -362,10 +413,27 @@ def generate_participant_step2_group(t, n):
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
-            "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 0",
+            "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 0 (own pubnonce)",
         }
     )
-    # --- Error test case: pubnonces list in cmsg1 has an infinite value at index 0 ---
+    # --- Error test case: pubnonces list in cmsg1 has an arbitrary value at index 1 ---
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = GE.lift_x(
+        ARBITRARY_POINT_X
+    ).to_bytes_compressed()
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.UnknownFaultyParticipantOrCoordinatorError,
+    )
+    error_cases.append(
+        {
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 1",
+        }
+    )
+    # --- Error test case: pubnonces list in cmsg1 has an infinite value at index 0 (own pubnonce) ---
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\x00" * 33  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
@@ -377,7 +445,23 @@ def generate_participant_step2_group(t, n):
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
             "expectedError": error,
-            "comment": "invalid cmsg1: pubnonces list has the infinity point at index 0",
+            "comment": "invalid cmsg1: pubnonces list has the infinity point at index 0 (own pubnonce)",
+        }
+    )
+    # --- Error test case: pubnonces list in cmsg1 has an infinite value at index 1 ---
+    invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = b"\x00" * 33  # infinity
+    invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    error = expect_faulty_exception(
+        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        chilldkg.FaultyParticipantOrCoordinatorError,
+        1,
+    )
+    error_cases.append(
+        {
+            "cmsg1": bytes_to_hex(invalid_cmsg1),
+            "expectedError": error,
+            "comment": "invalid cmsg1: pubnonces list has the infinity point at index 1",
         }
     )
     # --- Error test case: pubnonces list in cmsg1 has duplicate values ---

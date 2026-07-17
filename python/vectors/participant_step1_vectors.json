@@ -135,7 +135,7 @@
                         "type": "InvalidHostPubkeyError",
                         "participant": 2
                     },
-                    "comment": "hostpubkeys list contains an invalid value"
+                    "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
                     "tcId": 8,
@@ -348,7 +348,7 @@
                         "type": "InvalidHostPubkeyError",
                         "participant": 2
                     },
-                    "comment": "hostpubkeys list contains an invalid value"
+                    "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
                     "tcId": 20,
@@ -561,7 +561,7 @@
                         "type": "InvalidHostPubkeyError",
                         "participant": 2
                     },
-                    "comment": "hostpubkeys list contains an invalid value"
+                    "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
                     "tcId": 32,
@@ -781,7 +781,7 @@
                         "type": "InvalidHostPubkeyError",
                         "participant": 3
                     },
-                    "comment": "hostpubkeys list contains an invalid value"
+                    "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
                     "tcId": 44,
