@@ -137,7 +137,24 @@ def generate_participant_step1_group(t, n):
             "comment": "threshold exceeds the number of participants",
         }
     )
-    # --- Error test case: hostpubkeys list contains an invalid value ---
+    # --- Error test case: hostpubkeys list contains a value with an invalid prefix ---
+    invalid_hostpubkey = b"\xeb" * 33  # invalid prefix
+    with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
+    invalid_params = chilldkg.SessionParams(with_invalid, t)
+    error = expect_exception(
+        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        chilldkg.InvalidHostPubkeyError,
+    )
+    error_cases.append(
+        {
+            "hostseckey": bytes_to_hex(hostseckeys[0]),
+            "params": params_asdict(invalid_params),
+            "random": bytes_to_hex(random),
+            "expectedError": error,
+            "comment": "hostpubkeys list contains an invalid value with invalid prefix",
+        }
+    )
+    # --- Error test case: hostpubkeys list contains a value with an off-curve x-coordinate ---
     invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # invalid x-coordinate
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
