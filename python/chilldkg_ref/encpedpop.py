@@ -8,9 +8,10 @@ from secp256k1lab.keys import pubkey_gen_plain
 
 from . import simplpedpop
 from .util import (
-    UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
+    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
+    UnknownFaultyParticipantOrCoordinatorError,
     FaultyParticipantError,
     MsgParseError,
 )
@@ -107,13 +108,20 @@ def decaps_multi(
         if sender_idx == idx:
             pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
         else:
-            pad = ecdh(
-                seckey=deckey,
-                my_pubkey=enckey,
-                their_pubkey=pubnonce,
-                context=context_,
-                sending=False,
-            )
+            try:
+                pad = ecdh(
+                    seckey=deckey,
+                    my_pubkey=enckey,
+                    their_pubkey=pubnonce,
+                    context=context_,
+                    sending=False,
+                )
+            except ValueError as e:
+                # Since deckey and enckey are well-formed, the error must have been
+                # triggered by an invalid pubnonce.
+                raise FaultyParticipantOrCoordinatorError(
+                    sender_idx, "invalid public nonce"
+                ) from e
         pads.append(pad)
     return pads
 
