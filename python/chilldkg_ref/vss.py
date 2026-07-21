@@ -63,7 +63,7 @@ class VSSCommitment:
         return VSSCommitment([self.ges[i] + other.ges[i] for i in range(self.t())])
 
     @staticmethod
-    def from_bytes_and_t(b: bytes, t: int) -> VSSCommitment:
+    def from_bytes(b: bytes, *, t: int) -> VSSCommitment:
         if len(b) != 33 * t:
             raise ValueError
         ges = [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]

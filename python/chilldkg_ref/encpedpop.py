@@ -151,6 +151,10 @@ class ParticipantMsg(NamedTuple):
     pubnonce: bytes
     enc_shares: List[Scalar]
 
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return simplpedpop.ParticipantMsg.len_bytes(t=t) + 33 + 32 * n
+
     def to_bytes(self) -> bytes:
         return (
             self.simpl_pmsg.to_bytes()
@@ -159,43 +163,29 @@ class ParticipantMsg(NamedTuple):
         )
 
     @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> ParticipantMsg:
-        rest = b
+    def from_bytes(b: bytes, *, t: int, n: int) -> ParticipantMsg:
+        if len(b) != ParticipantMsg.len_bytes(t=t, n=n):
+            raise ValueError
 
         # Read simpl_pmsg
-        simpl_pmsg_len = 33 * t + 64
-        if len(rest) < simpl_pmsg_len:
-            raise MsgParseError("missing simplpedpop participant message")
+        simpl_pmsg_len = simplpedpop.ParticipantMsg.len_bytes(t=t)
         simpl_pmsg, rest = (
-            simplpedpop.ParticipantMsg.from_bytes(
-                rest[:simpl_pmsg_len], t
-            ),  # MsgParseError if invalid
-            rest[simpl_pmsg_len:],
-        )
+            simplpedpop.ParticipantMsg.from_bytes(b[:simpl_pmsg_len], t=t),
+            b[simpl_pmsg_len:],
+        )  # MsgParseError if invalid
 
         # Read pubnonce (33 bytes)
-        if len(rest) < 33:
-            raise MsgParseError("missing public nonce")
         pubnonce, rest = rest[:33], rest[33:]
 
         # Read enc_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted secret shares")
         try:
-            enc_secshares, rest = (
-                [
-                    Scalar.from_bytes_checked(
-                        rest[i : i + 32]
-                    )  # ValueError if overflow
-                    for i in range(0, 32 * n, 32)
-                ],
-                rest[32 * n :],
-            )
+            enc_secshares = [
+                Scalar.from_bytes_checked(rest[i : i + 32])  # ValueError if overflow
+                for i in range(0, 32 * n, 32)
+            ]
         except ValueError as e:
             raise MsgParseError("invalid encrypted secret share") from e
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return ParticipantMsg(simpl_pmsg, pubnonce, enc_secshares)
 
 
@@ -203,39 +193,38 @@ class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
     pubnonces: List[bytes]
 
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n) + 33 * n
+
     def to_bytes(self) -> bytes:
         return self.simpl_cmsg.to_bytes() + b"".join(self.pubnonces)
 
     @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg:
-        rest = b
+    def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg:
+        if len(b) != CoordinatorMsg.len_bytes(t=t, n=n):
+            raise ValueError
 
         # Read simpl_cmsg
-        simpl_cmsg_len = 33 * n + 33 * (t - 1) + 64 * n
-        if len(rest) < simpl_cmsg_len:
-            raise MsgParseError("missing simplpedpop coordinator message")
+        simpl_cmsg_len = simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n)
         simpl_cmsg, rest = (
-            simplpedpop.CoordinatorMsg.from_bytes(
-                rest[:simpl_cmsg_len], t, n
-            ),  # MsgParseError if invalid
-            rest[simpl_cmsg_len:],
-        )
-        # Read pubnonces (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing public nonces")
-        pubnonces, rest = (
-            [rest[i : i + 33] for i in range(0, 33 * n, 33)],
-            rest[33 * n :],
-        )
+            simplpedpop.CoordinatorMsg.from_bytes(b[:simpl_cmsg_len], t=t, n=n),
+            b[simpl_cmsg_len:],
+        )  # MsgParseError if invalid
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
+        # Read pubnonces (33*n bytes)
+        pubnonces = [rest[i : i + 33] for i in range(0, 33 * n, 33)]
+
         return CoordinatorMsg(simpl_cmsg, pubnonces)
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
     enc_partial_secshares: List[Scalar]
     partial_pubshares: List[GE]
+
+    @staticmethod
+    def len_bytes(*, n: int) -> int:
+        return simplpedpop.CoordinatorInvestigationMsg.len_bytes(n=n) + 32 * n
 
     def to_bytes(self) -> bytes:
         secshares_bytes = b"".join(
@@ -247,39 +236,31 @@ class CoordinatorInvestigationMsg(NamedTuple):
         return secshares_bytes + pubshares_bytes
 
     @staticmethod
-    def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
-        rest = b
+    def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
+        if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
+            raise ValueError
 
         # Read enc_partial_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted partial secshares")
         try:
             enc_partial_secshares, rest = (
                 [
-                    Scalar.from_bytes_checked(rest[i : i + 32])
+                    Scalar.from_bytes_checked(b[i : i + 32])
                     for i in range(0, 32 * n, 32)
                 ],  # ValueError if overflow
-                rest[32 * n :],
+                b[32 * n :],
             )
         except ValueError as e:
             raise MsgParseError("invalid encrypted partial secshare") from e
 
         # Read partial_pubshares (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing partial pubshares")
         try:
-            partial_pubshares, rest = (
-                [
-                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
-                    for i in range(0, 33 * n, 33)
-                ],
-                rest[33 * n :],
-            )
+            partial_pubshares = [
+                GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                for i in range(0, 33 * n, 33)
+            ]
         except ValueError as e:
             raise MsgParseError("invalid partial pubshare") from e
 
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
         return CoordinatorInvestigationMsg(enc_partial_secshares, partial_pubshares)
 
 
@@ -341,7 +322,7 @@ def participant_step1(
     enc_shares = encrypt_multi(
         secnonce, pubnonce, deckey, enckeys, enc_context, idx, shares
     )
-    simpl_pmsg_parsed = simplpedpop.ParticipantMsg.from_bytes(simpl_pmsg, t)
+    simpl_pmsg_parsed = simplpedpop.ParticipantMsg.from_bytes(simpl_pmsg, t=t)
 
     pmsg = ParticipantMsg(simpl_pmsg_parsed, pubnonce, enc_shares).to_bytes()
     state = ParticipantState(simpl_state, pubnonce, enckeys, idx)
@@ -356,7 +337,7 @@ def participant_step2(
 ) -> Tuple[simplpedpop.DKGOutput, bytes]:
     simpl_state, pubnonce, enckeys, idx = state
     try:
-        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, simpl_state.t, len(enckeys))
+        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=simpl_state.t, n=len(enckeys))
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     simpl_cmsg, pubnonces = cmsg_parsed
@@ -390,7 +371,7 @@ def participant_investigate(
 ) -> NoReturn:
     simpl_inv_data, enc_secshare, pads = error.inv_data
     try:
-        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, simpl_inv_data.n)
+        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n=simpl_inv_data.n)
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     enc_partial_secshares, partial_pubshares = cinv_parsed
@@ -435,14 +416,14 @@ def coordinator_step(
     pmsgs_parsed = []
     for i, pmsg in enumerate(pmsgs):
         try:
-            parsed = ParticipantMsg.from_bytes(pmsg, t, n)
+            parsed = ParticipantMsg.from_bytes(pmsg, t=t, n=n)
         except MsgParseError as e:
             raise FaultyParticipantError(i, *e.args) from e
         pmsgs_parsed.append(parsed)
     simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
         pmsgs=[pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed], t=t, n=n
     )
-    simpl_cmsg_parsed = simplpedpop.CoordinatorMsg.from_bytes(simpl_cmsg, t, n)
+    simpl_cmsg_parsed = simplpedpop.CoordinatorMsg.from_bytes(simpl_cmsg, t=t, n=n)
     pubnonces = [pmsg.pubnonce for pmsg in pmsgs_parsed]
     enc_secshares = [
         Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs_parsed])) for i in range(n)
@@ -468,7 +449,7 @@ def coordinator_step(
 
 def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
     n = len(pmsgs)
-    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t, n) for pmsg in pmsgs]
+    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t=t, n=n) for pmsg in pmsgs]
     simpl_pmsgs = [pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed]
 
     all_enc_partial_secshares = [
@@ -476,7 +457,7 @@ def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
     ]
     simpl_cinvs = simplpedpop.coordinator_investigate(simpl_pmsgs, t)
     simpl_cinvs_parsed = [
-        simplpedpop.CoordinatorInvestigationMsg.from_bytes(simpl_cinv, n)
+        simplpedpop.CoordinatorInvestigationMsg.from_bytes(simpl_cinv, n=n)
         for simpl_cinv in simpl_cinvs
     ]
     cinvs = [

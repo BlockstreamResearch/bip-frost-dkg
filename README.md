@@ -911,7 +911,8 @@ Perform a participant's first step of a ChillDKG session.
   be passed as an argument to `participant_step2`. The state **must
   not** be reused (i.e., it must be passed only to one
   `participant_step2` call).
-- `bytes` - The first message to be sent to the coordinator.
+- `bytes` - The first message to be sent to the coordinator
+  (`33*t + 32*n + 97` bytes).
 
 
 *Raises*:
@@ -958,7 +959,8 @@ data, from which this participant can recover the DKG output using the
 - `hostseckey` - Participant's long-term host secret key (32 bytes).
 - `state1` - The participant's session state as output by
   `participant_step1`.
-- `cmsg1` - The first message received from the coordinator.
+- `cmsg1` - The first message received from the coordinator
+  (`162*n + 33*(t-1)` bytes).
 - `aux_rand` - Auxiliary randomness (32 bytes). FRESH 32-byte randomness
   is optimal, but 16 random bytes or a counter padded to 32 bytes
   is acceptable (see BIP 340).
@@ -970,7 +972,7 @@ data, from which this participant can recover the DKG output using the
   be passed as an argument to `participant_finalize`. The state **must
   not** be reused (i.e., it must be passed only to one
   `participant_finalize` call).
-- `bytes` - The second message to be sent to the coordinator.
+- `bytes` - The second message to be sent to the coordinator (64 bytes).
 
 
 *Raises*:
@@ -1039,7 +1041,8 @@ recovery data to this participant.
 *Arguments*:
 
 - `state2` - The participant's state as output by `participant_step2`.
-- `cmsg2` - The second message received from the coordinator.
+- `cmsg2` - The second message received from the coordinator
+  (`64*n` bytes).
 
 
 *Returns*:
@@ -1053,8 +1056,6 @@ recovery data to this participant.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
   coordinator is faulty. Make sure to read the above warning, and see
   the documentation of the exception for further details.
-- `FaultyCoordinatorError` - If the coordinator is faulty. See the
-  documentation of the exception for further details.
 
 #### participant\_investigate
 
@@ -1076,7 +1077,7 @@ exceptions.
 - `error` - `UnknownFaultyParticipantOrCoordinatorError` raised by
   `participant_step2`.
 - `cinv` - Coordinator investigation message for this participant as output
-  by `coordinator_investigate`.
+  by `coordinator_investigate` (`65*n` bytes).
 
 
 *Raises*:
@@ -1097,8 +1098,9 @@ Perform the coordinator's first step of a ChillDKG session.
 
 *Arguments*:
 
-- `pmsgs1` - List of first messages received from the participants. The
-  list's length must equal the total number of participants.
+- `pmsgs1` - List of first messages received from the participants
+  (`33*t + 32*n + 97` bytes each). The list's length must equal
+  the total number of participants.
 - `params` - Common session parameters.
 
 
@@ -1108,7 +1110,8 @@ Perform the coordinator's first step of a ChillDKG session.
   passed as an argument to `coordinator_finalize`. The state is not
   supposed to be reused (i.e., it should be passed only to one
   `coordinator_finalize` call).
-- `bytes` - The first message to be sent to all participants.
+- `bytes` - The first message to be sent to all participants
+  (`162*n + 33*(t-1)` bytes).
 
 
 *Raises*:
@@ -1149,13 +1152,14 @@ other participants via a communication channel beside the coordinator.
 *Arguments*:
 
 - `state` - The coordinator's session state as output by `coordinator_step1`.
-- `pmsgs2` - List of second messages received from the participants. The
-  list's length must equal the total number of participants.
+- `pmsgs2` - List of second messages received from the participants
+  (64 bytes each). The list's length must equal the total number
+  of participants.
 
 
 *Returns*:
 
-- `bytes` - The second message to be sent to all participants.
+- `bytes` - The second message to be sent to all participants (`64*n` bytes).
 - `DKGOutput` - The DKG output. Since the coordinator does not have a secret
   share, the DKG output will have the `secshare` field set to `None`.
 - `bytes` - The serialized recovery data.
@@ -1183,14 +1187,15 @@ information.
 
 *Arguments*:
 
-- `pmsgs` - List of serialized first messages received from the participants.
+- `pmsgs` - List of serialized first messages received from the participants
+  (`33*t + 32*n + 97` bytes each).
 - `params` - Common session parameters.
 
 
 *Returns*:
 
 - `List[bytes]` - A list of investigation messages, each intended for a single
-  participant.
+  participant (`65*n` bytes each).
 
 
 *Raises*:

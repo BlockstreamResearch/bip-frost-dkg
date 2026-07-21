@@ -180,7 +180,7 @@ def simulate_encpedpop(
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
             faulty_pmsg = encpedpop.ParticipantMsg.from_bytes(
-                pmsgs[faulty_idx[i]], t, n
+                pmsgs[faulty_idx[i]], t=t, n=n
             )
             faulty_pmsg.enc_shares[i] += Scalar(17)
             pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
@@ -235,7 +235,7 @@ def simulate_chilldkg(
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
             faulty_pmsg = chilldkg.ParticipantMsg1.from_bytes(
-                pmsgs[faulty_idx[i]], t, n
+                pmsgs[faulty_idx[i]], t=t, n=n
             )
             faulty_pmsg.enc_pmsg.enc_shares[i] += Scalar(17)
             pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
@@ -859,8 +859,8 @@ def test_recovery_acknowledgment():
         chilldkg.participant_recovery_acks_verify(
             recovery_data, params, wrong_length_sigs
         )
-    except chilldkg.InvalidRecoveryAckError as e:
-        assert e.participant == 0
+    except ValueError:
+        pass
     else:
         assert False, "Expected exception"
 

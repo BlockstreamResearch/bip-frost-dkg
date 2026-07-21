@@ -183,7 +183,7 @@ async def faulty_participant(
     n = len(params.hostpubkeys)
     random = random_bytes(32)
     _, pmsg1 = participant_step1(hostseckey, params, random)
-    pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(pmsg1, params.t, n)
+    pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(pmsg1, t=params.t, n=n)
 
     assert len(pmsg1_parsed.enc_pmsg.enc_shares) == n
     # Pick random victim that is not this participant
