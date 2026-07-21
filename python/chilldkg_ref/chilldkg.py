@@ -765,8 +765,6 @@ def participant_finalize(
         FaultyParticipantOrCoordinatorError: If another known participant or the
             coordinator is faulty. Make sure to read the above warning, and see
             the documentation of the exception for further details.
-        FaultyCoordinatorError: If the coordinator is faulty. See the
-            documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state2
     cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, n=len(params.hostpubkeys))
