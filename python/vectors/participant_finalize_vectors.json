@@ -75,9 +75,8 @@
                     "tcId": 4,
                     "cmsg2": "A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B5409C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
                     "expectedError": {
-                        "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 2,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "type": "FaultyCoordinatorError",
+                        "message": "Coordinator has provided a certificate with an invalid signature"
                     },
                     "comment": "invalid cmsg2: last signature is invalid"
                 }
@@ -138,9 +137,8 @@
                     "tcId": 8,
                     "cmsg2": "82E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EE09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
                     "expectedError": {
-                        "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 2,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "type": "FaultyCoordinatorError",
+                        "message": "Coordinator has provided a certificate with an invalid signature"
                     },
                     "comment": "invalid cmsg2: last signature is invalid"
                 }
@@ -201,9 +199,8 @@
                     "tcId": 12,
                     "cmsg2": "BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E709C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
                     "expectedError": {
-                        "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 2,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "type": "FaultyCoordinatorError",
+                        "message": "Coordinator has provided a certificate with an invalid signature"
                     },
                     "comment": "invalid cmsg2: last signature is invalid"
                 }
@@ -266,9 +263,8 @@
                     "tcId": 16,
                     "cmsg2": "C40687CB309D263B5D52C4D782F9A66411B57627FD56FD0ABE3C87CB051CE248E19A95E68212599B8DAD04ADF7CE37DC809BBC04F27B019D5543F35223FC53E6978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE4809C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
                     "expectedError": {
-                        "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 3,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "type": "FaultyCoordinatorError",
+                        "message": "Coordinator has provided a certificate with an invalid signature"
                     },
                     "comment": "invalid cmsg2: last signature is invalid"
                 }

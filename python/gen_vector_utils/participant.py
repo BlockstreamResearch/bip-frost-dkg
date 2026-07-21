@@ -748,10 +748,9 @@ def generate_participant_finalize_group(t, n):
     )
     assert len(random_sig) == 64
     invalid_cmsg2_2 = chilldkg.CoordinatorMsg2(cmsg2[:-64] + random_sig).to_bytes()
-    error2 = expect_faulty_exception(
+    error2 = expect_exception(
         lambda: participant_finalize(pstates2[0], invalid_cmsg2_2),
-        chilldkg.FaultyParticipantOrCoordinatorError,
-        n - 1,
+        chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
         {
