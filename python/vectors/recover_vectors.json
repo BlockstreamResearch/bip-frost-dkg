@@ -1,17 +1,20 @@
 {
     "description": [
-        "Test vectors for recover(hostseckey, recovery_data).",
+        "Test vectors for participant_recover(hostseckey, recovery_data) and",
+        "coordinator_recover(recovery_data).",
         "Recovers a DKG output and session parameters from serialized recovery data.",
         "If hostseckey is null, recovery is performed as coordinator (secshare will be null).",
         "If hostseckey is a 32-byte hex string, recovery is performed as the corresponding participant.",
         "",
         "For each valid test case:",
-        "  Call recover(hostseckey, recoveryData) and verify the result matches expectedOutput.",
+        "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
+        "  (if hostseckey is null) and verify the result matches expectedOutput.",
         "  expectedOutput contains 'dkgOutput' (with secshare, thresholdPubkey, pubshares)",
         "  and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",
-        "  Call recover(hostseckey, recoveryData) and verify it raises an exception matching expectedError."
+        "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
+        "  (if hostseckey is null) and verify it raises an exception matching expectedError."
     ],
     "totalTests": 13,
     "validTestCases": [

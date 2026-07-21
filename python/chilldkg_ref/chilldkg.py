@@ -46,7 +46,8 @@ __all__ = [
     "coordinator_step1",
     "coordinator_finalize",
     "coordinator_investigate",
-    "recover",
+    "participant_recover",
+    "coordinator_recover",
     "participant_recovery_ack_sign",
     "participant_recovery_acks_verify",
     # Exceptions
@@ -628,7 +629,7 @@ def participant_step2(
     missing, that other participant can, at any point in the future, convince
     this participant of the success of the DKG session by presenting recovery
     data, from which this participant can recover the DKG output using the
-    `recover` function.
+    `participant_recover` function.
 
     Arguments:
         hostseckey: Participant's long-term host secret key (32 bytes).
@@ -707,7 +708,7 @@ def participant_finalize(
     from the coordinator at all. These participants can, at any point in time in
     the future (e.g., when initiating a signing session), be convinced to deem
     the session successful by presenting the recovery data to them, from which
-    they can recover the DKG outputs using the `recover` function.
+    they can recover the DKG outputs using the `participant_recover` function.
 
     Since returning successfully does not imply that other participants deem
     the DKG session successful, returning successfully also does not imply
@@ -883,14 +884,15 @@ def coordinator_finalize(
     can, at any point in time in the future (e.g., when initiating a signing
     session), be convinced to deem the session successful by presenting the
     recovery data to them, from which they can recover the DKG outputs using the
-    `recover` function.
+    `participant_recover` function.
 
     If this function raises an exception, then the DKG session was not
     successful from the perspective of the coordinator. In this case, it is, in
     principle, possible to recover the DKG outputs of the coordinator using the
-    recovery data from a successful participant, should one exist. Any such
-    successful participant is either faulty, or has received messages from
-    other participants via a communication channel beside the coordinator.
+    `coordinator_recover` function together with the recovery data from a
+    successful participant, should one exist. Any such successful participant
+    is either faulty, or has received messages from other participants via a
+    communication channel beside the coordinator.
 
     Arguments:
         state: The coordinator's session state as output by `coordinator_step1`.
@@ -975,31 +977,6 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
 def recover(
     hostseckey: Optional[bytes], recovery_data: RecoveryData
 ) -> Tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of a ChillDKG session.
-
-    This function serves two different purposes:
-    1. To recover from an exception in `participant_finalize` or
-       `coordinator_finalize`, after obtaining the recovery data from another
-        participant or the coordinator. See `participant_finalize` and
-        `coordinator_finalize` for background.
-    2. To reproduce the DKG outputs on a new device, e.g., to recover from a
-       backup after data loss.
-
-    Arguments:
-        hostseckey: This participant's long-term host secret key (32 bytes) or
-            `None` if recovering the coordinator.
-        recovery_data: Recovery data from a successful session.
-
-    Returns:
-        DKGOutput: The recovered DKG output.
-        SessionParams: The common parameters of the recovered session.
-
-    Raises:
-        HostSeckeyError: If the host secret key is invalid, or if the key does not
-            match the recovery data.
-            (This can also occur if the recovery data is invalid.)
-        RecoveryDataError: If recovery failed due to invalid recovery data.
-    """
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
             deserialize_recovery_data(recovery_data)
@@ -1026,7 +1003,7 @@ def recover(
     threshold_pubkey = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
-    if hostseckey:
+    if hostseckey is not None:
         hostpubkey = hostpubkey_gen(hostseckey)  # ValueError or HostSeckeyError
         try:
             idx = hostpubkeys.index(hostpubkey)
@@ -1059,6 +1036,62 @@ def recover(
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
     return dkg_output, params
+
+
+def participant_recover(
+    hostseckey: bytes, recovery_data: RecoveryData
+) -> Tuple[DKGOutput, SessionParams]:
+    """Recover the DKG output of a participant of a ChillDKG session.
+
+    This function serves two different purposes:
+    1. To recover from an exception in `participant_finalize`, after
+       obtaining the recovery data from another participant or the
+       coordinator. See `participant_finalize` for background.
+    2. To reproduce the DKG outputs on a new device, e.g., to recover from a
+       backup after data loss.
+
+    Arguments:
+        hostseckey: This participant's long-term host secret key (32 bytes).
+        recovery_data: Recovery data from a successful session.
+
+    Returns:
+        DKGOutput: The recovered DKG output.
+        SessionParams: The common parameters of the recovered session.
+
+    Raises:
+        HostSeckeyError: If the host secret key is invalid, or if the key does not
+            match the recovery data.
+            (This can also occur if the recovery data is invalid.)
+        RecoveryDataError: If recovery failed due to invalid recovery data.
+    """
+    return recover(hostseckey, recovery_data)
+
+
+def coordinator_recover(
+    recovery_data: RecoveryData,
+) -> Tuple[DKGOutput, SessionParams]:
+    """Recover the DKG output of the coordinator of a ChillDKG session.
+
+    This function serves two different purposes:
+    1. To recover from an exception in `coordinator_finalize`, after
+       obtaining the recovery data from a participant. See
+       `coordinator_finalize` for background.
+    2. To reproduce the DKG outputs on a new device, e.g., to recover from a
+       backup after data loss.
+
+    Arguments:
+        recovery_data: Recovery data from a successful session.
+
+    Returns:
+        DKGOutput: The recovered DKG output. Since the coordinator does not
+            have a secret share, the DKG output will have the `secshare`
+            field set to `None`.
+        SessionParams: The common parameters of the recovered session.
+
+    Raises:
+        RecoveryDataError: If recovery failed due to invalid recovery data.
+    """
+    return recover(None, recovery_data)
 
 
 class RecoveryDataError(ValueError):

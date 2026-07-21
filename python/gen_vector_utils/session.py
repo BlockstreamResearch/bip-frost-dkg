@@ -7,7 +7,7 @@ from .util import (
     assign_tc_ids,
 )
 
-from chilldkg_ref.chilldkg import hostpubkey_gen, params_id, recover
+from chilldkg_ref.chilldkg import hostpubkey_gen, params_id
 import chilldkg_ref.chilldkg as chilldkg
 
 from secp256k1lab.secp256k1 import Scalar
@@ -181,18 +181,21 @@ def generate_params_id_vectors():
 
 def generate_recover_vectors():
     description = [
-        "Test vectors for recover(hostseckey, recovery_data).",
+        "Test vectors for participant_recover(hostseckey, recovery_data) and",
+        "coordinator_recover(recovery_data).",
         "Recovers a DKG output and session parameters from serialized recovery data.",
         "If hostseckey is null, recovery is performed as coordinator (secshare will be null).",
         "If hostseckey is a 32-byte hex string, recovery is performed as the corresponding participant.",
         "",
         "For each valid test case:",
-        "  Call recover(hostseckey, recoveryData) and verify the result matches expectedOutput.",
+        "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
+        "  (if hostseckey is null) and verify the result matches expectedOutput.",
         "  expectedOutput contains 'dkgOutput' (with secshare, thresholdPubkey, pubshares)",
         "  and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",
-        "  Call recover(hostseckey, recoveryData) and verify it raises an exception matching expectedError.",
+        "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
+        "  (if hostseckey is null) and verify it raises an exception matching expectedError.",
     ]
     valid_cases = []
     error_cases = []
@@ -224,7 +227,7 @@ def generate_recover_vectors():
     assert prec == crec
 
     # --- Valid test case: participant recovery ---
-    pout_rec, params_rec = recover(hostseckeys[0], prec)
+    pout_rec, params_rec = chilldkg.participant_recover(hostseckeys[0], prec)
     assert pout_rec == pout
     assert params_rec == params
     valid_cases.append(
@@ -239,7 +242,7 @@ def generate_recover_vectors():
         }
     )
     # --- Valid test case: coordinator recovery ---
-    cout_rec, params_rec = recover(None, crec)
+    cout_rec, params_rec = chilldkg.coordinator_recover(crec)
     assert cout_rec == cout
     assert params_rec == params
     valid_cases.append(
@@ -257,7 +260,7 @@ def generate_recover_vectors():
     # --- Error test case: recovery data of invalid length ---
     invalid_crec = crec[1:]
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -271,7 +274,7 @@ def generate_recover_vectors():
     invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
     invalid_crec = crec[:4] + invalid_ge + crec[4 + 33 :]
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -289,7 +292,7 @@ def generate_recover_vectors():
     )
     invalid_crec = crec[: -cert_len - 32] + invalid_encshare + crec[-cert_len:]
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -303,7 +306,7 @@ def generate_recover_vectors():
     t = params.t
     invalid_crec = b"\x00" * 4 + crec[4 + 33 * t :]
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -317,7 +320,7 @@ def generate_recover_vectors():
     invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"
     invalid_crec = crec[: 4 + 33 * t] + invalid_ge + crec[4 + 33 * t + 33 :]
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -337,7 +340,7 @@ def generate_recover_vectors():
         crec[: -cert_len - 32 * n - 33] + rand_ge + crec[-cert_len - 32 * n :]
     )
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -353,7 +356,7 @@ def generate_recover_vectors():
     )
     invalid_crec = crec[:-64] + rand_sig
     error = expect_exception(
-        lambda: recover(None, invalid_crec), chilldkg.RecoveryDataError
+        lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
     )
     error_cases.append(
         {
@@ -366,7 +369,9 @@ def generate_recover_vectors():
     # --- Error test case: invalid hostseckey ---
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
-    error = expect_exception(lambda: recover(short_hostseckey, crec), ValueError)
+    error = expect_exception(
+        lambda: chilldkg.participant_recover(short_hostseckey, crec), ValueError
+    )
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(short_hostseckey),
@@ -380,7 +385,8 @@ def generate_recover_vectors():
         "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7"
     )
     error = expect_exception(
-        lambda: recover(rand_hostseckey, crec), chilldkg.HostSeckeyError
+        lambda: chilldkg.participant_recover(rand_hostseckey, crec),
+        chilldkg.HostSeckeyError,
     )
     error_cases.append(
         {
@@ -393,7 +399,7 @@ def generate_recover_vectors():
     # --- Error test case: zero hostseckey ---
     zero_hostseckey = b"\x00" * 32
     error = expect_exception(
-        lambda: recover(zero_hostseckey, crec),
+        lambda: chilldkg.participant_recover(zero_hostseckey, crec),
         chilldkg.HostSeckeyError,
     )
     error_cases.append(
@@ -407,7 +413,7 @@ def generate_recover_vectors():
     # --- Error test case: out-of-range hostseckey ---
     overflow_hostseckey = bytes_from_int(Scalar.SIZE)
     error = expect_exception(
-        lambda: recover(overflow_hostseckey, crec),
+        lambda: chilldkg.participant_recover(overflow_hostseckey, crec),
         chilldkg.HostSeckeyError,
     )
     error_cases.append(
