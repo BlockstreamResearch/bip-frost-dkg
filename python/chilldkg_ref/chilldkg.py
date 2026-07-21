@@ -764,18 +764,16 @@ def participant_finalize(
         bytes: The serialized recovery data.
 
     Raises:
-        FaultyParticipantOrCoordinatorError: If another known participant or the
-            coordinator is faulty. Make sure to read the above warning, and see
-            the documentation of the exception for further details.
+        FaultyCoordinatorError: If the coordinator is faulty. See the
+            documentation of the exception for further details.
     """
     params, eq_input, dkg_output = state2
     cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, n=len(params.hostpubkeys))
     try:
         certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
     except InvalidSignatureInCertificateError as e:
-        raise FaultyParticipantOrCoordinatorError(
-            e.participant,
-            "Participant has provided an invalid signature for the certificate",
+        raise FaultyCoordinatorError(
+            "Coordinator has provided a certificate with an invalid signature"
         ) from e
     return dkg_output, RecoveryData(eq_input + cmsg2_parsed.cert)
 

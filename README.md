@@ -1053,9 +1053,8 @@ recovery data to this participant.
 
 *Raises*:
 
-- `FaultyParticipantOrCoordinatorError` - If another known participant or the
-  coordinator is faulty. Make sure to read the above warning, and see
-  the documentation of the exception for further details.
+- `FaultyCoordinatorError` - If the coordinator is faulty. See the
+  documentation of the exception for further details.
 
 #### participant\_investigate
 
