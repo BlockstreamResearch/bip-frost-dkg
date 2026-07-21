@@ -33,6 +33,8 @@ class Polynomial:
 
 
 class VSSCommitment:
+    # Infinity GEs are allowed in VSSCommitment to avoid that a participant can
+    # force the sum of valid commitments to be invalid.
     ges: List[GE]
 
     def __init__(self, ges: List[GE]) -> None:
@@ -66,7 +68,7 @@ class VSSCommitment:
     def from_bytes(b: bytes, *, t: int) -> VSSCommitment:
         if len(b) != 33 * t:
             raise ValueError
-        ges = [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
+        ges = [GE.from_bytes_compressed_with_infinity(b[i : i + 33]) for i in range(0, 33 * t, 33)]
         return VSSCommitment(ges)
 
     def commitment_to_secret(self) -> GE:
