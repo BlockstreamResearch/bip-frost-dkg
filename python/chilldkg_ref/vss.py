@@ -65,8 +65,12 @@ class VSSCommitment:
         return VSSCommitment([self.ges[i] + other.ges[i] for i in range(self.t())])
 
     @staticmethod
+    def len_bytes(*, t: int) -> int:
+        return 33 * t
+
+    @staticmethod
     def from_bytes(b: bytes, *, t: int) -> VSSCommitment:
-        if len(b) != 33 * t:
+        if len(b) != VSSCommitment.len_bytes(t=t):
             raise ValueError
         ges = [GE.from_bytes_compressed_with_infinity(b[i : i + 33]) for i in range(0, 33 * t, 33)]
         return VSSCommitment(ges)
