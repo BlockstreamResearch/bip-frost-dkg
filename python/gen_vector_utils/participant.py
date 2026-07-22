@@ -48,16 +48,29 @@ def generate_participant_step1_group(t, n):
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
     random = bytes.fromhex(RANDOMS_HEX[0])
 
-    # --- Valid test case ---
+    # --- Valid test case: one per participant index ---
     params = chilldkg.SessionParams(hostpubkeys, t)
-    _, expected_pmsg1 = chilldkg.participant_step1(hostseckeys[0], params, random)
+    for idx in range(n):
+        _, expected_pmsg1 = chilldkg.participant_step1(hostseckeys[idx], params, random)
+        valid_cases.append(
+            {
+                "hostseckey": bytes_to_hex(hostseckeys[idx]),
+                "params": params_asdict(params),
+                "random": bytes_to_hex(random),
+                "expectedPmsg1": bytes_to_hex(expected_pmsg1),
+                "comment": f"valid participant step1 (idx = {idx})",
+            }
+        )
+    # --- Valid test case: edge case randomness ---
+    random_big = b"\xff" * 32  # All-ones random (edge case)
+    _, expected_pmsg1 = chilldkg.participant_step1(hostseckeys[0], params, random_big)
     valid_cases.append(
         {
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
-            "random": bytes_to_hex(random),
+            "random": bytes_to_hex(random_big),
             "expectedPmsg1": bytes_to_hex(expected_pmsg1),
-            "comment": "valid participant step1",
+            "comment": "valid participant step1 (random = all ones)",
         }
     )
 
@@ -279,9 +292,12 @@ PARTICIPANT_STEP2_DESCRIPTION = [
     "  2. Assert pmsg1_out == pmsg1 (verifies your step1 implementation before testing step2).",
     "",
     "For each valid test case:",
-    "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "  A test case may provide 'hostseckey', 'random', and/or 'auxRand' fields to override",
+    " the group-level values. If 'hostseckey' or 'random' differ from the group defaults,"
+    "  re-derive pstate1 by calling participant_step1(hostseckey, params, random) again.",
+    "  If the test case provides a 'pmsg1' field, assert the re-derived pmsg1 matches it.",
+    "  Then call participant_step2(hostseckey, pstate1, cmsg1, auxRand). ",
     "  Verify the returned pmsg2 equals expectedPmsg2.",
-    "",
     "For each error test case:",
     "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
     "  Verify it raises an exception matching expectedError.",
@@ -309,13 +325,28 @@ def generate_participant_step2_group(t, n):
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
     aux_rand = bytes.fromhex(AUX_RAND_HEX)
 
-    # --- Valid test case ---
-    _, pmsg2 = participant_step2(hostseckeys[0], pstates1[0], cmsg1, aux_rand)
+    # --- Valid test case: one per participant index ---
+    for idx in range(n):
+        _, pmsg2 = participant_step2(hostseckeys[idx], pstates1[idx], cmsg1, aux_rand)
+        valid_cases.append(
+            {
+                "hostseckey": bytes_to_hex(hostseckeys[idx]),
+                "random": bytes_to_hex(randoms[idx]),
+                "pmsg1": bytes_to_hex(pmsgs1[idx]),
+                "cmsg1": bytes_to_hex(cmsg1),
+                "expectedPmsg2": bytes_to_hex(pmsg2),
+                "comment": f"valid participant step2 (idx = {idx})",
+            }
+        )
+    # --- Valid test case: zero auxiliary randomness ---
+    zero_aux_rand = b"\x00" * 32
+    _, pmsg2 = participant_step2(hostseckeys[0], pstates1[0], cmsg1, zero_aux_rand)
     valid_cases.append(
         {
+            "auxRand": bytes_to_hex(zero_aux_rand),
             "cmsg1": bytes_to_hex(cmsg1),
             "expectedPmsg2": bytes_to_hex(pmsg2),
-            "comment": "valid participant step2",
+            "comment": "valid participant step2 (auxRand = zero)",
         }
     )
 
@@ -654,9 +685,11 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
     "     Assert pmsg2_out == pmsg2.",
     "",
     "For each valid test case:",
+    "  A test case may provide 'hostseckey', 'random', and/or 'auxRand' fields to override",
+    "  the group-level values. If any of these differ from the group defaults, re-derive",
+    "  pstate1 and pstate2 using the case-level values before calling participant_finalize.",
     "  Call participant_finalize(pstate2, cmsg2).",
-    "  Verify the result matches expectedOutput (dkgOutput and recoveryData).",
-    "",
+    "  Verify the result matches expectedOutput (dkgOutput and recoveryData)."
     "For each error test case:",
     "  Call participant_finalize(pstate2, cmsg2).",
     "  Verify it raises an exception matching expectedError.",
@@ -698,20 +731,22 @@ def generate_participant_finalize_group(t, n):
         "pmsg2": bytes_to_hex(pmsgs2[0]),
     }
 
-    # --- Valid test case ---
+    # --- Valid test case: one per participant index ---
     cmsg2, _, _ = chilldkg.coordinator_finalize(cstate, pmsgs2)
-    pout, prec = participant_finalize(pstates2[0], cmsg2)
-
-    valid_cases.append(
-        {
-            "cmsg2": bytes_to_hex(cmsg2),
-            "expectedOutput": {
-                "dkgOutput": dkg_output_asdict(pout),
-                "recoveryData": bytes_to_hex(prec),
-            },
-            "comment": "valid participant finalize",
-        }
-    )
+    for idx in range(n):
+        pout, prec = participant_finalize(pstates2[idx], cmsg2)
+        valid_cases.append(
+            {
+                "hostseckey": bytes_to_hex(hostseckeys[idx]),
+                "random": bytes_to_hex(randoms[idx]),
+                "cmsg2": bytes_to_hex(cmsg2),
+                "expectedOutput": {
+                    "dkgOutput": dkg_output_asdict(pout),
+                    "recoveryData": bytes_to_hex(prec),
+                },
+                "comment": f"valid participant finalize (idx = {idx})",
+            }
+        )
 
     # --- Error test case: cmsg2 missing the last signature ---
     invalid_cmsg2 = chilldkg.CoordinatorMsg2(
