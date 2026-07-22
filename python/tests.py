@@ -472,15 +472,30 @@ def test_participant_step2_vectors():
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
         random = bytes.fromhex(group["random"])
-        aux_rand = bytes.fromhex(group["auxRand"])
 
         state1, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
         assert bytes.fromhex(group["pmsg1"]) == pmsg1  # checkpoint
 
         for test_case in group["validTestCases"]:
+            case_hostseckey = bytes.fromhex(
+                test_case.get("hostseckey", group["hostseckey"])
+            )
+            case_random = bytes.fromhex(test_case.get("random", group["random"]))
+            case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
             expected_pmsg2 = bytes.fromhex(test_case["expectedPmsg2"])
-            _, pmsg2 = chilldkg.participant_step2(hostseckey, state1, cmsg1, aux_rand)
+            if case_hostseckey != hostseckey or case_random != random:
+                case_state1, case_pmsg1 = chilldkg.participant_step1(
+                    case_hostseckey, params, case_random
+                )
+            else:
+                case_state1 = state1
+                case_pmsg1 = pmsg1
+            if "pmsg1" in test_case:
+                assert case_pmsg1 == bytes.fromhex(test_case["pmsg1"])
+            _, pmsg2 = chilldkg.participant_step2(
+                case_hostseckey, case_state1, cmsg1, case_aux_rand
+            )
             assert expected_pmsg2 == pmsg2
             total_cases += 1
             assert test_case["tcId"] == total_cases
@@ -526,8 +541,27 @@ def test_participant_finalize_vectors():
         assert bytes.fromhex(group["pmsg2"]) == pmsg2
 
         for test_case in group["validTestCases"]:
+            case_hostseckey = bytes.fromhex(
+                test_case.get("hostseckey", group["hostseckey"])
+            )
+            case_random = bytes.fromhex(test_case.get("random", group["random"]))
+            case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
-            pout, prec = chilldkg.participant_finalize(state2, cmsg2)
+            if (
+                case_hostseckey != hostseckey
+                or case_random != random
+                or case_aux_rand != aux_rand
+            ):
+                case_state1, _ = chilldkg.participant_step1(
+                    case_hostseckey, params, case_random
+                )
+                case_state2, _ = chilldkg.participant_step2(
+                    case_hostseckey, case_state1, cmsg1, case_aux_rand
+                )
+            else:
+                case_state2 = state2
+
+            pout, prec = chilldkg.participant_finalize(case_state2, cmsg2)
             expected_pout = test_case["expectedOutput"]["dkgOutput"]
             expected_prec = bytes.fromhex(test_case["expectedOutput"]["recoveryData"])
             assert expected_pout == dkg_output_asdict(pout)
