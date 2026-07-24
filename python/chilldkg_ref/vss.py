@@ -33,10 +33,30 @@ class Polynomial:
 
 
 class VSSCommitment:
+    # Infinity GEs are allowed in VSSCommitment to avoid that a participant can
+    # force the sum of valid commitments to be invalid.
     ges: List[GE]
+
+    @staticmethod
+    def len_bytes(*, t: int) -> int:
+        return 33 * t
+
+    @staticmethod
+    def from_bytes(b: bytes, *, t: int) -> VSSCommitment:
+        if len(b) != VSSCommitment.len_bytes(t=t):
+            raise ValueError
+        ges = [
+            GE.from_bytes_compressed_with_infinity(b[i : i + 33])
+            for i in range(0, 33 * t, 33)
+        ]
+        return VSSCommitment(ges)
 
     def __init__(self, ges: List[GE]) -> None:
         self.ges = ges
+
+    def to_bytes(self) -> bytes:
+        # Return commitments to the coefficients of f.
+        return b"".join([ge.to_bytes_compressed_with_infinity() for ge in self.ges])
 
     def t(self) -> int:
         return len(self.ges)
@@ -54,20 +74,9 @@ class VSSCommitment:
         valid: bool = actual == pubshare
         return valid
 
-    def to_bytes(self) -> bytes:
-        # Return commitments to the coefficients of f.
-        return b"".join([ge.to_bytes_compressed_with_infinity() for ge in self.ges])
-
     def __add__(self, other: VSSCommitment) -> VSSCommitment:
         assert self.t() == other.t()
         return VSSCommitment([self.ges[i] + other.ges[i] for i in range(self.t())])
-
-    @staticmethod
-    def from_bytes(b: bytes, *, t: int) -> VSSCommitment:
-        if len(b) != 33 * t:
-            raise ValueError
-        ges = [GE.from_bytes_compressed(b[i : i + 33]) for i in range(0, 33 * t, 33)]
-        return VSSCommitment(ges)
 
     def commitment_to_secret(self) -> GE:
         return self.ges[0]
