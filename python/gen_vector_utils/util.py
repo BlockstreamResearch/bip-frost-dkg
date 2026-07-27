@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from typing import Union, Sequence
+from typing import TypeAlias, Sequence
 from pathlib import Path
 
 
@@ -10,7 +10,7 @@ from chilldkg_ref.chilldkg import (
 )
 import chilldkg_ref.encpedpop as encpedpop
 
-ErrorInfo = dict[str, Union[int, str, "ErrorInfo"]]
+ErrorInfo: TypeAlias = "dict[str, int | str | ErrorInfo]"
 
 
 def bytes_to_hex(data: bytes) -> str:
