@@ -2,7 +2,6 @@
 
 """Example of a full ChillDKG session"""
 
-from typing import Optional
 import asyncio
 import pprint
 from random import randint
@@ -194,8 +193,8 @@ async def faulty_participant(
 
 
 def simulate_chilldkg_full(
-    hostseckeys: list[bytes], params: SessionParams, faulty_idx: Optional[int]
-) -> list[Optional[tuple[DKGOutput, RecoveryData]]]:
+    hostseckeys: list[bytes], params: SessionParams, faulty_idx: int | None
+) -> list[tuple[DKGOutput, RecoveryData] | None]:
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 

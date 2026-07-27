@@ -877,7 +877,7 @@ Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
 
 ```python
 class DKGOutput(NamedTuple):
-    secshare: Optional[bytes]
+    secshare: bytes | None
     threshold_pubkey: bytes
     pubshares: list[bytes]
 ```
@@ -1205,7 +1205,7 @@ information.
 #### recover
 
 ```python
-def recover(hostseckey: Optional[bytes], recovery_data: RecoveryData) -> tuple[DKGOutput, SessionParams]
+def recover(hostseckey: bytes | None, recovery_data: RecoveryData) -> tuple[DKGOutput, SessionParams]
 ```
 
 Recover the DKG output of a ChillDKG session.

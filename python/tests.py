@@ -4,7 +4,6 @@
 
 from itertools import combinations
 from random import randint
-from typing import Optional
 from secrets import token_bytes as random_bytes
 from pathlib import Path
 import json
@@ -105,7 +104,7 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(
     seeds, t, investigation: bool
-) -> Optional[list[tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
     n = len(seeds)
     prets = []
     for i in range(n):
@@ -157,7 +156,7 @@ def encpedpop_keys(seed: bytes) -> tuple[bytes, bytes]:
 
 def simulate_encpedpop(
     seeds, t, investigation: bool
-) -> Optional[list[tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -213,7 +212,7 @@ def simulate_encpedpop(
 
 def simulate_chilldkg(
     hostseckeys, t, investigation: bool
-) -> Optional[list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]] | None:
     n = len(hostseckeys)
 
     hostpubkeys = []
@@ -281,7 +280,7 @@ def simulate_chilldkg_full(
     hostseckeys,
     t,
     investigation: bool,
-) -> list[Optional[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData] | None]:
     # Investigating is not supported by this wrapper
     assert not investigation
 

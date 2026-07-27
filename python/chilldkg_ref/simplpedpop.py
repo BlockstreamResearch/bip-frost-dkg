@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import NamedTuple, NewType, Optional, NoReturn
+from typing import NamedTuple, NewType, NoReturn
 
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
 from secp256k1lab.secp256k1 import GE, Scalar
@@ -166,7 +166,7 @@ class CoordinatorInvestigationMsg(NamedTuple):
 
 
 class DKGOutput(NamedTuple):
-    secshare: Optional[bytes]  # None for coordinator
+    secshare: bytes | None  # None for coordinator
     threshold_pubkey: bytes
     pubshares: list[bytes]
 

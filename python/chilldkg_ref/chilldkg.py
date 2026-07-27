@@ -15,7 +15,7 @@ type or wrong length). These structural errors are not documented per function.
 
 from __future__ import annotations
 
-from typing import Any, NamedTuple, NewType, Optional, NoReturn
+from typing import Any, NamedTuple, NewType, NoReturn
 
 from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
@@ -353,7 +353,7 @@ class DKGOutput(NamedTuple):
         pubshares: Public shares of the participants
     """
 
-    secshare: Optional[bytes]
+    secshare: bytes | None
     threshold_pubkey: bytes
     pubshares: list[bytes]
 
@@ -982,7 +982,7 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
 
 
 def recover(
-    hostseckey: Optional[bytes], recovery_data: RecoveryData
+    hostseckey: bytes | None, recovery_data: RecoveryData
 ) -> tuple[DKGOutput, SessionParams]:
     """Recover the DKG output of a ChillDKG session.
 
