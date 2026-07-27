@@ -4,7 +4,7 @@
 
 from itertools import combinations
 from random import randint
-from typing import Tuple, List, Optional
+from typing import Optional
 from secrets import token_bytes as random_bytes
 from pathlib import Path
 import json
@@ -105,7 +105,7 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(
     seeds, t, investigation: bool
-) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> Optional[list[tuple[simplpedpop.DKGOutput, bytes]]]:
     n = len(seeds)
     prets = []
     for i in range(n):
@@ -149,7 +149,7 @@ def simulate_simplpedpop(
     return pre_finalize_rets
 
 
-def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
+def encpedpop_keys(seed: bytes) -> tuple[bytes, bytes]:
     deckey = tagged_hash_bip_dkg("encpedpop deckey", seed)
     enckey = pubkey_gen_plain(deckey)
     return deckey, enckey
@@ -157,7 +157,7 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
 
 def simulate_encpedpop(
     seeds, t, investigation: bool
-) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> Optional[list[tuple[simplpedpop.DKGOutput, bytes]]]:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -175,7 +175,7 @@ def simulate_encpedpop(
     pstates = [pstate for (pstate, _) in enc_prets1]
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     if investigation:
-        faulty_idx: List[int] = []
+        faulty_idx: list[int] = []
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
@@ -213,7 +213,7 @@ def simulate_encpedpop(
 
 def simulate_chilldkg(
     hostseckeys, t, investigation: bool
-) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> Optional[list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
     n = len(hostseckeys)
 
     hostpubkeys = []
@@ -230,7 +230,7 @@ def simulate_chilldkg(
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
     if investigation:
-        faulty_idx: List[int] = []
+        faulty_idx: list[int] = []
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
@@ -281,7 +281,7 @@ def simulate_chilldkg_full(
     hostseckeys,
     t,
     investigation: bool,
-) -> List[Optional[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[Optional[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
     # Investigating is not supported by this wrapper
     assert not investigation
 
@@ -324,7 +324,7 @@ def test_recover_secret():
     assert recover_secret([2, 3], [shares[1], shares[2]]) == f.coeffs[0]
 
 
-def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
+def test_correctness_dkg_output(t, n, dkg_outputs: list[simplpedpop.DKGOutput]):
     assert len(dkg_outputs) == n + 1
     secshares = [out[0] for out in dkg_outputs]
     threshold_pubkeys = [out[1] for out in dkg_outputs]

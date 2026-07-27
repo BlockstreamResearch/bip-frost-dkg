@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List, Tuple
-
 from secp256k1lab.secp256k1 import GE, G, Scalar
 from secp256k1lab.util import tagged_hash
 
@@ -14,9 +12,9 @@ class Polynomial:
     # A polynomial f of degree at most t - 1 is represented by a list `coeffs`
     # of t coefficients, i.e., f(x) = coeffs[0] + ... + coeffs[t-1] *
     # x^(t-1)."""
-    coeffs: List[Scalar]
+    coeffs: list[Scalar]
 
-    def __init__(self, coeffs: List[Scalar]) -> None:
+    def __init__(self, coeffs: list[Scalar]) -> None:
         self.coeffs = coeffs
 
     def eval(self, x: Scalar) -> Scalar:
@@ -35,7 +33,7 @@ class Polynomial:
 class VSSCommitment:
     # Infinity GEs are allowed in VSSCommitment to avoid that a participant can
     # force the sum of valid commitments to be invalid.
-    ges: List[GE]
+    ges: list[GE]
 
     @staticmethod
     def len_bytes(*, t: int) -> int:
@@ -51,7 +49,7 @@ class VSSCommitment:
         ]
         return VSSCommitment(ges)
 
-    def __init__(self, ges: List[GE]) -> None:
+    def __init__(self, ges: list[GE]) -> None:
         self.ges = ges
 
     def to_bytes(self) -> bytes:
@@ -81,10 +79,10 @@ class VSSCommitment:
     def commitment_to_secret(self) -> GE:
         return self.ges[0]
 
-    def commitment_to_nonconst_terms(self) -> List[GE]:
+    def commitment_to_nonconst_terms(self) -> list[GE]:
         return self.ges[1 : self.t()]
 
-    def invalid_taproot_commit(self) -> Tuple[VSSCommitment, Scalar, GE]:
+    def invalid_taproot_commit(self) -> tuple[VSSCommitment, Scalar, GE]:
         # Return a modified VSS commitment such that the threshold public key
         # generated from it has an unspendable BIP 341 Taproot script path.
         #
@@ -139,7 +137,7 @@ class VSS:
         assert x != Scalar(0)
         return self.f(x)
 
-    def secshares(self, n: int) -> List[Scalar]:
+    def secshares(self, n: int) -> list[Scalar]:
         # Return the secret shares for the participants with indices 0..n-1.
         #
         # This computes [f(1), ..., f(n)].

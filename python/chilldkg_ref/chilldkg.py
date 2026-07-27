@@ -15,7 +15,7 @@ type or wrong length). These structural errors are not documented per function.
 
 from __future__ import annotations
 
-from typing import Any, Tuple, List, NamedTuple, NewType, Optional, NoReturn, Dict
+from typing import Any, NamedTuple, NewType, Optional, NoReturn
 
 from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
@@ -97,7 +97,7 @@ def certeq_cert_len(n: int) -> int:
     return 64 * n
 
 
-def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
+def certeq_verify(hostpubkeys: list[bytes], x: bytes, cert: bytes) -> None:
     n = len(hostpubkeys)
     if len(cert) != certeq_cert_len(n):
         raise ValueError
@@ -115,7 +115,7 @@ def certeq_verify(hostpubkeys: List[bytes], x: bytes, cert: bytes) -> None:
             raise InvalidSignatureInCertificateError(i)
 
 
-def certeq_coordinator_step(sigs: List[bytes]) -> bytes:
+def certeq_coordinator_step(sigs: list[bytes]) -> bytes:
     cert = b"".join(sigs)
     return cert
 
@@ -236,7 +236,7 @@ class SessionParams(NamedTuple):
     to abstract away from the order.
     """
 
-    hostpubkeys: List[bytes]
+    hostpubkeys: list[bytes]
     t: int
 
 
@@ -254,7 +254,7 @@ def params_validate(params: SessionParams) -> None:
             raise InvalidHostPubkeyError(i) from e
 
     # Check for duplicate hostpubkeys and find the corresponding indices
-    hostpubkey_to_idx: Dict[bytes, int] = dict()
+    hostpubkey_to_idx: dict[bytes, int] = dict()
     for i, hostpubkey in enumerate(hostpubkeys):
         if hostpubkey in hostpubkey_to_idx:
             raise DuplicateHostPubkeyError(hostpubkey_to_idx[hostpubkey], i)
@@ -355,7 +355,7 @@ class DKGOutput(NamedTuple):
 
     secshare: Optional[bytes]
     threshold_pubkey: bytes
-    pubshares: List[bytes]
+    pubshares: list[bytes]
 
 
 RecoveryData = NewType("RecoveryData", bytes)
@@ -405,7 +405,7 @@ class ParticipantMsg2(NamedTuple):
 
 class CoordinatorMsg1(NamedTuple):
     enc_cmsg: encpedpop.CoordinatorMsg
-    enc_secshares: List[Scalar]
+    enc_secshares: list[Scalar]
 
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
@@ -496,7 +496,7 @@ class RecoveryAckMsg(NamedTuple):
 
 def deserialize_recovery_data(
     b: bytes,
-) -> Tuple[int, VSSCommitment, List[bytes], List[bytes], List[Scalar], bytes]:
+) -> tuple[int, VSSCommitment, list[bytes], list[bytes], list[Scalar], bytes]:
     rest = b
 
     # Read t (4 bytes)
@@ -559,7 +559,7 @@ class ParticipantState2(NamedTuple):
 
 def participant_step1(
     hostseckey: bytes, params: SessionParams, random: bytes
-) -> Tuple[ParticipantState1, bytes]:
+) -> tuple[ParticipantState1, bytes]:
     """Perform a participant's first step of a ChillDKG session.
 
     Arguments:
@@ -628,7 +628,7 @@ def participant_step2(
     state1: ParticipantState1,
     cmsg1: bytes,
     aux_rand: bytes,
-) -> Tuple[ParticipantState2, bytes]:
+) -> tuple[ParticipantState2, bytes]:
     """Perform a participant's second step of a ChillDKG session.
 
     **Warning:**
@@ -711,7 +711,7 @@ def participant_step2(
 
 def participant_finalize(
     state2: ParticipantState2, cmsg2: bytes
-) -> Tuple[DKGOutput, RecoveryData]:
+) -> tuple[DKGOutput, RecoveryData]:
     """Perform a participant's final step of a ChillDKG session.
 
     If this function returns properly (without an exception), then this
@@ -828,8 +828,8 @@ class CoordinatorState(NamedTuple):
 
 
 def coordinator_step1(
-    pmsgs1: List[bytes], params: SessionParams
-) -> Tuple[CoordinatorState, bytes]:
+    pmsgs1: list[bytes], params: SessionParams
+) -> tuple[CoordinatorState, bytes]:
     """Perform the coordinator's first step of a ChillDKG session.
 
     Arguments:
@@ -883,8 +883,8 @@ def coordinator_step1(
 
 
 def coordinator_finalize(
-    state: CoordinatorState, pmsgs2: List[bytes]
-) -> Tuple[bytes, DKGOutput, RecoveryData]:
+    state: CoordinatorState, pmsgs2: list[bytes]
+) -> tuple[bytes, DKGOutput, RecoveryData]:
     """Perform the coordinator's final step of a ChillDKG session.
 
     If this function returns properly (without an exception), then the
@@ -938,7 +938,7 @@ def coordinator_finalize(
     return cmsg2, dkg_output, RecoveryData(eq_input + cert)
 
 
-def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[bytes]:
+def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[bytes]:
     """Generate investigation messages for a ChillDKG session.
 
     The investigation messages will allow the participants to investigate who is
@@ -983,7 +983,7 @@ def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[b
 
 def recover(
     hostseckey: Optional[bytes], recovery_data: RecoveryData
-) -> Tuple[DKGOutput, SessionParams]:
+) -> tuple[DKGOutput, SessionParams]:
     """Recover the DKG output of a ChillDKG session.
 
     This function serves two different purposes:
@@ -1143,7 +1143,7 @@ def participant_recovery_ack_sign(
 
 
 def participant_recovery_acks_verify(
-    recovery_data: RecoveryData, params: SessionParams, ack_sigs: List[bytes]
+    recovery_data: RecoveryData, params: SessionParams, ack_sigs: list[bytes]
 ) -> None:
     """Verify recovery acknowledgment signatures from all participants.
 

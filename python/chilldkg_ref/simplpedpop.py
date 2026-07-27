@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, NamedTuple, NewType, Tuple, Optional, NoReturn
+from typing import NamedTuple, NewType, Optional, NoReturn
 
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
 from secp256k1lab.secp256k1 import GE, Scalar
@@ -80,9 +80,9 @@ class ParticipantMsg(NamedTuple):
 
 
 class CoordinatorMsg(NamedTuple):
-    coms_to_secrets: List[GE]
-    sum_coms_to_nonconst_terms: List[GE]
-    pops: List[Pop]
+    coms_to_secrets: list[GE]
+    sum_coms_to_nonconst_terms: list[GE]
+    pops: list[Pop]
 
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
@@ -132,7 +132,7 @@ class CoordinatorMsg(NamedTuple):
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
-    partial_pubshares: List[GE]
+    partial_pubshares: list[GE]
 
     @staticmethod
     def len_bytes(*, n: int) -> int:
@@ -168,11 +168,11 @@ class CoordinatorInvestigationMsg(NamedTuple):
 class DKGOutput(NamedTuple):
     secshare: Optional[bytes]  # None for coordinator
     threshold_pubkey: bytes
-    pubshares: List[bytes]
+    pubshares: list[bytes]
 
 
 def assemble_sum_coms(
-    coms_to_secrets: List[GE], sum_coms_to_nonconst_terms: List[GE]
+    coms_to_secrets: list[GE], sum_coms_to_nonconst_terms: list[GE]
 ) -> VSSCommitment:
     # Sum the commitments to the secrets
     return VSSCommitment(
@@ -206,14 +206,14 @@ class ParticipantInvestigationData(NamedTuple):
 
 def participant_step1(
     seed: bytes, t: int, n: int, idx: int, aux_rand: bytes
-) -> Tuple[
+) -> tuple[
     ParticipantState,
     bytes,
     # The following return value is a list of n partial secret shares generated
     # by this participant. The item at index i is supposed to be made available
     # to participant i privately, e.g., via an external secure channel. See also
     # the function participant_step2_prepare_secshare().
-    List[Scalar],
+    list[Scalar],
 ]:
     if t > n:
         raise ValueError
@@ -249,7 +249,7 @@ def participant_step1(
 # can securely aggregate the encrypted partial secshares into an encrypted
 # secshare by exploiting the additively homomorphic property of the encryption.
 def participant_step2_prepare_secshare(
-    partial_secshares: List[Scalar],
+    partial_secshares: list[Scalar],
 ) -> Scalar:
     secshare: Scalar  # REVIEW Work around missing type annotation of Scalar.sum
     secshare = Scalar.sum(*partial_secshares)
@@ -260,7 +260,7 @@ def participant_step2(
     state: ParticipantState,
     cmsg: bytes,
     secshare: Scalar,
-) -> Tuple[DKGOutput, bytes]:
+) -> tuple[DKGOutput, bytes]:
     t, n, idx, com_to_secret = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=t, n=n)
@@ -324,7 +324,7 @@ def participant_step2(
 def participant_investigate(
     error: UnknownFaultyParticipantOrCoordinatorError,
     cinv: bytes,
-    partial_secshares: List[Scalar],
+    partial_secshares: list[Scalar],
 ) -> NoReturn:
     n, idx, secshare, pubshare = error.inv_data
     if len(partial_secshares) != n:
@@ -375,8 +375,8 @@ def participant_investigate(
 
 
 def coordinator_step(
-    pmsgs: List[bytes], t: int, n: int
-) -> Tuple[bytes, DKGOutput, bytes]:
+    pmsgs: list[bytes], t: int, n: int
+) -> tuple[bytes, DKGOutput, bytes]:
     if len(pmsgs) != n:
         raise ValueError
     pmsgs_parsed = []
@@ -415,7 +415,7 @@ def coordinator_step(
     return cmsg, dkg_output, eq_input
 
 
-def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
+def coordinator_investigate(pmsgs: list[bytes], t: int) -> list[bytes]:
     n = len(pmsgs)
     pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t=t) for pmsg in pmsgs]
     all_partial_pubshares = [

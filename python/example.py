@@ -2,7 +2,7 @@
 
 """Example of a full ChillDKG session"""
 
-from typing import Tuple, List, Optional
+from typing import Optional
 import asyncio
 import pprint
 from random import randint
@@ -86,7 +86,7 @@ def pphex(thing):
             return {k: hexlify(v) for k, v in thing.items()}
         if hasattr(thing, "_asdict"):  # NamedTuple
             return hexlify(thing._asdict())
-        if isinstance(thing, List):
+        if isinstance(thing, list):
             return [hexlify(v) for v in thing]
         return thing
 
@@ -103,7 +103,7 @@ async def participant(
     hostseckey: bytes,
     params: SessionParams,
     investigation_procedure: bool,
-) -> Tuple[DKGOutput, RecoveryData]:
+) -> tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
     state1, pmsg1 = participant_step1(hostseckey, params, random)
@@ -144,7 +144,7 @@ async def participant(
 
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams, investigation_procedure: bool
-) -> Tuple[DKGOutput, RecoveryData]:
+) -> tuple[DKGOutput, RecoveryData]:
     (hostpubkeys, t) = params
     n = len(hostpubkeys)
 
@@ -194,8 +194,8 @@ async def faulty_participant(
 
 
 def simulate_chilldkg_full(
-    hostseckeys: List[bytes], params: SessionParams, faulty_idx: Optional[int]
-) -> List[Optional[Tuple[DKGOutput, RecoveryData]]]:
+    hostseckeys: list[bytes], params: SessionParams, faulty_idx: Optional[int]
+) -> list[Optional[tuple[DKGOutput, RecoveryData]]]:
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 

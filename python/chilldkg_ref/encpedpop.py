@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, List, NamedTuple, NoReturn
+from typing import NamedTuple, NoReturn
 
 from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.ecdh import ecdh_libsecp256k1
@@ -50,10 +50,10 @@ def encaps_multi(
     secnonce: bytes,
     pubnonce: bytes,
     deckey: bytes,
-    enckeys: List[bytes],
+    enckeys: list[bytes],
     context: bytes,
     idx: int,
-) -> List[Scalar]:
+) -> list[Scalar]:
     # This is effectively the "Hashed ElGamal" multi-recipient KEM described in
     # Section 5 of "Multi-recipient encryption, revisited" by Alexandre Pinto,
     # Bertram Poettering, Jacob C. N. Schuldt (AsiaCCS 2014). Its crucial
@@ -83,11 +83,11 @@ def encrypt_multi(
     secnonce: bytes,
     pubnonce: bytes,
     deckey: bytes,
-    enckeys: List[bytes],
+    enckeys: list[bytes],
     context: bytes,
     idx: int,
-    plaintexts: List[Scalar],
-) -> List[Scalar]:
+    plaintexts: list[Scalar],
+) -> list[Scalar]:
     pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
     if len(plaintexts) != len(pads):
         raise ValueError
@@ -98,10 +98,10 @@ def encrypt_multi(
 def decaps_multi(
     deckey: bytes,
     enckey: bytes,
-    pubnonces: List[bytes],
+    pubnonces: list[bytes],
     context: bytes,
     idx: int,
-) -> List[Scalar]:
+) -> list[Scalar]:
     context_ = idx.to_bytes(4, byteorder="big") + context
     pads = []
     for sender_idx, pubnonce in enumerate(pubnonces):
@@ -129,7 +129,7 @@ def decaps_multi(
 def decrypt_sum(
     deckey: bytes,
     enckey: bytes,
-    pubnonces: List[bytes],
+    pubnonces: list[bytes],
     context: bytes,
     idx: int,
     sum_ciphertexts: Scalar,
@@ -149,7 +149,7 @@ def decrypt_sum(
 class ParticipantMsg(NamedTuple):
     simpl_pmsg: simplpedpop.ParticipantMsg
     pubnonce: bytes
-    enc_shares: List[Scalar]
+    enc_shares: list[Scalar]
 
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
@@ -191,7 +191,7 @@ class ParticipantMsg(NamedTuple):
 
 class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
-    pubnonces: List[bytes]
+    pubnonces: list[bytes]
 
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
@@ -219,8 +219,8 @@ class CoordinatorMsg(NamedTuple):
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
-    enc_partial_secshares: List[Scalar]
-    partial_pubshares: List[GE]
+    enc_partial_secshares: list[Scalar]
+    partial_pubshares: list[GE]
 
     @staticmethod
     def len_bytes(*, n: int) -> int:
@@ -272,28 +272,28 @@ class CoordinatorInvestigationMsg(NamedTuple):
 class ParticipantState(NamedTuple):
     simpl_state: simplpedpop.ParticipantState
     pubnonce: bytes
-    enckeys: List[bytes]
+    enckeys: list[bytes]
     idx: int
 
 
 class ParticipantInvestigationData(NamedTuple):
     simpl_bstate: simplpedpop.ParticipantInvestigationData
     enc_secshare: Scalar
-    pads: List[Scalar]
+    pads: list[Scalar]
 
 
-def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
+def serialize_enc_context(t: int, enckeys: list[bytes]) -> bytes:
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
 
 
 def participant_step1(
     seed: bytes,
     deckey: bytes,
-    enckeys: List[bytes],
+    enckeys: list[bytes],
     t: int,
     idx: int,
     random: bytes,
-) -> Tuple[ParticipantState, bytes]:
+) -> tuple[ParticipantState, bytes]:
     if t >= 2 ** (4 * 8):
         raise ValueError
     if len(random) != 32:
@@ -334,7 +334,7 @@ def participant_step2(
     deckey: bytes,
     cmsg: bytes,
     enc_secshare: Scalar,
-) -> Tuple[simplpedpop.DKGOutput, bytes]:
+) -> tuple[simplpedpop.DKGOutput, bytes]:
     simpl_state, pubnonce, enckeys, idx = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=simpl_state.t, n=len(enckeys))
@@ -405,10 +405,10 @@ def participant_investigate(
 
 
 def coordinator_step(
-    pmsgs: List[bytes],
+    pmsgs: list[bytes],
     t: int,
-    enckeys: List[bytes],
-) -> Tuple[bytes, simplpedpop.DKGOutput, bytes, List[Scalar]]:
+    enckeys: list[bytes],
+) -> tuple[bytes, simplpedpop.DKGOutput, bytes, list[Scalar]]:
     n = len(enckeys)
     if n != len(pmsgs):
         raise ValueError
@@ -447,7 +447,7 @@ def coordinator_step(
     )
 
 
-def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
+def coordinator_investigate(pmsgs: list[bytes], t: int) -> list[bytes]:
     n = len(pmsgs)
     pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t=t, n=n) for pmsg in pmsgs]
     simpl_pmsgs = [pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed]

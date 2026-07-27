@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from typing import List, Union, Dict, Sequence
+from typing import Union, Sequence
 from pathlib import Path
 
 
@@ -10,18 +10,18 @@ from chilldkg_ref.chilldkg import (
 )
 import chilldkg_ref.encpedpop as encpedpop
 
-ErrorInfo = Dict[str, Union[int, str, "ErrorInfo"]]
+ErrorInfo = dict[str, Union[int, str, "ErrorInfo"]]
 
 
 def bytes_to_hex(data: bytes) -> str:
     return data.hex().upper()
 
 
-def bytes_list_to_hex(lst: Sequence[bytes]) -> List[str]:
+def bytes_list_to_hex(lst: Sequence[bytes]) -> list[str]:
     return [l_i.hex().upper() for l_i in lst]
 
 
-def hex_list_to_bytes(lst: List[str]) -> List[bytes]:
+def hex_list_to_bytes(lst: list[str]) -> list[bytes]:
     return [bytes.fromhex(l_i) for l_i in lst]
 
 
