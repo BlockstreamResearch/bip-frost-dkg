@@ -2,24 +2,25 @@ import copy
 
 from secp256k1lab.secp256k1 import GE, Scalar
 from secp256k1lab.util import bytes_from_int
-from .util import (
-    bytes_to_hex,
-    hex_list_to_bytes,
-    expect_exception,
-    expect_faulty_exception,
-    params_asdict,
-    dkg_output_asdict,
-    assign_tc_ids,
-)
 
+from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
-    participant_step1,
-    participant_step2,
     participant_finalize,
     participant_investigate,
+    participant_step1,
+    participant_step2,
 )
-from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
-import chilldkg_ref.chilldkg as chilldkg
+
+from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
+from .util import (
+    assign_tc_ids,
+    bytes_to_hex,
+    dkg_output_asdict,
+    expect_exception,
+    expect_faulty_exception,
+    hex_list_to_bytes,
+    params_asdict,
+)
 
 # Arbitrary EC point x-coordinate used as a hardcoded wrong value in test vectors.
 ARBITRARY_POINT_X = 0x60C301C1EEC41AD16BF53F55F97B7B6EB842D9E2B8139712BA54695FF7116073

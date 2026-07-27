@@ -4,16 +4,16 @@ from typing import NamedTuple, NewType, NoReturn
 
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
 from secp256k1lab.secp256k1 import GE, Scalar
+
 from .util import (
     BIP_TAG,
-    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
-    UnknownFaultyParticipantOrCoordinatorError,
     FaultyParticipantError,
+    FaultyParticipantOrCoordinatorError,
     MsgParseError,
+    UnknownFaultyParticipantOrCoordinatorError,
 )
 from .vss import VSS, VSSCommitment
-
 
 ###
 ### Exceptions

@@ -2,30 +2,30 @@
 
 """Example of a full ChillDKG session"""
 
+import argparse
 import asyncio
 import pprint
+import sys
 from random import randint
 from secrets import token_bytes as random_bytes
-import sys
-import argparse
 
+from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
-    params_id,
-    hostpubkey_gen,
-    participant_step1,
-    participant_step2,
-    participant_finalize,
-    participant_investigate,
-    coordinator_step1,
+    DKGOutput,
+    FaultyParticipantOrCoordinatorError,
+    RecoveryData,
+    SessionParams,
+    UnknownFaultyParticipantOrCoordinatorError,
     coordinator_finalize,
     coordinator_investigate,
-    SessionParams,
-    DKGOutput,
-    RecoveryData,
-    FaultyParticipantOrCoordinatorError,
-    UnknownFaultyParticipantOrCoordinatorError,
+    coordinator_step1,
+    hostpubkey_gen,
+    params_id,
+    participant_finalize,
+    participant_investigate,
+    participant_step1,
+    participant_step2,
 )
-import chilldkg_ref.chilldkg as chilldkg
 
 #
 # Network mocks to simulate full DKG sessions

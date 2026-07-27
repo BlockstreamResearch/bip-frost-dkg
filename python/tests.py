@@ -2,35 +2,34 @@
 
 """Tests for ChillDKG reference implementation"""
 
+import json
 from itertools import combinations
+from pathlib import Path
 from random import randint
 from secrets import token_bytes as random_bytes
-from pathlib import Path
-import json
 
+from chilldkg_ref import chilldkg, encpedpop, simplpedpop
 from chilldkg_ref.util import (
-    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
+    FaultyParticipantOrCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
 )
-from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
-import chilldkg_ref.simplpedpop as simplpedpop
-import chilldkg_ref.encpedpop as encpedpop
-import chilldkg_ref.chilldkg as chilldkg
+from chilldkg_ref.vss import VSS, Polynomial, VSSCommitment
+from example import simulate_chilldkg_full as simulate_chilldkg_full_example
+from gen_vector_utils.util import (
+    assert_raises,
+    dkg_output_asdict,
+    params_asdict,
+    params_from_dict,
+)
 
 # Import from secp256k1lab after the chilldkg_ref imports because the latter
 # modifies sys.path to make sure the vendored copy of secp256k1lab is found.
-from secp256k1lab.secp256k1 import GE, G, Scalar
+#
+# isort: split
 from secp256k1lab.keys import pubkey_gen_plain
-
-from gen_vector_utils.util import (
-    assert_raises,
-    params_from_dict,
-    params_asdict,
-    dkg_output_asdict,
-)
-from example import simulate_chilldkg_full as simulate_chilldkg_full_example
+from secp256k1lab.secp256k1 import GE, G, Scalar
 
 
 def test_chilldkg_params_validate():

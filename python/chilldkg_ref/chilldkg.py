@@ -17,23 +17,23 @@ from __future__ import annotations
 
 from typing import Any, NamedTuple, NewType, NoReturn
 
-from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
 from secp256k1lab.keys import pubkey_gen_plain
+from secp256k1lab.secp256k1 import GE, Scalar
 from secp256k1lab.util import bytes_from_int
 
-from .vss import VSSCommitment
 from . import encpedpop
 from .util import (
     BIP_TAG,
-    tagged_hash_bip_dkg,
-    ProtocolError,
-    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
-    UnknownFaultyParticipantOrCoordinatorError,
     FaultyParticipantError,
+    FaultyParticipantOrCoordinatorError,
     MsgParseError,
+    ProtocolError,
+    UnknownFaultyParticipantOrCoordinatorError,
+    tagged_hash_bip_dkg,
 )
+from .vss import VSSCommitment
 
 __all__ = [
     # Functions

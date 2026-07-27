@@ -1,14 +1,14 @@
 from __future__ import annotations
+
 import json
-from typing import TypeAlias
 from pathlib import Path
+from typing import TypeAlias
 
-
+from chilldkg_ref import encpedpop
 from chilldkg_ref.chilldkg import (
-    SessionParams,
     DKGOutput,
+    SessionParams,
 )
-import chilldkg_ref.encpedpop as encpedpop
 
 ErrorInfo: TypeAlias = "dict[str, int | str | ErrorInfo]"
 

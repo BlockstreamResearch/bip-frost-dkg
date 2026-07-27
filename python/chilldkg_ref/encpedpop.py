@@ -2,20 +2,19 @@ from __future__ import annotations
 
 from typing import NamedTuple, NoReturn
 
-from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.ecdh import ecdh_libsecp256k1
 from secp256k1lab.keys import pubkey_gen_plain
+from secp256k1lab.secp256k1 import GE, Scalar
 
 from . import simplpedpop
 from .util import (
-    tagged_hash_bip_dkg,
-    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
-    UnknownFaultyParticipantOrCoordinatorError,
     FaultyParticipantError,
+    FaultyParticipantOrCoordinatorError,
     MsgParseError,
+    UnknownFaultyParticipantOrCoordinatorError,
+    tagged_hash_bip_dkg,
 )
-
 
 ###
 ### Encryption

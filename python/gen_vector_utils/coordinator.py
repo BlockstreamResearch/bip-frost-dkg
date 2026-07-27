@@ -1,24 +1,24 @@
 import copy
-from .util import (
-    bytes_to_hex,
-    hex_list_to_bytes,
-    expect_exception,
-    expect_faulty_exception,
-    params_asdict,
-    dkg_output_asdict,
-    assign_tc_ids,
-)
 
+from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
-    participant_step1,
-    participant_step2,
-    coordinator_step1,
     coordinator_finalize,
     coordinator_investigate,
+    coordinator_step1,
+    participant_step1,
+    participant_step2,
 )
-from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX, THRESHOLD_CONFIGS
-import chilldkg_ref.chilldkg as chilldkg
 
+from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
+from .util import (
+    assign_tc_ids,
+    bytes_to_hex,
+    dkg_output_asdict,
+    expect_exception,
+    expect_faulty_exception,
+    hex_list_to_bytes,
+    params_asdict,
+)
 
 COORDINATOR_STEP1_DESCRIPTION = [
     "Test vectors for coordinator_step1(pmsgs1, params).",
