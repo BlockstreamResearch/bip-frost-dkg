@@ -1,6 +1,6 @@
 from __future__ import annotations
 import json
-from typing import TypeAlias, Sequence
+from typing import TypeAlias
 from pathlib import Path
 
 
@@ -17,7 +17,7 @@ def bytes_to_hex(data: bytes) -> str:
     return data.hex().upper()
 
 
-def bytes_list_to_hex(lst: Sequence[bytes]) -> list[str]:
+def bytes_list_to_hex(lst: list[bytes]) -> list[str]:
     return [l_i.hex().upper() for l_i in lst]
 
 
