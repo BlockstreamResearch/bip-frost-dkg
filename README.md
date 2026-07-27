@@ -753,7 +753,7 @@ Raised if the host secret key is invalid.
 
 ```python
 class SessionParams(NamedTuple):
-    hostpubkeys: List[bytes]
+    hostpubkeys: list[bytes]
     t: int
 ```
 
@@ -877,9 +877,9 @@ Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
 
 ```python
 class DKGOutput(NamedTuple):
-    secshare: Optional[bytes]
+    secshare: bytes | None
     threshold_pubkey: bytes
-    pubshares: List[bytes]
+    pubshares: list[bytes]
 ```
 
 Holds the outputs of a DKG session.
@@ -893,7 +893,7 @@ Holds the outputs of a DKG session.
 #### participant\_step1
 
 ```python
-def participant_step1(hostseckey: bytes, params: SessionParams, random: bytes) -> Tuple[ParticipantState1, bytes]
+def participant_step1(hostseckey: bytes, params: SessionParams, random: bytes) -> tuple[ParticipantState1, bytes]
 ```
 
 Perform a participant's first step of a ChillDKG session.
@@ -937,7 +937,7 @@ Raised if the provided randomness is all zeroes (i.e., b"\x00" * 32).
 #### participant\_step2
 
 ```python
-def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: bytes, aux_rand: bytes) -> Tuple[ParticipantState2, bytes]
+def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: bytes, aux_rand: bytes) -> tuple[ParticipantState2, bytes]
 ```
 
 Perform a participant's second step of a ChillDKG session.
@@ -993,7 +993,7 @@ data, from which this participant can recover the DKG output using the
 #### participant\_finalize
 
 ```python
-def participant_finalize(state2: ParticipantState2, cmsg2: bytes) -> Tuple[DKGOutput, RecoveryData]
+def participant_finalize(state2: ParticipantState2, cmsg2: bytes) -> tuple[DKGOutput, RecoveryData]
 ```
 
 Perform a participant's final step of a ChillDKG session.
@@ -1090,7 +1090,7 @@ exceptions.
 #### coordinator\_step1
 
 ```python
-def coordinator_step1(pmsgs1: List[bytes], params: SessionParams) -> Tuple[CoordinatorState, bytes]
+def coordinator_step1(pmsgs1: list[bytes], params: SessionParams) -> tuple[CoordinatorState, bytes]
 ```
 
 Perform the coordinator's first step of a ChillDKG session.
@@ -1125,7 +1125,7 @@ Perform the coordinator's first step of a ChillDKG session.
 #### coordinator\_finalize
 
 ```python
-def coordinator_finalize(state: CoordinatorState, pmsgs2: List[bytes]) -> Tuple[bytes, DKGOutput, RecoveryData]
+def coordinator_finalize(state: CoordinatorState, pmsgs2: list[bytes]) -> tuple[bytes, DKGOutput, RecoveryData]
 ```
 
 Perform the coordinator's final step of a ChillDKG session.
@@ -1172,7 +1172,7 @@ other participants via a communication channel beside the coordinator.
 #### coordinator\_investigate
 
 ```python
-def coordinator_investigate(pmsgs: List[bytes], params: SessionParams) -> List[bytes]
+def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[bytes]
 ```
 
 Generate investigation messages for a ChillDKG session.
@@ -1205,7 +1205,7 @@ information.
 #### recover
 
 ```python
-def recover(hostseckey: Optional[bytes], recovery_data: RecoveryData) -> Tuple[DKGOutput, SessionParams]
+def recover(hostseckey: bytes | None, recovery_data: RecoveryData) -> tuple[DKGOutput, SessionParams]
 ```
 
 Recover the DKG output of a ChillDKG session.
@@ -1288,7 +1288,7 @@ successfully received the complete recovery data.
 #### participant\_recovery\_acks\_verify
 
 ```python
-def participant_recovery_acks_verify(recovery_data: RecoveryData, params: SessionParams, ack_sigs: List[bytes]) -> None
+def participant_recovery_acks_verify(recovery_data: RecoveryData, params: SessionParams, ack_sigs: list[bytes]) -> None
 ```
 
 Verify recovery acknowledgment signatures from all participants.

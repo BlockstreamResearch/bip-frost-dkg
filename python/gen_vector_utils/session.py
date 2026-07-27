@@ -1,18 +1,18 @@
-from .util import (
-    bytes_to_hex,
-    hex_list_to_bytes,
-    expect_exception,
-    params_asdict,
-    dkg_output_asdict,
-    assign_tc_ids,
-)
-
-from chilldkg_ref.chilldkg import hostpubkey_gen, params_id, recover
-import chilldkg_ref.chilldkg as chilldkg
-
 from secp256k1lab.secp256k1 import Scalar
 from secp256k1lab.util import bytes_from_int
-from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX
+
+from chilldkg_ref import chilldkg
+from chilldkg_ref.chilldkg import hostpubkey_gen, params_id, recover
+
+from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX
+from .util import (
+    assign_tc_ids,
+    bytes_to_hex,
+    dkg_output_asdict,
+    expect_exception,
+    hex_list_to_bytes,
+    params_asdict,
+)
 
 
 def generate_hostpubkey_vectors():

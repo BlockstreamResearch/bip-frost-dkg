@@ -2,36 +2,34 @@
 
 """Tests for ChillDKG reference implementation"""
 
-from itertools import combinations
-from random import randint
-from typing import Tuple, List, Optional
-from secrets import token_bytes as random_bytes
-from pathlib import Path
 import json
+from itertools import combinations
+from pathlib import Path
+from random import randint
+from secrets import token_bytes as random_bytes
 
+from chilldkg_ref import chilldkg, encpedpop, simplpedpop
 from chilldkg_ref.util import (
-    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
+    FaultyParticipantOrCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
 )
-from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
-import chilldkg_ref.simplpedpop as simplpedpop
-import chilldkg_ref.encpedpop as encpedpop
-import chilldkg_ref.chilldkg as chilldkg
+from chilldkg_ref.vss import VSS, Polynomial, VSSCommitment
+from example import simulate_chilldkg_full as simulate_chilldkg_full_example
+from gen_vector_utils.util import (
+    assert_raises,
+    dkg_output_asdict,
+    params_asdict,
+    params_from_dict,
+)
 
 # Import from secp256k1lab after the chilldkg_ref imports because the latter
 # modifies sys.path to make sure the vendored copy of secp256k1lab is found.
-from secp256k1lab.secp256k1 import GE, G, Scalar
+#
+# isort: split
 from secp256k1lab.keys import pubkey_gen_plain
-
-from gen_vector_utils.util import (
-    assert_raises,
-    params_from_dict,
-    params_asdict,
-    dkg_output_asdict,
-)
-from example import simulate_chilldkg_full as simulate_chilldkg_full_example
+from secp256k1lab.secp256k1 import GE, G, Scalar
 
 
 def test_chilldkg_params_validate():
@@ -55,7 +53,6 @@ def test_chilldkg_params_validate():
         _ = chilldkg.params_id(params_with_invalid)
     except chilldkg.InvalidHostPubkeyError as e:
         assert e.participant == 1
-        pass
     else:
         assert False, "Expected exception"
 
@@ -105,7 +102,7 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(
     seeds, t, investigation: bool
-) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
     n = len(seeds)
     prets = []
     for i in range(n):
@@ -149,7 +146,7 @@ def simulate_simplpedpop(
     return pre_finalize_rets
 
 
-def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
+def encpedpop_keys(seed: bytes) -> tuple[bytes, bytes]:
     deckey = tagged_hash_bip_dkg("encpedpop deckey", seed)
     enckey = pubkey_gen_plain(deckey)
     return deckey, enckey
@@ -157,7 +154,7 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
 
 def simulate_encpedpop(
     seeds, t, investigation: bool
-) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -175,7 +172,7 @@ def simulate_encpedpop(
     pstates = [pstate for (pstate, _) in enc_prets1]
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     if investigation:
-        faulty_idx: List[int] = []
+        faulty_idx: list[int] = []
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
@@ -213,7 +210,7 @@ def simulate_encpedpop(
 
 def simulate_chilldkg(
     hostseckeys, t, investigation: bool
-) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]] | None:
     n = len(hostseckeys)
 
     hostpubkeys = []
@@ -230,7 +227,7 @@ def simulate_chilldkg(
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
     if investigation:
-        faulty_idx: List[int] = []
+        faulty_idx: list[int] = []
         for i in range(n):
             # Let a random participant faulty_idx[i] send incorrect shares to i.
             faulty_idx[i:] = [randint(0, n - 1)]
@@ -281,7 +278,7 @@ def simulate_chilldkg_full(
     hostseckeys,
     t,
     investigation: bool,
-) -> List[Optional[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData] | None]:
     # Investigating is not supported by this wrapper
     assert not investigation
 
@@ -324,7 +321,7 @@ def test_recover_secret():
     assert recover_secret([2, 3], [shares[1], shares[2]]) == f.coeffs[0]
 
 
-def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
+def test_correctness_dkg_output(t, n, dkg_outputs: list[simplpedpop.DKGOutput]):
     assert len(dkg_outputs) == n + 1
     secshares = [out[0] for out in dkg_outputs]
     threshold_pubkeys = [out[1] for out in dkg_outputs]

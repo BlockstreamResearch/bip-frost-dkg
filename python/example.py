@@ -2,31 +2,30 @@
 
 """Example of a full ChillDKG session"""
 
-from typing import Tuple, List, Optional
+import argparse
 import asyncio
 import pprint
+import sys
 from random import randint
 from secrets import token_bytes as random_bytes
-import sys
-import argparse
 
+from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
-    params_id,
-    hostpubkey_gen,
-    participant_step1,
-    participant_step2,
-    participant_finalize,
-    participant_investigate,
-    coordinator_step1,
+    DKGOutput,
+    FaultyParticipantOrCoordinatorError,
+    RecoveryData,
+    SessionParams,
+    UnknownFaultyParticipantOrCoordinatorError,
     coordinator_finalize,
     coordinator_investigate,
-    SessionParams,
-    DKGOutput,
-    RecoveryData,
-    FaultyParticipantOrCoordinatorError,
-    UnknownFaultyParticipantOrCoordinatorError,
+    coordinator_step1,
+    hostpubkey_gen,
+    params_id,
+    participant_finalize,
+    participant_investigate,
+    participant_step1,
+    participant_step2,
 )
-import chilldkg_ref.chilldkg as chilldkg
 
 #
 # Network mocks to simulate full DKG sessions
@@ -86,7 +85,7 @@ def pphex(thing):
             return {k: hexlify(v) for k, v in thing.items()}
         if hasattr(thing, "_asdict"):  # NamedTuple
             return hexlify(thing._asdict())
-        if isinstance(thing, List):
+        if isinstance(thing, list):
             return [hexlify(v) for v in thing]
         return thing
 
@@ -103,7 +102,7 @@ async def participant(
     hostseckey: bytes,
     params: SessionParams,
     investigation_procedure: bool,
-) -> Tuple[DKGOutput, RecoveryData]:
+) -> tuple[DKGOutput, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
     state1, pmsg1 = participant_step1(hostseckey, params, random)
@@ -144,8 +143,8 @@ async def participant(
 
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams, investigation_procedure: bool
-) -> Tuple[DKGOutput, RecoveryData]:
-    (hostpubkeys, t) = params
+) -> tuple[DKGOutput, RecoveryData]:
+    (hostpubkeys, _) = params
     n = len(hostpubkeys)
 
     pmsgs1 = []
@@ -194,8 +193,8 @@ async def faulty_participant(
 
 
 def simulate_chilldkg_full(
-    hostseckeys: List[bytes], params: SessionParams, faulty_idx: Optional[int]
-) -> List[Optional[Tuple[DKGOutput, RecoveryData]]]:
+    hostseckeys: list[bytes], params: SessionParams, faulty_idx: int | None
+) -> list[tuple[DKGOutput, RecoveryData] | None]:
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 
@@ -295,7 +294,7 @@ def main():
         print()
 
     # Check that all RecoveryData of all parties is identical
-    assert len(set([rets[i][1] for i in range(n + 1)])) == 1
+    assert len({rets[i][1] for i in range(n + 1)}) == 1
     recovery_data = rets[0][1]
     print(f"=== Common recovery data ({len(recovery_data)} bytes) ===")
     print(recovery_data.hex())
