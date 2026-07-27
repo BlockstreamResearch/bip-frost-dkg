@@ -1,3 +1,2 @@
-[format]
 # Exclude vendored package.
-exclude = ["secp256k1lab/*"]
+extend-exclude = ["secp256k1lab/**"]
