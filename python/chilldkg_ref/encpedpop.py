@@ -155,13 +155,6 @@ class ParticipantMsg(NamedTuple):
     def len_bytes(*, t: int, n: int) -> int:
         return simplpedpop.ParticipantMsg.len_bytes(t=t) + 33 + 32 * n
 
-    def to_bytes(self) -> bytes:
-        return (
-            self.simpl_pmsg.to_bytes()
-            + self.pubnonce
-            + b"".join(share.to_bytes() for share in self.enc_shares)
-        )
-
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> ParticipantMsg:
         if len(b) != ParticipantMsg.len_bytes(t=t, n=n):
@@ -188,6 +181,13 @@ class ParticipantMsg(NamedTuple):
 
         return ParticipantMsg(simpl_pmsg, pubnonce, enc_secshares)
 
+    def to_bytes(self) -> bytes:
+        return (
+            self.simpl_pmsg.to_bytes()
+            + self.pubnonce
+            + b"".join(share.to_bytes() for share in self.enc_shares)
+        )
+
 
 class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
@@ -196,9 +196,6 @@ class CoordinatorMsg(NamedTuple):
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
         return simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n) + 33 * n
-
-    def to_bytes(self) -> bytes:
-        return self.simpl_cmsg.to_bytes() + b"".join(self.pubnonces)
 
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg:
@@ -217,6 +214,9 @@ class CoordinatorMsg(NamedTuple):
 
         return CoordinatorMsg(simpl_cmsg, pubnonces)
 
+    def to_bytes(self) -> bytes:
+        return self.simpl_cmsg.to_bytes() + b"".join(self.pubnonces)
+
 
 class CoordinatorInvestigationMsg(NamedTuple):
     enc_partial_secshares: List[Scalar]
@@ -225,15 +225,6 @@ class CoordinatorInvestigationMsg(NamedTuple):
     @staticmethod
     def len_bytes(*, n: int) -> int:
         return simplpedpop.CoordinatorInvestigationMsg.len_bytes(n=n) + 32 * n
-
-    def to_bytes(self) -> bytes:
-        secshares_bytes = b"".join(
-            share.to_bytes() for share in self.enc_partial_secshares
-        )
-        pubshares_bytes = b"".join(
-            P.to_bytes_compressed_with_infinity() for P in self.partial_pubshares
-        )
-        return secshares_bytes + pubshares_bytes
 
     @staticmethod
     def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
@@ -262,6 +253,15 @@ class CoordinatorInvestigationMsg(NamedTuple):
             raise MsgParseError("invalid partial pubshare") from e
 
         return CoordinatorInvestigationMsg(enc_partial_secshares, partial_pubshares)
+
+    def to_bytes(self) -> bytes:
+        secshares_bytes = b"".join(
+            share.to_bytes() for share in self.enc_partial_secshares
+        )
+        pubshares_bytes = b"".join(
+            P.to_bytes_compressed_with_infinity() for P in self.partial_pubshares
+        )
+        return secshares_bytes + pubshares_bytes
 
 
 ###

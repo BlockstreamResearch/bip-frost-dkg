@@ -373,9 +373,6 @@ class ParticipantMsg1(NamedTuple):
     def len_bytes(*, t: int, n: int) -> int:
         return encpedpop.ParticipantMsg.len_bytes(t=t, n=n)
 
-    def to_bytes(self) -> bytes:
-        return self.enc_pmsg.to_bytes()
-
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> ParticipantMsg1:
         if len(b) != ParticipantMsg1.len_bytes(t=t, n=n):
@@ -385,6 +382,9 @@ class ParticipantMsg1(NamedTuple):
         )  # MsgParseError if invalid
         return ParticipantMsg1(enc_pmsg)
 
+    def to_bytes(self) -> bytes:
+        return self.enc_pmsg.to_bytes()
+
 
 class ParticipantMsg2(NamedTuple):
     sig: bytes
@@ -393,14 +393,14 @@ class ParticipantMsg2(NamedTuple):
     def len_bytes() -> int:
         return 64
 
-    def to_bytes(self) -> bytes:
-        return self.sig
-
     @staticmethod
     def from_bytes(b: bytes) -> ParticipantMsg2:
         if len(b) != ParticipantMsg2.len_bytes():
             raise ValueError
         return ParticipantMsg2(b)
+
+    def to_bytes(self) -> bytes:
+        return self.sig
 
 
 class CoordinatorMsg1(NamedTuple):
@@ -410,11 +410,6 @@ class CoordinatorMsg1(NamedTuple):
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
         return encpedpop.CoordinatorMsg.len_bytes(t=t, n=n) + 32 * n
-
-    def to_bytes(self) -> bytes:
-        return self.enc_cmsg.to_bytes() + b"".join(
-            share.to_bytes() for share in self.enc_secshares
-        )
 
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg1:
@@ -439,6 +434,11 @@ class CoordinatorMsg1(NamedTuple):
 
         return CoordinatorMsg1(enc_cmsg, enc_secshares)
 
+    def to_bytes(self) -> bytes:
+        return self.enc_cmsg.to_bytes() + b"".join(
+            share.to_bytes() for share in self.enc_secshares
+        )
+
 
 class CoordinatorMsg2(NamedTuple):
     cert: bytes
@@ -447,14 +447,14 @@ class CoordinatorMsg2(NamedTuple):
     def len_bytes(*, n: int) -> int:
         return certeq_cert_len(n)
 
-    def to_bytes(self) -> bytes:
-        return self.cert
-
     @staticmethod
     def from_bytes(b: bytes, *, n: int) -> CoordinatorMsg2:
         if len(b) != CoordinatorMsg2.len_bytes(n=n):
             raise ValueError
         return CoordinatorMsg2(b)
+
+    def to_bytes(self) -> bytes:
+        return self.cert
 
 
 class CoordinatorInvestigationMsg(NamedTuple):
@@ -463,9 +463,6 @@ class CoordinatorInvestigationMsg(NamedTuple):
     @staticmethod
     def len_bytes(*, n: int) -> int:
         return encpedpop.CoordinatorInvestigationMsg.len_bytes(n=n)
-
-    def to_bytes(self) -> bytes:
-        return self.enc_cinv.to_bytes()
 
     @staticmethod
     def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
@@ -476,6 +473,9 @@ class CoordinatorInvestigationMsg(NamedTuple):
         )  # MsgParseError if invalid
         return CoordinatorInvestigationMsg(enc_cinv)
 
+    def to_bytes(self) -> bytes:
+        return self.enc_cinv.to_bytes()
+
 
 class RecoveryAckMsg(NamedTuple):
     sig: bytes
@@ -484,14 +484,14 @@ class RecoveryAckMsg(NamedTuple):
     def len_bytes() -> int:
         return 64
 
-    def to_bytes(self) -> bytes:
-        return self.sig
-
     @staticmethod
     def from_bytes(b: bytes) -> RecoveryAckMsg:
         if len(b) != RecoveryAckMsg.len_bytes():
             raise ValueError
         return RecoveryAckMsg(b)
+
+    def to_bytes(self) -> bytes:
+        return self.sig
 
 
 def deserialize_recovery_data(

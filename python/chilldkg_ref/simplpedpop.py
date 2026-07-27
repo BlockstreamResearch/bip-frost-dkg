@@ -60,9 +60,6 @@ class ParticipantMsg(NamedTuple):
     def len_bytes(*, t: int) -> int:
         return 33 * t + 64
 
-    def to_bytes(self) -> bytes:
-        return self.com.to_bytes() + self.pop
-
     @staticmethod
     def from_bytes(b: bytes, *, t: int) -> ParticipantMsg:
         if len(b) != ParticipantMsg.len_bytes(t=t):
@@ -78,6 +75,9 @@ class ParticipantMsg(NamedTuple):
 
         return ParticipantMsg(com, pop)
 
+    def to_bytes(self) -> bytes:
+        return self.com.to_bytes() + self.pop
+
 
 class CoordinatorMsg(NamedTuple):
     coms_to_secrets: List[GE]
@@ -87,14 +87,6 @@ class CoordinatorMsg(NamedTuple):
     @staticmethod
     def len_bytes(*, t: int, n: int) -> int:
         return 97 * n + 33 * (t - 1)
-
-    def to_bytes(self) -> bytes:
-        return b"".join(
-            [
-                P.to_bytes_compressed_with_infinity()
-                for P in self.coms_to_secrets + self.sum_coms_to_nonconst_terms
-            ]
-        ) + b"".join(self.pops)
 
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg:
@@ -130,6 +122,14 @@ class CoordinatorMsg(NamedTuple):
 
         return CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops)
 
+    def to_bytes(self) -> bytes:
+        return b"".join(
+            [
+                P.to_bytes_compressed_with_infinity()
+                for P in self.coms_to_secrets + self.sum_coms_to_nonconst_terms
+            ]
+        ) + b"".join(self.pops)
+
 
 class CoordinatorInvestigationMsg(NamedTuple):
     partial_pubshares: List[GE]
@@ -137,11 +137,6 @@ class CoordinatorInvestigationMsg(NamedTuple):
     @staticmethod
     def len_bytes(*, n: int) -> int:
         return 33 * n
-
-    def to_bytes(self) -> bytes:
-        return b"".join(
-            [P.to_bytes_compressed_with_infinity() for P in self.partial_pubshares]
-        )
 
     @staticmethod
     def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
@@ -158,6 +153,11 @@ class CoordinatorInvestigationMsg(NamedTuple):
             raise MsgParseError("invalid partial pubshare") from e
 
         return CoordinatorInvestigationMsg(partial_pubshares)
+
+    def to_bytes(self) -> bytes:
+        return b"".join(
+            [P.to_bytes_compressed_with_infinity() for P in self.partial_pubshares]
+        )
 
 
 ###
