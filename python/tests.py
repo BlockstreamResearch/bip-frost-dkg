@@ -54,7 +54,6 @@ def test_chilldkg_params_validate():
         _ = chilldkg.params_id(params_with_invalid)
     except chilldkg.InvalidHostPubkeyError as e:
         assert e.participant == 1
-        pass
     else:
         assert False, "Expected exception"
 

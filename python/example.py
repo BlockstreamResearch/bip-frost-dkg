@@ -144,7 +144,7 @@ async def participant(
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams, investigation_procedure: bool
 ) -> tuple[DKGOutput, RecoveryData]:
-    (hostpubkeys, t) = params
+    (hostpubkeys, _) = params
     n = len(hostpubkeys)
 
     pmsgs1 = []
@@ -294,7 +294,7 @@ def main():
         print()
 
     # Check that all RecoveryData of all parties is identical
-    assert len(set([rets[i][1] for i in range(n + 1)])) == 1
+    assert len({rets[i][1] for i in range(n + 1)}) == 1
     recovery_data = rets[0][1]
     print(f"=== Common recovery data ({len(recovery_data)} bytes) ===")
     print(recovery_data.hex())

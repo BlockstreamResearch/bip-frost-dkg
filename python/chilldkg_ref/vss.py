@@ -61,7 +61,7 @@ class VSSCommitment:
 
     def pubshare(self, i: int) -> GE:
         pubshare: GE = GE.batch_mul(
-            *(((i + 1) ** j, self.ges[j]) for j in range(0, len(self.ges)))
+            *(((i + 1) ** j, self.ges[j]) for j in range(len(self.ges)))
         )
         return pubshare
 
@@ -141,7 +141,7 @@ class VSS:
         # Return the secret shares for the participants with indices 0..n-1.
         #
         # This computes [f(1), ..., f(n)].
-        return [self.secshare_for(i) for i in range(0, n)]
+        return [self.secshare_for(i) for i in range(n)]
 
     def commit(self) -> VSSCommitment:
         return VSSCommitment([c * G for c in self.f.coeffs])
