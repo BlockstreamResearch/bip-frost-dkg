@@ -199,7 +199,7 @@ and some details present in the normative Python reference implementation are om
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPop as DKG protocols**.
 While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
-Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
+Consequently, implementations **should not** expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
 ### DKG Protocol SimplPedPop
 
@@ -470,7 +470,7 @@ aimed at developers who would like to use a ChillDKG implementation in their app
 
 Detailed API documentation of the reference implementation is provided in [Subsection "API Documentation"](#api-documentation).
 Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation
-should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
+**should** also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ### Use ChillDKG only for FROST
 
@@ -1017,7 +1017,7 @@ data is lost. As a result, this participant will not be able to convince
 any other participants to deem the DKG session successful, and it will
 not be possible to create a signature.
 
-To protect against this scenario, callers should ensure that all
+To protect against this scenario, callers **should** ensure that all
 participants deem the DKG session successful (which also implies that
 they have a redundant copy of the recovery data) before using the
 threshold public key (e.g., before sending funds to it). The recommended

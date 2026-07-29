@@ -733,7 +733,7 @@ def participant_finalize(
     any other participants to deem the DKG session successful, and it will
     not be possible to create a signature.
 
-    To protect against this scenario, callers should ensure that all
+    To protect against this scenario, callers **should** ensure that all
     participants deem the DKG session successful (which also implies that
     they have a redundant copy of the recovery data) before using the
     threshold public key (e.g., before sending funds to it). The recommended
