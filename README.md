@@ -917,14 +917,15 @@ Perform a participant's first step of a ChillDKG session.
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid, or if the key does not
-  match any entry of `hostpubkeys`.
+- `HostSeckeyError` - If the host secret key is invalid, or if the key does
+  not match any entry of `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
-- `RandomnessError` - If `random` is all zeroes (i.e., `b"\x00" * 32`). This check
-  guards against the case of a malfunctioning random number generator.
+- `RandomnessError` - If `random` is all zeroes (i.e., `b"\x00" * 32`). This
+  check guards against the case of a malfunctioning random number
+  generator.
 
 #### RandomnessError Exception
 
@@ -977,8 +978,8 @@ data, from which this participant can recover the DKG output using the
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid or if it does not match the one
-  used in `participant_step1`.
+- `HostSeckeyError` - If the host secret key is invalid or if it does not
+  match the one used in `participant_step1`.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
@@ -1066,7 +1067,8 @@ Investigate who is to blame for a failed ChillDKG session.
 
 This function can optionally be called when `participant_step2` raises
 `UnknownFaultyParticipantOrCoordinatorError`. It narrows down the suspected
-faulty parties by analyzing the investigation message provided by the coordinator.
+faulty parties by analyzing the investigation message provided by the
+coordinator.
 
 This function does not return normally. Instead, it raises one of two
 exceptions.
@@ -1193,8 +1195,8 @@ information.
 
 *Returns*:
 
-- `List[bytes]` - A list of investigation messages, each intended for a single
-  participant (`65*n` bytes each).
+- `List[bytes]` - A list of investigation messages, each intended for a
+  single participant (`65*n` bytes each).
 
 
 *Raises*:
@@ -1276,8 +1278,8 @@ successfully received the complete recovery data.
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid, or if it does not match
-  any host public key.
+- `HostSeckeyError` - If the host secret key is invalid, or if it does not
+  match any host public key.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
