@@ -582,7 +582,7 @@ def participant_step1(
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
-        RandomnessError: If `random` is all zeroes (i.e., b"\\x00" * 32). This check
+        RandomnessError: If `random` is all zeroes (i.e., `b"\\x00" * 32`). This check
             guards against the case of a malfunctioning random number generator.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # ValueError if len(hostseckey) != 32
@@ -620,7 +620,7 @@ def participant_step1(
 
 
 class RandomnessError(ValueError):
-    """Raised if the provided randomness is all zeroes (i.e., b"\\x00" * 32)."""
+    """Raised if the randomness is all zeroes (i.e., `b"\\x00" * 32`)."""
 
 
 def participant_step2(
@@ -1004,9 +1004,9 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        HostSeckeyError: If the host secret key is invalid, or if the key does not
-            match the recovery data.
-            (This can also occur if the recovery data is invalid.)
+        HostSeckeyError: If the host secret key is invalid, or if the key does
+            not match the recovery data. The latter can also occur if the
+            recovery data is invalid.
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
     try:
