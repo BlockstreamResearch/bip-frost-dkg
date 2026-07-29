@@ -301,8 +301,8 @@ def participant_step2(
         pubshare = pubshare_tweaked - pubtweak
         raise UnknownFaultyParticipantOrCoordinatorError(
             ParticipantInvestigationData(n, idx, secshare, pubshare),
-            "Received invalid secshare, "
-            "consider investigation procedure to determine faulty party",
+            "Received invalid secshare; consider using "
+            "participant_investigate() to determine a faulty party",
         )
 
     threshold_pubkey = sum_coms_tweaked.commitment_to_secret()

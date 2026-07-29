@@ -157,7 +157,7 @@ In summary, ChillDKG incorporates solutions for both secure channels and consens
 As a result, it fits a wide range of application scenarios,
 and due to its low overhead, we recommend ChillDKG even if secure communication channels or a consensus mechanism (e.g., a BFT protocol or a reliable broadcast mechanism) are readily available.
 
-#### Why Robustness is Not a Goal
+#### Robustness is Not a Goal
 
 Despite the blame functionality, ChillDKG does not provide robustness, i.e., the protocol is not designed to succeed in the presence of faulty participants.
 In fact, a single participant can cause the protocol to fail, either due to malicious intent, software bugs, or unreliable communication links.
@@ -256,7 +256,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 
     Otherwise, i.e., if all signatures are valid, participant `i` sums the components of `coms_to_secrets`,
     and prepends the sum to the `sum_coms_to_nonconst_terms` vector, resulting in a vector `sum_coms`.
-    (Assuming the coordinator performed its computations correctly,
+    (Assuming the coordinator is honest,
     the vector `sum_coms` is now the complete component-wise sum of the `coms[j]` vectors from every participant `j`.
     It acts as a VSS commitment to the sum `f = f_0 + ... + f_{n-1}` of the polynomials of all participants.)
 
@@ -546,9 +546,9 @@ Moreover, the recovery data contains secrets only in encrypted form and is self-
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 
 Users **should** be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
-To eliminate this issue, users can encrypt the recovery data using an encryption key derived from their host secret key before publishing the data.
-Recovery from encrypted data requires only the participant's host secret key, with no additional secrets needed.
-This BIP does not specify the encryption scheme.
+To eliminate this issue, a participant can encrypt the recovery data using an encryption key derived from their host secret key before giving it out to untrusted parties.
+Recovery from encrypted recovery data still requires only the participant's host secret key, with no additional secrets needed.
+This BIP does not specify the method of encryption.
 
 Keeping backups of the secret key accessible and secure is hard (typically similarly hard as keeping the participant devices themselves).
 As a consequence, it may not be an unreasonable strategy in a threshold setup not to perform backups of host secret keys at all,
@@ -629,7 +629,7 @@ the aborting party will be guaranteed that the blamed party is indeed faulty.
 
 It is important to understand that this guarantee is conditional.
 For example, assume that the condition of an honest coordinator is violated.
-In that case, even if all participants are honest, the malicious coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the blamed participant.
+In that case, even if all participants are honest, the faulty coordinator can deviate from the protocol in a way that makes one participant blame another participant, when, in fact, it is the coordinator who is faulty and not the blamed participant.
 
 In some cases,[^incorrect-shares] an aborting participant needs to obtain an auxiliary *investigation message* from the coordinator
 in order to single out and blame another participant (see [Overview of a ChillDKG session](#overview-of-a-chilldkg-session)).
