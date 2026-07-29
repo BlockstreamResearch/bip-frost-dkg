@@ -13,7 +13,7 @@ Assigned: ?
 License: CC0-1.0
 License-Code: MIT
 Discussion: 2024-07-08: https://groups.google.com/g/bitcoindev/c/HE3HSnGTpoQ/m/euZvPxKeAQAJ
-Version: 0.2.0-dev
+Version: 0.3.0-dev
 Requires: 445
 ```
 
@@ -1439,6 +1439,22 @@ An exception to this rule is `MAJOR` version zero (0.y.z) which is for developme
 The `MINOR` version is incremented whenever the inputs or the output of an algorithm changes in a backward-compatible way or new backward-compatible functionality is added.
 The `PATCH` version is incremented for other noteworthy changes (bug fixes, test vectors, important clarifications, etc.).
 
+* *0.3.0* (2026-07-30): Major expansion of the reference implementation with message serialization, comprehensive test coverage, and API refinements:
+  * Add message serialization for all protocol messages, enabling byte-level interoperability between implementations.
+  * Add optional recovery acknowledgment round: `participant_recovery_ack_sign` and `participant_recovery_acks_verify` let participants confirm receipt of recovery data before use.
+  * Add comprehensive test vectors for all public API functions, including per-participant edge cases, boundary configurations, and exhaustive error scenarios.
+  * Allow single-participant sessions (`n = 1`).
+  * Fix blaming for public nonces: pubnonces are now validated as curve points, and failures are attributed to the sending participant instead of surfacing as an unattributed `ValueError`.
+  * Fix blaming in `participant_finalize`: an invalid certificate signature is now attributed to the coordinator, since the coordinator verifies all signatures before broadcasting the certificate.
+  * Fix TapTweak to use BIP 341's x-only serialization.
+  * Rewrite Setup section to make the authentic-hostpubkeys requirement explicit as a precondition of the session.
+  * Fix EncPedPop description to match the reference implementation.
+  * Expose randomness as explicit parameters: `participant_step1` takes `random` and `participant_step2` takes `aux_rand`, which were previously generated internally.
+  * Remove message classes from the public API; protocol messages are passed as `bytes`.
+  * Remove `ParticipantMsgParseError` and `CoordinatorMsgParseError` from the public API.
+  * Add `RandomnessError`, `InvalidRecoveryAckError`, and `FaultyParticipantError` to the public API.
+  * Rename `secp256k1proto` to `secp256k1lab` and separate it as an independent subtree for reuse across projects; see the [upstream repository](https://github.com/secp256k1lab/secp256k1lab).
+  * Update the preamble per BIP 3.
 * *0.2.0* (2024-12-19): In addition to various readability improvements to specification and reference implementation, the following major changes were implemented:
   * Fix security vulnerability where the CertEq signature did not cover the entire message.
   * Add blame functionality to identify faulty parties, including an investigation phase.
