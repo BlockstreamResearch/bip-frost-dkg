@@ -633,16 +633,15 @@ def participant_step2(
     """Perform a participant's second step of a ChillDKG session.
 
     **Warning:**
-    After sending the returned message to the coordinator, this participant
-    **must not** erase the hostseckey, even if this participant does not receive
-    the coordinator reply needed for the `participant_finalize` call. The
-    underlying reason is that some other participant may receive the coordinator
-    reply, deem the DKG session successful and use the resulting threshold
-    public key (e.g., by sending funds to it). If the coordinator reply remains
-    missing, that other participant can, at any point in the future, convince
-    this participant of the success of the DKG session by presenting recovery
-    data, from which this participant can recover the DKG output using the
-    `recover` function.
+    After sending the returned message to the coordinator, the caller **must
+    not** erase the hostseckey, even if the coordinator reply needed for the
+    `participant_finalize` call is not received. The underlying reason is that
+    some other participant may receive the coordinator reply, deem the DKG
+    session successful and use the resulting threshold public key (e.g., by
+    sending funds to it). If the coordinator reply remains missing, that other
+    participant can, at any point in the future, convince this participant of
+    the success of the DKG session by presenting recovery data, from which this
+    participant can recover the DKG output using the `recover` function.
 
     Arguments:
         hostseckey: Participant's long-term host secret key (32 bytes).
@@ -747,13 +746,13 @@ def participant_finalize(
 
     **Warning:**
     Changing perspectives, this implies that, even when obtaining an exception,
-    this participant **must not** conclude that the DKG session has failed, and
-    as a consequence, this participant **must not** erase the hostseckey. The
-    underlying reason is that some other participant may deem the DKG session
-    successful and use the resulting threshold public key (e.g., by sending
-    funds to it). That other participant can, at any point in the future,
-    convince this participant of the success of the DKG session by presenting
-    recovery data to this participant.
+    the caller **must not** conclude that the DKG session has failed, and as a
+    consequence, the caller **must not** erase the hostseckey. The underlying
+    reason is that some other participant may deem the DKG session successful
+    and use the resulting threshold public key (e.g., by sending funds to it).
+    That other participant can, at any point in the future, convince this
+    participant of the success of the DKG session by presenting recovery data to
+    this participant.
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
