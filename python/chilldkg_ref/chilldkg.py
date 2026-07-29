@@ -574,14 +574,15 @@ def participant_step1(
             (`33*t + 32*n + 97` bytes).
 
     Raises:
-        HostSeckeyError: If the host secret key is invalid, or if the key does not
-            match any entry of `hostpubkeys`.
+        HostSeckeyError: If the host secret key is invalid, or if the key does
+            not match any entry of `hostpubkeys`.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
             not hold.
-        RandomnessError: If `random` is all zeroes (i.e., b"\\x00" * 32). This check
-            guards against the case of a malfunctioning random number generator.
+        RandomnessError: If `random` is all zeroes (i.e., `b"\\x00" * 32`). This
+            check guards against the case of a malfunctioning random number
+            generator.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # ValueError if len(hostseckey) != 32
 
@@ -618,7 +619,7 @@ def participant_step1(
 
 
 class RandomnessError(ValueError):
-    """Raised if the provided randomness is all zeroes (i.e., b"\\x00" * 32)."""
+    """Raised if the randomness is all zeroes (i.e., `b"\\x00" * 32`)."""
 
 
 def participant_step2(
@@ -630,16 +631,15 @@ def participant_step2(
     """Perform a participant's second step of a ChillDKG session.
 
     **Warning:**
-    After sending the returned message to the coordinator, this participant
-    **must not** erase the hostseckey, even if this participant does not receive
-    the coordinator reply needed for the `participant_finalize` call. The
-    underlying reason is that some other participant may receive the coordinator
-    reply, deem the DKG session successful and use the resulting threshold
-    public key (e.g., by sending funds to it). If the coordinator reply remains
-    missing, that other participant can, at any point in the future, convince
-    this participant of the success of the DKG session by presenting recovery
-    data, from which this participant can recover the DKG output using the
-    `recover` function.
+    After sending the returned message to the coordinator, the caller **must
+    not** erase the hostseckey, even if the coordinator reply needed for the
+    `participant_finalize` call is not received. The underlying reason is that
+    some other participant may receive the coordinator reply, deem the DKG
+    session successful and use the resulting threshold public key (e.g., by
+    sending funds to it). If the coordinator reply remains missing, that other
+    participant can, at any point in the future, convince this participant of
+    the success of the DKG session by presenting recovery data, from which this
+    participant can recover the DKG output using the `recover` function.
 
     Arguments:
         hostseckey: Participant's long-term host secret key (32 bytes).
@@ -659,8 +659,8 @@ def participant_step2(
         bytes: The second message to be sent to the coordinator (64 bytes).
 
     Raises:
-        HostSeckeyError: If the host secret key is invalid or if it does not match the one
-            used in `participant_step1`.
+        HostSeckeyError: If the host secret key is invalid or if it does not
+            match the one used in `participant_step1`.
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
         FaultyParticipantOrCoordinatorError: If another known participant or the
@@ -731,7 +731,7 @@ def participant_finalize(
     any other participants to deem the DKG session successful, and it will
     not be possible to create a signature.
 
-    To protect against this scenario, callers should ensure that all
+    To protect against this scenario, callers **should** ensure that all
     participants deem the DKG session successful (which also implies that
     they have a redundant copy of the recovery data) before using the
     threshold public key (e.g., before sending funds to it). The recommended
@@ -744,13 +744,13 @@ def participant_finalize(
 
     **Warning:**
     Changing perspectives, this implies that, even when obtaining an exception,
-    this participant **must not** conclude that the DKG session has failed, and
-    as a consequence, this participant **must not** erase the hostseckey. The
-    underlying reason is that some other participant may deem the DKG session
-    successful and use the resulting threshold public key (e.g., by sending
-    funds to it). That other participant can, at any point in the future,
-    convince this participant of the success of the DKG session by presenting
-    recovery data to this participant.
+    the caller **must not** conclude that the DKG session has failed, and as a
+    consequence, the caller **must not** erase the hostseckey. The underlying
+    reason is that some other participant may deem the DKG session successful
+    and use the resulting threshold public key (e.g., by sending funds to it).
+    That other participant can, at any point in the future, convince this
+    participant of the success of the DKG session by presenting recovery data to
+    this participant.
 
     Arguments:
         state2: The participant's state as output by `participant_step2`.
@@ -784,7 +784,8 @@ def participant_investigate(
 
     This function can optionally be called when `participant_step2` raises
     `UnknownFaultyParticipantOrCoordinatorError`. It narrows down the suspected
-    faulty parties by analyzing the investigation message provided by the coordinator.
+    faulty parties by analyzing the investigation message provided by the
+    coordinator.
 
     This function does not return normally. Instead, it raises one of two
     exceptions.
@@ -839,7 +840,7 @@ def coordinator_step1(
     Returns:
         CoordinatorState: The coordinator's session state after this step, to be
             passed as an argument to `coordinator_finalize`. The state is not
-            supposed to be reused (i.e., it should be passed only to one
+            supposed to be reused (i.e., it is supposed to be passed only to one
             `coordinator_finalize` call).
         bytes: The first message to be sent to all participants
             (`162*n + 33*(t-1)` bytes).
@@ -952,8 +953,8 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
         params: Common session parameters.
 
     Returns:
-        List[bytes]: A list of investigation messages, each intended for a single
-            participant (`65*n` bytes each).
+        List[bytes]: A list of investigation messages, each intended for a
+            single participant (`65*n` bytes each).
 
     Raises:
         FaultyParticipantError: If a participant is faulty. See the
@@ -1002,9 +1003,9 @@ def recover(
         SessionParams: The common parameters of the recovered session.
 
     Raises:
-        HostSeckeyError: If the host secret key is invalid, or if the key does not
-            match the recovery data.
-            (This can also occur if the recovery data is invalid.)
+        HostSeckeyError: If the host secret key is invalid, or if the key does
+            not match the recovery data. The latter can also occur if the
+            recovery data is invalid.
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
     try:
@@ -1102,8 +1103,8 @@ def participant_recovery_ack_sign(
         bytes: Acknowledgment signature (64 bytes).
 
     Raises:
-        HostSeckeyError: If the host secret key is invalid, or if it does not match
-            any host public key.
+        HostSeckeyError: If the host secret key is invalid, or if it does not
+            match any host public key.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does

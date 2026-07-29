@@ -199,7 +199,7 @@ and some details present in the normative Python reference implementation are om
 We stress that **this document does not endorse the direct use of SimplPedPop or EncPedPop as DKG protocols**.
 While SimplPedPop and EncPedPop may in principle serve as building blocks of other DKG protocols (e.g., for applications that already incorporate a consensus mechanism),
 this requires careful further consideration, which is not in the scope of this document.
-Consequently, implementations should not expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
+Consequently, implementations **should not** expose the algorithms of the building blocks as part of a high-level API, which is intended to be safe to use.
 
 ### DKG Protocol SimplPedPop
 
@@ -470,7 +470,7 @@ aimed at developers who would like to use a ChillDKG implementation in their app
 
 Detailed API documentation of the reference implementation is provided in [Subsection "API Documentation"](#api-documentation).
 Developers who would like to implement ChillDKG or understand ChillDKG's internals and reference implementation
-should also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
+**should** also read [Section "Internals of ChillDKG"](#internals-of-chilldkg).
 
 ### Use ChillDKG only for FROST
 
@@ -915,14 +915,15 @@ Perform a participant's first step of a ChillDKG session.
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid, or if the key does not
-  match any entry of `hostpubkeys`.
+- `HostSeckeyError` - If the host secret key is invalid, or if the key does
+  not match any entry of `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
   not hold.
-- `RandomnessError` - If `random` is all zeroes (i.e., b"\x00" * 32). This check
-  guards against the case of a malfunctioning random number generator.
+- `RandomnessError` - If `random` is all zeroes (i.e., `b"\x00" * 32`). This
+  check guards against the case of a malfunctioning random number
+  generator.
 
 #### RandomnessError Exception
 
@@ -930,7 +931,7 @@ Perform a participant's first step of a ChillDKG session.
 class RandomnessError(ValueError)
 ```
 
-Raised if the provided randomness is all zeroes (i.e., b"\x00" * 32).
+Raised if the randomness is all zeroes (i.e., `b"\x00" * 32`).
 
 #### participant\_step2
 
@@ -941,16 +942,15 @@ def participant_step2(hostseckey: bytes, state1: ParticipantState1, cmsg1: bytes
 Perform a participant's second step of a ChillDKG session.
 
 *Warning:*
-After sending the returned message to the coordinator, this participant
-**must not** erase the hostseckey, even if this participant does not receive
-the coordinator reply needed for the `participant_finalize` call. The
-underlying reason is that some other participant may receive the coordinator
-reply, deem the DKG session successful and use the resulting threshold
-public key (e.g., by sending funds to it). If the coordinator reply remains
-missing, that other participant can, at any point in the future, convince
-this participant of the success of the DKG session by presenting recovery
-data, from which this participant can recover the DKG output using the
-`recover` function.
+After sending the returned message to the coordinator, the caller **must
+not** erase the hostseckey, even if the coordinator reply needed for the
+`participant_finalize` call is not received. The underlying reason is that
+some other participant may receive the coordinator reply, deem the DKG
+session successful and use the resulting threshold public key (e.g., by
+sending funds to it). If the coordinator reply remains missing, that other
+participant can, at any point in the future, convince this participant of
+the success of the DKG session by presenting recovery data, from which this
+participant can recover the DKG output using the `recover` function.
 
 *Arguments*:
 
@@ -975,8 +975,8 @@ data, from which this participant can recover the DKG output using the
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid or if it does not match the one
-  used in `participant_step1`.
+- `HostSeckeyError` - If the host secret key is invalid or if it does not
+  match the one used in `participant_step1`.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
 - `FaultyParticipantOrCoordinatorError` - If another known participant or the
@@ -1015,7 +1015,7 @@ data is lost. As a result, this participant will not be able to convince
 any other participants to deem the DKG session successful, and it will
 not be possible to create a signature.
 
-To protect against this scenario, callers should ensure that all
+To protect against this scenario, callers **should** ensure that all
 participants deem the DKG session successful (which also implies that
 they have a redundant copy of the recovery data) before using the
 threshold public key (e.g., before sending funds to it). The recommended
@@ -1028,13 +1028,13 @@ way of backing up the recovery data.
 
 *Warning:*
 Changing perspectives, this implies that, even when obtaining an exception,
-this participant **must not** conclude that the DKG session has failed, and
-as a consequence, this participant **must not** erase the hostseckey. The
-underlying reason is that some other participant may deem the DKG session
-successful and use the resulting threshold public key (e.g., by sending
-funds to it). That other participant can, at any point in the future,
-convince this participant of the success of the DKG session by presenting
-recovery data to this participant.
+the caller **must not** conclude that the DKG session has failed, and as a
+consequence, the caller **must not** erase the hostseckey. The underlying
+reason is that some other participant may deem the DKG session successful
+and use the resulting threshold public key (e.g., by sending funds to it).
+That other participant can, at any point in the future, convince this
+participant of the success of the DKG session by presenting recovery data to
+this participant.
 
 *Arguments*:
 
@@ -1064,7 +1064,8 @@ Investigate who is to blame for a failed ChillDKG session.
 
 This function can optionally be called when `participant_step2` raises
 `UnknownFaultyParticipantOrCoordinatorError`. It narrows down the suspected
-faulty parties by analyzing the investigation message provided by the coordinator.
+faulty parties by analyzing the investigation message provided by the
+coordinator.
 
 This function does not return normally. Instead, it raises one of two
 exceptions.
@@ -1105,7 +1106,7 @@ Perform the coordinator's first step of a ChillDKG session.
 
 - `CoordinatorState` - The coordinator's session state after this step, to be
   passed as an argument to `coordinator_finalize`. The state is not
-  supposed to be reused (i.e., it should be passed only to one
+  supposed to be reused (i.e., it is supposed to be passed only to one
   `coordinator_finalize` call).
 - `bytes` - The first message to be sent to all participants
   (`162*n + 33*(t-1)` bytes).
@@ -1191,8 +1192,8 @@ information.
 
 *Returns*:
 
-- `List[bytes]` - A list of investigation messages, each intended for a single
-  participant (`65*n` bytes each).
+- `List[bytes]` - A list of investigation messages, each intended for a
+  single participant (`65*n` bytes each).
 
 
 *Raises*:
@@ -1231,9 +1232,9 @@ backup after data loss.
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid, or if the key does not
-  match the recovery data.
-  (This can also occur if the recovery data is invalid.)
+- `HostSeckeyError` - If the host secret key is invalid, or if the key does
+  not match the recovery data. The latter can also occur if the
+  recovery data is invalid.
 - `RecoveryDataError` - If recovery failed due to invalid recovery data.
 
 #### RecoveryDataError Exception
@@ -1274,8 +1275,8 @@ successfully received the complete recovery data.
 
 *Raises*:
 
-- `HostSeckeyError` - If the host secret key is invalid, or if it does not match
-  any host public key.
+- `HostSeckeyError` - If the host secret key is invalid, or if it does not
+  match any host public key.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
 - `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
