@@ -841,7 +841,7 @@ def coordinator_step1(
     Returns:
         CoordinatorState: The coordinator's session state after this step, to be
             passed as an argument to `coordinator_finalize`. The state is not
-            supposed to be reused (i.e., it should be passed only to one
+            supposed to be reused (i.e., it is supposed to be passed only to one
             `coordinator_finalize` call).
         bytes: The first message to be sent to all participants
             (`162*n + 33*(t-1)` bytes).
