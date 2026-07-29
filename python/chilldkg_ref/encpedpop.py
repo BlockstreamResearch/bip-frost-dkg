@@ -51,7 +51,7 @@ def encaps_multi(
     deckey: bytes,
     enckeys: list[bytes],
     context: bytes,
-    idx: int,
+    id: int,
 ) -> list[Scalar]:
     # This is effectively the "Hashed ElGamal" multi-recipient KEM described in
     # Section 5 of "Multi-recipient encryption, revisited" by Alexandre Pinto,
@@ -62,7 +62,7 @@ def encaps_multi(
     pads = []
     for i, enckey in enumerate(enckeys):
         context_ = i.to_bytes(4, byteorder="big") + context
-        if i == idx:
+        if i == id:
             # We're encrypting to ourselves, so we use a symmetrically derived
             # pad to save the ECDH computation.
             pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
@@ -84,10 +84,10 @@ def encrypt_multi(
     deckey: bytes,
     enckeys: list[bytes],
     context: bytes,
-    idx: int,
+    id: int,
     plaintexts: list[Scalar],
 ) -> list[Scalar]:
-    pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
+    pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, id)
     if len(plaintexts) != len(pads):
         raise ValueError
     ciphertexts = [plaintext + pad for plaintext, pad in zip(plaintexts, pads)]
@@ -99,12 +99,12 @@ def decaps_multi(
     enckey: bytes,
     pubnonces: list[bytes],
     context: bytes,
-    idx: int,
+    id: int,
 ) -> list[Scalar]:
-    context_ = idx.to_bytes(4, byteorder="big") + context
+    context_ = id.to_bytes(4, byteorder="big") + context
     pads = []
-    for sender_idx, pubnonce in enumerate(pubnonces):
-        if sender_idx == idx:
+    for sender_id, pubnonce in enumerate(pubnonces):
+        if sender_id == id:
             pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
         else:
             try:
@@ -119,7 +119,7 @@ def decaps_multi(
                 # Since deckey and enckey are well-formed, the error must have been
                 # triggered by an invalid pubnonce.
                 raise FaultyParticipantOrCoordinatorError(
-                    sender_idx, "invalid public nonce"
+                    sender_id, "invalid public nonce"
                 ) from e
         pads.append(pad)
     return pads
@@ -130,12 +130,12 @@ def decrypt_sum(
     enckey: bytes,
     pubnonces: list[bytes],
     context: bytes,
-    idx: int,
+    id: int,
     sum_ciphertexts: Scalar,
 ) -> Scalar:
-    if idx >= len(pubnonces):
+    if id >= len(pubnonces):
         raise IndexError
-    pads = decaps_multi(deckey, enckey, pubnonces, context, idx)
+    pads = decaps_multi(deckey, enckey, pubnonces, context, id)
     sum_plaintexts: Scalar = sum_ciphertexts - Scalar.sum(*pads)
     return sum_plaintexts
 
@@ -272,7 +272,7 @@ class ParticipantState(NamedTuple):
     simpl_state: simplpedpop.ParticipantState
     pubnonce: bytes
     enckeys: list[bytes]
-    idx: int
+    id: int
 
 
 class ParticipantInvestigationData(NamedTuple):
@@ -290,7 +290,7 @@ def participant_step1(
     deckey: bytes,
     enckeys: list[bytes],
     t: int,
-    idx: int,
+    id: int,
     random: bytes,
 ) -> tuple[ParticipantState, bytes]:
     if t >= 2 ** (4 * 8):
@@ -314,17 +314,17 @@ def participant_step1(
     pubnonce = pubkey_gen_plain(secnonce)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
-        simpl_seed, t, n, idx, simpl_aux_rand
+        simpl_seed, t, n, id, simpl_aux_rand
     )
     assert len(shares) == n
 
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, deckey, enckeys, enc_context, idx, shares
+        secnonce, pubnonce, deckey, enckeys, enc_context, id, shares
     )
     simpl_pmsg_parsed = simplpedpop.ParticipantMsg.from_bytes(simpl_pmsg, t=t)
 
     pmsg = ParticipantMsg(simpl_pmsg_parsed, pubnonce, enc_shares).to_bytes()
-    state = ParticipantState(simpl_state, pubnonce, enckeys, idx)
+    state = ParticipantState(simpl_state, pubnonce, enckeys, id)
     return state, pmsg
 
 
@@ -334,19 +334,19 @@ def participant_step2(
     cmsg: bytes,
     enc_secshare: Scalar,
 ) -> tuple[simplpedpop.DKGOutput, bytes]:
-    simpl_state, pubnonce, enckeys, idx = state
+    simpl_state, pubnonce, enckeys, id = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=simpl_state.t, n=len(enckeys))
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     simpl_cmsg, pubnonces = cmsg_parsed
 
-    reported_pubnonce = pubnonces[idx]
+    reported_pubnonce = pubnonces[id]
     if reported_pubnonce != pubnonce:
         raise FaultyCoordinatorError("Coordinator replied with wrong pubnonce")
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
-    pads = decaps_multi(deckey, enckeys[idx], pubnonces, enc_context, idx)
+    pads = decaps_multi(deckey, enckeys[id], pubnonces, enc_context, id)
     secshare = enc_secshare - Scalar.sum(*pads)
 
     try:

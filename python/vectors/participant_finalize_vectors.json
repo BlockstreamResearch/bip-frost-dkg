@@ -42,7 +42,7 @@
                     "expectedOutput": {
                         "dkgOutput": {
                             "secshare": "78F979492EF00DFD84069C2E8367753A712447527C02A2887D5AF86A6F4D02BA",
-                            "thresholdPubkey": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
+                            "threshPk": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
                             "pubshares": [
                                 "025C8EC2A3D153823BD2820F6943FD4010B9A9C48D779A6845D2CDDB0EFE36E1EC",
                                 "03397F3E8A16CCF5BD71E084163A9370C290F2915BC4BF80FDEA1C0E713B91F9C3",
@@ -104,7 +104,7 @@
                     "expectedOutput": {
                         "dkgOutput": {
                             "secshare": "2736A277FB0F9BC76409D2F8C170DF72CB0BDF88AB3519F767101C69EB546A35",
-                            "thresholdPubkey": "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
+                            "threshPk": "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
                             "pubshares": [
                                 "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
                                 "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
@@ -166,7 +166,7 @@
                     "expectedOutput": {
                         "dkgOutput": {
                             "secshare": "A37C8E092C77AA1EE483503747827B7E5EBAE579347755CFA92A352BD32201E7",
-                            "thresholdPubkey": "0387DF054E5992F51C6C9DF60EB956DFAC73F12B218FF559159FA1A14945BAEA97",
+                            "threshPk": "0387DF054E5992F51C6C9DF60EB956DFAC73F12B218FF559159FA1A14945BAEA97",
                             "pubshares": [
                                 "0338FF57248C1B692D92C39D9FF0834CE09DC84136D45A74F59A34A0DE8F82AF7C",
                                 "03FEA503453A344A1FB374B6478A51D3220B6A7C881911FAA7656EB268E389B2E7",
@@ -229,7 +229,7 @@
                     "expectedOutput": {
                         "dkgOutput": {
                             "secshare": "9A1AA8C42D08396A54029339A5D5F689AF69D711C06E9F629ED51E415DDBA593",
-                            "thresholdPubkey": "029D2139223BE442F3ED257971596919143AC6A21737C3742CB17C962C4DEBE73D",
+                            "threshPk": "029D2139223BE442F3ED257971596919143AC6A21737C3742CB17C962C4DEBE73D",
                             "pubshares": [
                                 "02C5623B00B3CFCED42F7AFD45E43A34E06075B97534563934D1755FDBA8D073E1",
                                 "0272117A2B890D887E3419E0465424EE71B647BF35A84F26D8B40427A5D4A97B43",

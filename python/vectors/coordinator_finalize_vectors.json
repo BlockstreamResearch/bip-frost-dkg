@@ -54,7 +54,7 @@
                         "cmsg2": "A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B5479195E7CBE22A8B53C41012ABEA37F0B59579E43EDC6477E8CC5C7EB9F3C8BF7AEC850C63A659FADD91C9063908054FC4D193594E132ADFBE1F24BE74C8BEA7A",
                         "dkgOutput": {
                             "secshare": null,
-                            "thresholdPubkey": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
+                            "threshPk": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
                             "pubshares": [
                                 "025C8EC2A3D153823BD2820F6943FD4010B9A9C48D779A6845D2CDDB0EFE36E1EC",
                                 "03397F3E8A16CCF5BD71E084163A9370C290F2915BC4BF80FDEA1C0E713B91F9C3",
@@ -77,7 +77,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant at index 1 sent a short signature"
+                    "comment": "participant with id 1 sent a short signature"
                 },
                 {
                     "tcId": 3,
@@ -115,7 +115,7 @@
                         "participant": 1,
                         "message": "Participant has provided an invalid signature for the certificate"
                     },
-                    "comment": "participant at index 1 sent an invalid signature"
+                    "comment": "participant with id 1 sent an invalid signature"
                 }
             ]
         },
@@ -153,7 +153,7 @@
                         "cmsg2": "82E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EEA9B4EADAC901B2D6A24ADFF77FBFA1A948F8846CA445E7A7E970D26EA440370F1AD8302DDB489191F5536CA4B102EF5535406BBB1D4003AAA6AEF8E83F7D2AD6",
                         "dkgOutput": {
                             "secshare": null,
-                            "thresholdPubkey": "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
+                            "threshPk": "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
                             "pubshares": [
                                 "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
                                 "0285488475157EAD0313E90209EB43F010ED843D9397DC427E029352DEF8402F38",
@@ -176,7 +176,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant at index 1 sent a short signature"
+                    "comment": "participant with id 1 sent a short signature"
                 },
                 {
                     "tcId": 8,
@@ -214,7 +214,7 @@
                         "participant": 1,
                         "message": "Participant has provided an invalid signature for the certificate"
                     },
-                    "comment": "participant at index 1 sent an invalid signature"
+                    "comment": "participant with id 1 sent an invalid signature"
                 }
             ]
         },
@@ -252,7 +252,7 @@
                         "cmsg2": "BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E7E27651C1E2907EDFA9CA3310332C9BE64A22B78FF873C307632E855E9E24E86C6F9E10F7D135A06F5B6839DFAA2F78973DAD89179131016D55D4E7B7FF2837F5",
                         "dkgOutput": {
                             "secshare": null,
-                            "thresholdPubkey": "0387DF054E5992F51C6C9DF60EB956DFAC73F12B218FF559159FA1A14945BAEA97",
+                            "threshPk": "0387DF054E5992F51C6C9DF60EB956DFAC73F12B218FF559159FA1A14945BAEA97",
                             "pubshares": [
                                 "0338FF57248C1B692D92C39D9FF0834CE09DC84136D45A74F59A34A0DE8F82AF7C",
                                 "03FEA503453A344A1FB374B6478A51D3220B6A7C881911FAA7656EB268E389B2E7",
@@ -275,7 +275,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant at index 1 sent a short signature"
+                    "comment": "participant with id 1 sent a short signature"
                 },
                 {
                     "tcId": 13,
@@ -313,7 +313,7 @@
                         "participant": 1,
                         "message": "Participant has provided an invalid signature for the certificate"
                     },
-                    "comment": "participant at index 1 sent an invalid signature"
+                    "comment": "participant with id 1 sent an invalid signature"
                 }
             ]
         },
@@ -355,7 +355,7 @@
                         "cmsg2": "C40687CB309D263B5D52C4D782F9A66411B57627FD56FD0ABE3C87CB051CE248E19A95E68212599B8DAD04ADF7CE37DC809BBC04F27B019D5543F35223FC53E6978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE485AD6B8D354A6D89F067A859AB1941E403E8C72413D61E11EC49588C977831CCB37224C44A482EC53A2373F5BD2B38041797C77C85CC14AB25E4F6226FFA6CAA5",
                         "dkgOutput": {
                             "secshare": null,
-                            "thresholdPubkey": "029D2139223BE442F3ED257971596919143AC6A21737C3742CB17C962C4DEBE73D",
+                            "threshPk": "029D2139223BE442F3ED257971596919143AC6A21737C3742CB17C962C4DEBE73D",
                             "pubshares": [
                                 "02C5623B00B3CFCED42F7AFD45E43A34E06075B97534563934D1755FDBA8D073E1",
                                 "0272117A2B890D887E3419E0465424EE71B647BF35A84F26D8B40427A5D4A97B43",
@@ -380,7 +380,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant at index 1 sent a short signature"
+                    "comment": "participant with id 1 sent a short signature"
                 },
                 {
                     "tcId": 18,
@@ -421,7 +421,7 @@
                         "participant": 1,
                         "message": "Participant has provided an invalid signature for the certificate"
                     },
-                    "comment": "participant at index 1 sent an invalid signature"
+                    "comment": "participant with id 1 sent an invalid signature"
                 }
             ]
         }

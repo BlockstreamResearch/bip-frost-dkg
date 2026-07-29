@@ -35,7 +35,7 @@ COORDINATOR_STEP1_DESCRIPTION = [
     "For each error test case:",
     "  Call coordinator_step1(pmsgs1, params).",
     "  Verify it raises an exception matching expectedError.",
-    "  Error objects may include 'participant' (index of the faulty party).",
+    "  Error objects may include 'participant' (identifier of the faulty party).",
 ]
 
 
@@ -181,7 +181,7 @@ def generate_coordinator_step1_group(t, n):
         }
     )
 
-    # --- Error test case: participant (index 1) message has an enc_shares list of invalid length ---
+    # --- Error test case: participant (id 1) message has an enc_shares list of invalid length ---
     invalid_pmsgs1 = copy.deepcopy(pmsgs1)
     invalid_pmsg1_parsed = chilldkg.ParticipantMsg1.from_bytes(
         invalid_pmsgs1[1], t=params.t, n=len(params.hostpubkeys)
@@ -201,7 +201,7 @@ def generate_coordinator_step1_group(t, n):
             ],  # [0, n, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
-            "comment": "participant (index 1) message has an enc_shares list of invalid length",
+            "comment": "participant (id 1) message has an enc_shares list of invalid length",
         }
     )
 
@@ -322,7 +322,7 @@ def generate_coordinator_finalize_group(t, n):
         }
     )
 
-    # --- Error test case: participant at index 1 has a short signature ---
+    # --- Error test case: participant with id 1 has a short signature ---
     invalid_pmsgs2_short_sig = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_short_sig[1] = invalid_pmsgs2_short_sig[1][
         :63
@@ -338,7 +338,7 @@ def generate_coordinator_finalize_group(t, n):
                 len(pmsg2_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n, 2, ..., n-1] — index 1 replaced with bad pmsg
             "expectedError": error_case,
-            "comment": "participant at index 1 sent a short signature",
+            "comment": "participant with id 1 sent a short signature",
         }
     )
 
@@ -369,7 +369,7 @@ def generate_coordinator_finalize_group(t, n):
         }
     )
 
-    # --- Error test case: participant at index 1 sent an invalid signature ---
+    # --- Error test case: participant with id 1 sent an invalid signature ---
     invalid_pmsgs2_sig = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_sig[1] = bytes.fromhex(
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
@@ -388,7 +388,7 @@ def generate_coordinator_finalize_group(t, n):
                 len(pmsg2_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n, 2,..., n - 1]
             "expectedError": error_case,
-            "comment": "participant at index 1 sent an invalid signature",
+            "comment": "participant with id 1 sent an invalid signature",
         }
     )
 
