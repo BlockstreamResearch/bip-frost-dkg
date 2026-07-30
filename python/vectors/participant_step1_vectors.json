@@ -13,7 +13,7 @@
         "  Call participant_step1(hostseckey, params, random).",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 52,
+    "totalTests": 65,
     "testGroups": [
         {
             "validTestCases": [
@@ -30,12 +30,57 @@
                     },
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedPmsg1": "036BEE122EF60CBBB5DFC3572FE6D3A9AC0B35BB427E250F42C38F7C8229889CAB03E99E34AA2A0646563DF90F2407D0D0E345EAE2CF7F07F9F6561302F724EFA74708AE5A94BBDD3FC53924623E0D6764E089D679048F699118D7807884AD13CF484866D8210BCB76DAEB103AD6BA1CED0DBFE78F1E8A44F26FC69D5464BF23324D0260537C74BC2B79676CDE217FFA7D48236D4A309954153DEB39A31AADF6B369CCC6C144287B356EF70378A7F1054FF00354A01352587DC076554A82CD324B66A17006774A86C116C19F2C021793EAB87DF19EE3A978C60F757BA192DA23BAE5F56A3612D0720F35828FCFBA9DFEA790883B185A8B75A27449AF23169C919B47C7",
-                    "comment": "valid participant step1"
+                    "comment": "valid participant step1 (idx = 0)"
+                },
+                {
+                    "tcId": 2,
+                    "hostseckey": "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "03F5B3C51578ACF705AFEBC35087B7DA55A42522D3B3AFCC89B654678E70B14E13033CEAB01971F4C19F59BFBB1DE89274D1194D207D6C800EA2DB425725C0973593C746DD372D1AB3ED43F1F047EEF15CA31AD59252B9A063E13FB8062153D0991511D730B73FC72D6BF1224531AD057B306614F33F282162F921D4CA35C5B52724031545F0469FD5399FCBB214AE35152152E0C5D711D44A91933540C801E4C541CD3B52BB3BF2093C59F076EEEB351287082FB50E01B00585F8A942BD2DCA37ADF6791405F0C30D29A78DD319908C061F3B58C18DC1DF11C5822B72F3EDBD10AD35315E1736F109F08A698B8D419A9AF8C1765F4D8F99835F448757C2DC4488E398",
+                    "comment": "valid participant step1 (idx = 1)"
+                },
+                {
+                    "tcId": 3,
+                    "hostseckey": "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "028D8DE4948B010654E4E4BB6A006FA091B9EA34280191E5986BBBDE9692E87D2D02688B77B0B11894D8CCD545C970ED556C41DD419F15672D091D5B6D3D59116A49ABE8794AF97AF7AEBD1312B8C8B5FBB0C5872F26F160A9D0D82EC87409326045E28B0E114D94A71C2B051006A7471C36C0477C5A625135AA5C8D63B7E267E38902B0E21459CB4D4BDB9019F6D90C1F6C01790EC03D265D0E02DA35E4F04BC77B54CD1A054722FEAD4852BF9AE053A28FF09CB3BC3750EC1F41DDCA2F2388FA0E217804A26A703455016ADCB487670D0A74ECE08EE567B1FEC0EBE506F1DF781BA4445357F03092787080032D399170FEE4C0685BD5A66058BDFF38949616A78466",
+                    "comment": "valid participant step1 (idx = 2)"
+                },
+                {
+                    "tcId": 4,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "random": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                    "expectedPmsg1": "02F41FDDE0FFFF79FD228379B2A748D29EF7613B574996334ECB333904587DA05D02578548F6A3EEC9676D19578E0397ECAEF4B2D384D998B19243B2418D362B70835A800FE3F0A5C3C22B11E6E29AD87373D32793B47305D61845C5E0504AA0B090DD2462686280376567E0BD7E4C05D5236E1B93779AFB9754AA2B274E5BDE3D410389405BF38E9A07E6BC0B34771CE990BFBA8DDFEE8BC3599B7A7DEF201EA1E8D774EBC7A02D00227D3C6E3509A1A863FDF53E4A33BC04835FC160C196D72BD90270F2D99F42637A62EC6266E8BD5C724B50293F6F8A69E45FC8C2888CF824EADA602D79EA7BE108195BDEBADEDDD1B8F7EE821EC3E41DC02DD777C25200FB8F24",
+                    "comment": "valid participant step1 (random = all ones)"
                 }
             ],
             "errorTestCases": [
                 {
-                    "tcId": 2,
+                    "tcId": 5,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -52,7 +97,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 3,
+                    "tcId": 6,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -69,7 +114,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 4,
+                    "tcId": 7,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -86,7 +131,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 5,
+                    "tcId": 8,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -103,7 +148,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 6,
+                    "tcId": 9,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -120,7 +165,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 7,
+                    "tcId": 10,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -138,7 +183,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 8,
+                    "tcId": 11,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -156,7 +201,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 12,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -174,7 +219,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 10,
+                    "tcId": 13,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -193,7 +238,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 11,
+                    "tcId": 14,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -211,7 +256,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 12,
+                    "tcId": 15,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -228,7 +273,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 13,
+                    "tcId": 16,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -249,7 +294,7 @@
         {
             "validTestCases": [
                 {
-                    "tcId": 14,
+                    "tcId": 17,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -261,12 +306,57 @@
                     },
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedPmsg1": "0216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C6558B3C0BFEA2180B7449D7EF101A57D8CF9FC0E32D77FAFDC712A3897007419D6CE9F8FEA08EC9935120955BDFD2519F7B29AD3E0248DA19A0E7D3900FE14CEA02BC88DD206C8AD8C1B52F93AD147695802206D0CA6AB756BD51E5FF5BE858FD219827C7BD6ECCE374663262B90B8D2944C94F9AB1E83F38DBD12823DD7D58B8B3CF1C0AB792C1AF61FA3866CCC4221CAC3CB9D35F7F5358990AB02D7E246BCEDD2AA0622F84004D5AED9B4FC855F20AE22CE260B6E79F56DE5BC2F5B73D137DE3",
-                    "comment": "valid participant step1"
+                    "comment": "valid participant step1 (idx = 0)"
+                },
+                {
+                    "tcId": 18,
+                    "hostseckey": "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 1
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "035A169E93F95C5653C3C953ADFB8840CE1FE30A611B3523FCE031BEC58890D0F0480E37F7439C1851FA0D6C4B007A46D7EB16D0EAB7E50EFA7E7D5BD5F050670FC2EFAEDD3FC46397BE7B085948A3AF48968C8E3EC70D5F72E22F1329CC67F75903A7DEA31FF3B20C86BBF61DD69FC87E63EF0F26183C3F9F54712C586B36645D78CC88B416B1359CB3AC60A1B33383673A250026FB60F7EB61B2F4FAF5556B35662D5788EF61A20EDAC019054C5A7726CF16E6824E86581D08E9317B537279CBB68AB89132D6836A6189C20EEA9CBD07BE95BED131A7ED0CCE4BA5CD60D2298427",
+                    "comment": "valid participant step1 (idx = 1)"
+                },
+                {
+                    "tcId": 19,
+                    "hostseckey": "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 1
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "02272D892BB61EDC16786EDE7C7E443C616ACDDEBCA45E613D7A6EFBD2574AACFCD3BB7BA7B309BE647F9F2A71317D4227CAF2DECC1459B8C5B19561E281ED48C68DB425D5EBAB4ACFF78328D9ECEEAA4F320386C253397A5FD857943447C0F023028476BDD08E4658B7B825E80F0B4B6F9E295DE8CE6F1C4D2A7FB9DDFAD80DAB359CB112DA7D43C4C0D10D41727B659603E49944CFA199B4E8AA59D2F39DEF14FB1325B98C328473AAD6848F4430D6186508FBDA4A26F97C539CB3B453F13D8C8CAD382DCC0B225C6E602C4B264868DE8602D10604AA5B3F6D8505D5E9D19944CC",
+                    "comment": "valid participant step1 (idx = 2)"
+                },
+                {
+                    "tcId": 20,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 1
+                    },
+                    "random": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                    "expectedPmsg1": "037ABB29416E72A64B36085033432ACC43A5BAB359B797F710FEA4277C54367B9E773C5B68799363F270BF8FB4C966E335CD2211FA8DF3E2443BB381FE5C93F2C5E9240348CFCDEC44E11A431E635F77CEE25B8F190D3C41F0280C6D17591066B1030CA1B2279DBDC2F257008307F259574093EC2F4692C30311F451E51334DF56C26A7857F711C233D2F695FC82E0736403EB1F63A5BA6CB66538C28B52FBCBF00E40E88900BA463A842FC5F48100FBB08082FCFFBDCD8951449320217E95BE8891ACFB37FAD4C22347183AA20EFA066126884752C0CAC81D3817FC364A00E13538",
+                    "comment": "valid participant step1 (random = all ones)"
                 }
             ],
             "errorTestCases": [
                 {
-                    "tcId": 15,
+                    "tcId": 21,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -283,7 +373,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 16,
+                    "tcId": 22,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -300,7 +390,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 17,
+                    "tcId": 23,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -317,7 +407,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 18,
+                    "tcId": 24,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -334,7 +424,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 19,
+                    "tcId": 25,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -351,7 +441,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 20,
+                    "tcId": 26,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -369,7 +459,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 21,
+                    "tcId": 27,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -387,7 +477,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 22,
+                    "tcId": 28,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -405,7 +495,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 23,
+                    "tcId": 29,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -424,7 +514,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 24,
+                    "tcId": 30,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -442,7 +532,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 25,
+                    "tcId": 31,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -459,7 +549,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 26,
+                    "tcId": 32,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -480,7 +570,7 @@
         {
             "validTestCases": [
                 {
-                    "tcId": 27,
+                    "tcId": 33,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -492,12 +582,57 @@
                     },
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedPmsg1": "02F659A9668C1E7FB2BF4B457CA91C9925B3AB9F3F029C489C53603EF6AF90199B03BB0D7426739F2FAB24C6A0B2693273BBC92E03D3CB1A252956D372E4484F3EFE030C43B612EC5E536EF7853FCC8744BF77AF272485349484BDAA6FB6F2222FDD5A92AE219E3FE6B306490A7510AF6D9C981983DE7E4A83127F350451986EB2AF829A8C8BF483ADD195B5C7B08073D9548FFCDFB5626F0DA6A26468AD9BE54D5C83026C6EBBC55EDC86ABA62BA55A3375A940E731228F214937BF8A2FC58B29AE8F087C47A6836F30317C4B914E33F10B72CA6EDD116A3DF9E8BFE997045F9F957D31A43BB05F6162602B96E5D8C0AE3A07C8228E41DE772B0ACD96937B6CD0115ADE0ACB3150F08EA8668C262DC091C6ACA77674E8C749023FA6FB5D6938BEC73CD8",
-                    "comment": "valid participant step1"
+                    "comment": "valid participant step1 (idx = 0)"
+                },
+                {
+                    "tcId": 34,
+                    "hostseckey": "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "03E1BCF372F795C94702D6860592995DD4DC6BCB328ABCB845CCD96BD8112D25890254337C07FAAC506629368DB5A85DD7A395C772271B18F77EC63AE73833959A2D03260EB8C83D9F6DE76007A4DA7464CF39B325ACDA587FA47B3A47D877CB97FCF747B16CC8600AA97E5834657EDCC3CAF08B5E315C3C760218F086946C91D25D6D3019782AEFA2555843154397862077612CCA740585239B03FD1ACD2210E10C1D0221CC8723A68F89BD513FF841815AA8C14E8E25B456933BBF5571F5ABE1D84C8B4AD3F26F83FBFC4D6CADBA51F5189C70D3D735B571E7944F4A1B5519559B7DE810B9ABDA92C07FAA8C990DDD5ABBBA8449008EF99BF47BA716C656A570497978E339A0A2C2DAB0038EA711D34646BB6C6E5EBCD6D8A7771D5E61AF24777BEE77",
+                    "comment": "valid participant step1 (idx = 1)"
+                },
+                {
+                    "tcId": 35,
+                    "hostseckey": "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "0370A9ABA9E1CDFE0D44C5D7D26EAEEF247BA0BDE27C71F3392ECFCA9996B4F54002B18C7A665E71B412CBAC588CD8017D6600F145C2D13E9082A3D788C7CB045D0402061BED5D9315FD58F793A68B8925510639925E5D6AF5D0DEE3EF70DB9B1EFDE6BF89477C1E447F726ED18731CD90668CA73FAF7ABA1C93EDB9C4DF8FCCDF2313654B793A26F0A5649D1CB993AB3FFF86B55244934EE99970AE0CB53A52C7FE2503921AC92C09D4CBC0BCD1C552B24EE916F81D60ED2D4B64A43C3F31DFD781085ACB4E9E107591FB2E1AFBB027B2F77BA50DEB456883F73EEBFD17DB3DC64B4612E56377FDF7D5B2B7301EE824A34C80AEFE8D219F718E1E6FFAF7CE84DD59BFED8AFD715AF764552DF6A7EDA1208A92CDA1EFF352B6BD16109360B632099B4636",
+                    "comment": "valid participant step1 (idx = 2)"
+                },
+                {
+                    "tcId": 36,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "random": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                    "expectedPmsg1": "0261DE2ADBC16E18AB2AB5864F8F7B4D0A23C15782AC3D353C318A67351EBAAFF40297C27211ECE30A20768FBEE5576242BB138430A3F7A16F1EECBCB6EB43C77A78027BC94E886979A1FB37ADFED7BDD6E8D229EB93C62643193841E3EB61994BE9462423460766FBEC0B4E95AEEE105946BB1C49F7C9AEF0D00FA0177AAC1E59B70C9860969A89DDBA835E13C82620CACC00E4BF77D0166046E435B19832FEC9360A02D53CF8C81A7218A8B2AAE90AD2CF36A5CB7C7E86FD3A3F04BF3E308EF85EFECD70A8EA285C665DFBD8FA6DA90700C9A2E0D2AE85A12151C55B974A090C1500DEC7D39CA1F8BA2C59D53ABE2876192A642ADB3B9B2DF36292F853440088D68D26370C3312AB82C370E0C8B2C58787FD1928E9A6206816A7E9E772C23DF5DCBA53",
+                    "comment": "valid participant step1 (random = all ones)"
                 }
             ],
             "errorTestCases": [
                 {
-                    "tcId": 28,
+                    "tcId": 37,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -514,7 +649,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 29,
+                    "tcId": 38,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -531,7 +666,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 30,
+                    "tcId": 39,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -548,7 +683,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 31,
+                    "tcId": 40,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -565,7 +700,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 32,
+                    "tcId": 41,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -582,7 +717,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 33,
+                    "tcId": 42,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -600,7 +735,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 34,
+                    "tcId": 43,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -618,7 +753,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 35,
+                    "tcId": 44,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -636,7 +771,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 36,
+                    "tcId": 45,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -655,7 +790,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 37,
+                    "tcId": 46,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -673,7 +808,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 38,
+                    "tcId": 47,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -690,7 +825,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 39,
+                    "tcId": 48,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -711,7 +846,7 @@
         {
             "validTestCases": [
                 {
-                    "tcId": 40,
+                    "tcId": 49,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -724,12 +859,76 @@
                     },
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedPmsg1": "037ACDA3FDC4E9098EA3364B92CD6DD02654141995CFD3500E1C33D098F618458D024F105837D6A403410B38453D712F306673B4B4DAC9F38C8FCF92A2D7BBDB2CE2082BB8A48B5B6088DC14C4E231236B929B68DBDA2F43842D8CCD7812812EF26C6490104A19A7CF603530A4A96E5F9A52E58A22C61B2B5B93C453BB11509CEF460266D2D26EAA94E40ECCF9C6BB24C1DDE27957FE8A82F2389EA6BBFD4B265ACAD5C2BC4B8326FF7015CEC59F160D74C4911E39F1C703FE64ACC5D0258A814EEAE235412ABEFA95191200CDA1F3D9F14976F2401C387A1B5FEDCEE9AE829D8DB005B6584DD5D478D2B1CEE49B2B8FB20EFCDC2BB9DD7B7F75B13ACBF819369AC43D4D8A4D5D1E3E00CB20D4CEFB1FD632C252F5D8048F295A5C5BD62B83145D9135",
-                    "comment": "valid participant step1"
+                    "comment": "valid participant step1 (idx = 0)"
+                },
+                {
+                    "tcId": 50,
+                    "hostseckey": "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "0373081F6C46AC2D6C6F208FC268B14C5B03B9FD8F5D5D630A5A7B610DFC47D62702553742FD1A9909F5D77A498C0F28DD6C9D7EB432808F20DEF37B751655DAE5BE619639E8E5DF3A712F92A5A6908B9F81C2BE4383C1D69256B8FF466B56CCFE6406D6F43989229B5909AAD15B3A7FA36F33BB2436AF76FC13C303886FE4A39E52038AA43045AC00B82A451082780E4487C65DFB25989940CE28EFCB202515B20BB785B44746A66EA6E8AB3B9B2FCEFC310E7C48DC0EB2EE18293A7EA1091508212880F0901516DFE7F4B2B20C81A06AF49B2A2A922068550F48D1756B3A62E51E23C3B088601E703AD501C35AFAA85291001E4C5BD621D4571003CA05F522B51A79D5F1531E638F03FE0E3098187B9F2DA88C952970FA6F40872B04386B7307D181",
+                    "comment": "valid participant step1 (idx = 1)"
+                },
+                {
+                    "tcId": 51,
+                    "hostseckey": "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "031020A38771646897A7AD943ACBAF296F17397ADE66C4BF6B4B5AFD384F1D53F903B0D7AB32295C51D433DB1DFD381B944357380CBA2EE2AA834C4B91AC94BA6E1BA47F54AA8CC01DC20E699BE1C7E77AAABE5CA9BA9D26D93B622038B2DB0DBE5377F5827FBE31816B287E9D661C42CC7AE95CB00C8F9D9C03916C30BD11B40A14031C3EA541904E7BCD6931F33E8FF4E39B2ACF88BC4B6D408A30D0CFE0067840DE7747B7751E7B5EDB0F2E2BAF704C3241A4CA0E5963A8A1C66C67FF0D62416F8540395077A38D52557A8187FA742865A75A70AEF7E91F43600F9CFA5694842A54CFAA6B4B316ED371AFEAF85EA76EA7415147A804194C165387E761141681D72BE1454EB4DDE9DBBED83CCC48517D0EAEA77CCCF23835F3447B6EE8CE7B7FAAB9",
+                    "comment": "valid participant step1 (idx = 2)"
+                },
+                {
+                    "tcId": 52,
+                    "hostseckey": "7F3A1D2E4C5B6A7890ABCDEF1234567890ABCDEF1234567890ABCDEF12345678",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedPmsg1": "03A39A328D38E4DBC9BAEFB3690CE599DF88886222BEBE5977D538FF8D77846CCE024B207191C6647738C79046AD4FE6F1385B3F7CE82828EDAEAF314E67B9E2A2170CE90B20B80AC85C218BEBC66CC93A11CCAB05BB353951DA1EE9DBC90736F383A63927B635E01867053884DE27A5E44F0E48E5FF0BD953494CFF46451EF2B5E103AC42544F5068B9B597DAB3CCCA8CF215019909CE64B93534F96F56CAD5E706E1501BCA8F27492FFC1CDC17050174C716B1CEF75547719C8774A42B436BB52F2F7A07CA22A9F9D6BDD565F7AC36286AF79246ADFE04AB98EFAAD1F05B49497B44A78086694771E1F0C9317B0C2E54014B84593D6A3921018FE1C48AB9728DB31C1180190E1EE4A268D90D8B4F452117009FFD69D36DE4638FE2053D7A275F4EB4",
+                    "comment": "valid participant step1 (idx = 3)"
+                },
+                {
+                    "tcId": 53,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "random": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+                    "expectedPmsg1": "028BAACC4DDA7CBBC6703251ED9A36898083AB77A0A26670573A1E71D55BB044770202F719FCEAE36FFB14A852CCE6F05B296EECFFACFAEEFA83834FF8A9AA24A0DA010244453255D711943EB6C71DE5CA10CB4BD364BCB5520F72C311AC5531901FDF57537A803BFE59C3E908E20B9AABA32E1962E735A9C83F1898B865D9B14DDF035AE1564A74D0457319C9AA4194A670AC5309E1E7309D3769E3D8E6C4E014BEDE5507EE3F8BEC2B0BD2F31BD4042F6AAA613F55C94F306764CDC6B3A9AEF6B0DB5ED70260E24F9086AD882E5596182FFDB0B20CD9123706920CB05FA6B2346456F7D37BE4779DCB9A61187FE3AC18A68F23FB6E8294EA381CBD7AB11CC5AE87F16A8F3DE6346859F083C41D55BA3AD7FF7F1BABFED8418A8E52A2BCF7A858EFD9",
+                    "comment": "valid participant step1 (random = all ones)"
                 }
             ],
             "errorTestCases": [
                 {
-                    "tcId": 41,
+                    "tcId": 54,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -747,7 +946,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 42,
+                    "tcId": 55,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -765,7 +964,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 43,
+                    "tcId": 56,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -783,7 +982,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 44,
+                    "tcId": 57,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -801,7 +1000,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 45,
+                    "tcId": 58,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -819,7 +1018,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 46,
+                    "tcId": 59,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -838,7 +1037,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 47,
+                    "tcId": 60,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -857,7 +1056,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 48,
+                    "tcId": 61,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -876,7 +1075,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 49,
+                    "tcId": 62,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -896,7 +1095,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 50,
+                    "tcId": 63,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -915,7 +1114,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 51,
+                    "tcId": 64,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -933,7 +1132,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 52,
+                    "tcId": 65,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
