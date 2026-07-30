@@ -499,7 +499,8 @@ The list of host public keys and the signing threshold `t` together
 form the public *session parameters*, the common input to all participants and the coordinator.
 
 Each participant **must** ensure to have authentic copies of all other participants' host public keys before the start of the session.[^trust-anchor]
-Authenticity of the host public keys can be verified through pairwise out-of-band comparisons between every pair of participants.
+A participant can verify authenticity by comparing every other host public key with the corresponding participant out-of-band,
+or more conveniently, by comparing a short *parameters hash* (a hash of the session parameters) with every other participant out-of-band.
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this requirement is implicit in other schemes as well.
