@@ -26,7 +26,8 @@ This Bitcoin Improvement Proposal proposes ChillDKG, a distributed key generatio
 ### Copyright
 
 This document is made available under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/).
-The accompanying source code is licensed under the [MIT license](https://opensource.org/license/mit).
+The accompanying auxiliary files are licensed under the [MIT License](https://opensource.org/license/mit).
+The collection of test vectors therein (subdirectory `vectors/`) is, in addition to the MIT License, available under CC0 1.0 Universal.
 
 ## Introduction
 
