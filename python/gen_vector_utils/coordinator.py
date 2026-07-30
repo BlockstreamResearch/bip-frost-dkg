@@ -1,13 +1,6 @@
 import copy
 
 from chilldkg_ref import chilldkg
-from chilldkg_ref.chilldkg import (
-    coordinator_finalize,
-    coordinator_investigate,
-    coordinator_step1,
-    participant_step1,
-    participant_step2,
-)
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
 from .util import (
@@ -50,7 +43,7 @@ def generate_coordinator_step1_group(t, n):
     for i in range(len(hostpubkeys)):
         _, msg = chilldkg.participant_step1(hostseckeys[i], params, randoms[i])
         pmsgs1.append(msg)
-    _, expected_cmsg1 = coordinator_step1(pmsgs1, params)
+    _, expected_cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
 
     pmsg1_pool = []
 
@@ -74,7 +67,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: Invalid threshold ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
     error = expect_exception(
-        lambda: coordinator_step1(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_step1(pmsgs1, invalid_params),
         chilldkg.ThresholdOrCountError,
     )
     error_cases.append(
@@ -89,7 +82,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: t > n ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
     error = expect_exception(
-        lambda: coordinator_step1(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_step1(pmsgs1, invalid_params),
         chilldkg.ThresholdOrCountError,
     )
     error_cases.append(
@@ -106,7 +99,7 @@ def generate_coordinator_step1_group(t, n):
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
-        lambda: coordinator_step1(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_step1(pmsgs1, invalid_params),
         chilldkg.InvalidHostPubkeyError,
     )
     error_cases.append(
@@ -122,7 +115,7 @@ def generate_coordinator_step1_group(t, n):
     with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
-        lambda: coordinator_step1(pmsgs1, duplicate_params),
+        lambda: chilldkg.coordinator_step1(pmsgs1, duplicate_params),
         chilldkg.DuplicateHostPubkeyError,
     )
     error_cases.append(
@@ -139,7 +132,7 @@ def generate_coordinator_step1_group(t, n):
     with_infinity = hostpubkeys[:-1] + [infinity_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_infinity, t)
     error = expect_exception(
-        lambda: coordinator_step1(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_step1(pmsgs1, invalid_params),
         chilldkg.InvalidHostPubkeyError,
     )
     error_cases.append(
@@ -154,7 +147,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: invalid pmsgs1 (n-1 entries instead of n) ---
     short_pmsgs1 = pmsgs1[: n - 1]
     error = expect_exception(
-        lambda: coordinator_step1(short_pmsgs1, params),
+        lambda: chilldkg.coordinator_step1(short_pmsgs1, params),
         ValueError,
     )
     error_cases.append(
@@ -169,7 +162,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: invalid pmsgs1 (n+1 entries instead of n) ---
     long_pmsgs1 = pmsgs1 + [pmsgs1[0]]  # Add an extra entry
     error = expect_exception(
-        lambda: coordinator_step1(long_pmsgs1, params),
+        lambda: chilldkg.coordinator_step1(long_pmsgs1, params),
         ValueError,
     )
     error_cases.append(
@@ -190,7 +183,7 @@ def generate_coordinator_step1_group(t, n):
     invalid_pmsgs1[1] = invalid_pmsg1_parsed.to_bytes()
 
     error = expect_exception(
-        lambda: coordinator_step1(invalid_pmsgs1, params),
+        lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
         ValueError,
     )
     pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n
@@ -210,7 +203,7 @@ def generate_coordinator_step1_group(t, n):
     pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index n + 1
     invalid_pmsgs1 = [empty_pmsgs1] + pmsgs1[1:]
     error = expect_exception(
-        lambda: coordinator_step1(invalid_pmsgs1, params),
+        lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
         ValueError,
     )
     error_cases.append(
@@ -231,7 +224,7 @@ def generate_coordinator_step1_group(t, n):
     invalid_pmsgs1 = list(pmsgs1)
     invalid_pmsgs1[1] = truncated_pmsg1
     error = expect_exception(
-        lambda: coordinator_step1(invalid_pmsgs1, params),
+        lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
         ValueError,
     )
     error_cases.append(
@@ -293,7 +286,7 @@ def generate_coordinator_finalize_group(t, n):
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
-        state, msg = participant_step1(hostseckeys[i], params, randoms[i])
+        state, msg = chilldkg.participant_step1(hostseckeys[i], params, randoms[i])
         pstates1.append(state)
         pmsgs1.append(msg)
     cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
@@ -301,9 +294,11 @@ def generate_coordinator_finalize_group(t, n):
     # build pmsgs2 pool with valid messages at indices [0, 1, ..., n - 1]
     pmsgs2 = []
     for i in range(len(hostpubkeys)):
-        _, msg = participant_step2(hostseckeys[i], pstates1[i], cmsg1, aux_rand)
+        _, msg = chilldkg.participant_step2(
+            hostseckeys[i], pstates1[i], cmsg1, aux_rand
+        )
         pmsgs2.append(msg)
-    cmsg2, cout, crec = coordinator_finalize(cstate, pmsgs2)
+    cmsg2, cout, crec = chilldkg.coordinator_finalize(cstate, pmsgs2)
     pmsg2_pool = [bytes_to_hex(m) for m in pmsgs2]
 
     valid_cases = []
@@ -328,7 +323,7 @@ def generate_coordinator_finalize_group(t, n):
         :63
     ]  # truncate sig to 63 bytes
     error_case = expect_exception(
-        lambda: coordinator_finalize(cstate, invalid_pmsgs2_short_sig),
+        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_short_sig),
         ValueError,
     )
     pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_short_sig[1]))  # index n
@@ -346,7 +341,7 @@ def generate_coordinator_finalize_group(t, n):
     invalid_pmsgs2_short = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_short.pop()
     error_case = expect_exception(
-        lambda: coordinator_finalize(cstate, invalid_pmsgs2_short), ValueError
+        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_short), ValueError
     )
     error_cases.append(
         {
@@ -359,7 +354,7 @@ def generate_coordinator_finalize_group(t, n):
     # --- Error test case: invalid pmsgs2 (n+1 entries instead of n) ---
     invalid_pmsgs2_long = pmsgs2 + [pmsgs2[0]]
     error_case = expect_exception(
-        lambda: coordinator_finalize(cstate, invalid_pmsgs2_long), ValueError
+        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_long), ValueError
     )
     error_cases.append(
         {
@@ -375,7 +370,7 @@ def generate_coordinator_finalize_group(t, n):
         "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
     )  # random sig
     error_case = expect_faulty_exception(
-        lambda: coordinator_finalize(cstate, invalid_pmsgs2_sig),
+        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_sig),
         chilldkg.FaultyParticipantError,
         1,
     )
@@ -434,7 +429,7 @@ def generate_coordinator_investigate_group(t, n):
     for i in range(len(hostpubkeys)):
         _, msg = chilldkg.participant_step1(hostseckeys[i], params, randoms[i])
         pmsgs1.append(msg)
-    cinv_msgs = coordinator_investigate(pmsgs1, params)
+    cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
 
     # --- Valid test case ---
     valid_cases = [
