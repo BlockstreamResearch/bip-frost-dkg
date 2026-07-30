@@ -14,7 +14,7 @@
         "For each error test case:",
         "  Call coordinator_step1(pmsgs1, params).",
         "  Verify it raises an exception matching expectedError.",
-        "  Error objects may include 'participant' (index of the faulty party)."
+        "  Error objects may include 'participant' (identifier of the faulty party)."
     ],
     "totalTests": 44,
     "testGroups": [
@@ -210,7 +210,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant (index 1) message has an enc_shares list of invalid length"
+                    "comment": "participant (id 1) message has an enc_shares list of invalid length"
                 },
                 {
                     "tcId": 10,
@@ -446,7 +446,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant (index 1) message has an enc_shares list of invalid length"
+                    "comment": "participant (id 1) message has an enc_shares list of invalid length"
                 },
                 {
                     "tcId": 21,
@@ -682,7 +682,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant (index 1) message has an enc_shares list of invalid length"
+                    "comment": "participant (id 1) message has an enc_shares list of invalid length"
                 },
                 {
                     "tcId": 32,
@@ -937,7 +937,7 @@
                     "expectedError": {
                         "type": "ValueError"
                     },
-                    "comment": "participant (index 1) message has an enc_shares list of invalid length"
+                    "comment": "participant (id 1) message has an enc_shares list of invalid length"
                 },
                 {
                     "tcId": 43,

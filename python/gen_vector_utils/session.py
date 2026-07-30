@@ -100,7 +100,7 @@ def generate_params_id_vectors():
         "For each error test case:",
         "  Call params_id(params) and verify it raises an exception matching expectedError.",
         "  The expectedError object contains 'type' (the exception class name).",
-        "  Some errors include 'participant' (index of the offending key)",
+        "  Some errors include 'participant' (identifier of the offending participant)",
         "  or 'participant1'/'participant2' (indices for duplicate keys).",
     ]
     valid_cases = []
@@ -188,7 +188,7 @@ def generate_recover_vectors():
         "",
         "For each valid test case:",
         "  Call recover(hostseckey, recoveryData) and verify the result matches expectedOutput.",
-        "  expectedOutput contains 'dkgOutput' (with secshare, thresholdPubkey, pubshares)",
+        "  expectedOutput contains 'dkgOutput' (with secshare, threshPk, pubshares)",
         "  and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",

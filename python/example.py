@@ -177,7 +177,7 @@ async def coordinator(
 # This is a dummy participant used to demonstrate the investigation procedure.
 # It picks a random victim participant and sends an invalid share to it.
 async def faulty_participant(
-    chan: ParticipantChannel, hostseckey: bytes, params: SessionParams, idx: int
+    chan: ParticipantChannel, hostseckey: bytes, params: SessionParams, id: int
 ):
     n = len(params.hostpubkeys)
     random = random_bytes(32)
@@ -186,21 +186,21 @@ async def faulty_participant(
 
     assert len(pmsg1_parsed.enc_pmsg.enc_shares) == n
     # Pick random victim that is not this participant
-    victim = (idx + randint(1, n - 1)) % n
+    victim = (id + randint(1, n - 1)) % n
     pmsg1_parsed.enc_pmsg.enc_shares[victim] += 17
 
     chan.send(pmsg1_parsed.to_bytes())
 
 
 def simulate_chilldkg_full(
-    hostseckeys: list[bytes], params: SessionParams, faulty_idx: int | None
+    hostseckeys: list[bytes], params: SessionParams, faulty_id: int | None
 ) -> list[tuple[DKGOutput, RecoveryData] | None]:
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 
     # For demonstration purposes, we enable the investigation pro if a participant is
     # faulty.
-    investigation_procedure = faulty_idx is not None
+    investigation_procedure = faulty_id is not None
 
     async def session():
         coord_chans = CoordinatorChannels(n)
@@ -214,7 +214,7 @@ def simulate_chilldkg_full(
             participant(
                 participant_chans[i], hostseckeys[i], params, investigation_procedure
             )
-            if i != faulty_idx
+            if i != faulty_id
             else faulty_participant(participant_chans[i], hostseckeys[i], params, i)
             for i in range(n)
         ]
@@ -241,14 +241,14 @@ def main():
     t = args.t
     n = args.n
     if args.faulty_participant:
-        faulty_idx = randint(0, n - 1)
+        faulty_id = randint(0, n - 1)
     else:
-        faulty_idx = None
+        faulty_id = None
 
     print("====== ChillDKG example session ======")
     print(f"Using n = {n} participants and a threshold of t = {t}.")
-    if faulty_idx is not None:
-        print(f"Participant {faulty_idx} is faulty.")
+    if faulty_id is not None:
+        print(f"Participant {faulty_id} is faulty.")
     print()
 
     # Generate common inputs for all participants and coordinator
@@ -269,14 +269,14 @@ def main():
     print()
 
     try:
-        rets = simulate_chilldkg_full(hostseckeys, params, faulty_idx)
+        rets = simulate_chilldkg_full(hostseckeys, params, faulty_id)
     except FaultyParticipantOrCoordinatorError as e:
         print(
             f"A participant has failed and is blaming either participant {e.participant} or the coordinator."
         )
         # If the blamed participant is the faulty participant, exit with code 0.
         # Otherwise, re-raise the exception.
-        if faulty_idx == e.participant:
+        if faulty_id == e.participant:
             return 0
         else:
             raise

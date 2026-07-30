@@ -295,7 +295,7 @@ Our variant of the SimplPedPop protocol then works as follows:
 
     Then, participant `i` sets the DKG output consisting of
     this participant's secret share `secshare_tweaked`,
-    the threshold public key `threshold_pubkey = sum_coms_tweaked[0]`, and
+    the threshold public key `thresh_pk = sum_coms_tweaked[0]`, and
     all participants' public shares `pubshares`.
 
     As a final step, participant `i` enters a session of an external equality check protocol
@@ -327,7 +327,7 @@ This will enable every pair of sending participant `i` and recipient participant
 to perform an ECDH key exchange between the ephemeral encryption nonce pair of participant `i` and the static encryption key pair of participant `j`
 in order to establish a shared secret pad `pad_ij` only known to participants `i` and `j`.
 The derivation of `pad_ij` from the raw ECDH output uses a tagged hash and includes
-additional context, namely the index `j` of the recipient, the threshold `t`, and the static encryption keys of all `n` participants.[^mr-kem]
+additional context, namely the identifier `j` of the recipient, the threshold `t`, and the static encryption keys of all `n` participants.[^mr-kem]
 
 [^mr-kem]: This implements a multi-recipient multi-key key encapsulation mechanism (MR-MK-KEM) secure under the static Diffie-Hellman assumption [[Theorem 2, PPS14](https://doi.org/10.1145/2590296.2590329)].
 
@@ -493,7 +493,7 @@ If there is no dedicated coordinator, one of the participants can act as the coo
 Each participant holds a long-term *host key pair* consisting of a *host public key* and a *host secret key*.
 The `n` participants in a DKG session are represented by an ordered list of their host public keys.
 The list must not contain duplicate entries,
-and thus the list assigns each participant a unique index in the range of `0` to `n - 1` according to the position of their host public key in the list.
+and thus the list assigns each participant a unique identifier in the range of `0` to `n - 1` according to the position of their host public key in the list.
 
 The list of host public keys and the signing threshold `t` together
 form the public *session parameters*, the common input to all participants and the coordinator.
@@ -521,10 +521,10 @@ but even an attacker in full control of communication links will not be able to 
 
 If a ChillDKG session returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
-In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).[^index-position-mapping]
+In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).[^id-position-mapping]
 See [BIP 445](bip-0445.md) for details on signing.
 
-[^index-position-mapping]: The secret sharing is as expected by [BIP 445](bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t - 1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant `i` has secret share `f(i + 1)`.
+[^id-position-mapping]: The secret sharing is as expected by [BIP 445](bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t - 1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant with identifier `i` has secret share `f(i + 1)`.
 
 Moreover, all parties obtain *recovery data* (common to all participants and the coordinator), whose purpose is detailed in the next subsection.
 
@@ -843,8 +843,8 @@ negligible probability if keys are generated honestly).
 
 *Attributes*:
 
-- `participant1` _int_ - Index of the first participant.
-- `participant2` _int_ - Index of the second participant.
+- `participant1` _int_ - Identifier of the first participant.
+- `participant2` _int_ - Identifier of the second participant.
 
 #### InvalidHostPubkeyError Exception
 
@@ -861,7 +861,7 @@ implies that the corresponding participant is faulty.
 
 *Attributes*:
 
-- `participant` _int_ - Index of the participant.
+- `participant` _int_ - Identifier of the participant.
 
 #### ThresholdOrCountError Exception
 
@@ -876,7 +876,7 @@ Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
 ```python
 class DKGOutput(NamedTuple):
     secshare: bytes | None
-    threshold_pubkey: bytes
+    thresh_pk: bytes
     pubshares: list[bytes]
 ```
 
@@ -884,9 +884,12 @@ Holds the outputs of a DKG session.
 
 *Attributes*:
 
-- `secshare` - Secret share of the participant (or `None` for coordinator)
-- `threshold_pubkey` - Generated threshold public key representing the group
-- `pubshares` - Public shares of the participants
+- `secshare` - Secret share of the participant (32 bytes, or `None` for
+  coordinator).
+- `thresh_pk` - Generated threshold public key representing the group
+  (33 bytes, in compressed serialization).
+- `pubshares` - Public shares of the participants (33 bytes each, in
+  compressed serialization).
 
 #### participant\_step1
 
@@ -1328,7 +1331,7 @@ Raised if a recovery acknowledgment signature is invalid.
 
 *Attributes*:
 
-- `participant` _int_ - Index of the participant whose signature is invalid.
+- `participant` _int_ - Identifier of the participant whose signature is invalid.
 
 #### ProtocolError Exception
 
@@ -1348,7 +1351,7 @@ Raised if a participant is faulty.
 
 This exception is raised by the coordinator code when it detects faulty
 behavior by a participant, i.e., a participant has deviated from the
-protocol. The index of the participant is provided as part of the exception.
+protocol. The identifier of the participant is provided as part of the exception.
 Assuming protocol messages have been transmitted correctly and the
 coordinator itself is not faulty, this exception implies that the
 participant is indeed faulty.
@@ -1359,7 +1362,7 @@ See `FaultyParticipantOrCoordinatorError` for details.
 
 *Attributes*:
 
-- `participant` _int_ - Index of the faulty participant.
+- `participant` _int_ - Identifier of the faulty participant.
 
 #### FaultyParticipantOrCoordinatorError Exception
 
@@ -1370,7 +1373,7 @@ class FaultyParticipantOrCoordinatorError(ProtocolError)
 Raised if another known participant or the coordinator is faulty.
 
 This exception is raised by the participant code when it detects what looks
-like faulty behavior by a suspected participant. The index of the suspected
+like faulty behavior by a suspected participant. The identifier of the suspected
 participant is provided as part of the exception.
 
 Importantly, this exception is not proof that the suspected participant is
@@ -1389,7 +1392,7 @@ by participants will be detected by the coordinator instead. See
 
 *Attributes*:
 
-- `participant` _int_ - Index of the suspected participant.
+- `participant` _int_ - Identifier of the suspected participant.
 
 #### FaultyCoordinatorError Exception
 

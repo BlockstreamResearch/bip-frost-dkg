@@ -78,18 +78,18 @@ __all__ = [
 ###
 
 
-def certeq_message(x: bytes, idx: int) -> bytes:
+def certeq_message(x: bytes, id: int) -> bytes:
     # Domain separation as described in BIP 340
     prefix = (BIP_TAG + "certeq message").encode()
     prefix = prefix + b"\x00" * (33 - len(prefix))
     assert len(prefix) == 33
-    return prefix + idx.to_bytes(4, "big") + x
+    return prefix + id.to_bytes(4, "big") + x
 
 
 def certeq_participant_step(
-    hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes
+    hostseckey: bytes, id: int, x: bytes, aux_rand: bytes
 ) -> bytes:
-    msg = certeq_message(x, idx)
+    msg = certeq_message(x, id)
     return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
@@ -107,7 +107,7 @@ def certeq_verify(hostpubkeys: list[bytes], x: bytes, cert: bytes) -> None:
             msg,
             # Dropping the sign byte from hostpubkeys[i] is okay because msg
             # commits on the full hostpubkeys[i]: it encodes all hostpubkeys
-            # together with the index i.
+            # together with the id i.
             hostpubkeys[i][1:33],
             cert[i * 64 : (i + 1) * 64],
         )
@@ -131,16 +131,16 @@ class InvalidSignatureInCertificateError(ValueError):
 ###
 
 
-def recovery_ack_message(x: bytes, idx: int) -> bytes:
+def recovery_ack_message(x: bytes, id: int) -> bytes:
     # Domain separation as described in BIP 340
     prefix = (BIP_TAG + "recovery acknowledgment").encode()
     prefix = prefix + b"\x00" * (33 - len(prefix))
     assert len(prefix) == 33
-    return prefix + idx.to_bytes(4, "big") + x
+    return prefix + id.to_bytes(4, "big") + x
 
 
-def recovery_ack_sign(hostseckey: bytes, idx: int, x: bytes, aux_rand: bytes) -> bytes:
-    msg = recovery_ack_message(x, idx)
+def recovery_ack_sign(hostseckey: bytes, id: int, x: bytes, aux_rand: bytes) -> bytes:
+    msg = recovery_ack_message(x, id)
     return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
@@ -252,11 +252,11 @@ def params_validate(params: SessionParams) -> None:
             raise InvalidHostPubkeyError(i) from e
 
     # Check for duplicate hostpubkeys and find the corresponding indices
-    hostpubkey_to_idx: dict[bytes, int] = {}
+    hostpubkey_to_id: dict[bytes, int] = {}
     for i, hostpubkey in enumerate(hostpubkeys):
-        if hostpubkey in hostpubkey_to_idx:
-            raise DuplicateHostPubkeyError(hostpubkey_to_idx[hostpubkey], i)
-        hostpubkey_to_idx[hostpubkey] = i
+        if hostpubkey in hostpubkey_to_id:
+            raise DuplicateHostPubkeyError(hostpubkey_to_id[hostpubkey], i)
+        hostpubkey_to_id[hostpubkey] = i
 
 
 def params_id(params: SessionParams) -> bytes:
@@ -309,8 +309,8 @@ class DuplicateHostPubkeyError(SessionParamsError):
     negligible probability if keys are generated honestly).
 
     Attributes:
-        participant1 (int): Index of the first participant.
-        participant2 (int): Index of the second participant.
+        participant1 (int): Identifier of the first participant.
+        participant2 (int): Identifier of the second participant.
     """
 
     def __init__(self, participant1: int, participant2: int, *args: Any):
@@ -328,7 +328,7 @@ class InvalidHostPubkeyError(SessionParamsError):
     implies that the corresponding participant is faulty.
 
     Attributes:
-        participant (int): Index of the participant.
+        participant (int): Identifier of the participant.
     """
 
     def __init__(self, participant: int, *args: Any):
@@ -346,13 +346,16 @@ class DKGOutput(NamedTuple):
     """Holds the outputs of a DKG session.
 
     Attributes:
-        secshare: Secret share of the participant (or `None` for coordinator)
-        threshold_pubkey: Generated threshold public key representing the group
-        pubshares: Public shares of the participants
+        secshare: Secret share of the participant (32 bytes, or `None` for
+            coordinator).
+        thresh_pk: Generated threshold public key representing the group
+            (33 bytes, in compressed serialization).
+        pubshares: Public shares of the participants (33 bytes each, in
+            compressed serialization).
     """
 
     secshare: bytes | None
-    threshold_pubkey: bytes
+    thresh_pk: bytes
     pubshares: list[bytes]
 
 
@@ -545,7 +548,7 @@ def deserialize_recovery_data(
 
 class ParticipantState1(NamedTuple):
     params: SessionParams
-    idx: int
+    id: int
     enc_state: encpedpop.ParticipantState
 
 
@@ -590,7 +593,7 @@ def participant_step1(
     (hostpubkeys, t) = params
 
     try:
-        idx = hostpubkeys.index(hostpubkey)
+        id = hostpubkeys.index(hostpubkey)
     except ValueError as e:
         raise HostSeckeyError(
             "Host secret key does not match any host public key"
@@ -609,11 +612,11 @@ def participant_step1(
         t=t,
         # This requires the joint security of Schnorr signatures and ECDH.
         enckeys=hostpubkeys,
-        idx=idx,
+        id=id,
         random=random,
     )
 
-    state1 = ParticipantState1(params, idx, enc_state)
+    state1 = ParticipantState1(params, id, enc_state)
     pmsg1 = enc_pmsg
     return state1, pmsg1
 
@@ -678,8 +681,8 @@ def participant_step2(
     if len(aux_rand) != 32:
         raise ValueError
 
-    params, idx, enc_state = state1
-    if hostpubkey != params.hostpubkeys[idx]:
+    params, id, enc_state = state1
+    if hostpubkey != params.hostpubkeys[id]:
         raise HostSeckeyError(
             "Host secret key does not match the one used in participant_step1"
         )
@@ -694,7 +697,7 @@ def participant_step2(
         state=enc_state,
         deckey=hostseckey,
         cmsg=enc_cmsg.to_bytes(),
-        enc_secshare=enc_secshares[idx],
+        enc_secshare=enc_secshares[id],
     )
 
     # Include the enc_shares in eq_input to ensure that participants agree on
@@ -702,7 +705,7 @@ def participant_step2(
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)
     state2 = ParticipantState2(params, eq_input, dkg_output)
-    sig = certeq_participant_step(hostseckey, idx, eq_input, aux_rand)
+    sig = certeq_participant_step(hostseckey, id, eq_input, aux_rand)
     pmsg2 = ParticipantMsg2(sig).to_bytes()
     return state2, pmsg2
 
@@ -859,11 +862,11 @@ def coordinator_step1(
         raise ValueError
 
     pmsgs1_parsed = []
-    for idx, pmsg1 in enumerate(pmsgs1):
+    for id, pmsg1 in enumerate(pmsgs1):
         try:
             parsed = ParticipantMsg1.from_bytes(pmsg1, t=t, n=len(hostpubkeys))
         except MsgParseError as e:
-            raise FaultyParticipantError(idx, *e.args) from e
+            raise FaultyParticipantError(id, *e.args) from e
         pmsgs1_parsed.append(parsed)
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
@@ -963,11 +966,11 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
     n = len(pmsgs)
     t = params.t
     pmsgs_parsed = []
-    for idx, pmsg in enumerate(pmsgs):
+    for id, pmsg in enumerate(pmsgs):
         try:
             parsed = ParticipantMsg1.from_bytes(pmsg, t=t, n=n)
         except MsgParseError as e:
-            raise FaultyParticipantError(idx, *e.args) from e
+            raise FaultyParticipantError(id, *e.args) from e
         pmsgs_parsed.append(parsed)
     enc_cinvs = encpedpop.coordinator_investigate(
         [pmsg.enc_pmsg.to_bytes() for pmsg in pmsgs_parsed], t
@@ -1031,13 +1034,13 @@ def recover(
 
     # Compute threshold pubkey and individual pubshares
     sum_coms, tweak, _ = sum_coms.invalid_taproot_commit()
-    threshold_pubkey = sum_coms.commitment_to_secret()
+    thresh_pk = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
     if hostseckey:
         hostpubkey = hostpubkey_gen(hostseckey)  # ValueError or HostSeckeyError
         try:
-            idx = hostpubkeys.index(hostpubkey)
+            id = hostpubkeys.index(hostpubkey)
         except ValueError as e:
             raise HostSeckeyError(
                 "Host secret key does not match any host public key in the recovery data"
@@ -1047,23 +1050,23 @@ def recover(
         enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
         secshare = encpedpop.decrypt_sum(
             hostseckey,
-            hostpubkeys[idx],
+            hostpubkeys[id],
             pubnonces,
             enc_context,
-            idx,
-            enc_secshares[idx],
+            id,
+            enc_secshares[id],
         )
         secshare_tweaked = secshare + tweak
 
         # This is just a sanity check. Our signature is valid, so we have done
         # an equivalent check already during the actual session.
-        assert VSSCommitment.verify_secshare(secshare_tweaked, pubshares[idx])
+        assert VSSCommitment.verify_secshare(secshare_tweaked, pubshares[id])
     else:
         secshare_tweaked = None
 
     dkg_output = DKGOutput(
         None if secshare_tweaked is None else secshare_tweaked.to_bytes(),
-        threshold_pubkey.to_bytes_compressed(),
+        thresh_pk.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
     return dkg_output, params
@@ -1118,7 +1121,7 @@ def participant_recovery_ack_sign(
     (hostpubkeys, t) = params
 
     try:
-        idx = hostpubkeys.index(hostpubkey)
+        id = hostpubkeys.index(hostpubkey)
     except ValueError as e:
         raise HostSeckeyError(
             "Host secret key does not match any host public key"
@@ -1136,7 +1139,7 @@ def participant_recovery_ack_sign(
             "Recovery data does not match the provided session parameters"
         )
 
-    sig = recovery_ack_sign(hostseckey, idx, recovery_data, aux_rand)
+    sig = recovery_ack_sign(hostseckey, id, recovery_data, aux_rand)
     rmsg = RecoveryAckMsg(sig).to_bytes()
     return rmsg
 
@@ -1192,7 +1195,7 @@ def participant_recovery_acks_verify(
             msg,
             # Dropping the sign byte from hostpubkeys[i] is okay because msg
             # commits on the full hostpubkeys[i]: it encodes all hostpubkeys
-            # together with the index i.
+            # together with the id i.
             hostpubkeys[i][1:33],
             rmsg.sig,
         )
@@ -1204,7 +1207,7 @@ class InvalidRecoveryAckError(FaultyParticipantError):
     """Raised if a recovery acknowledgment signature is invalid.
 
     Attributes:
-        participant (int): Index of the participant whose signature is invalid.
+        participant (int): Identifier of the participant whose signature is invalid.
     """
 
     def __init__(self, participant: int, *args: Any):

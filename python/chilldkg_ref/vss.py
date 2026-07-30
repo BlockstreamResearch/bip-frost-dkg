@@ -127,18 +127,18 @@ class VSS:
         return VSS(Polynomial(coeffs))
 
     def secshare_for(self, i: int) -> Scalar:
-        # Return the secret share for the participant with index i.
+        # Return the secret share for the participant with id i.
         #
         # This computes f(i+1).
         if i < 0:
-            raise ValueError(f"Invalid participant index: {i}")
+            raise ValueError(f"Invalid participant id: {i}")
         x = Scalar(i + 1)
         # Ensure we don't compute f(0), which is the secret.
         assert x != Scalar(0)
         return self.f(x)
 
     def secshares(self, n: int) -> list[Scalar]:
-        # Return the secret shares for the participants with indices 0..n-1.
+        # Return the secret shares for the participants with ids 0..n-1.
         #
         # This computes [f(1), ..., f(n)].
         return [self.secshare_for(i) for i in range(n)]
