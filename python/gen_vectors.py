@@ -6,24 +6,24 @@ Outputs are saved in the "python/vectors/" directory.
 """
 
 from pathlib import Path
+
 from gen_vector_utils import util
+from gen_vector_utils.coordinator import (
+    generate_coordinator_finalize_vectors,
+    generate_coordinator_investigate_vectors,
+    generate_coordinator_step1_vectors,
+)
+from gen_vector_utils.participant import (
+    generate_participant_finalize_vectors,
+    generate_participant_investigate_vectors,
+    generate_participant_step1_vectors,
+    generate_participant_step2_vectors,
+)
 from gen_vector_utils.session import (
     generate_hostpubkey_vectors,
     generate_params_id_vectors,
     generate_recover_vectors,
 )
-from gen_vector_utils.participant import (
-    generate_participant_step1_vectors,
-    generate_participant_step2_vectors,
-    generate_participant_finalize_vectors,
-    generate_participant_investigate_vectors,
-)
-from gen_vector_utils.coordinator import (
-    generate_coordinator_step1_vectors,
-    generate_coordinator_finalize_vectors,
-    generate_coordinator_investigate_vectors,
-)
-
 
 output_dir = Path(__file__).parent / "vectors"
 output_dir.mkdir(parents=True, exist_ok=True)

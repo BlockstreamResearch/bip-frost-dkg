@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Tuple, List, NamedTuple, NoReturn
+from typing import NamedTuple, NoReturn
 
-from secp256k1lab.secp256k1 import Scalar, GE
 from secp256k1lab.ecdh import ecdh_libsecp256k1
 from secp256k1lab.keys import pubkey_gen_plain
+from secp256k1lab.secp256k1 import GE, Scalar
 
 from . import simplpedpop
 from .util import (
-    UnknownFaultyParticipantOrCoordinatorError,
-    tagged_hash_bip_dkg,
     FaultyCoordinatorError,
     FaultyParticipantError,
+    FaultyParticipantOrCoordinatorError,
     MsgParseError,
+    UnknownFaultyParticipantOrCoordinatorError,
+    tagged_hash_bip_dkg,
 )
-
 
 ###
 ### Encryption
@@ -49,10 +49,10 @@ def encaps_multi(
     secnonce: bytes,
     pubnonce: bytes,
     deckey: bytes,
-    enckeys: List[bytes],
+    enckeys: list[bytes],
     context: bytes,
-    idx: int,
-) -> List[Scalar]:
+    id: int,
+) -> list[Scalar]:
     # This is effectively the "Hashed ElGamal" multi-recipient KEM described in
     # Section 5 of "Multi-recipient encryption, revisited" by Alexandre Pinto,
     # Bertram Poettering, Jacob C. N. Schuldt (AsiaCCS 2014). Its crucial
@@ -62,7 +62,7 @@ def encaps_multi(
     pads = []
     for i, enckey in enumerate(enckeys):
         context_ = i.to_bytes(4, byteorder="big") + context
-        if i == idx:
+        if i == id:
             # We're encrypting to ourselves, so we use a symmetrically derived
             # pad to save the ECDH computation.
             pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
@@ -82,12 +82,12 @@ def encrypt_multi(
     secnonce: bytes,
     pubnonce: bytes,
     deckey: bytes,
-    enckeys: List[bytes],
+    enckeys: list[bytes],
     context: bytes,
-    idx: int,
-    plaintexts: List[Scalar],
-) -> List[Scalar]:
-    pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, idx)
+    id: int,
+    plaintexts: list[Scalar],
+) -> list[Scalar]:
+    pads = encaps_multi(secnonce, pubnonce, deckey, enckeys, context, id)
     if len(plaintexts) != len(pads):
         raise ValueError
     ciphertexts = [plaintext + pad for plaintext, pad in zip(plaintexts, pads)]
@@ -97,23 +97,30 @@ def encrypt_multi(
 def decaps_multi(
     deckey: bytes,
     enckey: bytes,
-    pubnonces: List[bytes],
+    pubnonces: list[bytes],
     context: bytes,
-    idx: int,
-) -> List[Scalar]:
-    context_ = idx.to_bytes(4, byteorder="big") + context
+    id: int,
+) -> list[Scalar]:
+    context_ = id.to_bytes(4, byteorder="big") + context
     pads = []
-    for sender_idx, pubnonce in enumerate(pubnonces):
-        if sender_idx == idx:
+    for sender_id, pubnonce in enumerate(pubnonces):
+        if sender_id == id:
             pad = self_pad(symkey=deckey, nonce=pubnonce, context=context_)
         else:
-            pad = ecdh(
-                seckey=deckey,
-                my_pubkey=enckey,
-                their_pubkey=pubnonce,
-                context=context_,
-                sending=False,
-            )
+            try:
+                pad = ecdh(
+                    seckey=deckey,
+                    my_pubkey=enckey,
+                    their_pubkey=pubnonce,
+                    context=context_,
+                    sending=False,
+                )
+            except ValueError as e:
+                # Since deckey and enckey are well-formed, the error must have been
+                # triggered by an invalid pubnonce.
+                raise FaultyParticipantOrCoordinatorError(
+                    sender_id, "invalid public nonce"
+                ) from e
         pads.append(pad)
     return pads
 
@@ -121,14 +128,14 @@ def decaps_multi(
 def decrypt_sum(
     deckey: bytes,
     enckey: bytes,
-    pubnonces: List[bytes],
+    pubnonces: list[bytes],
     context: bytes,
-    idx: int,
+    id: int,
     sum_ciphertexts: Scalar,
 ) -> Scalar:
-    if idx >= len(pubnonces):
+    if id >= len(pubnonces):
         raise IndexError
-    pads = decaps_multi(deckey, enckey, pubnonces, context, idx)
+    pads = decaps_multi(deckey, enckey, pubnonces, context, id)
     sum_plaintexts: Scalar = sum_ciphertexts - Scalar.sum(*pads)
     return sum_plaintexts
 
@@ -141,7 +148,37 @@ def decrypt_sum(
 class ParticipantMsg(NamedTuple):
     simpl_pmsg: simplpedpop.ParticipantMsg
     pubnonce: bytes
-    enc_shares: List[Scalar]
+    enc_shares: list[Scalar]
+
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return simplpedpop.ParticipantMsg.len_bytes(t=t) + 33 + 32 * n
+
+    @staticmethod
+    def from_bytes(b: bytes, *, t: int, n: int) -> ParticipantMsg:
+        if len(b) != ParticipantMsg.len_bytes(t=t, n=n):
+            raise ValueError
+
+        # Read simpl_pmsg
+        simpl_pmsg_len = simplpedpop.ParticipantMsg.len_bytes(t=t)
+        simpl_pmsg, rest = (
+            simplpedpop.ParticipantMsg.from_bytes(b[:simpl_pmsg_len], t=t),
+            b[simpl_pmsg_len:],
+        )  # MsgParseError if invalid
+
+        # Read pubnonce (33 bytes)
+        pubnonce, rest = rest[:33], rest[33:]
+
+        # Read enc_secshares (32*n bytes)
+        try:
+            enc_secshares = [
+                Scalar.from_bytes_checked(rest[i : i + 32])  # ValueError if overflow
+                for i in range(0, 32 * n, 32)
+            ]
+        except ValueError as e:
+            raise MsgParseError("invalid encrypted secret share") from e
+
+        return ParticipantMsg(simpl_pmsg, pubnonce, enc_secshares)
 
     def to_bytes(self) -> bytes:
         return (
@@ -150,84 +187,71 @@ class ParticipantMsg(NamedTuple):
             + b"".join(share.to_bytes() for share in self.enc_shares)
         )
 
-    @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> ParticipantMsg:
-        rest = b
-
-        # Read simpl_pmsg
-        simpl_pmsg_len = 33 * t + 64
-        if len(rest) < simpl_pmsg_len:
-            raise MsgParseError("missing simplpedpop participant message")
-        simpl_pmsg, rest = (
-            simplpedpop.ParticipantMsg.from_bytes(
-                rest[:simpl_pmsg_len], t
-            ),  # MsgParseError if invalid
-            rest[simpl_pmsg_len:],
-        )
-
-        # Read pubnonce (33 bytes)
-        if len(rest) < 33:
-            raise MsgParseError("missing public nonce")
-        pubnonce, rest = rest[:33], rest[33:]
-
-        # Read enc_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted secret shares")
-        try:
-            enc_secshares, rest = (
-                [
-                    Scalar.from_bytes_checked(
-                        rest[i : i + 32]
-                    )  # ValueError if overflow
-                    for i in range(0, 32 * n, 32)
-                ],
-                rest[32 * n :],
-            )
-        except ValueError as e:
-            raise MsgParseError("invalid encrypted secret share") from e
-
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
-        return ParticipantMsg(simpl_pmsg, pubnonce, enc_secshares)
-
 
 class CoordinatorMsg(NamedTuple):
     simpl_cmsg: simplpedpop.CoordinatorMsg
-    pubnonces: List[bytes]
+    pubnonces: list[bytes]
+
+    @staticmethod
+    def len_bytes(*, t: int, n: int) -> int:
+        return simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n) + 33 * n
+
+    @staticmethod
+    def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg:
+        if len(b) != CoordinatorMsg.len_bytes(t=t, n=n):
+            raise ValueError
+
+        # Read simpl_cmsg
+        simpl_cmsg_len = simplpedpop.CoordinatorMsg.len_bytes(t=t, n=n)
+        simpl_cmsg, rest = (
+            simplpedpop.CoordinatorMsg.from_bytes(b[:simpl_cmsg_len], t=t, n=n),
+            b[simpl_cmsg_len:],
+        )  # MsgParseError if invalid
+
+        # Read pubnonces (33*n bytes)
+        pubnonces = [rest[i : i + 33] for i in range(0, 33 * n, 33)]
+
+        return CoordinatorMsg(simpl_cmsg, pubnonces)
 
     def to_bytes(self) -> bytes:
         return self.simpl_cmsg.to_bytes() + b"".join(self.pubnonces)
 
-    @staticmethod
-    def from_bytes(b: bytes, t: int, n: int) -> CoordinatorMsg:
-        rest = b
-
-        # Read simpl_cmsg
-        simpl_cmsg_len = 33 * n + 33 * (t - 1) + 64 * n
-        if len(rest) < simpl_cmsg_len:
-            raise MsgParseError("missing simplpedpop coordinator message")
-        simpl_cmsg, rest = (
-            simplpedpop.CoordinatorMsg.from_bytes(
-                rest[:simpl_cmsg_len], t, n
-            ),  # MsgParseError if invalid
-            rest[simpl_cmsg_len:],
-        )
-        # Read pubnonces (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing public nonces")
-        pubnonces, rest = (
-            [rest[i : i + 33] for i in range(0, 33 * n, 33)],
-            rest[33 * n :],
-        )
-
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
-        return CoordinatorMsg(simpl_cmsg, pubnonces)
-
 
 class CoordinatorInvestigationMsg(NamedTuple):
-    enc_partial_secshares: List[Scalar]
-    partial_pubshares: List[GE]
+    enc_partial_secshares: list[Scalar]
+    partial_pubshares: list[GE]
+
+    @staticmethod
+    def len_bytes(*, n: int) -> int:
+        return simplpedpop.CoordinatorInvestigationMsg.len_bytes(n=n) + 32 * n
+
+    @staticmethod
+    def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
+        if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
+            raise ValueError
+
+        # Read enc_partial_secshares (32*n bytes)
+        try:
+            enc_partial_secshares, rest = (
+                [
+                    Scalar.from_bytes_checked(b[i : i + 32])
+                    for i in range(0, 32 * n, 32)
+                ],  # ValueError if overflow
+                b[32 * n :],
+            )
+        except ValueError as e:
+            raise MsgParseError("invalid encrypted partial secshare") from e
+
+        # Read partial_pubshares (33*n bytes)
+        try:
+            partial_pubshares = [
+                GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
+                for i in range(0, 33 * n, 33)
+            ]
+        except ValueError as e:
+            raise MsgParseError("invalid partial pubshare") from e
+
+        return CoordinatorInvestigationMsg(enc_partial_secshares, partial_pubshares)
 
     def to_bytes(self) -> bytes:
         secshares_bytes = b"".join(
@@ -238,42 +262,6 @@ class CoordinatorInvestigationMsg(NamedTuple):
         )
         return secshares_bytes + pubshares_bytes
 
-    @staticmethod
-    def from_bytes(b: bytes, n: int) -> CoordinatorInvestigationMsg:
-        rest = b
-
-        # Read enc_partial_secshares (32*n bytes)
-        if len(rest) < 32 * n:
-            raise MsgParseError("missing encrypted partial secshares")
-        try:
-            enc_partial_secshares, rest = (
-                [
-                    Scalar.from_bytes_checked(rest[i : i + 32])
-                    for i in range(0, 32 * n, 32)
-                ],  # ValueError if overflow
-                rest[32 * n :],
-            )
-        except ValueError as e:
-            raise MsgParseError("invalid encrypted partial secshare") from e
-
-        # Read partial_pubshares (33*n bytes)
-        if len(rest) < 33 * n:
-            raise MsgParseError("missing partial pubshares")
-        try:
-            partial_pubshares, rest = (
-                [
-                    GE.from_bytes_compressed_with_infinity(rest[i : i + 33])
-                    for i in range(0, 33 * n, 33)
-                ],
-                rest[33 * n :],
-            )
-        except ValueError as e:
-            raise MsgParseError("invalid partial pubshare") from e
-
-        if len(rest) != 0:
-            raise MsgParseError("incorrect input bytes length")
-        return CoordinatorInvestigationMsg(enc_partial_secshares, partial_pubshares)
-
 
 ###
 ### Participant
@@ -283,28 +271,28 @@ class CoordinatorInvestigationMsg(NamedTuple):
 class ParticipantState(NamedTuple):
     simpl_state: simplpedpop.ParticipantState
     pubnonce: bytes
-    enckeys: List[bytes]
-    idx: int
+    enckeys: list[bytes]
+    id: int
 
 
 class ParticipantInvestigationData(NamedTuple):
     simpl_bstate: simplpedpop.ParticipantInvestigationData
     enc_secshare: Scalar
-    pads: List[Scalar]
+    pads: list[Scalar]
 
 
-def serialize_enc_context(t: int, enckeys: List[bytes]) -> bytes:
+def serialize_enc_context(t: int, enckeys: list[bytes]) -> bytes:
     return t.to_bytes(4, byteorder="big") + b"".join(enckeys)
 
 
 def participant_step1(
     seed: bytes,
     deckey: bytes,
-    enckeys: List[bytes],
+    enckeys: list[bytes],
     t: int,
-    idx: int,
+    id: int,
     random: bytes,
-) -> Tuple[ParticipantState, bytes]:
+) -> tuple[ParticipantState, bytes]:
     if t >= 2 ** (4 * 8):
         raise ValueError
     if len(random) != 32:
@@ -326,17 +314,17 @@ def participant_step1(
     pubnonce = pubkey_gen_plain(secnonce)
 
     simpl_state, simpl_pmsg, shares = simplpedpop.participant_step1(
-        simpl_seed, t, n, idx, simpl_aux_rand
+        simpl_seed, t, n, id, simpl_aux_rand
     )
     assert len(shares) == n
 
     enc_shares = encrypt_multi(
-        secnonce, pubnonce, deckey, enckeys, enc_context, idx, shares
+        secnonce, pubnonce, deckey, enckeys, enc_context, id, shares
     )
-    simpl_pmsg_parsed = simplpedpop.ParticipantMsg.from_bytes(simpl_pmsg, t)
+    simpl_pmsg_parsed = simplpedpop.ParticipantMsg.from_bytes(simpl_pmsg, t=t)
 
     pmsg = ParticipantMsg(simpl_pmsg_parsed, pubnonce, enc_shares).to_bytes()
-    state = ParticipantState(simpl_state, pubnonce, enckeys, idx)
+    state = ParticipantState(simpl_state, pubnonce, enckeys, id)
     return state, pmsg
 
 
@@ -345,20 +333,20 @@ def participant_step2(
     deckey: bytes,
     cmsg: bytes,
     enc_secshare: Scalar,
-) -> Tuple[simplpedpop.DKGOutput, bytes]:
-    simpl_state, pubnonce, enckeys, idx = state
+) -> tuple[simplpedpop.DKGOutput, bytes]:
+    simpl_state, pubnonce, enckeys, id = state
     try:
-        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, simpl_state.t, len(enckeys))
+        cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=simpl_state.t, n=len(enckeys))
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     simpl_cmsg, pubnonces = cmsg_parsed
 
-    reported_pubnonce = pubnonces[idx]
+    reported_pubnonce = pubnonces[id]
     if reported_pubnonce != pubnonce:
         raise FaultyCoordinatorError("Coordinator replied with wrong pubnonce")
 
     enc_context = serialize_enc_context(simpl_state.t, enckeys)
-    pads = decaps_multi(deckey, enckeys[idx], pubnonces, enc_context, idx)
+    pads = decaps_multi(deckey, enckeys[id], pubnonces, enc_context, id)
     secshare = enc_secshare - Scalar.sum(*pads)
 
     try:
@@ -382,7 +370,7 @@ def participant_investigate(
 ) -> NoReturn:
     simpl_inv_data, enc_secshare, pads = error.inv_data
     try:
-        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, simpl_inv_data.n)
+        cinv_parsed = CoordinatorInvestigationMsg.from_bytes(cinv, n=simpl_inv_data.n)
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     enc_partial_secshares, partial_pubshares = cinv_parsed
@@ -402,7 +390,7 @@ def participant_investigate(
         # The secshare is not equal to the sum of the partial secshares in the
         # investigation message. Since the encryption is additively homomorphic,
         # this can only happen if the sum of the *encrypted* secshare is not
-        # equal to the sum of the encrypted partial sechares, which is the
+        # equal to the sum of the encrypted partial secshares, which is the
         # coordinator's fault.
         assert Scalar.sum(*enc_partial_secshares) != enc_secshare
         raise FaultyCoordinatorError(
@@ -416,10 +404,10 @@ def participant_investigate(
 
 
 def coordinator_step(
-    pmsgs: List[bytes],
+    pmsgs: list[bytes],
     t: int,
-    enckeys: List[bytes],
-) -> Tuple[bytes, simplpedpop.DKGOutput, bytes, List[Scalar]]:
+    enckeys: list[bytes],
+) -> tuple[bytes, simplpedpop.DKGOutput, bytes, list[Scalar]]:
     n = len(enckeys)
     if n != len(pmsgs):
         raise ValueError
@@ -427,14 +415,14 @@ def coordinator_step(
     pmsgs_parsed = []
     for i, pmsg in enumerate(pmsgs):
         try:
-            parsed = ParticipantMsg.from_bytes(pmsg, t, n)
+            parsed = ParticipantMsg.from_bytes(pmsg, t=t, n=n)
         except MsgParseError as e:
             raise FaultyParticipantError(i, *e.args) from e
         pmsgs_parsed.append(parsed)
     simpl_cmsg, dkg_output, eq_input = simplpedpop.coordinator_step(
         pmsgs=[pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed], t=t, n=n
     )
-    simpl_cmsg_parsed = simplpedpop.CoordinatorMsg.from_bytes(simpl_cmsg, t, n)
+    simpl_cmsg_parsed = simplpedpop.CoordinatorMsg.from_bytes(simpl_cmsg, t=t, n=n)
     pubnonces = [pmsg.pubnonce for pmsg in pmsgs_parsed]
     enc_secshares = [
         Scalar.sum(*([pmsg.enc_shares[i] for pmsg in pmsgs_parsed])) for i in range(n)
@@ -458,9 +446,9 @@ def coordinator_step(
     )
 
 
-def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
+def coordinator_investigate(pmsgs: list[bytes], t: int) -> list[bytes]:
     n = len(pmsgs)
-    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t, n) for pmsg in pmsgs]
+    pmsgs_parsed = [ParticipantMsg.from_bytes(pmsg, t=t, n=n) for pmsg in pmsgs]
     simpl_pmsgs = [pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed]
 
     all_enc_partial_secshares = [
@@ -468,7 +456,7 @@ def coordinator_investigate(pmsgs: List[bytes], t: int) -> List[bytes]:
     ]
     simpl_cinvs = simplpedpop.coordinator_investigate(simpl_pmsgs, t)
     simpl_cinvs_parsed = [
-        simplpedpop.CoordinatorInvestigationMsg.from_bytes(simpl_cinv, n)
+        simplpedpop.CoordinatorInvestigationMsg.from_bytes(simpl_cinv, n=n)
         for simpl_cinv in simpl_cinvs
     ]
     cinvs = [

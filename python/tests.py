@@ -2,36 +2,34 @@
 
 """Tests for ChillDKG reference implementation"""
 
-from itertools import combinations
-from random import randint
-from typing import Tuple, List, Optional
-from secrets import token_bytes as random_bytes
-from pathlib import Path
 import json
+from itertools import combinations
+from pathlib import Path
+from random import randint
+from secrets import token_bytes as random_bytes
 
+from chilldkg_ref import chilldkg, encpedpop, simplpedpop
 from chilldkg_ref.util import (
-    FaultyParticipantOrCoordinatorError,
     FaultyCoordinatorError,
+    FaultyParticipantOrCoordinatorError,
     UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
 )
-from chilldkg_ref.vss import Polynomial, VSS, VSSCommitment
-import chilldkg_ref.simplpedpop as simplpedpop
-import chilldkg_ref.encpedpop as encpedpop
-import chilldkg_ref.chilldkg as chilldkg
+from chilldkg_ref.vss import VSS, Polynomial, VSSCommitment
+from example import simulate_chilldkg_full as simulate_chilldkg_full_example
+from gen_vector_utils.util import (
+    assert_raises,
+    dkg_output_asdict,
+    params_asdict,
+    params_from_dict,
+)
 
 # Import from secp256k1lab after the chilldkg_ref imports because the latter
 # modifies sys.path to make sure the vendored copy of secp256k1lab is found.
-from secp256k1lab.secp256k1 import GE, G, Scalar
+#
+# isort: split
 from secp256k1lab.keys import pubkey_gen_plain
-
-from gen_vector_utils.util import (
-    assert_raises,
-    params_from_dict,
-    params_asdict,
-    dkg_output_asdict,
-)
-from example import simulate_chilldkg_full as simulate_chilldkg_full_example
+from secp256k1lab.secp256k1 import GE, G, Scalar
 
 
 def test_chilldkg_params_validate():
@@ -55,7 +53,6 @@ def test_chilldkg_params_validate():
         _ = chilldkg.params_id(params_with_invalid)
     except chilldkg.InvalidHostPubkeyError as e:
         assert e.participant == 1
-        pass
     else:
         assert False, "Expected exception"
 
@@ -105,7 +102,7 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(
     seeds, t, investigation: bool
-) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
     n = len(seeds)
     prets = []
     for i in range(n):
@@ -123,8 +120,8 @@ def simulate_simplpedpop(
         ]
         if investigation:
             # Let a random participant send incorrect shares to participant i.
-            faulty_idx = randint(0, n - 1)
-            partial_secshares[faulty_idx] += Scalar(17)
+            faulty_id = randint(0, n - 1)
+            partial_secshares[faulty_id] += Scalar(17)
 
         secshare = simplpedpop.participant_step2_prepare_secshare(partial_secshares)
         try:
@@ -140,16 +137,16 @@ def simulate_simplpedpop(
                 simplpedpop.participant_investigate(e, inv_msgs[i], partial_secshares)
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
-                assert i != faulty_idx
-                assert e.participant == faulty_idx
+                assert i != faulty_id
+                assert e.participant == faulty_id
             # If we're faulty, we'll blame the coordinator.
             except FaultyCoordinatorError:
-                assert i == faulty_idx
+                assert i == faulty_id
             return None
     return pre_finalize_rets
 
 
-def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
+def encpedpop_keys(seed: bytes) -> tuple[bytes, bytes]:
     deckey = tagged_hash_bip_dkg("encpedpop deckey", seed)
     enckey = pubkey_gen_plain(deckey)
     return deckey, enckey
@@ -157,7 +154,7 @@ def encpedpop_keys(seed: bytes) -> Tuple[bytes, bytes]:
 
 def simulate_encpedpop(
     seeds, t, investigation: bool
-) -> Optional[List[Tuple[simplpedpop.DKGOutput, bytes]]]:
+) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -175,15 +172,15 @@ def simulate_encpedpop(
     pstates = [pstate for (pstate, _) in enc_prets1]
     pmsgs = [pmsg for (_, pmsg) in enc_prets1]
     if investigation:
-        faulty_idx: List[int] = []
+        faulty_id: list[int] = []
         for i in range(n):
-            # Let a random participant faulty_idx[i] send incorrect shares to i.
-            faulty_idx[i:] = [randint(0, n - 1)]
+            # Let a random participant faulty_id[i] send incorrect shares to i.
+            faulty_id[i:] = [randint(0, n - 1)]
             faulty_pmsg = encpedpop.ParticipantMsg.from_bytes(
-                pmsgs[faulty_idx[i]], t, n
+                pmsgs[faulty_id[i]], t=t, n=n
             )
             faulty_pmsg.enc_shares[i] += Scalar(17)
-            pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
+            pmsgs[faulty_id[i]] = faulty_pmsg.to_bytes()
 
     cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
     pre_finalize_rets = [(cout, ceq)]
@@ -202,18 +199,18 @@ def simulate_encpedpop(
                 encpedpop.participant_investigate(e, inv_msgs[i])
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
-                assert i != faulty_idx[i]
-                assert e.participant == faulty_idx[i]
+                assert i != faulty_id[i]
+                assert e.participant == faulty_id[i]
             # If we're faulty, we'll blame the coordinator.
             except FaultyCoordinatorError:
-                assert i == faulty_idx[i]
+                assert i == faulty_id[i]
             return None
     return pre_finalize_rets
 
 
 def simulate_chilldkg(
     hostseckeys, t, investigation: bool
-) -> Optional[List[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]] | None:
     n = len(hostseckeys)
 
     hostpubkeys = []
@@ -230,15 +227,15 @@ def simulate_chilldkg(
     pstates1 = [pret[0] for pret in prets1]
     pmsgs = [pret[1] for pret in prets1]
     if investigation:
-        faulty_idx: List[int] = []
+        faulty_id: list[int] = []
         for i in range(n):
-            # Let a random participant faulty_idx[i] send incorrect shares to i.
-            faulty_idx[i:] = [randint(0, n - 1)]
+            # Let a random participant faulty_id[i] send incorrect shares to i.
+            faulty_id[i:] = [randint(0, n - 1)]
             faulty_pmsg = chilldkg.ParticipantMsg1.from_bytes(
-                pmsgs[faulty_idx[i]], t, n
+                pmsgs[faulty_id[i]], t=t, n=n
             )
             faulty_pmsg.enc_pmsg.enc_shares[i] += Scalar(17)
-            pmsgs[faulty_idx[i]] = faulty_pmsg.to_bytes()
+            pmsgs[faulty_id[i]] = faulty_pmsg.to_bytes()
 
     cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs, params)
 
@@ -258,11 +255,11 @@ def simulate_chilldkg(
                 chilldkg.participant_investigate(e, inv_msgs[i])
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
-                assert i != faulty_idx[i]
-                assert e.participant == faulty_idx[i]
+                assert i != faulty_id[i]
+                assert e.participant == faulty_id[i]
             # If we're faulty, we'll blame the coordinator.
             except FaultyCoordinatorError:
-                assert i == faulty_idx[i]
+                assert i == faulty_id[i]
             return None
 
     cmsg2, cout, crec = chilldkg.coordinator_finalize(
@@ -281,7 +278,7 @@ def simulate_chilldkg_full(
     hostseckeys,
     t,
     investigation: bool,
-) -> List[Optional[Tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]]]:
+) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData] | None]:
     # Investigating is not supported by this wrapper
     assert not investigation
 
@@ -289,7 +286,7 @@ def simulate_chilldkg_full(
     for i in range(n):
         hostpubkeys += [chilldkg.hostpubkey_gen(hostseckeys[i])]
     params = chilldkg.SessionParams(hostpubkeys, t)
-    return simulate_chilldkg_full_example(hostseckeys, params, faulty_idx=None)
+    return simulate_chilldkg_full_example(hostseckeys, params, faulty_id=None)
 
 
 def derive_interpolating_value(L, x_i):
@@ -324,19 +321,19 @@ def test_recover_secret():
     assert recover_secret([2, 3], [shares[1], shares[2]]) == f.coeffs[0]
 
 
-def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
+def test_correctness_dkg_output(t, n, dkg_outputs: list[simplpedpop.DKGOutput]):
     assert len(dkg_outputs) == n + 1
     secshares = [out[0] for out in dkg_outputs]
-    threshold_pubkeys = [out[1] for out in dkg_outputs]
+    thresh_pks = [out[1] for out in dkg_outputs]
     pubshares = [out[2] for out in dkg_outputs]
 
     # Check that the threshold pubkey and pubshares are the same for the
     # coordinator (at [0]) and all participants (at [1:n + 1]).
     for i in range(n + 1):
-        assert threshold_pubkeys[0] == threshold_pubkeys[i]
+        assert thresh_pks[0] == thresh_pks[i]
         assert len(pubshares[i]) == n
         assert pubshares[0] == pubshares[i]
-    threshold_pubkey = threshold_pubkeys[0]
+    thresh_pk = thresh_pks[0]
 
     # Check that the coordinator has no secret share
     assert secshares[0] is None
@@ -354,7 +351,7 @@ def test_correctness_dkg_output(t, n, dkg_outputs: List[simplpedpop.DKGOutput]):
     # Check that all combinations of t participants can recover the threshold pubkey
     for tsubset in combinations(range(1, n + 1), t):
         recovered = recover_secret(tsubset, [secshares_scalar[i] for i in tsubset])
-        assert recovered * G == GE.from_bytes_compressed(threshold_pubkey)
+        assert recovered * G == GE.from_bytes_compressed(thresh_pk)
 
 
 def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
@@ -382,15 +379,13 @@ def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
         # chilldkg.coordinator_recover
         for i in range(n + 1):
             if seeds[i] is None:
-                (secshare, threshold_pubkey, pubshares), _ = (
-                    chilldkg.coordinator_recover(rec)
-                )
+                (secshare, thresh_pk, pubshares), _ = chilldkg.coordinator_recover(rec)
             else:
-                (secshare, threshold_pubkey, pubshares), _ = (
-                    chilldkg.participant_recover(seeds[i], rec)
+                (secshare, thresh_pk, pubshares), _ = chilldkg.participant_recover(
+                    seeds[i], rec
                 )
             assert secshare == dkg_outputs[i][0]
-            assert threshold_pubkey == dkg_outputs[i][1]
+            assert thresh_pk == dkg_outputs[i][1]
             assert pubshares == dkg_outputs[i][2]
 
 
@@ -876,8 +871,8 @@ def test_recovery_acknowledgment():
         chilldkg.participant_recovery_acks_verify(
             recovery_data, params, wrong_length_sigs
         )
-    except chilldkg.InvalidRecoveryAckError as e:
-        assert e.participant == 0
+    except ValueError:
+        pass
     else:
         assert False, "Expected exception"
 

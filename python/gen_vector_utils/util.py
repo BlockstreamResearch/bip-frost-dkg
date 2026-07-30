@@ -1,27 +1,27 @@
 from __future__ import annotations
+
 import json
-from typing import List, Union, Dict, Sequence
 from pathlib import Path
+from typing import TypeAlias
 
-
+from chilldkg_ref import encpedpop
 from chilldkg_ref.chilldkg import (
-    SessionParams,
     DKGOutput,
+    SessionParams,
 )
-import chilldkg_ref.encpedpop as encpedpop
 
-ErrorInfo = Dict[str, Union[int, str, "ErrorInfo"]]
+ErrorInfo: TypeAlias = "dict[str, int | str | ErrorInfo]"
 
 
 def bytes_to_hex(data: bytes) -> str:
     return data.hex().upper()
 
 
-def bytes_list_to_hex(lst: Sequence[bytes]) -> List[str]:
+def bytes_list_to_hex(lst: list[bytes]) -> list[str]:
     return [l_i.hex().upper() for l_i in lst]
 
 
-def hex_list_to_bytes(lst: List[str]) -> List[bytes]:
+def hex_list_to_bytes(lst: list[str]) -> list[bytes]:
     return [bytes.fromhex(l_i) for l_i in lst]
 
 
@@ -79,7 +79,7 @@ def dkg_output_asdict(dkg_output: DKGOutput) -> dict:
     secshare = bytes_to_hex(dkg_output.secshare) if dkg_output.secshare else None
     return {
         "secshare": secshare,
-        "thresholdPubkey": bytes_to_hex(dkg_output.threshold_pubkey),
+        "threshPk": bytes_to_hex(dkg_output.thresh_pk),
         "pubshares": bytes_list_to_hex(dkg_output.pubshares),
     }
 

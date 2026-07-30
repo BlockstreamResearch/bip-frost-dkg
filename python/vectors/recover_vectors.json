@@ -9,7 +9,7 @@
         "For each valid test case:",
         "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
         "  (if hostseckey is null) and verify the result matches expectedOutput.",
-        "  expectedOutput contains 'dkgOutput' (with secshare, thresholdPubkey, pubshares)",
+        "  expectedOutput contains 'dkgOutput' (with secshare, threshPk, pubshares)",
         "  and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",
@@ -25,7 +25,7 @@
             "expectedOutput": {
                 "dkgOutput": {
                     "secshare": "78F979492EF00DFD84069C2E8367753A712447527C02A2887D5AF86A6F4D02BA",
-                    "thresholdPubkey": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
+                    "threshPk": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
                     "pubshares": [
                         "025C8EC2A3D153823BD2820F6943FD4010B9A9C48D779A6845D2CDDB0EFE36E1EC",
                         "03397F3E8A16CCF5BD71E084163A9370C290F2915BC4BF80FDEA1C0E713B91F9C3",
@@ -50,7 +50,7 @@
             "expectedOutput": {
                 "dkgOutput": {
                     "secshare": null,
-                    "thresholdPubkey": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
+                    "threshPk": "03DF2E2C605ACE90BFAAE275614FDA6D6233B1438EE6D8CE1EA74111887E3110F7",
                     "pubshares": [
                         "025C8EC2A3D153823BD2820F6943FD4010B9A9C48D779A6845D2CDDB0EFE36E1EC",
                         "03397F3E8A16CCF5BD71E084163A9370C290F2915BC4BF80FDEA1C0E713B91F9C3",

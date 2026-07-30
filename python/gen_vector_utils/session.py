@@ -1,18 +1,18 @@
-from .util import (
-    bytes_to_hex,
-    hex_list_to_bytes,
-    expect_exception,
-    params_asdict,
-    dkg_output_asdict,
-    assign_tc_ids,
-)
-
-from chilldkg_ref.chilldkg import hostpubkey_gen, params_id
-import chilldkg_ref.chilldkg as chilldkg
-
 from secp256k1lab.secp256k1 import Scalar
 from secp256k1lab.util import bytes_from_int
-from .fixtures import HOSTSECKEYS_HEX, RANDOMS_HEX, AUX_RAND_HEX
+
+from chilldkg_ref import chilldkg
+from chilldkg_ref.chilldkg import hostpubkey_gen, params_id
+
+from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX
+from .util import (
+    assign_tc_ids,
+    bytes_to_hex,
+    dkg_output_asdict,
+    expect_exception,
+    hex_list_to_bytes,
+    params_asdict,
+)
 
 
 def generate_hostpubkey_vectors():
@@ -100,7 +100,7 @@ def generate_params_id_vectors():
         "For each error test case:",
         "  Call params_id(params) and verify it raises an exception matching expectedError.",
         "  The expectedError object contains 'type' (the exception class name).",
-        "  Some errors include 'participant' (index of the offending key)",
+        "  Some errors include 'participant' (identifier of the offending participant)",
         "  or 'participant1'/'participant2' (indices for duplicate keys).",
     ]
     valid_cases = []
@@ -190,7 +190,7 @@ def generate_recover_vectors():
         "For each valid test case:",
         "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
         "  (if hostseckey is null) and verify the result matches expectedOutput.",
-        "  expectedOutput contains 'dkgOutput' (with secshare, thresholdPubkey, pubshares)",
+        "  expectedOutput contains 'dkgOutput' (with secshare, threshPk, pubshares)",
         "  and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",

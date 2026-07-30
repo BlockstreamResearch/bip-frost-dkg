@@ -2,7 +2,6 @@ from typing import Any
 
 from secp256k1lab.util import tagged_hash
 
-
 BIP_TAG = "BIP DKG/"
 
 
@@ -19,7 +18,7 @@ class FaultyParticipantError(ProtocolError):
 
     This exception is raised by the coordinator code when it detects faulty
     behavior by a participant, i.e., a participant has deviated from the
-    protocol. The index of the participant is provided as part of the exception.
+    protocol. The identifier of the participant is provided as part of the exception.
     Assuming protocol messages have been transmitted correctly and the
     coordinator itself is not faulty, this exception implies that the
     participant is indeed faulty.
@@ -29,7 +28,7 @@ class FaultyParticipantError(ProtocolError):
     See `FaultyParticipantOrCoordinatorError` for details.
 
     Attributes:
-        participant (int): Index of the faulty participant.
+        participant (int): Identifier of the faulty participant.
     """
 
     def __init__(self, participant: int, *args: Any):
@@ -41,7 +40,7 @@ class FaultyParticipantOrCoordinatorError(ProtocolError):
     """Raised if another known participant or the coordinator is faulty.
 
     This exception is raised by the participant code when it detects what looks
-    like faulty behavior by a suspected participant. The index of the suspected
+    like faulty behavior by a suspected participant. The identifier of the suspected
     participant is provided as part of the exception.
 
     Importantly, this exception is not proof that the suspected participant is
@@ -59,7 +58,7 @@ class FaultyParticipantOrCoordinatorError(ProtocolError):
     `FaultyParticipantError` for details.
 
     Attributes:
-        participant (int): Index of the suspected participant.
+        participant (int): Identifier of the suspected participant.
     """
 
     def __init__(self, participant: int, *args: Any):
