@@ -1505,4 +1505,5 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
 
 ## Acknowledgments
 
-We thank Lloyd Fournier (LLFourn) for their comments and contributions to this document.
+We thank Lloyd Fournier for many ideas as well as insightful and deep discussions.
+We also thank Alex Akselrod, Sebastian Falbesoner, Nick Farrow, Matt Leon, pool2win, Jesse Posner, and SeedHammer for their comments and contributions to this document.
