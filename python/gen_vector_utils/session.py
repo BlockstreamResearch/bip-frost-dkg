@@ -101,7 +101,7 @@ def generate_params_hash_vectors():
         "  Call params_hash(params) and verify it raises an exception matching expectedError.",
         "  The expectedError object contains 'type' (the exception class name).",
         "  Some errors include 'participant_id' (identifier of the blamed participant)",
-        "  or 'participant_id1'/'participant_id2' (indices for duplicate keys).",
+        "  or 'participant_id1'/'participant_id2' (identifiers of participants with duplicate keys).",
     ]
     valid_cases = []
     error_cases = []

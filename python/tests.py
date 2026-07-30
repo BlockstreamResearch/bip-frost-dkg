@@ -304,12 +304,12 @@ def derive_interpolating_value(L, x_i):
     return lam
 
 
-def recover_secret(participant_indices, shares) -> Scalar:
+def recover_secret(participant_ids, shares) -> Scalar:
     interpolated_shares = []
     t = len(shares)
-    assert len(participant_indices) == t
+    assert len(participant_ids) == t
     for i in range(t):
-        lam = derive_interpolating_value(participant_indices, participant_indices[i])
+        lam = derive_interpolating_value(participant_ids, participant_ids[i])
         interpolated_shares += [(lam * shares[i])]
     recovered_secret = Scalar.sum(*interpolated_shares)
     return recovered_secret

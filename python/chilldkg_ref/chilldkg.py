@@ -254,7 +254,7 @@ def params_validate(params: SessionParams) -> None:
         except ValueError as e:
             raise InvalidHostPubkeyError(i) from e
 
-    # Check for duplicate hostpubkeys and find the corresponding indices
+    # Check for duplicate hostpubkeys and find the corresponding ids
     hostpubkey_to_id: dict[bytes, int] = {}
     for i, hostpubkey in enumerate(hostpubkeys):
         if hostpubkey in hostpubkey_to_id:
