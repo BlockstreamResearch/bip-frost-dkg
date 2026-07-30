@@ -1484,6 +1484,7 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
   * Fix blaming for public nonces: pubnonces are now validated as curve points, and failures are attributed to the sending participant instead of surfacing as an unattributed `ValueError`.
   * Fix blaming in `participant_finalize`: an invalid certificate signature is now attributed to the coordinator, since the coordinator verifies all signatures before broadcasting the certificate.
   * Fix TapTweak to use BIP 341's x-only serialization.
+  * Split `recover` into separate functions `participant_recover` and `coordinator_recover`.
   * Rewrite Setup section to make the authentic-hostpubkeys requirement explicit as a precondition of the session.
   * Fix EncPedPop description to match the reference implementation.
   * Expose randomness as explicit parameters: `participant_step1` takes `random` and `participant_step2` takes `aux_rand`, which were previously generated internally.
