@@ -20,7 +20,7 @@ from chilldkg_ref.chilldkg import (
     coordinator_investigate,
     coordinator_step1,
     hostpubkey_gen,
-    params_id,
+    params_hash,
     participant_finalize,
     participant_investigate,
     participant_step1,
@@ -265,7 +265,7 @@ def main():
     print("=== Session parameters ===")
     pphex(params)
     print()
-    print(f"Session parameters identifier: {params_id(params).hex()}")
+    print(f"Session parameters hash: {params_hash(params).hex()}")
     print()
 
     try:

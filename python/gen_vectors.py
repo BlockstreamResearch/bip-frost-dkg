@@ -21,7 +21,7 @@ from gen_vector_utils.participant import (
 )
 from gen_vector_utils.session import (
     generate_hostpubkey_vectors,
-    generate_params_id_vectors,
+    generate_params_hash_vectors,
     generate_recover_vectors,
 )
 
@@ -31,7 +31,7 @@ output_dir.mkdir(parents=True, exist_ok=True)
 util.write_json(
     output_dir / "hostpubkey_gen_vectors.json", generate_hostpubkey_vectors()
 )
-util.write_json(output_dir / "params_id_vectors.json", generate_params_id_vectors())
+util.write_json(output_dir / "params_hash_vectors.json", generate_params_hash_vectors())
 util.write_json(output_dir / "recover_vectors.json", generate_recover_vectors())
 util.write_json(
     output_dir / "participant_step1_vectors.json",

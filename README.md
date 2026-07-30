@@ -499,7 +499,8 @@ The list of host public keys and the signing threshold `t` together
 form the public *session parameters*, the common input to all participants and the coordinator.
 
 Each participant **must** ensure to have authentic copies of all other participants' host public keys before the start of the session.[^trust-anchor]
-Authenticity of the host public keys can be verified through pairwise out-of-band comparisons between every pair of participants.
+A participant can verify authenticity by comparing every other host public key with the corresponding participant out-of-band,
+or more conveniently, by comparing a short *parameters hash* (a hash of the session parameters) with every other participant out-of-band.
 
 [^trust-anchor]: No protocol can prevent man-in-the-middle attacks without this or a comparable assumption.
 Note that this requirement is implicit in other schemes as well.
@@ -787,29 +788,29 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   keys with the [KeySort algorithm specified in
   BIP 327](bip-0327.mediawiki#key-sorting) to abstract away from the order.
 
-#### params\_id
+#### params\_hash
 
 ```python
-def params_id(params: SessionParams) -> bytes
+def params_hash(params: SessionParams) -> bytes
 ```
 
-Return the parameters ID, a unique representation of the `SessionParams`.
+Return a hash of the session parameters for out-of-band comparison.
 
 In the common scenario that the participants obtain host public keys from
 the other participants over channels that do not provide end-to-end
 authentication of the sending participant (e.g., if the participants simply
 send their unauthenticated host public keys to the coordinator, who is
-supposed to relay them to all participants), the parameters ID serves as a
+supposed to relay them to all participants), the parameters hash serves as a
 convenient way to perform an out-of-band comparison of all host public keys.
-It is a collision-resistant cryptographic hash of the `SessionParams`
-tuple. As a result, if all participants have obtained an identical
-parameters ID (as can be verified out-of-band), then they all agree on all
-host public keys and the threshold `t`, and in particular, all participants
-have obtained authentic public host keys.
+It is a collision-resistant cryptographic hash of the `SessionParams` tuple.
+As a result, if all participants have obtained an identical parameters hash
+(as can be verified out-of-band), then they all agree on all host public
+keys and the threshold `t`, and in particular, all participants have
+obtained authentic public host keys.
 
 *Returns*:
 
-- `bytes` - The parameters ID, a 32-byte string.
+- `bytes` - The parameters hash, a 32-byte string.
 
 
 *Raises*:
@@ -1488,6 +1489,8 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
   * Remove message classes from the public API; protocol messages are passed as `bytes`.
   * Remove `ParticipantMsgParseError` and `CoordinatorMsgParseError` from the public API.
   * Add `RandomnessError`, `InvalidRecoveryAckError`, and `FaultyParticipantError` to the public API.
+  * Align terminology and naming with the draft of [BIP 445](bip-0445.md), including renaming participant "index" to "identifier".
+  * Rename `params_id` to `params_hash` to avoid confusion with the participant identifier and update the hash tag accordingly.
   * Rename `secp256k1proto` to `secp256k1lab` and separate it as an independent subtree for reuse across projects; see the [upstream repository](https://github.com/secp256k1lab/secp256k1lab).
   * Update the preamble per BIP 3.
 * *0.2.0* (2024-12-19): In addition to various readability improvements to specification and reference implementation, the following major changes were implemented:
