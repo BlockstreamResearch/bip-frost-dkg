@@ -34,17 +34,19 @@ Pop = NewType("Pop", bytes)
 POP_MSG_TAG = BIP_TAG + "pop message"
 
 
-def pop_msg(id: int) -> bytes:
-    return id.to_bytes(4, byteorder="big")
+def pop_msg(participant_id: int) -> bytes:
+    return participant_id.to_bytes(4, byteorder="big")
 
 
-def pop_prove(seckey: bytes, id: int, aux_rand: bytes) -> Pop:
-    sig = schnorr_sign(pop_msg(id), seckey, aux_rand=aux_rand, tag_prefix=POP_MSG_TAG)
+def pop_prove(seckey: bytes, participant_id: int, aux_rand: bytes) -> Pop:
+    sig = schnorr_sign(
+        pop_msg(participant_id), seckey, aux_rand=aux_rand, tag_prefix=POP_MSG_TAG
+    )
     return Pop(sig)
 
 
-def pop_verify(pop: Pop, pubkey: bytes, id: int) -> bool:
-    return schnorr_verify(pop_msg(id), pubkey, pop, tag_prefix=POP_MSG_TAG)
+def pop_verify(pop: Pop, pubkey: bytes, participant_id: int) -> bool:
+    return schnorr_verify(pop_msg(participant_id), pubkey, pop, tag_prefix=POP_MSG_TAG)
 
 
 ###
@@ -188,13 +190,13 @@ def assemble_sum_coms(
 class ParticipantState(NamedTuple):
     t: int
     n: int
-    id: int
+    participant_id: int
     com_to_secret: GE
 
 
 class ParticipantInvestigationData(NamedTuple):
     n: int
-    id: int
+    participant_id: int
     secshare: Scalar
     pubshare: GE
 
@@ -205,7 +207,7 @@ class ParticipantInvestigationData(NamedTuple):
 
 
 def participant_step1(
-    seed: bytes, t: int, n: int, id: int, aux_rand: bytes
+    seed: bytes, t: int, n: int, participant_id: int, aux_rand: bytes
 ) -> tuple[
     ParticipantState,
     bytes,
@@ -217,7 +219,7 @@ def participant_step1(
 ]:
     if t > n:
         raise ValueError
-    if id >= n:
+    if participant_id >= n:
         raise IndexError
     if len(seed) != 32:
         raise ValueError
@@ -226,16 +228,16 @@ def participant_step1(
 
     vss = VSS.generate(seed, t)  # OverflowError if t >= 2**32
     partial_secshares_from_me = vss.secshares(n)
-    pop = pop_prove(vss.secret().to_bytes(), id, aux_rand)
+    pop = pop_prove(vss.secret().to_bytes(), participant_id, aux_rand)
 
     com = vss.commit()
     com_to_secret = com.commitment_to_secret()
     msg = ParticipantMsg(com, pop).to_bytes()
-    state = ParticipantState(t, n, id, com_to_secret)
+    state = ParticipantState(t, n, participant_id, com_to_secret)
     return state, msg, partial_secshares_from_me
 
 
-# Helper function to prepare the secshare for participant id's
+# Helper function to prepare the secshare for a participant's
 # participant_step2() by summing the partial_secshares returned by all
 # participants' participant_step1().
 #
@@ -261,20 +263,20 @@ def participant_step2(
     cmsg: bytes,
     secshare: Scalar,
 ) -> tuple[DKGOutput, bytes]:
-    t, n, id, com_to_secret = state
+    t, n, participant_id, com_to_secret = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=t, n=n)
     except MsgParseError as e:
         raise FaultyCoordinatorError(*e.args) from e
     coms_to_secrets, sum_coms_to_nonconst_terms, pops = cmsg_parsed
 
-    if coms_to_secrets[id] != com_to_secret:
+    if coms_to_secrets[participant_id] != com_to_secret:
         raise FaultyCoordinatorError(
             "Coordinator sent unexpected first group element for local id"
         )
 
     for i in range(n):
-        if i == id:
+        if i == participant_id:
             # No need to check our own pop.
             continue
         if coms_to_secrets[i].infinity:
@@ -295,12 +297,12 @@ def participant_step2(
     # avoids computing the untweaked pubshare in the happy path and thereby
     # moves a group addition to the error path.
     sum_coms_tweaked, tweak, pubtweak = sum_coms.invalid_taproot_commit()
-    pubshare_tweaked = sum_coms_tweaked.pubshare(id)
+    pubshare_tweaked = sum_coms_tweaked.pubshare(participant_id)
     secshare_tweaked = secshare + tweak
     if not VSSCommitment.verify_secshare(secshare_tweaked, pubshare_tweaked):
         pubshare = pubshare_tweaked - pubtweak
         raise UnknownFaultyParticipantOrCoordinatorError(
-            ParticipantInvestigationData(n, id, secshare, pubshare),
+            ParticipantInvestigationData(n, participant_id, secshare, pubshare),
             "Received invalid secshare; consider using "
             "participant_investigate() to determine a faulty party",
         )
@@ -308,7 +310,7 @@ def participant_step2(
     thresh_pk = sum_coms_tweaked.commitment_to_secret()
     pubshares = [
         sum_coms_tweaked.pubshare(i)
-        if i != id
+        if i != participant_id
         else pubshare_tweaked  # We have computed our own pubshare already.
         for i in range(n)
     ]
@@ -326,7 +328,7 @@ def participant_investigate(
     cinv: bytes,
     partial_secshares: list[Scalar],
 ) -> NoReturn:
-    n, id, secshare, pubshare = error.inv_data
+    n, participant_id, secshare, pubshare = error.inv_data
     if len(partial_secshares) != n:
         raise ValueError
 
@@ -346,7 +348,7 @@ def participant_investigate(
         if not VSSCommitment.verify_secshare(
             partial_secshares[i], partial_pubshares[i]
         ):
-            if i != id:
+            if i != participant_id:
                 raise FaultyParticipantOrCoordinatorError(
                     i, "Participant sent invalid partial secshare"
                 )
