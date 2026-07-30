@@ -2,7 +2,6 @@ from secp256k1lab.secp256k1 import Scalar
 from secp256k1lab.util import bytes_from_int
 
 from chilldkg_ref import chilldkg
-from chilldkg_ref.chilldkg import hostpubkey_gen, params_hash
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX
 from .util import (
@@ -34,7 +33,7 @@ def generate_hostpubkey_vectors():
     hostseckey = bytes.fromhex(
         "631C047D50A67E45E27ED1FF25FCE179CAF059A2120D346ACD9774C1F2BAB66F"
     )
-    expected_pubkey = hostpubkey_gen(hostseckey)
+    expected_pubkey = chilldkg.hostpubkey_gen(hostseckey)
     valid_cases.append(
         {
             "hostseckey": bytes_to_hex(hostseckey),
@@ -46,7 +45,9 @@ def generate_hostpubkey_vectors():
     # --- Error test case: Wrong length ---
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
-    error = expect_exception(lambda: hostpubkey_gen(short_hostseckey), ValueError)
+    error = expect_exception(
+        lambda: chilldkg.hostpubkey_gen(short_hostseckey), ValueError
+    )
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(short_hostseckey),
@@ -57,7 +58,7 @@ def generate_hostpubkey_vectors():
     # --- Error test case: Out-of-range hostseckey ---
     invalid_hostseckey = bytes_from_int(Scalar.SIZE)
     error = expect_exception(
-        lambda: hostpubkey_gen(invalid_hostseckey), chilldkg.HostSeckeyError
+        lambda: chilldkg.hostpubkey_gen(invalid_hostseckey), chilldkg.HostSeckeyError
     )
     error_cases.append(
         {
@@ -69,7 +70,7 @@ def generate_hostpubkey_vectors():
     # --- Error test case: zeroed hostseckey ---
     zeroed_hostseckey = b"\x00" * 32
     error = expect_exception(
-        lambda: hostpubkey_gen(zeroed_hostseckey), chilldkg.HostSeckeyError
+        lambda: chilldkg.hostpubkey_gen(zeroed_hostseckey), chilldkg.HostSeckeyError
     )
     error_cases.append(
         {
@@ -106,7 +107,7 @@ def generate_params_hash_vectors():
     valid_cases = []
     error_cases = []
     hostseckeys = hex_list_to_bytes(HOSTSECKEYS_HEX[:3])
-    hostpubkeys = [hostpubkey_gen(sk) for sk in hostseckeys]
+    hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
 
     # --- Valid test cases ---
     cases = [
@@ -118,7 +119,7 @@ def generate_params_hash_vectors():
     for case in cases:
         t = case["t"]
         params = chilldkg.SessionParams(hostpubkeys, t)
-        expected_params_hash = params_hash(params)
+        expected_params_hash = chilldkg.params_hash(params)
         test_case = {
             "params": params_asdict(params),
             "expectedParamsHash": bytes_to_hex(expected_params_hash),
@@ -130,7 +131,7 @@ def generate_params_hash_vectors():
     t = 0
     invalid_params = chilldkg.SessionParams(hostpubkeys, t)
     error = expect_exception(
-        lambda: params_hash(invalid_params), chilldkg.ThresholdOrCountError
+        lambda: chilldkg.params_hash(invalid_params), chilldkg.ThresholdOrCountError
     )
     error_cases.append(
         {
@@ -145,7 +146,7 @@ def generate_params_hash_vectors():
     with_invalid = [hostpubkeys[0], invalid_hostpubkey, hostpubkeys[2]]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
-        lambda: params_hash(invalid_params), chilldkg.InvalidHostPubkeyError
+        lambda: chilldkg.params_hash(invalid_params), chilldkg.InvalidHostPubkeyError
     )
     error_cases.append(
         {
@@ -159,7 +160,8 @@ def generate_params_hash_vectors():
     with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
-        lambda: params_hash(duplicate_params), chilldkg.DuplicateHostPubkeyError
+        lambda: chilldkg.params_hash(duplicate_params),
+        chilldkg.DuplicateHostPubkeyError,
     )
     error_cases.append(
         {

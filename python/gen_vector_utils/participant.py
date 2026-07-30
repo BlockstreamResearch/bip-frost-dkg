@@ -4,12 +4,6 @@ from secp256k1lab.secp256k1 import GE, Scalar
 from secp256k1lab.util import bytes_from_int
 
 from chilldkg_ref import chilldkg
-from chilldkg_ref.chilldkg import (
-    participant_finalize,
-    participant_investigate,
-    participant_step1,
-    participant_step2,
-)
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
 from .util import (
@@ -66,7 +60,7 @@ def generate_participant_step1_group(t, n):
     short_hostseckey = bytes.fromhex("631C047D50A67E45E27ED1FF25FCE179")
     assert len(short_hostseckey) == 16
     error = expect_exception(
-        lambda: participant_step1(short_hostseckey, params, random),
+        lambda: chilldkg.participant_step1(short_hostseckey, params, random),
         ValueError,
     )
     error_cases.append(
@@ -81,7 +75,7 @@ def generate_participant_step1_group(t, n):
     # --- Error test case: zero hostseckey ---
     zero_hostseckey = b"\x00" * 32
     error = expect_exception(
-        lambda: participant_step1(zero_hostseckey, params, random),
+        lambda: chilldkg.participant_step1(zero_hostseckey, params, random),
         chilldkg.HostSeckeyError,
     )
     error_cases.append(
@@ -96,7 +90,7 @@ def generate_participant_step1_group(t, n):
     # --- Error test case: Out-of-range hostseckey ---
     invalid_hostseckey = bytes_from_int(Scalar.SIZE)
     error = expect_exception(
-        lambda: participant_step1(invalid_hostseckey, params, random),
+        lambda: chilldkg.participant_step1(invalid_hostseckey, params, random),
         chilldkg.HostSeckeyError,
     )
     error_cases.append(
@@ -111,7 +105,7 @@ def generate_participant_step1_group(t, n):
     # --- Error test case: Invalid threshold ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], invalid_params, random),
         chilldkg.ThresholdOrCountError,
     )
     error_cases.append(
@@ -126,7 +120,7 @@ def generate_participant_step1_group(t, n):
     # --- Error test case: t > n ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], invalid_params, random),
         chilldkg.ThresholdOrCountError,
     )
     error_cases.append(
@@ -143,7 +137,7 @@ def generate_participant_step1_group(t, n):
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], invalid_params, random),
         chilldkg.InvalidHostPubkeyError,
     )
     error_cases.append(
@@ -160,7 +154,7 @@ def generate_participant_step1_group(t, n):
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], invalid_params, random),
         chilldkg.InvalidHostPubkeyError,
     )
     error_cases.append(
@@ -177,7 +171,7 @@ def generate_participant_step1_group(t, n):
     with_infinity = hostpubkeys[:-1] + [infinity_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_infinity, t)
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], invalid_params, random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], invalid_params, random),
         chilldkg.InvalidHostPubkeyError,
     )
     error_cases.append(
@@ -193,7 +187,7 @@ def generate_participant_step1_group(t, n):
     with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], duplicate_params, random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], duplicate_params, random),
         chilldkg.DuplicateHostPubkeyError,
     )
     error_cases.append(
@@ -210,7 +204,7 @@ def generate_participant_step1_group(t, n):
         "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7"
     )
     error = expect_exception(
-        lambda: participant_step1(rand_hostseckey, params, random),
+        lambda: chilldkg.participant_step1(rand_hostseckey, params, random),
         chilldkg.HostSeckeyError,
     )
     error_cases.append(
@@ -226,7 +220,7 @@ def generate_participant_step1_group(t, n):
     short_random = bytes.fromhex("42B53D62E27380D6F7096EDA1C28C57D")  # 16 bytes
     assert len(short_random) == 16
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], params, short_random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], params, short_random),
         ValueError,
     )
     error_cases.append(
@@ -241,7 +235,7 @@ def generate_participant_step1_group(t, n):
     # --- Error test case: Zero randomness ---
     zero_random = b"\x00" * 32
     error = expect_exception(
-        lambda: participant_step1(hostseckeys[0], params, zero_random),
+        lambda: chilldkg.participant_step1(hostseckeys[0], params, zero_random),
         chilldkg.RandomnessError,
     )
     error_cases.append(
@@ -304,14 +298,14 @@ def generate_participant_step2_group(t, n):
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
-        state, msg = participant_step1(hostseckeys[i], params, randoms[i])
+        state, msg = chilldkg.participant_step1(hostseckeys[i], params, randoms[i])
         pstates1.append(state)
         pmsgs1.append(msg)
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
     aux_rand = bytes.fromhex(AUX_RAND_HEX)
 
     # --- Valid test case ---
-    _, pmsg2 = participant_step2(hostseckeys[0], pstates1[0], cmsg1, aux_rand)
+    _, pmsg2 = chilldkg.participant_step2(hostseckeys[0], pstates1[0], cmsg1, aux_rand)
     valid_cases.append(
         {
             "cmsg1": bytes_to_hex(cmsg1),
@@ -326,7 +320,9 @@ def generate_participant_step2_group(t, n):
     # --- Error test case: Wrong aux randomness length ---
     short_aux_rand = bytes.fromhex("42B53D62E27380D6F7096EDA1C28C57D")
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], cmsg1, short_aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], cmsg1, short_aux_rand
+        ),
         ValueError,
     )
     error_cases.append(
@@ -340,7 +336,9 @@ def generate_participant_step2_group(t, n):
     # --- Error test case: hostseckey does not match the one in state1 ---
     mismatched_hostseckey = hostseckeys[1]
     error = expect_exception(
-        lambda: participant_step2(mismatched_hostseckey, pstates1[0], cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            mismatched_hostseckey, pstates1[0], cmsg1, aux_rand
+        ),
         chilldkg.HostSeckeyError,
     )
     error_cases.append(
@@ -356,7 +354,9 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\xeb" * 33  # invalid prefix
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
@@ -371,7 +371,9 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = b"\xeb" * 33  # invalid prefix
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_faulty_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyParticipantOrCoordinatorError,
         1,
     )
@@ -389,7 +391,9 @@ def generate_participant_step2_group(t, n):
     )  # Invalid x-coordinate
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
@@ -406,7 +410,9 @@ def generate_participant_step2_group(t, n):
     )  # Invalid x-coordinate
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_faulty_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyParticipantOrCoordinatorError,
         1,
     )
@@ -424,7 +430,9 @@ def generate_participant_step2_group(t, n):
     ).to_bytes_compressed()
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
@@ -441,7 +449,9 @@ def generate_participant_step2_group(t, n):
     ).to_bytes_compressed()
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.UnknownFaultyParticipantOrCoordinatorError,
     )
     error_cases.append(
@@ -456,7 +466,9 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = b"\x00" * 33  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
@@ -471,7 +483,9 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = b"\x00" * 33  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_faulty_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyParticipantOrCoordinatorError,
         1,
     )
@@ -489,7 +503,9 @@ def generate_participant_step2_group(t, n):
     )
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.UnknownFaultyParticipantOrCoordinatorError,
     )
     error_cases.append(
@@ -502,7 +518,9 @@ def generate_participant_step2_group(t, n):
     # --- Error test case: missing encrypted secret shares ---
     invalid_cmsg1 = cmsg1[:-1]
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         ValueError,
     )
     error_cases.append(
@@ -519,7 +537,9 @@ def generate_participant_step2_group(t, n):
     )
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
@@ -534,7 +554,9 @@ def generate_participant_step2_group(t, n):
     invalid_cmsg1_parsed.enc_cmsg.simpl_cmsg.coms_to_secrets[1] = GE()  # infinity
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_faulty_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyParticipantOrCoordinatorError,
         1,
     )
@@ -552,7 +574,9 @@ def generate_participant_step2_group(t, n):
     )  # random 64 bytes (not a valid signature for any key)
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_faulty_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.FaultyParticipantOrCoordinatorError,
         1,
     )
@@ -571,7 +595,7 @@ def generate_participant_step2_group(t, n):
         )
         invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
         error = expect_exception(
-            lambda: participant_step2(
+            lambda: chilldkg.participant_step2(
                 hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
             ),
             chilldkg.UnknownFaultyParticipantOrCoordinatorError,
@@ -590,7 +614,7 @@ def generate_participant_step2_group(t, n):
         )
         invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
         error = expect_exception(
-            lambda: participant_step2(
+            lambda: chilldkg.participant_step2(
                 hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
             ),
             chilldkg.UnknownFaultyParticipantOrCoordinatorError,
@@ -611,7 +635,9 @@ def generate_participant_step2_group(t, n):
     invalid_pmsgs1[1] = pmsgs11_parsed.to_bytes()
     _, invalid_cmsg1 = chilldkg.coordinator_step1(invalid_pmsgs1, params)
     error = expect_exception(
-        lambda: participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand),
+        lambda: chilldkg.participant_step2(
+            hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
+        ),
         chilldkg.UnknownFaultyParticipantOrCoordinatorError,
     )
     error_cases.append(
@@ -674,7 +700,7 @@ def generate_participant_finalize_group(t, n):
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
-        state, msg = participant_step1(hostseckeys[i], params, randoms[i])
+        state, msg = chilldkg.participant_step1(hostseckeys[i], params, randoms[i])
         pstates1.append(state)
         pmsgs1.append(msg)
     cstate, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
@@ -682,7 +708,9 @@ def generate_participant_finalize_group(t, n):
     pstates2 = []
     pmsgs2 = []
     for i in range(len(hostpubkeys)):
-        state, msg = participant_step2(hostseckeys[i], pstates1[i], cmsg1, aux_rand)
+        state, msg = chilldkg.participant_step2(
+            hostseckeys[i], pstates1[i], cmsg1, aux_rand
+        )
         pstates2.append(state)
         pmsgs2.append(msg)
 
@@ -701,7 +729,7 @@ def generate_participant_finalize_group(t, n):
 
     # --- Valid test case ---
     cmsg2, _, _ = chilldkg.coordinator_finalize(cstate, pmsgs2)
-    pout, prec = participant_finalize(pstates2[0], cmsg2)
+    pout, prec = chilldkg.participant_finalize(pstates2[0], cmsg2)
 
     valid_cases.append(
         {
@@ -719,7 +747,7 @@ def generate_participant_finalize_group(t, n):
         cmsg2[:-64]
     ).to_bytes()  # remove last signature
     error = expect_exception(
-        lambda: participant_finalize(pstates2[0], invalid_cmsg2),
+        lambda: chilldkg.participant_finalize(pstates2[0], invalid_cmsg2),
         ValueError,
     )
     error_cases.append(
@@ -732,7 +760,7 @@ def generate_participant_finalize_group(t, n):
     # --- Error test case: cmsg2 is too long ---
     invalid_cmsg2 = chilldkg.CoordinatorMsg2(cmsg2 + bytes(64)).to_bytes()
     error = expect_exception(
-        lambda: participant_finalize(pstates2[0], invalid_cmsg2),
+        lambda: chilldkg.participant_finalize(pstates2[0], invalid_cmsg2),
         ValueError,
     )
     error_cases.append(
@@ -750,7 +778,7 @@ def generate_participant_finalize_group(t, n):
     assert len(random_sig) == 64
     invalid_cmsg2_2 = chilldkg.CoordinatorMsg2(cmsg2[:-64] + random_sig).to_bytes()
     error2 = expect_exception(
-        lambda: participant_finalize(pstates2[0], invalid_cmsg2_2),
+        lambda: chilldkg.participant_finalize(pstates2[0], invalid_cmsg2_2),
         chilldkg.FaultyCoordinatorError,
     )
     error_cases.append(
@@ -812,7 +840,7 @@ def generate_participant_investigate_group(t, n):
     pstates1 = []
     pmsgs1 = []
     for i in range(len(hostpubkeys)):
-        state, msg = participant_step1(hostseckeys[i], params, randoms[i])
+        state, msg = chilldkg.participant_step1(hostseckeys[i], params, randoms[i])
         pstates1.append(state)
         pmsgs1.append(msg)
     _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
@@ -829,11 +857,11 @@ def generate_participant_investigate_group(t, n):
     invalid_pmsgs1[1] = invalid_pmsg1_parsed.to_bytes()
     _, invalid_cmsg1 = chilldkg.coordinator_step1(invalid_pmsgs1, params)
     try:
-        participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
+        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(invalid_pmsgs1, params)
         error = expect_faulty_exception(
-            lambda e=e: participant_investigate(e, cinv_msgs[0]),
+            lambda e=e: chilldkg.participant_investigate(e, cinv_msgs[0]),
             chilldkg.FaultyParticipantOrCoordinatorError,
             1,
         )
@@ -859,11 +887,11 @@ def generate_participant_investigate_group(t, n):
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
 
     try:
-        participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
+        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
         error = expect_exception(
-            lambda e=e: participant_investigate(e, cinv_msgs[0]),
+            lambda e=e: chilldkg.participant_investigate(e, cinv_msgs[0]),
             chilldkg.FaultyCoordinatorError,
         )
     else:
@@ -882,7 +910,7 @@ def generate_participant_investigate_group(t, n):
     # --- Error test case: Coordinator tampered with self-encrypted partial secshare ---
     try:
         # using the prior invalid_cmsg1 to trigger the error
-        participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
+        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
         cinv_msg_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
@@ -894,7 +922,7 @@ def generate_participant_investigate_group(t, n):
         )  # invalid share
         invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
         error = expect_exception(
-            lambda e=e: participant_investigate(e, invalid_cinv_msg0),
+            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
             chilldkg.FaultyCoordinatorError,
         )
     else:
@@ -912,7 +940,7 @@ def generate_participant_investigate_group(t, n):
     # --- Error test case: partial pubshares list in cinv_msg has an arbitrary value at index 1 ---
     try:
         # using the prior invalid_cmsg1 to trigger the error
-        participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
+        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
         cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
         cinv_msg_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
@@ -924,7 +952,7 @@ def generate_participant_investigate_group(t, n):
         )
         invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
         error = expect_exception(
-            lambda e=e: participant_investigate(e, invalid_cinv_msg0),
+            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
             chilldkg.FaultyCoordinatorError,
         )
     else:

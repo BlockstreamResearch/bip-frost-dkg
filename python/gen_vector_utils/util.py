@@ -4,11 +4,7 @@ import json
 from pathlib import Path
 from typing import TypeAlias
 
-from chilldkg_ref import encpedpop
-from chilldkg_ref.chilldkg import (
-    DKGOutput,
-    SessionParams,
-)
+from chilldkg_ref import chilldkg, encpedpop
 
 ErrorInfo: TypeAlias = "dict[str, int | str | ErrorInfo]"
 
@@ -71,11 +67,11 @@ def expect_faulty_exception(try_fn, expected_exception, expected_participant):
     return error
 
 
-def params_asdict(params: SessionParams) -> dict:
+def params_asdict(params: chilldkg.SessionParams) -> dict:
     return {"hostpubkeys": bytes_list_to_hex(params.hostpubkeys), "t": params.t}
 
 
-def dkg_output_asdict(dkg_output: DKGOutput) -> dict:
+def dkg_output_asdict(dkg_output: chilldkg.DKGOutput) -> dict:
     secshare = bytes_to_hex(dkg_output.secshare) if dkg_output.secshare else None
     return {
         "secshare": secshare,
@@ -108,8 +104,8 @@ def assert_raises(try_fn, expected_error: dict):
         raise AssertionError("Expected exception")
 
 
-def params_from_dict(params: dict) -> SessionParams:
-    return SessionParams(
+def params_from_dict(params: dict) -> chilldkg.SessionParams:
+    return chilldkg.SessionParams(
         hex_list_to_bytes(params["hostpubkeys"]),
         params["t"],
     )
