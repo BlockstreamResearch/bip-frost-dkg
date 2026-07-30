@@ -48,6 +48,16 @@ def exception_asdict(e: Exception) -> dict:
     # the last argument might contain the error message
     if len(e.args) > 0 and isinstance(e.args[-1], str):
         error_info.setdefault("message", e.args[-1])
+
+    # Update snake case keys into camel case keys to match the JSON vector format
+    for key in list(error_info.keys()):
+        if "_" in key:
+            camel_case_key = "".join(
+                word.capitalize() if i > 0 else word
+                for i, word in enumerate(key.split("_"))
+            )
+            error_info[camel_case_key] = error_info.pop(key)
+
     return error_info
 
 
@@ -62,11 +72,11 @@ def expect_exception(try_fn, expected_exception):
         raise AssertionError("Expected exception")
 
 
-def expect_faulty_exception(try_fn, expected_exception, expected_participant):
+def expect_faulty_exception(try_fn, expected_exception, expected_participant_id):
     error = expect_exception(try_fn, expected_exception)
-    actual = error.get("participant")
-    assert actual == expected_participant, (
-        f"expected faulty participant {expected_participant}, got {actual}"
+    actual = error.get("participantId")
+    assert actual == expected_participant_id, (
+        f"expected faulty participant {expected_participant_id}, got {actual}"
     )
     return error
 

@@ -14,7 +14,7 @@
         "For each error test case:",
         "  Call coordinator_step1(pmsgs1, params).",
         "  Verify it raises an exception matching expectedError.",
-        "  Error objects may include 'participant' (identifier of the faulty party)."
+        "  Error objects may include 'participant_id' (identifier of the blamed participant)."
     ],
     "totalTests": 44,
     "testGroups": [
@@ -105,7 +105,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value"
                 },
@@ -126,8 +126,8 @@
                     },
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 2
+                        "participantId1": 0,
+                        "participantId2": 2
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -148,7 +148,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -341,7 +341,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value"
                 },
@@ -362,8 +362,8 @@
                     },
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 2
+                        "participantId1": 0,
+                        "participantId2": 2
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -384,7 +384,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -577,7 +577,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value"
                 },
@@ -598,8 +598,8 @@
                     },
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 2
+                        "participantId1": 0,
+                        "participantId2": 2
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -620,7 +620,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -822,7 +822,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 3
+                        "participantId": 3
                     },
                     "comment": "hostpubkeys list contains an invalid value"
                 },
@@ -845,8 +845,8 @@
                     },
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 3
+                        "participantId1": 0,
+                        "participantId2": 3
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -869,7 +869,7 @@
                     },
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 3
+                        "participantId": 3
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },

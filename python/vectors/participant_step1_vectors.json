@@ -133,7 +133,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
@@ -151,7 +151,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
@@ -169,7 +169,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -187,8 +187,8 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 2
+                        "participantId1": 0,
+                        "participantId2": 2
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -364,7 +364,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
@@ -382,7 +382,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
@@ -400,7 +400,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -418,8 +418,8 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 2
+                        "participantId1": 0,
+                        "participantId2": 2
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -595,7 +595,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
@@ -613,7 +613,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
@@ -631,7 +631,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 2
+                        "participantId": 2
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -649,8 +649,8 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 2
+                        "participantId1": 0,
+                        "participantId2": 2
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },
@@ -833,7 +833,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 3
+                        "participantId": 3
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
@@ -852,7 +852,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 3
+                        "participantId": 3
                     },
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
@@ -871,7 +871,7 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "InvalidHostPubkeyError",
-                        "participant": 3
+                        "participantId": 3
                     },
                     "comment": "hostpubkeys list contains an infinity point"
                 },
@@ -890,8 +890,8 @@
                     "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
                     "expectedError": {
                         "type": "DuplicateHostPubkeyError",
-                        "participant1": 0,
-                        "participant2": 3
+                        "participantId1": 0,
+                        "participantId2": 3
                     },
                     "comment": "hostpubkeys list contains duplicate values"
                 },

@@ -35,7 +35,7 @@ COORDINATOR_STEP1_DESCRIPTION = [
     "For each error test case:",
     "  Call coordinator_step1(pmsgs1, params).",
     "  Verify it raises an exception matching expectedError.",
-    "  Error objects may include 'participant' (identifier of the faulty party).",
+    "  Error objects may include 'participant_id' (identifier of the blamed participant).",
 ]
 
 

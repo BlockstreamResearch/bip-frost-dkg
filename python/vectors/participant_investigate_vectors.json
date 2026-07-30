@@ -13,7 +13,7 @@
         "  4. Call participant_investigate(error, cinvMsg) and verify it raises expectedError.",
         "",
         "All test cases are error cases (this function never returns successfully).",
-        "Error objects contain 'type' and optionally 'participant' (identifier of the blamed party)."
+        "Error objects contain 'type' and optionally 'participant_id' (identifier of the blamed party)."
     ],
     "totalTests": 16,
     "testGroups": [
@@ -41,8 +41,8 @@
                     "cinvMsg": "C6C144287B356EF70378A7F1054FF00354A01352587DC076554A82CD324B66A17A5C832E385A79C54BB5E400CF3FA2DF8A747E7F362AA3345CB0097DAF2C7170A124DC237A739AD28D8624726DD0277B3B1D7D030019F0FBBA9EE12D6007FEE3036D44D81C8FC25D67A6E1E125246D1FF9BE76A1658F97C07CE39940D0B43E52E303BF0AF5C64B79B08F41BCFABC9FCECC5ADDA3F12CFA6AA1154E02DA1647FE8B0702092454A24C75464D046869DCD67E790172FB1F12A149E50DAC5E6C4D8BFAAE2F",
                     "expectedError": {
                         "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 1,
-                        "message": "Participant sent invalid partial secshare"
+                        "message": "Participant sent invalid partial secshare",
+                        "participantId": 1
                     },
                     "comment": "participant 1 sent an invalid secshare for participant 0"
                 },
@@ -102,8 +102,8 @@
                     "cinvMsg": "9827C7BD6ECCE374663262B90B8D2944C94F9AB1E83F38DBD12823DD7D58B8B3F4CDA3696B4B7701D9CA898B23E0211D9A3BB64CD130C329BDFC826BCBFCA14EEE7CAEA466336EF62D77586E88F1689219851C1473C34AA555FB08E2A7BD90970216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C602DA601E3FC8D21A247C5677D9CACFFE0BB86860BC1C233BECA0D97776AAE309DA02FB246B4866569A7A495CFFB1133DAF9096FE4FA22EDA6AF9D7A8F236F9C222B6",
                     "expectedError": {
                         "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 1,
-                        "message": "Participant sent invalid partial secshare"
+                        "message": "Participant sent invalid partial secshare",
+                        "participantId": 1
                     },
                     "comment": "participant 1 sent an invalid secshare for participant 0"
                 },
@@ -163,8 +163,8 @@
                     "cinvMsg": "7C47A6836F30317C4B914E33F10B72CA6EDD116A3DF9E8BFE997045F9F957D31B9BC513A6059135E04745D8BA961BA2B73A8F109469632CACD2DEA19DD9F986EE0165D9516387D7C6A7EDE123BB40683A6037628D3853322CF37FE31A36960DA02EB2C6840DF67A868BD870B7FB28C6166EE7175F26E1709EE6055C30BEDBED4440211DAB363110221D0DDC7A94DC8C125FADE58F7183C5C24C606572914B327D6E503FE94E345B4190A99EB1B6EE05449AE2F638456DFB603C74083387CB8F3ADCB12",
                     "expectedError": {
                         "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 1,
-                        "message": "Participant sent invalid partial secshare"
+                        "message": "Participant sent invalid partial secshare",
+                        "participantId": 1
                     },
                     "comment": "participant 1 sent an invalid secshare for participant 0"
                 },
@@ -225,8 +225,8 @@
                     "cinvMsg": "C2BC4B8326FF7015CEC59F160D74C4911E39F1C703FE64ACC5D0258A814EEAE2BE24CC80C556589A0B8E155C7DA2429FD3BE69817C8E237B911EDB37605569D38BB736697045FBC5CC366FA156F25C21760942BE0ED2FE35C8AE3B24C70E83920A7D6A1780AB7000EC43EAD753D49C5A5DD08236F37B43ED82D40C97D03E8B4803AE9A37E7CABAFAFA2B0C0E1C758F754208966D0EE3AF2817E09A4BCD52E6D96302ECB1B982603A8BA43EA6D9C8E070EB917BBD40B932F28B6B8BF84B81CD2C2241039CF320073B4B23D5F155924FC598AC82C74527C8CFB64B7459A876C8F4643D100380A91AEAD1DF43C3BDE89CFEC504708560DC53DFE7BD736CBB3EA9D06654E7AB",
                     "expectedError": {
                         "type": "FaultyParticipantOrCoordinatorError",
-                        "participant": 1,
-                        "message": "Participant sent invalid partial secshare"
+                        "message": "Participant sent invalid partial secshare",
+                        "participantId": 1
                     },
                     "comment": "participant 1 sent an invalid secshare for participant 0"
                 },
