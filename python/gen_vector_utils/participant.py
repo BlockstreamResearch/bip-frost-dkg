@@ -287,7 +287,7 @@ PARTICIPANT_STEP2_DESCRIPTION = [
     "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
     "  Verify it raises an exception matching expectedError.",
     "  Error objects contain 'type' (exception class name) and optionally:",
-    "    - 'participant_id': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
+    "    - 'participantId': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
     "    - 'message': human-readable description (informational, not required to match exactly)",
 ]
 
@@ -798,7 +798,7 @@ PARTICIPANT_INVESTIGATE_DESCRIPTION = [
     "  4. Call participant_investigate(error, cinvMsg) and verify it raises expectedError.",
     "",
     "All test cases are error cases (this function never returns successfully).",
-    "Error objects contain 'type' and optionally 'participant_id' (identifier of the blamed party).",
+    "Error objects contain 'type' and optionally 'participantId' (identifier of the blamed party).",
 ]
 
 

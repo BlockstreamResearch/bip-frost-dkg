@@ -16,7 +16,7 @@
         "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
         "  Verify it raises an exception matching expectedError.",
         "  Error objects contain 'type' (exception class name) and optionally:",
-        "    - 'participant_id': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
+        "    - 'participantId': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
         "    - 'message': human-readable description (informational, not required to match exactly)"
     ],
     "totalTests": 74,

@@ -14,7 +14,7 @@
         "For each error test case:",
         "  Call coordinator_step1(pmsgs1, params).",
         "  Verify it raises an exception matching expectedError.",
-        "  Error objects may include 'participant_id' (identifier of the blamed participant)."
+        "  Error objects may include 'participantId' (identifier of the blamed participant)."
     ],
     "totalTests": 44,
     "testGroups": [

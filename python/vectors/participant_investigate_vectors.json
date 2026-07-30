@@ -13,7 +13,7 @@
         "  4. Call participant_investigate(error, cinvMsg) and verify it raises expectedError.",
         "",
         "All test cases are error cases (this function never returns successfully).",
-        "Error objects contain 'type' and optionally 'participant_id' (identifier of the blamed party)."
+        "Error objects contain 'type' and optionally 'participantId' (identifier of the blamed party)."
     ],
     "totalTests": 16,
     "testGroups": [
