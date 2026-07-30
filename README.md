@@ -844,8 +844,8 @@ negligible probability if keys are generated honestly).
 
 *Attributes*:
 
-- `participant1` _int_ - Identifier of the first participant.
-- `participant2` _int_ - Identifier of the second participant.
+- `participant_id1` _int_ - Identifier of the first participant.
+- `participant_id2` _int_ - Identifier of the second participant.
 
 #### InvalidHostPubkeyError Exception
 
@@ -862,7 +862,7 @@ implies that the corresponding participant is faulty.
 
 *Attributes*:
 
-- `participant` _int_ - Identifier of the participant.
+- `participant_id` _int_ - Identifier of the participant.
 
 #### ThresholdOrCountError Exception
 
@@ -1364,7 +1364,8 @@ Raised if a recovery acknowledgment signature is invalid.
 
 *Attributes*:
 
-- `participant` _int_ - Identifier of the participant whose signature is invalid.
+- `participant_id` _int_ - Identifier of the participant whose signature is
+  invalid.
 
 #### ProtocolError Exception
 
@@ -1395,7 +1396,7 @@ See `FaultyParticipantOrCoordinatorError` for details.
 
 *Attributes*:
 
-- `participant` _int_ - Identifier of the faulty participant.
+- `participant_id` _int_ - Identifier of the faulty participant.
 
 #### FaultyParticipantOrCoordinatorError Exception
 
@@ -1425,7 +1426,7 @@ by participants will be detected by the coordinator instead. See
 
 *Attributes*:
 
-- `participant` _int_ - Identifier of the suspected participant.
+- `participant_id` _int_ - Identifier of the suspected participant.
 
 #### FaultyCoordinatorError Exception
 
@@ -1490,6 +1491,7 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
   * Remove `ParticipantMsgParseError` and `CoordinatorMsgParseError` from the public API.
   * Add `RandomnessError`, `InvalidRecoveryAckError`, and `FaultyParticipantError` to the public API.
   * Align terminology and naming with the draft of [BIP 445](bip-0445.md), including renaming participant "index" to "identifier".
+  * Rename variables `id` to `participant_id` (and similar) to avoid shadowing the Python built-in `id` function as well as for enhanced clarity; this change also affects some field names in the test vectors.
   * Rename `params_id` to `params_hash` to avoid confusion with the participant identifier and update the hash tag accordingly.
   * Rename `secp256k1proto` to `secp256k1lab` and separate it as an independent subtree for reuse across projects; see the [upstream repository](https://github.com/secp256k1lab/secp256k1lab).
   * Update the preamble per BIP 3.

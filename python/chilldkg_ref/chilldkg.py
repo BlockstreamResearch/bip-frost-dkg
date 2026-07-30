@@ -79,18 +79,18 @@ __all__ = [
 ###
 
 
-def certeq_message(x: bytes, id: int) -> bytes:
+def certeq_message(x: bytes, participant_id: int) -> bytes:
     # Domain separation as described in BIP 340
     prefix = (BIP_TAG + "certeq message").encode()
     prefix = prefix + b"\x00" * (33 - len(prefix))
     assert len(prefix) == 33
-    return prefix + id.to_bytes(4, "big") + x
+    return prefix + participant_id.to_bytes(4, "big") + x
 
 
 def certeq_participant_step(
-    hostseckey: bytes, id: int, x: bytes, aux_rand: bytes
+    hostseckey: bytes, participant_id: int, x: bytes, aux_rand: bytes
 ) -> bytes:
-    msg = certeq_message(x, id)
+    msg = certeq_message(x, participant_id)
     return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
@@ -122,9 +122,9 @@ def certeq_coordinator_step(sigs: list[bytes]) -> bytes:
 
 
 class InvalidSignatureInCertificateError(ValueError):
-    def __init__(self, participant: int, *args: Any):
-        self.participant = participant
-        super().__init__(participant, *args)
+    def __init__(self, participant_id: int, *args: Any):
+        self.participant_id = participant_id
+        super().__init__(participant_id, *args)
 
 
 ###
@@ -132,16 +132,18 @@ class InvalidSignatureInCertificateError(ValueError):
 ###
 
 
-def recovery_ack_message(x: bytes, id: int) -> bytes:
+def recovery_ack_message(x: bytes, participant_id: int) -> bytes:
     # Domain separation as described in BIP 340
     prefix = (BIP_TAG + "recovery acknowledgment").encode()
     prefix = prefix + b"\x00" * (33 - len(prefix))
     assert len(prefix) == 33
-    return prefix + id.to_bytes(4, "big") + x
+    return prefix + participant_id.to_bytes(4, "big") + x
 
 
-def recovery_ack_sign(hostseckey: bytes, id: int, x: bytes, aux_rand: bytes) -> bytes:
-    msg = recovery_ack_message(x, id)
+def recovery_ack_sign(
+    hostseckey: bytes, participant_id: int, x: bytes, aux_rand: bytes
+) -> bytes:
+    msg = recovery_ack_message(x, participant_id)
     return schnorr_sign(msg, hostseckey, aux_rand=aux_rand)
 
 
@@ -252,7 +254,7 @@ def params_validate(params: SessionParams) -> None:
         except ValueError as e:
             raise InvalidHostPubkeyError(i) from e
 
-    # Check for duplicate hostpubkeys and find the corresponding indices
+    # Check for duplicate hostpubkeys and find the corresponding ids
     hostpubkey_to_id: dict[bytes, int] = {}
     for i, hostpubkey in enumerate(hostpubkeys):
         if hostpubkey in hostpubkey_to_id:
@@ -310,14 +312,14 @@ class DuplicateHostPubkeyError(SessionParamsError):
     negligible probability if keys are generated honestly).
 
     Attributes:
-        participant1 (int): Identifier of the first participant.
-        participant2 (int): Identifier of the second participant.
+        participant_id1 (int): Identifier of the first participant.
+        participant_id2 (int): Identifier of the second participant.
     """
 
-    def __init__(self, participant1: int, participant2: int, *args: Any):
-        self.participant1 = participant1
-        self.participant2 = participant2
-        super().__init__(participant1, participant2, *args)
+    def __init__(self, participant_id1: int, participant_id2: int, *args: Any):
+        self.participant_id1 = participant_id1
+        self.participant_id2 = participant_id2
+        super().__init__(participant_id1, participant_id2, *args)
 
 
 class InvalidHostPubkeyError(SessionParamsError):
@@ -329,12 +331,12 @@ class InvalidHostPubkeyError(SessionParamsError):
     implies that the corresponding participant is faulty.
 
     Attributes:
-        participant (int): Identifier of the participant.
+        participant_id (int): Identifier of the participant.
     """
 
-    def __init__(self, participant: int, *args: Any):
-        self.participant = participant
-        super().__init__(participant, *args)
+    def __init__(self, participant_id: int, *args: Any):
+        self.participant_id = participant_id
+        super().__init__(participant_id, *args)
 
 
 class ThresholdOrCountError(SessionParamsError):
@@ -549,7 +551,7 @@ def deserialize_recovery_data(
 
 class ParticipantState1(NamedTuple):
     params: SessionParams
-    id: int
+    participant_id: int
     enc_state: encpedpop.ParticipantState
 
 
@@ -594,7 +596,7 @@ def participant_step1(
     (hostpubkeys, t) = params
 
     try:
-        id = hostpubkeys.index(hostpubkey)
+        participant_id = hostpubkeys.index(hostpubkey)
     except ValueError as e:
         raise HostSeckeyError(
             "Host secret key does not match any host public key"
@@ -613,11 +615,11 @@ def participant_step1(
         t=t,
         # This requires the joint security of Schnorr signatures and ECDH.
         enckeys=hostpubkeys,
-        id=id,
+        participant_id=participant_id,
         random=random,
     )
 
-    state1 = ParticipantState1(params, id, enc_state)
+    state1 = ParticipantState1(params, participant_id, enc_state)
     pmsg1 = enc_pmsg
     return state1, pmsg1
 
@@ -683,8 +685,8 @@ def participant_step2(
     if len(aux_rand) != 32:
         raise ValueError
 
-    params, id, enc_state = state1
-    if hostpubkey != params.hostpubkeys[id]:
+    params, participant_id, enc_state = state1
+    if hostpubkey != params.hostpubkeys[participant_id]:
         raise HostSeckeyError(
             "Host secret key does not match the one used in participant_step1"
         )
@@ -699,7 +701,7 @@ def participant_step2(
         state=enc_state,
         deckey=hostseckey,
         cmsg=enc_cmsg.to_bytes(),
-        enc_secshare=enc_secshares[id],
+        enc_secshare=enc_secshares[participant_id],
     )
 
     # Include the enc_shares in eq_input to ensure that participants agree on
@@ -707,7 +709,7 @@ def participant_step2(
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
     dkg_output = DKGOutput._make(enc_dkg_output)
     state2 = ParticipantState2(params, eq_input, dkg_output)
-    sig = certeq_participant_step(hostseckey, id, eq_input, aux_rand)
+    sig = certeq_participant_step(hostseckey, participant_id, eq_input, aux_rand)
     pmsg2 = ParticipantMsg2(sig).to_bytes()
     return state2, pmsg2
 
@@ -864,11 +866,11 @@ def coordinator_step1(
         raise ValueError
 
     pmsgs1_parsed = []
-    for id, pmsg1 in enumerate(pmsgs1):
+    for participant_id, pmsg1 in enumerate(pmsgs1):
         try:
             parsed = ParticipantMsg1.from_bytes(pmsg1, t=t, n=len(hostpubkeys))
         except MsgParseError as e:
-            raise FaultyParticipantError(id, *e.args) from e
+            raise FaultyParticipantError(participant_id, *e.args) from e
         pmsgs1_parsed.append(parsed)
 
     enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
@@ -936,7 +938,7 @@ def coordinator_finalize(
         certeq_verify(params.hostpubkeys, eq_input, cert)
     except InvalidSignatureInCertificateError as e:
         raise FaultyParticipantError(
-            e.participant,
+            e.participant_id,
             "Participant has provided an invalid signature for the certificate",
         ) from e
     cmsg2 = CoordinatorMsg2(cert).to_bytes()
@@ -969,11 +971,11 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
     n = len(pmsgs)
     t = params.t
     pmsgs_parsed = []
-    for id, pmsg in enumerate(pmsgs):
+    for participant_id, pmsg in enumerate(pmsgs):
         try:
             parsed = ParticipantMsg1.from_bytes(pmsg, t=t, n=n)
         except MsgParseError as e:
-            raise FaultyParticipantError(id, *e.args) from e
+            raise FaultyParticipantError(participant_id, *e.args) from e
         pmsgs_parsed.append(parsed)
     enc_cinvs = encpedpop.coordinator_investigate(
         [pmsg.enc_pmsg.to_bytes() for pmsg in pmsgs_parsed], t
@@ -1018,7 +1020,7 @@ def recover(
     if hostseckey is not None:
         hostpubkey = hostpubkey_gen(hostseckey)  # ValueError or HostSeckeyError
         try:
-            id = hostpubkeys.index(hostpubkey)
+            participant_id = hostpubkeys.index(hostpubkey)
         except ValueError as e:
             raise HostSeckeyError(
                 "Host secret key does not match any host public key in the recovery data"
@@ -1028,17 +1030,19 @@ def recover(
         enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
         secshare = encpedpop.decrypt_sum(
             hostseckey,
-            hostpubkeys[id],
+            hostpubkeys[participant_id],
             pubnonces,
             enc_context,
-            id,
-            enc_secshares[id],
+            participant_id,
+            enc_secshares[participant_id],
         )
         secshare_tweaked = secshare + tweak
 
         # This is just a sanity check. Our signature is valid, so we have done
         # an equivalent check already during the actual session.
-        assert VSSCommitment.verify_secshare(secshare_tweaked, pubshares[id])
+        assert VSSCommitment.verify_secshare(
+            secshare_tweaked, pubshares[participant_id]
+        )
     else:
         secshare_tweaked = None
 
@@ -1157,7 +1161,7 @@ def participant_recovery_ack_sign(
     (hostpubkeys, t) = params
 
     try:
-        id = hostpubkeys.index(hostpubkey)
+        participant_id = hostpubkeys.index(hostpubkey)
     except ValueError as e:
         raise HostSeckeyError(
             "Host secret key does not match any host public key"
@@ -1175,7 +1179,7 @@ def participant_recovery_ack_sign(
             "Recovery data does not match the provided session parameters"
         )
 
-    sig = recovery_ack_sign(hostseckey, id, recovery_data, aux_rand)
+    sig = recovery_ack_sign(hostseckey, participant_id, recovery_data, aux_rand)
     rmsg = RecoveryAckMsg(sig).to_bytes()
     return rmsg
 
@@ -1243,9 +1247,10 @@ class InvalidRecoveryAckError(FaultyParticipantError):
     """Raised if a recovery acknowledgment signature is invalid.
 
     Attributes:
-        participant (int): Identifier of the participant whose signature is invalid.
+        participant_id (int): Identifier of the participant whose signature is
+        invalid.
     """
 
-    def __init__(self, participant: int, *args: Any):
-        self.participant = participant
-        super().__init__(participant, *args)
+    def __init__(self, participant_id: int, *args: Any):
+        self.participant_id = participant_id
+        super().__init__(participant_id, *args)

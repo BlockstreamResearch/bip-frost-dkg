@@ -112,8 +112,8 @@
                     ],
                     "expectedError": {
                         "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "message": "Participant has provided an invalid signature for the certificate",
+                        "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
                 }
@@ -211,8 +211,8 @@
                     ],
                     "expectedError": {
                         "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "message": "Participant has provided an invalid signature for the certificate",
+                        "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
                 }
@@ -310,8 +310,8 @@
                     ],
                     "expectedError": {
                         "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "message": "Participant has provided an invalid signature for the certificate",
+                        "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
                 }
@@ -418,8 +418,8 @@
                     ],
                     "expectedError": {
                         "type": "FaultyParticipantError",
-                        "participant": 1,
-                        "message": "Participant has provided an invalid signature for the certificate"
+                        "message": "Participant has provided an invalid signature for the certificate",
+                        "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
                 }

@@ -28,12 +28,12 @@ class FaultyParticipantError(ProtocolError):
     See `FaultyParticipantOrCoordinatorError` for details.
 
     Attributes:
-        participant (int): Identifier of the faulty participant.
+        participant_id (int): Identifier of the faulty participant.
     """
 
-    def __init__(self, participant: int, *args: Any):
-        self.participant = participant
-        super().__init__(participant, *args)
+    def __init__(self, participant_id: int, *args: Any):
+        self.participant_id = participant_id
+        super().__init__(participant_id, *args)
 
 
 class FaultyParticipantOrCoordinatorError(ProtocolError):
@@ -58,12 +58,12 @@ class FaultyParticipantOrCoordinatorError(ProtocolError):
     `FaultyParticipantError` for details.
 
     Attributes:
-        participant (int): Identifier of the suspected participant.
+        participant_id (int): Identifier of the suspected participant.
     """
 
-    def __init__(self, participant: int, *args: Any):
-        self.participant = participant
-        super().__init__(participant, *args)
+    def __init__(self, participant_id: int, *args: Any):
+        self.participant_id = participant_id
+        super().__init__(participant_id, *args)
 
 
 class FaultyCoordinatorError(ProtocolError):

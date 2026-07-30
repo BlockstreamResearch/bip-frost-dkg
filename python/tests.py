@@ -41,7 +41,7 @@ def test_chilldkg_params_validate():
     try:
         _ = chilldkg.params_hash(params_with_duplicate)
     except chilldkg.DuplicateHostPubkeyError as e:
-        assert {e.participant1, e.participant2} == {1, 3}
+        assert {e.participant_id1, e.participant_id2} == {1, 3}
     else:
         assert False, "Expected exception"
 
@@ -52,7 +52,7 @@ def test_chilldkg_params_validate():
     try:
         _ = chilldkg.params_hash(params_with_invalid)
     except chilldkg.InvalidHostPubkeyError as e:
-        assert e.participant == 1
+        assert e.participant_id == 1
     else:
         assert False, "Expected exception"
 
@@ -138,7 +138,7 @@ def simulate_simplpedpop(
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_id
-                assert e.participant == faulty_id
+                assert e.participant_id == faulty_id
             # If we're faulty, we'll blame the coordinator.
             except FaultyCoordinatorError:
                 assert i == faulty_id
@@ -174,7 +174,8 @@ def simulate_encpedpop(
     if investigation:
         faulty_id: list[int] = []
         for i in range(n):
-            # Let a random participant faulty_id[i] send incorrect shares to i.
+            # Let a random participant faulty_id[i] send incorrect shares to
+            # participant i.
             faulty_id[i:] = [randint(0, n - 1)]
             faulty_pmsg = encpedpop.ParticipantMsg.from_bytes(
                 pmsgs[faulty_id[i]], t=t, n=n
@@ -200,7 +201,7 @@ def simulate_encpedpop(
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_id[i]
-                assert e.participant == faulty_id[i]
+                assert e.participant_id == faulty_id[i]
             # If we're faulty, we'll blame the coordinator.
             except FaultyCoordinatorError:
                 assert i == faulty_id[i]
@@ -229,7 +230,8 @@ def simulate_chilldkg(
     if investigation:
         faulty_id: list[int] = []
         for i in range(n):
-            # Let a random participant faulty_id[i] send incorrect shares to i.
+            # Let a random participant faulty_id[i] send incorrect shares
+            # to participant i.
             faulty_id[i:] = [randint(0, n - 1)]
             faulty_pmsg = chilldkg.ParticipantMsg1.from_bytes(
                 pmsgs[faulty_id[i]], t=t, n=n
@@ -256,7 +258,7 @@ def simulate_chilldkg(
             # If we're not faulty, we should blame the faulty party.
             except FaultyParticipantOrCoordinatorError as e:
                 assert i != faulty_id[i]
-                assert e.participant == faulty_id[i]
+                assert e.participant_id == faulty_id[i]
             # If we're faulty, we'll blame the coordinator.
             except FaultyCoordinatorError:
                 assert i == faulty_id[i]
@@ -302,12 +304,12 @@ def derive_interpolating_value(L, x_i):
     return lam
 
 
-def recover_secret(participant_indices, shares) -> Scalar:
+def recover_secret(participant_ids, shares) -> Scalar:
     interpolated_shares = []
     t = len(shares)
-    assert len(participant_indices) == t
+    assert len(participant_ids) == t
     for i in range(t):
-        lam = derive_interpolating_value(participant_indices, participant_indices[i])
+        lam = derive_interpolating_value(participant_ids, participant_ids[i])
         interpolated_shares += [(lam * shares[i])]
     recovered_secret = Scalar.sum(*interpolated_shares)
     return recovered_secret
@@ -860,7 +862,7 @@ def test_recovery_acknowledgment():
             recovery_data, params, invalid_ack_sigs
         )
     except chilldkg.InvalidRecoveryAckError as e:
-        assert e.participant == 1
+        assert e.participant_id == 1
     else:
         assert False, "Expected exception"
 
