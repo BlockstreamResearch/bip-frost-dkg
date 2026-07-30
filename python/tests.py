@@ -391,7 +391,7 @@ def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
             assert pubshares == dkg_outputs[i][2]
 
 
-VECTORS_DIR = Path(__file__).parent / "vectors"
+VECTORS_DIR = Path(__file__).parent.parent / "vectors"
 
 
 def test_hostpubkey_gen_vectors():

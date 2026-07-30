@@ -2,7 +2,7 @@
 
 """
 Driver script for generating test vector JSON files.
-Outputs are saved in the "python/vectors/" directory.
+Outputs are saved in the "../vectors/" directory.
 """
 
 from pathlib import Path
@@ -25,7 +25,7 @@ from gen_vector_utils.session import (
     generate_recover_vectors,
 )
 
-output_dir = Path(__file__).parent / "vectors"
+output_dir = Path(__file__).parent.parent / "vectors"
 output_dir.mkdir(parents=True, exist_ok=True)
 
 util.write_json(
