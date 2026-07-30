@@ -1489,6 +1489,8 @@ The `PATCH` version is incremented for other noteworthy changes (bug fixes, test
   * Remove message classes from the public API; protocol messages are passed as `bytes`.
   * Remove `ParticipantMsgParseError` and `CoordinatorMsgParseError` from the public API.
   * Add `RandomnessError`, `InvalidRecoveryAckError`, and `FaultyParticipantError` to the public API.
+  * Align terminology and naming with the draft of [BIP 445](bip-0445.md), including renaming participant "index" to "identifier".
+  * Rename `params_id` to `params_hash` to avoid confusion with the participant identifier and update the hash tag accordingly.
   * Rename `secp256k1proto` to `secp256k1lab` and separate it as an independent subtree for reuse across projects; see the [upstream repository](https://github.com/secp256k1lab/secp256k1lab).
   * Update the preamble per BIP 3.
 * *0.2.0* (2024-12-19): In addition to various readability improvements to specification and reference implementation, the following major changes were implemented:
