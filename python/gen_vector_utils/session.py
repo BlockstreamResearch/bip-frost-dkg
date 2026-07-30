@@ -2,7 +2,7 @@ from secp256k1lab.secp256k1 import Scalar
 from secp256k1lab.util import bytes_from_int
 
 from chilldkg_ref import chilldkg
-from chilldkg_ref.chilldkg import hostpubkey_gen, params_id
+from chilldkg_ref.chilldkg import hostpubkey_gen, params_hash
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX
 from .util import (
@@ -89,16 +89,16 @@ def generate_hostpubkey_vectors():
     }
 
 
-def generate_params_id_vectors():
+def generate_params_hash_vectors():
     description = [
-        "Test vectors for params_id(params).",
-        "Computes a unique 32-byte identifier for session parameters (hostpubkeys, threshold).",
+        "Test vectors for params_hash(params).",
+        "Computes a 32-byte hash of the session parameters (hostpubkeys, threshold).",
         "",
         "For each valid test case:",
-        "  Call params_id(params) and verify the result equals expectedParamsId.",
+        "  Call params_hash(params) and verify the result equals expectedParamsHash.",
         "",
         "For each error test case:",
-        "  Call params_id(params) and verify it raises an exception matching expectedError.",
+        "  Call params_hash(params) and verify it raises an exception matching expectedError.",
         "  The expectedError object contains 'type' (the exception class name).",
         "  Some errors include 'participant' (identifier of the offending participant)",
         "  or 'participant1'/'participant2' (indices for duplicate keys).",
@@ -118,10 +118,10 @@ def generate_params_id_vectors():
     for case in cases:
         t = case["t"]
         params = chilldkg.SessionParams(hostpubkeys, t)
-        expected_params_id = params_id(params)
+        expected_params_hash = params_hash(params)
         test_case = {
             "params": params_asdict(params),
-            "expectedParamsId": bytes_to_hex(expected_params_id),
+            "expectedParamsHash": bytes_to_hex(expected_params_hash),
             "comment": case["comment"],
         }
         valid_cases.append(test_case)
@@ -130,7 +130,7 @@ def generate_params_id_vectors():
     t = 0
     invalid_params = chilldkg.SessionParams(hostpubkeys, t)
     error = expect_exception(
-        lambda: params_id(invalid_params), chilldkg.ThresholdOrCountError
+        lambda: params_hash(invalid_params), chilldkg.ThresholdOrCountError
     )
     error_cases.append(
         {
@@ -145,7 +145,7 @@ def generate_params_id_vectors():
     with_invalid = [hostpubkeys[0], invalid_hostpubkey, hostpubkeys[2]]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
-        lambda: params_id(invalid_params), chilldkg.InvalidHostPubkeyError
+        lambda: params_hash(invalid_params), chilldkg.InvalidHostPubkeyError
     )
     error_cases.append(
         {
@@ -159,7 +159,7 @@ def generate_params_id_vectors():
     with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
     duplicate_params = chilldkg.SessionParams(with_duplicate, t)
     error = expect_exception(
-        lambda: params_id(duplicate_params), chilldkg.DuplicateHostPubkeyError
+        lambda: params_hash(duplicate_params), chilldkg.DuplicateHostPubkeyError
     )
     error_cases.append(
         {

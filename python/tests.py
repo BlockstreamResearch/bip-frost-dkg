@@ -39,7 +39,7 @@ def test_chilldkg_params_validate():
     with_duplicate = [hostpubkeys[0], hostpubkeys[1], hostpubkeys[2], hostpubkeys[1]]
     params_with_duplicate = chilldkg.SessionParams(with_duplicate, 2)
     try:
-        _ = chilldkg.params_id(params_with_duplicate)
+        _ = chilldkg.params_hash(params_with_duplicate)
     except chilldkg.DuplicateHostPubkeyError as e:
         assert {e.participant1, e.participant2} == {1, 3}
     else:
@@ -50,14 +50,14 @@ def test_chilldkg_params_validate():
         [hostpubkeys[1], invalid_hostpubkey, hostpubkeys[2]], 1
     )
     try:
-        _ = chilldkg.params_id(params_with_invalid)
+        _ = chilldkg.params_hash(params_with_invalid)
     except chilldkg.InvalidHostPubkeyError as e:
         assert e.participant == 1
     else:
         assert False, "Expected exception"
 
     try:
-        _ = chilldkg.params_id(
+        _ = chilldkg.params_hash(
             chilldkg.SessionParams(hostpubkeys, len(hostpubkeys) + 1)
         )
     except chilldkg.ThresholdOrCountError:
@@ -66,7 +66,7 @@ def test_chilldkg_params_validate():
         assert False, "Expected exception"
 
     try:
-        _ = chilldkg.params_id(chilldkg.SessionParams(hostpubkeys, -2))
+        _ = chilldkg.params_hash(chilldkg.SessionParams(hostpubkeys, -2))
     except chilldkg.ThresholdOrCountError:
         pass
     else:
@@ -412,8 +412,8 @@ def test_hostpubkey_gen_vectors():
         assert_raises(lambda: chilldkg.hostpubkey_gen(hostseckey), expected_error)
 
 
-def test_params_id_vectors():
-    input_file = VECTORS_DIR / "params_id_vectors.json"
+def test_params_hash_vectors():
+    input_file = VECTORS_DIR / "params_hash_vectors.json"
     with open(input_file) as f:
         test_data = json.load(f)
 
@@ -423,13 +423,13 @@ def test_params_id_vectors():
 
     for test_case in valid_test_cases:
         params = params_from_dict(test_case["params"])
-        expected_id = bytes.fromhex(test_case["expectedParamsId"])
-        assert expected_id == chilldkg.params_id(params)
+        expected_hash = bytes.fromhex(test_case["expectedParamsHash"])
+        assert expected_hash == chilldkg.params_hash(params)
 
     for test_case in error_test_cases:
         params = params_from_dict(test_case["params"])
         expected_error = test_case["expectedError"]
-        assert_raises(lambda: chilldkg.params_id(params), expected_error)
+        assert_raises(lambda: chilldkg.params_hash(params), expected_error)
 
 
 def test_participant_step1_vectors():
@@ -901,7 +901,7 @@ for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     test_correctness(t, n, simulate_chilldkg, recovery=True, investigation=True)
     test_correctness(t, n, simulate_chilldkg_full, recovery=True)
 test_hostpubkey_gen_vectors()
-test_params_id_vectors()
+test_params_hash_vectors()
 test_participant_step1_vectors()
 test_participant_step2_vectors()
 test_participant_finalize_vectors()

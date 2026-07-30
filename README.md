@@ -787,29 +787,29 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   keys with the [KeySort algorithm specified in
   BIP 327](bip-0327.mediawiki#key-sorting) to abstract away from the order.
 
-#### params\_id
+#### params\_hash
 
 ```python
-def params_id(params: SessionParams) -> bytes
+def params_hash(params: SessionParams) -> bytes
 ```
 
-Return the parameters ID, a unique representation of the `SessionParams`.
+Return a hash of the session parameters for out-of-band comparison.
 
 In the common scenario that the participants obtain host public keys from
 the other participants over channels that do not provide end-to-end
 authentication of the sending participant (e.g., if the participants simply
 send their unauthenticated host public keys to the coordinator, who is
-supposed to relay them to all participants), the parameters ID serves as a
+supposed to relay them to all participants), the parameters hash serves as a
 convenient way to perform an out-of-band comparison of all host public keys.
-It is a collision-resistant cryptographic hash of the `SessionParams`
-tuple. As a result, if all participants have obtained an identical
-parameters ID (as can be verified out-of-band), then they all agree on all
-host public keys and the threshold `t`, and in particular, all participants
-have obtained authentic public host keys.
+It is a collision-resistant cryptographic hash of the `SessionParams` tuple.
+As a result, if all participants have obtained an identical parameters hash
+(as can be verified out-of-band), then they all agree on all host public
+keys and the threshold `t`, and in particular, all participants have
+obtained authentic public host keys.
 
 *Returns*:
 
-- `bytes` - The parameters ID, a 32-byte string.
+- `bytes` - The parameters hash, a 32-byte string.
 
 
 *Raises*:

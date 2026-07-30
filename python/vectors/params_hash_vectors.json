@@ -1,13 +1,13 @@
 {
     "description": [
-        "Test vectors for params_id(params).",
-        "Computes a unique 32-byte identifier for session parameters (hostpubkeys, threshold).",
+        "Test vectors for params_hash(params).",
+        "Computes a 32-byte hash of the session parameters (hostpubkeys, threshold).",
         "",
         "For each valid test case:",
-        "  Call params_id(params) and verify the result equals expectedParamsId.",
+        "  Call params_hash(params) and verify the result equals expectedParamsHash.",
         "",
         "For each error test case:",
-        "  Call params_id(params) and verify it raises an exception matching expectedError.",
+        "  Call params_hash(params) and verify it raises an exception matching expectedError.",
         "  The expectedError object contains 'type' (the exception class name).",
         "  Some errors include 'participant' (identifier of the offending participant)",
         "  or 'participant1'/'participant2' (indices for duplicate keys)."
@@ -24,7 +24,7 @@
                 ],
                 "t": 2
             },
-            "expectedParamsId": "566F4DA6A6E6875F2FFE99E988310417F6CCA3E5B8F46CB9980AE3D5B2570A2A",
+            "expectedParamsHash": "6A03D4E831DBF10F71C2C47F8F31FA5BCEDBC266B336DEBA7E11607697CEEB7C",
             "comment": "standard 2-of-3 threshold"
         },
         {
@@ -37,7 +37,7 @@
                 ],
                 "t": 1
             },
-            "expectedParamsId": "1FB80306427F73D9C7E904D6B09D49D15B6F4E499D4746D9EA952B28D51B6820",
+            "expectedParamsHash": "3A0AC9644496D6A5723772EC7CF81462095519D107C3D4C6E6B0DD66951FADEB",
             "comment": "min threshold value"
         },
         {
@@ -50,7 +50,7 @@
                 ],
                 "t": 3
             },
-            "expectedParamsId": "D22DDB63254A9A2DC0B33CD6BE7AC1133DE42133CB670FDBF2A35113092E89BA",
+            "expectedParamsHash": "CAE987A3D2B2ACD32FEACE9CEAE231026C03AE26228EA026BCE82A08A5BF77E2",
             "comment": "max threshold value"
         }
     ],
