@@ -1,5 +1,8 @@
 import copy
 
+from secp256k1lab.secp256k1 import Scalar
+from secp256k1lab.util import bytes_from_int
+
 from chilldkg_ref import chilldkg
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
@@ -61,6 +64,23 @@ def generate_coordinator_step1_group(t, n):
             "params": params_asdict(params),
             "expectedCmsg1": bytes_to_hex(expected_cmsg1),
             "comment": "valid coordinator step1",
+        }
+    )
+
+    # --- Valid test case: participant 1's VSS commitment contains the infinity point ---
+    pmsg1_with_inf = (33 * b"\x00") + pmsgs1[1][33:]
+    pmsgs1_with_inf = list(pmsgs1)
+    pmsgs1_with_inf[1] = pmsg1_with_inf
+    _, expected_cmsg1_inf = chilldkg.coordinator_step1(pmsgs1_with_inf, params)
+    pmsg1_pool.append(bytes_to_hex(pmsg1_with_inf))  # index n
+    valid_cases.append(
+        {
+            "pmsg1Indices": [
+                len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
+            ],  # [0, n, 2,..., n - 1] — index 1 replaced
+            "params": params_asdict(params),
+            "expectedCmsg1": bytes_to_hex(expected_cmsg1_inf),
+            "comment": "participant 1's VSS commitment contains the infinity point",
         }
     )
 
@@ -186,21 +206,67 @@ def generate_coordinator_step1_group(t, n):
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
         ValueError,
     )
-    pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n
+    pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n + 1
     error_cases.append(
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n, 2,..., n - 1] — index 1 replaced
+            ],  # [0, n + 1, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "participant (id 1) message has an enc_shares list of invalid length",
         }
     )
 
+    # --- Error test case: participant (index 1) message has an out-of-range enc_share ---
+    overflow = bytes_from_int(Scalar.SIZE)  # 32 bytes
+    valid_pmsg1 = pmsgs1[1]
+    invalid_pmsg1 = valid_pmsg1[: -32 * n] + overflow + valid_pmsg1[-32 * (n - 1) :]
+    invalid_pmsgs1 = list(pmsgs1)
+    invalid_pmsgs1[1] = invalid_pmsg1
+    error = expect_faulty_exception(
+        lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
+        chilldkg.FaultyParticipantError,
+        1,
+    )
+    pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index n + 2
+    error_cases.append(
+        {
+            "pmsg1Indices": [
+                len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
+            ],  # [0, n + 2, 2,..., n - 1] — index 1 replaced
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "participant (index 1) message has an out-of-range enc_share",
+        }
+    )
+
+    # --- Error test case: participant (index 1) message has an off-curve x-coordinate in the VSS commitment ---
+    off_curve = b"\x03" + 31 * b"\x00" + b"\x05"
+    valid_pmsg1 = pmsgs1[1]
+    invalid_pmsg1 = off_curve + valid_pmsg1[33:]
+    invalid_pmsgs1 = list(pmsgs1)
+    invalid_pmsgs1[1] = invalid_pmsg1
+    error = expect_faulty_exception(
+        lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
+        chilldkg.FaultyParticipantError,
+        1,
+    )
+    pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index n + 3
+    error_cases.append(
+        {
+            "pmsg1Indices": [
+                len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
+            ],  # [0, n + 3, 2,..., n - 1] — index 1 replaced
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment",
+        }
+    )
+
     # --- Error test case: pmsg1 (index 0) is empty ---
     empty_pmsgs1 = b""
-    pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index n + 1
+    pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index n + 4
     invalid_pmsgs1 = [empty_pmsgs1] + pmsgs1[1:]
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
@@ -210,7 +276,7 @@ def generate_coordinator_step1_group(t, n):
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 0 else i for i in range(n)
-            ],  # [n + 1, 1, 2,..., n - 1] — index 0 replaced
+            ],  # [n + 4, 1, 2,..., n - 1] — index 0 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "missing simplpedpop participant message at index 0",
@@ -220,7 +286,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: pmsg1 (index 1) truncated before pubnonce ---
     simpl_pmsg_len = 33 * params.t + 64
     truncated_pmsg1 = pmsgs1[1][:simpl_pmsg_len]
-    pmsg1_pool.append(bytes_to_hex(truncated_pmsg1))  # index n + 2
+    pmsg1_pool.append(bytes_to_hex(truncated_pmsg1))  # index n + 5
     invalid_pmsgs1 = list(pmsgs1)
     invalid_pmsgs1[1] = truncated_pmsg1
     error = expect_exception(
@@ -231,7 +297,7 @@ def generate_coordinator_step1_group(t, n):
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n + 2, 2,..., n - 1] — index 1 replaced
+            ],  # [0, n + 5, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "missing public nonce in pmsg1 (index 1)",
