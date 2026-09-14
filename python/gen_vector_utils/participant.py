@@ -13,6 +13,7 @@ from .util import (
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    tg_id,
     threshold_info_asdict,
 )
 
@@ -262,6 +263,7 @@ def generate_participant_step1_group(t, n):
     )
 
     return {
+        "tgId": tg_id(t, n),
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
     }
@@ -735,6 +737,7 @@ def generate_participant_step2_group(t, n):
     )
 
     return {
+        "tgId": tg_id(t, n),
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
@@ -883,6 +886,7 @@ def generate_participant_finalize_group(t, n):
     )
 
     return {
+        "tgId": tg_id(t, n),
         "params": vectors["params"],
         "hostseckey": vectors["hostseckey"],
         "random": vectors["random"],
@@ -1135,6 +1139,7 @@ def generate_participant_investigate_group(t, n):
     # TODO: add runtime_error test case
 
     return {
+        "tgId": tg_id(t, n),
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
