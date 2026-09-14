@@ -75,6 +75,18 @@ def test_chilldkg_params_validate():
     else:
         assert False, "Expected exception"
 
+    max_n = chilldkg.MAX_PARTICIPANTS
+    many_hostpubkeys = [
+        chilldkg.hostpubkey_gen(random_bytes(32)) for _ in range(max_n + 1)
+    ]
+    _ = chilldkg.params_hash(chilldkg.SessionParams(many_hostpubkeys[:max_n], 2))
+    try:
+        _ = chilldkg.params_hash(chilldkg.SessionParams(many_hostpubkeys, 2))
+    except chilldkg.ThresholdOrCountError:
+        pass
+    else:
+        assert False, "Expected exception"
+
 
 def test_vss_correctness():
     def rand_polynomial(t):

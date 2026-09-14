@@ -34,10 +34,10 @@ The collection of test vectors therein (subdirectory `vectors/`) is, in addition
 ### Motivation
 
 The FROST threshold signature scheme [[KG20](https://eprint.iacr.org/2020/852), [CKM21](https://eprint.iacr.org/2021/1375), [BTZ22](https://eprint.iacr.org/2022/833), [CGRS23](https://eprint.iacr.org/2023/899)] enables `t`-of-`n` Schnorr signatures,
-in which some threshold `t` of a group of `n` participants is required to produce a signature.
+in which some threshold `t` of a group of `n`[^n-security-bound] participants is required to produce a signature.
 FROST guarantees unforgeability as long as at most `t - 1` participants are compromised
 and remains functional as long as `t` honest participants do not lose their secret key material,
-where `t` and `n` can be chosen arbitrarily (as long as `1 <= t <= n`).[^t-edge-cases]
+where `t` can be any value with `1 <= t <= n`; in particular, FROST supports a dishonest majority (`t - 1 >= n/2`).[^t-edge-cases]
 As a result, threshold signatures increase both security and availability,
 enabling users to escape the inherent dilemma between the contradicting goals of protecting a single secret key against theft and data loss simultaneously.
 
@@ -45,6 +45,8 @@ enabling users to escape the inherent dilemma between the contradicting goals of
 In the case of `t = n`, using a dedicated `n`-of-`n` multi-signature scheme such as MuSig2 [[BIP 327](bip-0327.mediawiki)] instead of FROST avoids the need for an interactive DKG.
 The case `t = 1` can be realized by letting one participant generate an ordinary [BIP 340](bip-0340.mediawiki) key pair and transmitting the key pair to every other participant, who can check its consistency and then simply use the ordinary [BIP 340](bip-0340.mediawiki) signing algorithm.
 Participants still need to ensure that they agree on a key pair. A detailed specification is not in the scope of this document.
+
+[^n-security-bound]: `n` is subject to an additional upper bound for security reasons: an attacker who chooses which participants to compromise *after* observing the public shares may, for large `n`, be able to forge with fewer than `t` compromised participants, provided it can solve the Low-Dimensional Vector Representation (LDVR) problem [[CS25](https://eprint.iacr.org/2025/1001), [GT26](https://eprint.iacr.org/2026/2126)]. [BIP 445](bip-0445.md) therefore bounds the number of participants, currently at `n <= 128`, chosen such that this problem is provably hard. ChillDKG enforces the same bound.
 
 [BIP 445](bip-0445.md) provides a specification of the FROST signing protocol tailored to [BIP 340](bip-0340.mediawiki) Schnorr signatures as deployed in Bitcoin.
 However, in order to use the specified protocol, the participants need to generate a shared *threshold public key* (representing the entire group with its `t`-of-`n` policy),
@@ -488,7 +490,7 @@ without careful further consideration, which is not in the scope of this documen
 
 ### DKG Parties and Inputs
 
-A DKG session comprises `n >= 1` *participants*,
+A DKG session comprises `n` *participants* (where `1 <= n <= 128`[^n-security-bound]),
 some number `t <= n` of which will be required to produce a signature.
 Additionally, each session requires a helper party called the *coordinator*.
 If there is no dedicated coordinator, one of the participants can act as the coordinator.
@@ -769,7 +771,7 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
 - `hostpubkeys` - Ordered list of the host public keys of all participants.
 - `t` - The participation threshold `t`.
   This is the number of participants that will be required to sign.
-  It must hold that `1 <= t <= len(hostpubkeys) <= 2**32 - 1`.
+  It must hold that `1 <= t <= len(hostpubkeys) <= 128`.
 
   Each participant **must** ensure to have authentic copies of all other
   participants' host public keys before the start of the session, e.g., by
@@ -791,6 +793,10 @@ A `SessionParams` tuple holds the common parameters of a DKG session.
   participants in the application, the caller can sort the list of host public
   keys with the [KeySort algorithm specified in
   BIP 327](bip-0327.mediawiki#key-sorting) to abstract away from the order.
+
+  The upper bound on the number of participants `n = len(hostpubkeys)` is a
+  security requirement of the FROST signing protocol as specified in
+  [BIP 445](bip-0445.md).
 
 #### params\_hash
 
@@ -821,7 +827,7 @@ obtained authentic public host keys.
 
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 128` does
   not hold.
 
 #### SessionParamsError Exception
@@ -874,7 +880,7 @@ implies that the corresponding participant is faulty.
 class ThresholdOrCountError(SessionParamsError)
 ```
 
-Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
+Raised if `1 <= t <= len(hostpubkeys) <= 128` does not hold.
 
 #### ThresholdInfo Tuples
 
@@ -931,7 +937,7 @@ Perform a participant's first step of a ChillDKG session.
   not match any entry of `hostpubkeys`.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 128` does
   not hold.
 - `RandomnessError` - If `random` is all zeroes (i.e., `b"\x00" * 32`). This
   check guards against the case of a malfunctioning random number
@@ -1131,7 +1137,7 @@ Perform the coordinator's first step of a ChillDKG session.
 
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 128` does
   not hold.
 - `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
@@ -1323,7 +1329,7 @@ successfully received the complete recovery data.
   match any host public key.
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 128` does
   not hold.
 - `RecoveryDataError` - If the recovery data is invalid or does not match
   the provided parameters.
@@ -1352,7 +1358,7 @@ received the recovery data before the threshold public key is used
 
 - `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
 - `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
-- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 128` does
   not hold.
 - `RecoveryDataError` - If the recovery data is invalid or does not match
   the provided parameters.
