@@ -13,6 +13,7 @@ from .util import (
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    tg_id,
     threshold_info_asdict,
 )
 
@@ -305,6 +306,7 @@ def generate_coordinator_step1_group(t, n):
     )
 
     return {
+        "tgId": tg_id(t, n),
         "pmsg1Pool": pmsg1_pool,
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
@@ -454,6 +456,7 @@ def generate_coordinator_finalize_group(t, n):
     )
 
     return {
+        "tgId": tg_id(t, n),
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
         "cmsg1": bytes_to_hex(cmsg1),
@@ -506,6 +509,7 @@ def generate_coordinator_investigate_group(t, n):
     ]
 
     return {
+        "tgId": tg_id(t, n),
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
         "validTestCases": valid_cases,
