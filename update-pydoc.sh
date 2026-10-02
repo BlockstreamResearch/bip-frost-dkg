@@ -23,7 +23,7 @@ done
 sed -z '$ s/\n$//' -i pydoc.md
 
 # Hack to patch in the full definitions of our NamedTuples...
-for name in SessionParams DKGOutput; do
+for name in SessionParams ThresholdInfo; do
     # Replace double \n\n by single \n because this is easier to work with
     sed -z 's/\n\n/\n/g' python/chilldkg_ref/chilldkg.py |
         # Match the definition (ended by a single empty line now)

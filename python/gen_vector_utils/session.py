@@ -7,10 +7,10 @@ from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX
 from .util import (
     assign_tc_ids,
     bytes_to_hex,
-    dkg_output_asdict,
     expect_exception,
     hex_list_to_bytes,
     params_asdict,
+    threshold_info_asdict,
 )
 
 
@@ -185,15 +185,16 @@ def generate_recover_vectors():
     description = [
         "Test vectors for participant_recover(hostseckey, recovery_data) and",
         "coordinator_recover(recovery_data).",
-        "Recovers a DKG output and session parameters from serialized recovery data.",
+        "Recovers the secret share (participants only), the threshold info, and the session",
+        "parameters from serialized recovery data.",
         "If hostseckey is null, recovery is performed as coordinator (secshare will be null).",
         "If hostseckey is a 32-byte hex string, recovery is performed as the corresponding participant.",
         "",
         "For each valid test case:",
         "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
         "  (if hostseckey is null) and verify the result matches expectedOutput.",
-        "  expectedOutput contains 'dkgOutput' (with secshare, threshPk, pubshares)",
-        "  and 'params' (with hostpubkeys, t).",
+        "  expectedOutput contains 'secshare' (null for the coordinator), 'thresholdInfo'",
+        "  (with t, threshPk, pubshares), and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",
         "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
@@ -224,35 +225,40 @@ def generate_recover_vectors():
         )
         pstates2.append(state)
         pmsgs2.append(msg)
-    cmsg2, cout, crec = chilldkg.coordinator_finalize(cstate, pmsgs2)
-    pout, prec = chilldkg.participant_finalize(pstates2[0], cmsg2)
+    cmsg2, cinfo, crec = chilldkg.coordinator_finalize(cstate, pmsgs2)
+    psecshare, pinfo, prec = chilldkg.participant_finalize(pstates2[0], cmsg2)
     assert prec == crec
 
     # --- Valid test case: participant recovery ---
-    pout_rec, params_rec = chilldkg.participant_recover(hostseckeys[0], prec)
-    assert pout_rec == pout
+    psecshare_rec, pinfo_rec, params_rec = chilldkg.participant_recover(
+        hostseckeys[0], prec
+    )
+    assert psecshare_rec == psecshare
+    assert pinfo_rec == pinfo
     assert params_rec == params
     valid_cases.append(
         {
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "recoveryData": bytes_to_hex(prec),
             "expectedOutput": {
-                "dkgOutput": dkg_output_asdict(pout_rec),
+                "secshare": bytes_to_hex(psecshare_rec),
+                "thresholdInfo": threshold_info_asdict(pinfo_rec),
                 "params": params_asdict(params_rec),
             },
             "comment": "participant recovery",
         }
     )
     # --- Valid test case: coordinator recovery ---
-    cout_rec, params_rec = chilldkg.coordinator_recover(crec)
-    assert cout_rec == cout
+    cinfo_rec, params_rec = chilldkg.coordinator_recover(crec)
+    assert cinfo_rec == cinfo
     assert params_rec == params
     valid_cases.append(
         {
             "hostseckey": None,
             "recoveryData": bytes_to_hex(crec),
             "expectedOutput": {
-                "dkgOutput": dkg_output_asdict(cout_rec),
+                "secshare": None,
+                "thresholdInfo": threshold_info_asdict(cinfo_rec),
                 "params": params_asdict(params_rec),
             },
             "comment": "coordinator recovery",

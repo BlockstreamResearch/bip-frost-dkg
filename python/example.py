@@ -11,10 +11,10 @@ from secrets import token_bytes as random_bytes
 
 from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
-    DKGOutput,
     FaultyParticipantOrCoordinatorError,
     RecoveryData,
     SessionParams,
+    ThresholdInfo,
     UnknownFaultyParticipantOrCoordinatorError,
     coordinator_finalize,
     coordinator_investigate,
@@ -102,7 +102,7 @@ async def participant(
     hostseckey: bytes,
     params: SessionParams,
     investigation_procedure: bool,
-) -> tuple[DKGOutput, RecoveryData]:
+) -> tuple[bytes, ThresholdInfo, RecoveryData]:
     # TODO Top-level error handling
     random = random_bytes(32)
     state1, pmsg1 = participant_step1(hostseckey, params, random)
@@ -143,7 +143,7 @@ async def participant(
 
 async def coordinator(
     chans: CoordinatorChannels, params: SessionParams, investigation_procedure: bool
-) -> tuple[DKGOutput, RecoveryData]:
+) -> tuple[ThresholdInfo, RecoveryData]:
     (hostpubkeys, _) = params
     n = len(hostpubkeys)
 
@@ -163,10 +163,10 @@ async def coordinator(
     sigs = []
     for i in range(n):
         sigs += [await chans.receive_from(i)]
-    cmsg2, dkg_output, recovery_data = coordinator_finalize(state, sigs)
+    cmsg2, threshold_info, recovery_data = coordinator_finalize(state, sigs)
     chans.send_all(cmsg2)
 
-    return dkg_output, recovery_data
+    return threshold_info, recovery_data
 
 
 #
@@ -197,7 +197,7 @@ async def faulty_participant(
 
 def simulate_chilldkg_full(
     hostseckeys: list[bytes], params: SessionParams, faulty_id: int | None
-) -> list[tuple[DKGOutput, RecoveryData] | None]:
+) -> list[tuple[bytes | None, ThresholdInfo, RecoveryData] | None]:
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 
@@ -223,8 +223,9 @@ def simulate_chilldkg_full(
         ]
         return await asyncio.gather(*coroutines)
 
-    outputs = asyncio.run(session())
-    return outputs
+    (cthreshold_info, crecovery_data), *poutputs = asyncio.run(session())
+    # The coordinator has no secret share.
+    return [(None, cthreshold_info, crecovery_data), *poutputs]
 
 
 def main():
@@ -285,20 +286,20 @@ def main():
             raise
 
     assert len(rets) == n + 1
-    print("=== Coordinator's DKG output ===")
-    dkg_output, _ = rets[0]
-    pphex(dkg_output)
+    print("=== Coordinator's threshold info ===")
+    _, threshold_info, _ = rets[0]
+    pphex({"threshold_info": threshold_info})
     print()
 
     for i in range(n):
-        print(f"=== Participant {i}'s DKG output ===")
-        dkg_output, _ = rets[i + 1]
-        pphex(dkg_output)
+        print(f"=== Participant {i}'s secret share and threshold info ===")
+        secshare, threshold_info, _ = rets[i + 1]
+        pphex({"secshare": secshare, "threshold_info": threshold_info})
         print()
 
     # Check that all RecoveryData of all parties is identical
-    assert len({rets[i][1] for i in range(n + 1)}) == 1
-    recovery_data = rets[0][1]
+    assert len({ret[-1] for ret in rets}) == 1
+    recovery_data = rets[0][2]
     print(f"=== Common recovery data ({len(recovery_data)} bytes) ===")
     print(recovery_data.hex())
 
