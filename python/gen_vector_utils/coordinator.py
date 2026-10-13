@@ -444,12 +444,12 @@ def generate_coordinator_finalize_group(t, n):
     )
 
     # add adversarial entry to pool
-    pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_sig[1]))  # index n
+    pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_sig[1]))  # index n + 1
     error_cases.append(
         {
             "pmsg2Indices": [
                 len(pmsg2_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n, 2,..., n - 1]
+            ],  # [0, n + 1, 2,..., n - 1]
             "expectedError": error_case,
             "comment": "participant with id 1 sent an invalid signature",
         }
