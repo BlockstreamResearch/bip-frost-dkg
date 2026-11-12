@@ -6,7 +6,13 @@ from secp256k1lab.util import bytes_from_int
 
 from chilldkg_ref import chilldkg, vss
 
-from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
+from .fixtures import (
+    AUX_RAND_HEX,
+    HOSTSECKEYS_HEX,
+    OFF_CURVE_POINT,
+    RANDOMS_HEX,
+    THRESHOLD_CONFIGS,
+)
 from .util import (
     assign_tc_ids,
     bytes_to_hex,
@@ -142,7 +148,7 @@ def generate_coordinator_step1_group(t, n):
     )
 
     # --- Error test case: hostpubkeys list contains an invalid value ---
-    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
+    invalid_hostpubkey = OFF_CURVE_POINT
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
@@ -273,9 +279,8 @@ def generate_coordinator_step1_group(t, n):
     )
 
     # --- Error test case: participant (index 1) message has an off-curve x-coordinate in the VSS commitment ---
-    off_curve = b"\x03" + 31 * b"\x00" + b"\x05"
     valid_pmsg1 = pmsgs1[1]
-    invalid_pmsg1 = off_curve + valid_pmsg1[33:]
+    invalid_pmsg1 = OFF_CURVE_POINT + valid_pmsg1[33:]
     invalid_pmsgs1 = list(pmsgs1)
     invalid_pmsgs1[1] = invalid_pmsg1
     error = expect_faulty_exception(
