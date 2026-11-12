@@ -75,7 +75,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "invalid partial pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1"
+                    "comment": "invalid cinv_msg: partial pubshares list has an off-curve x-coordinate at index 1"
                 },
                 {
                     "tcId": 5,
@@ -166,7 +166,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "invalid partial pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1"
+                    "comment": "invalid cinv_msg: partial pubshares list has an off-curve x-coordinate at index 1"
                 },
                 {
                     "tcId": 12,
@@ -257,7 +257,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "invalid partial pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1"
+                    "comment": "invalid cinv_msg: partial pubshares list has an off-curve x-coordinate at index 1"
                 },
                 {
                     "tcId": 19,
@@ -349,7 +349,7 @@
                         "type": "FaultyCoordinatorError",
                         "message": "invalid partial pubshare"
                     },
-                    "comment": "partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1"
+                    "comment": "invalid cinv_msg: partial pubshares list has an off-curve x-coordinate at index 1"
                 },
                 {
                     "tcId": 26,
