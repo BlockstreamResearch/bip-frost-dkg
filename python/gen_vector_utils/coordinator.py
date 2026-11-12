@@ -1,9 +1,10 @@
 import copy
+from unittest import mock
 
 from secp256k1lab.secp256k1 import Scalar
 from secp256k1lab.util import bytes_from_int
 
-from chilldkg_ref import chilldkg
+from chilldkg_ref import chilldkg, vss
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
 from .util import (
@@ -16,6 +17,23 @@ from .util import (
     tg_id,
     threshold_info_asdict,
 )
+
+
+def participant_step1_with_zero_coeff(hostseckey, params, random, index):
+    # Run participant_step1 with coefficient `index` of the participant's secret
+    # polynomial set to zero. The resulting VSS commitment then contains the
+    # point at infinity at position `index`, while the proof of possession, the
+    # secret shares and the commitment stay consistent with each other.
+    orig_generate = vss.VSS.generate
+
+    def generate(seed, t):
+        vss_ = orig_generate(seed, t)
+        vss_.f.coeffs[index] = Scalar(0)
+        return vss_
+
+    with mock.patch.object(vss.VSS, "generate", staticmethod(generate)):
+        return chilldkg.participant_step1(hostseckey, params, random)
+
 
 COORDINATOR_STEP1_DESCRIPTION = [
     "Test vectors for coordinator_step1(pmsgs1, params).",
@@ -69,21 +87,29 @@ def generate_coordinator_step1_group(t, n):
     )
 
     # --- Valid test case: participant 1's VSS commitment contains the infinity point ---
-    pmsg1_with_inf = (33 * b"\x00") + pmsgs1[1][33:]
-    pmsgs1_with_inf = list(pmsgs1)
-    pmsgs1_with_inf[1] = pmsg1_with_inf
-    _, expected_cmsg1_inf = chilldkg.coordinator_step1(pmsgs1_with_inf, params)
-    pmsg1_pool.append(bytes_to_hex(pmsg1_with_inf))  # index n
-    valid_cases.append(
-        {
-            "pmsg1Indices": [
-                len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n, 2,..., n - 1] — index 1 replaced
-            "params": params_asdict(params),
-            "expectedCmsg1": bytes_to_hex(expected_cmsg1_inf),
-            "comment": "participant 1's VSS commitment contains the infinity point",
-        }
-    )
+    # Participant 1's polynomial has a_1 = 0, so its commitment to that
+    # coefficient is the point at infinity. For t = 1 the case is skipped,
+    # so the pool indices in the comments below are one lower.
+    if t >= 2:
+        _, pmsg1_inf = participant_step1_with_zero_coeff(
+            hostseckeys[1], params, randoms[1], 1
+        )
+        assert pmsg1_inf[33:66] == 33 * b"\x00"  # com[1] encodes infinity
+        pmsgs1_inf = list(pmsgs1)
+        pmsgs1_inf[1] = pmsg1_inf
+        _, cmsg1_inf = chilldkg.coordinator_step1(pmsgs1_inf, params)
+
+        pmsg1_pool.append(bytes_to_hex(pmsg1_inf))  # index n
+        valid_cases.append(
+            {
+                "pmsg1Indices": [
+                    len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
+                ],  # [0, n, 2,..., n - 1] — index 1 replaced
+                "params": params_asdict(params),
+                "expectedCmsg1": bytes_to_hex(cmsg1_inf),
+                "comment": "participant 1's VSS commitment contains the infinity point (a_1 = 0)",
+            }
+        )
 
     # --- Error test case: Invalid threshold ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
