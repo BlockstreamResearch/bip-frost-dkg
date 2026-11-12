@@ -720,8 +720,7 @@ def generate_participant_step2_group(t, n):
     )
     # --- Error test case: cmsg1 contains an out-of-range enc_secshare ---
     overflow = bytes_from_int(Scalar.SIZE)  # 32 bytes
-    n = len(params.hostpubkeys)
-    invalid_cmsg1 = cmsg1[: -32 * n] + overflow + cmsg1[-32 * (n - 1) :]
+    invalid_cmsg1 = cmsg1[: -32 * n] + overflow + cmsg1[len(cmsg1) - 32 * (n - 1) :]
     error = expect_exception(
         lambda: chilldkg.participant_step2(
             hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
@@ -1038,7 +1037,7 @@ def generate_participant_investigate_group(t, n):
         }
     )
 
-    # --- Error test case: partial pubshares list in cinv_msg has an invalid value at index 1 ---
+    # --- Error test case: partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1 ---
     try:
         chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
@@ -1059,7 +1058,7 @@ def generate_participant_investigate_group(t, n):
             "cmsg1Index": 1,
             "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
             "expectedError": error,
-            "comment": "partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1",
+            "comment": "invalid cinv_msg: partial pubshares list has an off-curve x-coordinate at index 1",
         }
     )
 

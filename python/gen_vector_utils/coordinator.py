@@ -222,7 +222,11 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: participant (index 1) message has an out-of-range enc_share ---
     overflow = bytes_from_int(Scalar.SIZE)  # 32 bytes
     valid_pmsg1 = pmsgs1[1]
-    invalid_pmsg1 = valid_pmsg1[: -32 * n] + overflow + valid_pmsg1[-32 * (n - 1) :]
+    invalid_pmsg1 = (
+        valid_pmsg1[: -32 * n]
+        + overflow
+        + valid_pmsg1[len(valid_pmsg1) - 32 * (n - 1) :]
+    )
     invalid_pmsgs1 = list(pmsgs1)
     invalid_pmsgs1[1] = invalid_pmsg1
     error = expect_faulty_exception(
