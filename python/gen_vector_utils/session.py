@@ -3,7 +3,7 @@ from secp256k1lab.util import bytes_from_int
 
 from chilldkg_ref import chilldkg
 
-from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX
+from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, OFF_CURVE_POINT, RANDOMS_HEX
 from .util import (
     assign_tc_ids,
     bytes_to_hex,
@@ -141,7 +141,7 @@ def generate_params_hash_vectors():
         }
     )
     # --- Error test case: hostpubkeys list contains an invalid value ---
-    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
+    invalid_hostpubkey = OFF_CURVE_POINT
     t = 2
     with_invalid = [hostpubkeys[0], invalid_hostpubkey, hostpubkeys[2]]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
@@ -280,7 +280,7 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: first coefficient of sum_coms is invalid ---
-    invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"  # Invalid x-coordinate
+    invalid_ge = OFF_CURVE_POINT
     invalid_crec = crec[:4] + invalid_ge + crec[4 + 33 :]
     error = expect_exception(
         lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError
@@ -326,7 +326,7 @@ def generate_recover_vectors():
         }
     )
     # --- Error test case: first pubkey in the hostpubkey list is invalid ---
-    invalid_ge = b"\x03" + 31 * b"\x00" + b"\x05"
+    invalid_ge = OFF_CURVE_POINT
     invalid_crec = crec[: 4 + 33 * t] + invalid_ge + crec[4 + 33 * t + 33 :]
     error = expect_exception(
         lambda: chilldkg.coordinator_recover(invalid_crec), chilldkg.RecoveryDataError

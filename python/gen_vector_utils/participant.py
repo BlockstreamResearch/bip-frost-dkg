@@ -5,7 +5,13 @@ from secp256k1lab.util import bytes_from_int
 
 from chilldkg_ref import chilldkg
 
-from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONFIGS
+from .fixtures import (
+    AUX_RAND_HEX,
+    HOSTSECKEYS_HEX,
+    OFF_CURVE_POINT,
+    RANDOMS_HEX,
+    THRESHOLD_CONFIGS,
+)
 from .util import (
     assign_tc_ids,
     bytes_to_hex,
@@ -164,7 +170,7 @@ def generate_participant_step1_group(t, n):
         }
     )
     # --- Error test case: hostpubkeys list contains a value with an off-curve x-coordinate ---
-    invalid_hostpubkey = b"\x03" + 31 * b"\x00" + b"\x05"  # invalid x-coordinate
+    invalid_hostpubkey = OFF_CURVE_POINT
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]
     invalid_params = chilldkg.SessionParams(with_invalid, t)
     error = expect_exception(
@@ -424,9 +430,7 @@ def generate_participant_step2_group(t, n):
     )
     # --- Error test case: pubnonces list in cmsg1 has an off-curve x-coordinate at index 0 (own pubnonce) ---
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
-    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = (
-        b"\x03" + 31 * b"\x00" + b"\x05"
-    )  # Invalid x-coordinate
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[0] = OFF_CURVE_POINT
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_exception(
         lambda: chilldkg.participant_step2(
@@ -443,9 +447,7 @@ def generate_participant_step2_group(t, n):
     )
     # --- Error test case: pubnonces list in cmsg1 has an off-curve x-coordinate at index 1 ---
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
-    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = (
-        b"\x03" + 31 * b"\x00" + b"\x05"
-    )  # Invalid x-coordinate
+    invalid_cmsg1_parsed.enc_cmsg.pubnonces[1] = OFF_CURVE_POINT
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
     error = expect_faulty_exception(
         lambda: chilldkg.participant_step2(
@@ -606,8 +608,7 @@ def generate_participant_step2_group(t, n):
         }
     )
     # --- Error test case: coms_to_secrets list in cmsg1 has an off-curve x-coordinate at index 1 ---
-    off_curve = b"\x03" + 31 * b"\x00" + b"\x05"
-    invalid_cmsg1 = cmsg1[:33] + off_curve + cmsg1[66:]
+    invalid_cmsg1 = cmsg1[:33] + OFF_CURVE_POINT + cmsg1[66:]
     error = expect_exception(
         lambda: chilldkg.participant_step2(
             hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
@@ -681,9 +682,8 @@ def generate_participant_step2_group(t, n):
             }
         )
         # --- Error test case: sum_coms_to_nonconst_terms has an off-curve x-coordinate at index 0 ---
-        off_curve = b"\x03" + 31 * b"\x00" + b"\x05"
         offset = 33 * n
-        invalid_cmsg1 = cmsg1[:offset] + off_curve + cmsg1[offset + 33 :]
+        invalid_cmsg1 = cmsg1[:offset] + OFF_CURVE_POINT + cmsg1[offset + 33 :]
         error = expect_exception(
             lambda: chilldkg.participant_step2(
                 hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand
@@ -834,7 +834,7 @@ def generate_participant_finalize_group(t, n):
                 "cmsg2": bytes_to_hex(cmsg2),
                 "expectedOutput": {
                     "secshare": bytes_to_hex(psecshare),
-                "thresholdInfo": threshold_info_asdict(pinfo),
+                    "thresholdInfo": threshold_info_asdict(pinfo),
                     "recoveryData": bytes_to_hex(prec),
                 },
                 "comment": f"valid participant finalize (idx = {idx})",
@@ -985,49 +985,43 @@ def generate_participant_investigate_group(t, n):
     invalid_cmsg1_parsed = copy.deepcopy(cmsg1_parsed)
     invalid_cmsg1_parsed.enc_secshares[0] += Scalar(17)
     invalid_cmsg1 = invalid_cmsg1_parsed.to_bytes()
+    cmsg1_pool.append(bytes_to_hex(invalid_cmsg1))  # index 1
 
+    # This case and all remaining ones start from participant 0's failed
+    # participant_step2 on this cmsg1 and differ only in the cinv_msg passed to
+    # participant_investigate, so compute the error and the cinv_msg once.
     try:
         chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
     except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
-        cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-        error = expect_exception(
-            lambda e=e: chilldkg.participant_investigate(e, cinv_msgs[0]),
-            chilldkg.FaultyCoordinatorError,
-        )
+        step2_error = e
     else:
         assert False, "Expected exception"
+    cinv_msg0 = chilldkg.coordinator_investigate(pmsgs1, params)[0]
+    cinv_msg0_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
+        cinv_msg0, n=len(params.hostpubkeys)
+    )
 
-    cmsg1_pool.append(bytes_to_hex(invalid_cmsg1))  # index 1
+    error = expect_exception(
+        lambda: chilldkg.participant_investigate(step2_error, cinv_msg0),
+        chilldkg.FaultyCoordinatorError,
+    )
     error_cases.append(
         {
             "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(cinv_msgs[0]),
+            "cinvMsg": bytes_to_hex(cinv_msg0),
             "expectedError": error,
             "comment": "coordinator tampered with participant 0's encrypted secshare",
         }
     )
 
     # --- Error test case: Coordinator tampered with self-encrypted partial secshare ---
-    try:
-        # using the prior invalid_cmsg1 to trigger the error
-        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
-    except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
-        cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-        cinv_msg_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
-            cinv_msgs[0], n=len(params.hostpubkeys)
-        )
-        invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg_parsed)
-        invalid_cinv_msg0_parsed.enc_cinv.enc_partial_secshares[0] += Scalar(
-            17
-        )  # invalid share
-        invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
-        error = expect_exception(
-            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
-            chilldkg.FaultyCoordinatorError,
-        )
-    else:
-        assert False, "Expected exception"
-
+    invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg0_parsed)
+    invalid_cinv_msg0_parsed.enc_cinv.enc_partial_secshares[0] += Scalar(17)
+    invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
+    error = expect_exception(
+        lambda: chilldkg.participant_investigate(step2_error, invalid_cinv_msg0),
+        chilldkg.FaultyCoordinatorError,
+    )
     error_cases.append(
         {
             "cmsg1Index": 1,
@@ -1038,21 +1032,12 @@ def generate_participant_investigate_group(t, n):
     )
 
     # --- Error test case: partial pubshares list in cinv_msg has an off-curve x-coordinate at index 1 ---
-    try:
-        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
-    except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
-        cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-        valid_cinv = cinv_msgs[0]
-        off_curve = b"\x03" + 31 * b"\x00" + b"\x05"
-        offset = 32 * n + 33  # skip enc_partial_secshares and partial_pubshares[0]
-        invalid_cinv_msg0 = valid_cinv[:offset] + off_curve + valid_cinv[offset + 33 :]
-        error = expect_exception(
-            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
-            chilldkg.FaultyCoordinatorError,
-        )
-    else:
-        assert False, "Expected exception"
-
+    offset = 32 * n + 33  # skip enc_partial_secshares and partial_pubshares[0]
+    invalid_cinv_msg0 = cinv_msg0[:offset] + OFF_CURVE_POINT + cinv_msg0[offset + 33 :]
+    error = expect_exception(
+        lambda: chilldkg.participant_investigate(step2_error, invalid_cinv_msg0),
+        chilldkg.FaultyCoordinatorError,
+    )
     error_cases.append(
         {
             "cmsg1Index": 1,
@@ -1063,21 +1048,13 @@ def generate_participant_investigate_group(t, n):
     )
 
     # --- Error test case: enc_partial_secshares list in cinv_msg has an out-of-range value at index 1 ---
-    try:
-        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
-    except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
-        cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-        valid_cinv = cinv_msgs[0]
-        overflow = bytes_from_int(Scalar.SIZE)  # 32 bytes, == group order
-        offset = 32  # skip enc_partial_secshares[0]
-        invalid_cinv_msg0 = valid_cinv[:offset] + overflow + valid_cinv[offset + 32 :]
-        error = expect_exception(
-            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
-            chilldkg.FaultyCoordinatorError,
-        )
-    else:
-        assert False, "Expected exception"
-
+    overflow = bytes_from_int(Scalar.SIZE)  # 32 bytes, == group order
+    offset = 32  # skip enc_partial_secshares[0]
+    invalid_cinv_msg0 = cinv_msg0[:offset] + overflow + cinv_msg0[offset + 32 :]
+    error = expect_exception(
+        lambda: chilldkg.participant_investigate(step2_error, invalid_cinv_msg0),
+        chilldkg.FaultyCoordinatorError,
+    )
     error_cases.append(
         {
             "cmsg1Index": 1,
@@ -1088,26 +1065,15 @@ def generate_participant_investigate_group(t, n):
     )
 
     # --- Error test case: partial pubshares list in cinv_msg has an arbitrary value at index 1 ---
-    try:
-        # using the prior invalid_cmsg1 to trigger the error
-        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
-    except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
-        cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-        cinv_msg_parsed = chilldkg.CoordinatorInvestigationMsg.from_bytes(
-            cinv_msgs[0], n=len(params.hostpubkeys)
-        )
-        invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg_parsed)
-        invalid_cinv_msg0_parsed.enc_cinv.partial_pubshares[1] = GE.lift_x(
-            ARBITRARY_POINT_X
-        )
-        invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
-        error = expect_exception(
-            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
-            chilldkg.FaultyCoordinatorError,
-        )
-    else:
-        assert False, "Expected exception"
-
+    invalid_cinv_msg0_parsed = copy.deepcopy(cinv_msg0_parsed)
+    invalid_cinv_msg0_parsed.enc_cinv.partial_pubshares[1] = GE.lift_x(
+        ARBITRARY_POINT_X
+    )
+    invalid_cinv_msg0 = invalid_cinv_msg0_parsed.to_bytes()
+    error = expect_exception(
+        lambda: chilldkg.participant_investigate(step2_error, invalid_cinv_msg0),
+        chilldkg.FaultyCoordinatorError,
+    )
     error_cases.append(
         {
             "cmsg1Index": 1,
@@ -1118,18 +1084,11 @@ def generate_participant_investigate_group(t, n):
     )
 
     # --- Error test case: cinv_msg of invalid length ---
-    try:
-        chilldkg.participant_step2(hostseckeys[0], pstates1[0], invalid_cmsg1, aux_rand)
-    except chilldkg.UnknownFaultyParticipantOrCoordinatorError as e:
-        cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-        invalid_cinv_msg0 = cinv_msgs[0][:-1]
-        error = expect_exception(
-            lambda e=e: chilldkg.participant_investigate(e, invalid_cinv_msg0),
-            ValueError,
-        )
-    else:
-        assert False, "Expected exception"
-
+    invalid_cinv_msg0 = cinv_msg0[:-1]
+    error = expect_exception(
+        lambda: chilldkg.participant_investigate(step2_error, invalid_cinv_msg0),
+        ValueError,
+    )
     error_cases.append(
         {
             "cmsg1Index": 1,
