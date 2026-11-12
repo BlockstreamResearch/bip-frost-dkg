@@ -615,21 +615,25 @@ def test_participant_finalize_vectors():
                 test_case.get("hostseckey", group["hostseckey"])
             )
             case_random = bytes.fromhex(test_case.get("random", group["random"]))
-            case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
-            if (
-                case_hostseckey != hostseckey
-                or case_random != random
-                or case_aux_rand != aux_rand
-            ):
-                case_state1, _ = chilldkg.participant_step1(
+            rederive = case_hostseckey != hostseckey or case_random != random
+            if rederive:
+                case_state1, case_pmsg1 = chilldkg.participant_step1(
                     case_hostseckey, params, case_random
                 )
-                case_state2, _ = chilldkg.participant_step2(
-                    case_hostseckey, case_state1, cmsg1, case_aux_rand
+            else:
+                case_state1, case_pmsg1 = state1, pmsg1
+            if "pmsg1" in test_case:
+                assert case_pmsg1 == bytes.fromhex(test_case["pmsg1"])
+
+            if rederive:
+                case_state2, case_pmsg2 = chilldkg.participant_step2(
+                    case_hostseckey, case_state1, cmsg1, aux_rand
                 )
             else:
-                case_state2 = state2
+                case_state2, case_pmsg2 = state2, pmsg2
+            if "pmsg2" in test_case:
+                assert case_pmsg2 == bytes.fromhex(test_case["pmsg2"])
 
             psecshare, pinfo, prec = chilldkg.participant_finalize(case_state2, cmsg2)
             expected_out = test_case["expectedOutput"]

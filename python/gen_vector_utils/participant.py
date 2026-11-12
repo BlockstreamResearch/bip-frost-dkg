@@ -771,9 +771,11 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
     "     Assert pmsg2_out == pmsg2.",
     "",
     "For each valid test case:",
-    "  A test case may provide 'hostseckey', 'random', and/or 'auxRand' fields to override",
-    "  the group-level values. If any of these differ from the group defaults, re-derive",
+    "  A test case may provide 'hostseckey' and 'random' fields to override",
+    "  the group-level values. If either differs from the group defaults, re-derive",
     "  pstate1 and pstate2 using the case-level values before calling participant_finalize.",
+    "  If the test case provides 'pmsg1' and/or 'pmsg2' fields, assert the re-derived",
+    "  pmsg1 and pmsg2 match them.",
     "  Call participant_finalize(pstate2, cmsg2).",
     "  Verify the result matches expectedOutput (secshare, thresholdInfo, and recoveryData).",
     "",
@@ -828,6 +830,8 @@ def generate_participant_finalize_group(t, n):
             {
                 "hostseckey": bytes_to_hex(hostseckeys[idx]),
                 "random": bytes_to_hex(randoms[idx]),
+                "pmsg1": bytes_to_hex(pmsgs1[idx]),
+                "pmsg2": bytes_to_hex(pmsgs2[idx]),
                 "cmsg2": bytes_to_hex(cmsg2),
                 "expectedOutput": {
                     "secshare": bytes_to_hex(psecshare),
