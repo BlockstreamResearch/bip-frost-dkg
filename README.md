@@ -148,7 +148,7 @@ In summary, we aim for the following design goals:
 
  - **Standalone**: ChillDKG is fully specified, requiring no external secure channels or consensus mechanism.
  - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
- - **No restriction on threshold**: Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
+ - **No restriction on threshold**: Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t - 1 >= n/2` (also called "dishonest majority").
  - **Broad applicability**: ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
  - **Simple backups**: ChillDKG allows a participant to recover all its outputs of a DKG session, including the secret share, using its host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A faulty coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
