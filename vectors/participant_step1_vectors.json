@@ -13,7 +13,7 @@
         "  Call participant_step1(hostseckey, params, random).",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 52,
+    "totalTests": 53,
     "testGroups": [
         {
             "validTestCases": [
@@ -126,6 +126,149 @@
                         "hostpubkeys": [
                             "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
                             "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798",
+                            "02C6047F9441ED7D6D3045406E95C07CD85C778E4B8CEF3CA7ABAC09B95C709EE5",
+                            "02F9308A019258C31049344F85F89D5229B531C845836F99B08601F113BCE036F9",
+                            "02E493DBF1C10D80F3581E4904930B1404CC6C13900EE0758474FA94ABE8C4CD13",
+                            "022F8BDE4D1A07209355B4A7250A5C5128E88B84BDDC619AB7CBA8D569B240EFE4",
+                            "03FFF97BD5755EEEA420453A14355235D382F6472F8568A18B2F057A1460297556",
+                            "025CBDF0646E5DB4EAA398F365F2EA7A0E3D419B7E0330E39CE92BDDEDCAC4F9BC",
+                            "022F01E5E15CCA351DAFF3843FB70F3C2F0A1BDD05E5AF888A67784EF3E10A2A01",
+                            "03ACD484E2F0C7F65309AD178A9F559ABDE09796974C57E714C35F110DFC27CCBE",
+                            "03A0434D9E47F3C86235477C7B1AE6AE5D3442D49B1943C2B752A68E2A47E247C7",
+                            "03774AE7F858A9411E5EF4246B70C65AAC5649980BE5C17891BBEC17895DA008CB",
+                            "03D01115D548E7561B15C38F004D734633687CF4419620095BC5B0F47070AFE85A",
+                            "03F28773C2D975288BC7D1D205C3748651B075FBC6610E58CDDEEDDF8F19405AA8",
+                            "03499FDF9E895E719CFD64E67F07D38E3226AA7B63678949E6E49B241A60E823E4",
+                            "02D7924D4F7D43EA965A465AE3095FF41131E5946F3C85F79E44ADBCF8E27E080E",
+                            "03E60FCE93B59E9EC53011AABC21C23E97B2A31369B87A5AE9C44EE89E2A6DEC0A",
+                            "03DEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34",
+                            "025601570CB47F238D2B0286DB4A990FA0F3BA28D1A319F5E7CF55C2A2444DA7CC",
+                            "022B4EA0A797A443D293EF5CFF444F4979F06ACFEBD7E86D277475656138385B6C",
+                            "024CE119C96E2FA357200B559B2F7DD5A5F02D5290AFF74B03F3E471B273211C97",
+                            "02352BBF4A4CDD12564F93FA332CE333301D9AD40271F8107181340AEF25BE59D5",
+                            "03421F5FC9A21065445C96FDB91C0C1E2F2431741C72713B4B99DDCB316F31E9FC",
+                            "032FA2104D6B38D11B0230010559879124E42AB8DFEFF5FF29DC9CDADD4ECACC3F",
+                            "03FE72C435413D33D48AC09C9161BA8B09683215439D62B7940502BDA8B202E6CE",
+                            "029248279B09B4D68DAB21A9B066EDDA83263C3D84E09572E269CA0CD7F5453714",
+                            "026687CDB5B650D558F40CBDEFC8E40997C03FE1B2ABB840885E5CAD81710C4C8A",
+                            "03DAED4F2BE3A8BF278E70132FB0BEB7522F570E144BF615C07E996D443DEE8729",
+                            "0255EB67D7B7238A70A7FA6F64D5DC3C826B31536DA6EB344DC39A66F904F97968",
+                            "02C44D12C7065D812E8ACF28D7CBB19F9011ECD9E9FDF281B0E6A3B5E87D22E7DB",
+                            "036D2B085E9E382ED10B69FC311A03F8641CCFFF21574DE0927513A49D9A688A00",
+                            "026A245BF6DC698504C89A20CFDED60853152B695336C28063B61C65CBD269E6B4",
+                            "03D30199D74FB5A22D47B6E054E2F378CEDACFFCB89904A61D75D0DBD407143E65",
+                            "021697FFA6FD9DE627C077E3D2FE541084CE13300B0BEC1146F95AE57F0D0BD6A5",
+                            "031BE68A5A028F2601D0E80D468C344BA331D611B96C358B6032E8B4DA0547FC11",
+                            "03605BDB019981718B986D0F07E834CB0D9DEB8360FFB7F61DF982345EF27A7479",
+                            "02E0392CFA338AAF2F0B56C563E3E5E67A5D5FEFE3388F85D90C899DA20F0198F9",
+                            "0362D14DAB4150BF497402FDC45A215E10DCB01C354959B10CFE31C7E9D87FF33D",
+                            "02B699A30E6E184CDFA88AC16C7D80BFFD38E2E1FC705821EA69CD5FDF1691FFF7",
+                            "0280C60AD0040F27DADE5B4B06C408E56B2C50E9F56B9B8B425E555C2F86308B6F",
+                            "0391DE2F6BB67B11139F0E21203041BF080EACF59A33D99CD9F1929141BB0B4D0B",
+                            "037A9375AD6167AD54AA74C6348CC54D344CC5DC9487D847049D5EABB0FA03C8FB",
+                            "02FE8D1EB1BCB3432B1DB5833FF5F2226D9CB5E65CEE430558C18ED3A3C86CE1AF",
+                            "03D528ECD9B696B54C907A9ED045447A79BB408EC39B68DF504BB51F459BC3FFC9",
+                            "025D045857332D5B9E541514731622AF8D60C180165D971A61E06B70A9B3834765",
+                            "02049370A4B5F43412EA25F514E8ECDAD05266115E4A7ECB1387231808F8B45963",
+                            "03F8B0B03D44112259F903B3D100E3950D980FDDE9C7E85701C16BAEDC90235717",
+                            "0277F230936EE88CBBD73DF930D64702EF881D811E0E1498E2F1C13EB1FC345D74",
+                            "026ECA335D9645307DB441656EF4E65B4BFC579B27452BEBC19BD870AA1118E5C3",
+                            "03F2DAC991CC4CE4B9EA44887E5C7C0BCE58C80074AB9D4DBAEB28531B7739F530",
+                            "0229757774CC6F3BE1D5F1774AEFA8F02E50BC64404230E7A67E8FDE79BD559A9A",
+                            "02463B3D9F662621FB1B4BE8FBBE2520125A216CDFC9DAE3DEBCBA4850C690D45B",
+                            "032B22EFDA32491A9E0294339CA3DA761F7D36CFC8814C1B29CA731921025FF695",
+                            "02F16F804244E46E2A09232D4AFF3B59976B98FAC14328A2D1A32496B49998F247",
+                            "034FDCB8FA639CEE441C8331FD47A2E5FF3447BE24500CA7A5249971067C1D506B",
+                            "02CAF754272DC84563B0352B7A14311AF55D245315ACE27C65369E15F7151D41D1",
+                            "02BCE74DE6D5F98DC027740C2BBFF05B6AAFE5FD8D103F827E48894A2BD3460117",
+                            "022600CA4B282CB986F85D0F1709979D8B44A09C07CB86D7C124497BC86F082120",
+                            "0245562F033698FACA1540CBC9BF962CF4764C1EF4094EE4B6742B761C49B46D3B",
+                            "037635CA72D7E8432C338EC53CD12220BC01C48685E24F7DC8C602A7746998E435",
+                            "0301257E93A78A5B7D8FE0CF28FF1D8822350C778AC8A30E57D2ACFC4D5FB8C192",
+                            "03754E3239F325570CDBBF4A87DEEE8A66B7F2B33479D468FBC1A50743BF56CC18",
+                            "03108443B948D1553584A271333F7FBD043C4D66A91706EDECBF07F6894C04F299",
+                            "03E3E6BD1071A1E96AFF57859C82D570F0330800661D1C952F9FE2694691D9B9E8",
+                            "03BF23C1542D16EAB70B1051EAF832823CFC4C6F1DCDBAFD81E37918E6F874EF8B",
+                            "03186B483D056A033826AE73D88F732985C4CCB1F32BA35F4B4CC47FDCF04AA6EB",
+                            "03079264C4B4BFCD7FE3A7B7B92B6C439F3A5B3ABCD29189BF7B54D781FF03D722",
+                            "03DF9D70A6B9876CE544C98561F4BE4F725442E6D2B737D9C91A8321724CE0963F",
+                            "0270E6B44A2AC6083AB673BACB5CB7CA554B795B416E702C1C980BB7B87C78B8E9",
+                            "025EDD5CC23C51E87A497CA815D5DCE0F8AB52554F849ED8995DE64C5F34CE7143",
+                            "03C00BE8830995D1E44F1420DD3B90D3441FB66F6861C84A35F959C495A3BE5440",
+                            "02290798C2B6476830DA12FE02287E9E777AA3FBA1C355B17A722D362F84614FBA",
+                            "03A8F2C94E19D9D829ECB4B17F84F42D8C1E988D693DF4A1FB659032865FF5154C",
+                            "02AF3C423A95D9F5B3054754EFA150AC39CD29552FE360257362DFDECEF4053B45",
+                            "032773840FCF4E9E459C052CEBBFBB7E9DFD6B072C4FBB8D476E37B93C5C478840",
+                            "02766DBB24D134E745CCCAA28C99BF274906BB66B26DCF98DF8D2FED50D884249A",
+                            "0296516A8F65774275278D0D7420A88DF0AC44BD64C7BAE07C3FE397C5B3300B23",
+                            "0259DBF46F8C94759BA21277C33784F41645F7B44F6C596A58CE92E666191ABE3E",
+                            "032DDF7BBCFE114E807EFE354DB9F95FE70E7E555BD9114950BB3D3D987058C8AE",
+                            "03F13ADA95103C4537305E691E74E9A4A8DD647E711A95E73CB62DC6018CFD87B8",
+                            "03E9623BBEF1BF90EC0D7C744ED34659F010E6E638637161270ECD31E14F87F62E",
+                            "027754B4FA0E8ACED06D4167A2C59CCA4CDA1869C06EBADFB6488550015A88522C",
+                            "03E35BC6BB1B05B2130A37C28E771C6CB4BE89B397B454C8B59E594FECC13B59DF",
+                            "02948DCADF5990E048AA3874D46ABEF9D701858F95DE8041D2A6828C99E2262519",
+                            "0287C01E27D84DA2DBD3330A7F05A58614A1ECDBABDCFCCD39E5626BAAF6812379",
+                            "037962414450C76C1689C7B48F8202EC37FB224CF5AC0BFA1570328A8A3D7C77AB",
+                            "02497C83C39C76E56D070FB906BCED44099DE2D0E222575F22E4749682DE46EEAC",
+                            "033514087834964B54B15B160644D915485A16977225B8847BB0DD085137EC47CA",
+                            "02A8AF384E794930E63D81D3E1EF66CDAB16D1CFDA1B054DA5F7086353A80C44FE",
+                            "02D3CC30AD6B483E4BC79CE2C9DD8BC54993E947EB8DF787B442943D3F7B527EAF",
+                            "03EB49FD9F510469F4FE540E4B0664410F216CBBC90D97AED62AF2E606110CC919",
+                            "031624D84780732860CE1C78FCBFEFE08B2B29823DB913F6493975BA0FF4847610",
+                            "03DE1D35CBC6308CC5B435DB84A21605A7D3A6172D6511C68BF6639D49C8704818",
+                            "03733CE80DA955A8A26902C95633E62A985192474B5AF207DA6DF7B4FD5FC61CD4",
+                            "0284DF2E6E5E84CDFF24120CA18648961AC134BCD7D6F35919BF6DCD5710E682F2",
+                            "0315D9441254945064CF1A1C33BBD3B49F8966C5092171E699EF258DFAB81C045C",
+                            "033F0E80E574456D8F8FA64E044B2EB72EA22EB53FE1EFE3A443933ACA7F8CB0E3",
+                            "03A1D0FCF2EC9DE675B612136E5CE70D271C21417C9D2B8AAAAC138599D0717940",
+                            "024752F8548620831139BF1C39D65F194D191110FD2E9122ABD637AB63EF91E5B4",
+                            "02E22FBE15C0AF8CCC5780C0735F84DBE9A790BADEE8245C06C7CA37331CB36980",
+                            "02ED3BACE23C5E17652E174C835FB72BF53EE306B3406A26890221B4CEF7500F88",
+                            "02311091DD9860E8E20EE13473C1155F5F69635E394704EAA74009452246CFA9B3",
+                            "023049F7FFC71D744BD9BED6F42DC6A28974E3A1B9D30671F800E5D46389103C7E",
+                            "0234C1FD04D301BE89B31C0442D3E6AC24883928B45A9340781867D4232EC2DBDF",
+                            "021880C9AD32FBB07E1FB52A688D9D6FE6DB0DF90ECD4C9483203F636EE00926DC",
+                            "03F219EA5D6B54701C1C14DE5B557EB42A8D13F3ABBCD08AFFCC2A5E6B049B8D63",
+                            "031FC757D383E4250772310DB34C1E79F3888043B17BCBE91490C7F04F8ACCB725",
+                            "03D7B8740F74A8FBAAB1F683DB8F45DE26543A5490BCA627087236912469A0B448",
+                            "037E660BEDA020E9CC20391CEF85374576853B0F22B8925D5D81C5845BB834C21E",
+                            "0332D31C222F8F6F0EF86F7C98D3A3335EAD5BCD32ABDD94289FE4D3091AA824BF",
+                            "033BB9AEC1F1EB9EC7FA735FC4FCD0AB7C7B00F024A9728087F745DDAA42583D11",
+                            "027461F371914AB32671045A155D9831EA8793D77CD59592C4340F86CBC18347B5",
+                            "02BC82DD73E5161DBA0884A36F2080D682FFC274BF62FCA8F9EB0AADF82A8D733C",
+                            "02EE079ADB1DF1860074356A25AA38206A6D716B2C3E67453D287698BAD7B2B2D6",
+                            "02B74F0C165B4A943593CC339096D66AD588D6B130B16695E5BD95EC557A93EAB5",
+                            "0316EC93E447EC83F0467B18302EE620F7E65DE331874C9DC72BFD8616BA9DA6B5",
+                            "03FC6040FE245682CDF81EEE193A3AF355EF6CC374CE1438469306FE7F8957F489",
+                            "02EAA5F980C245F6F038978290AFA70B6BD8855897F98B6AA485B96065D537BD99",
+                            "02A7C0EA7395D8785253DE84833CCFFDB31DC81F9C32BB84A53EC1775D0FADAE00",
+                            "02078C9407544AC132692EE1910A02439958AE04877151342EA96C4B6B35A49F51",
+                            "02DD5BA67CFB807824BD3FF25E9D1667FA89E7020E8E0BECB79CAA00F574ADC826",
+                            "02494F4BE219A1A77016DCD838431AEA0001CDC8AE7A6FC688726578D9702857A5",
+                            "02139AE46A1133F1F9D23F25EFBA0F6DD87BF7DDAF568A5FB9E0A3BFDA73176237",
+                            "03A598A8030DA6D86C6BC7F2F5144EA549D28211EA58FAA70EBF4C1E665C1FE9B5",
+                            "02F90B89D53BDC724A685BB8C12419BBF5B8FFEA50EC08422A9A7B09B1029471E3",
+                            "03C41916365ABB2B5D09192F5F2DBEAFEC208F020F12570A184DBADC3E58595997",
+                            "026DF7B5A7A126A6112E1E0BA01AD1A0F89F055DD3C1C7E5336938AD32C494B319"
+                        ],
+                        "t": 2
+                    },
+                    "random": "42B53D62E27380D6F7096EDA1C28C57DDB89FCD4CE5B843EDAC220E165B5A7EC",
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "number of participants exceeds 128"
+                },
+                {
+                    "tcId": 8,
+                    "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
                             "EBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEBEB"
                         ],
                         "t": 2
@@ -138,7 +281,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 8,
+                    "tcId": 9,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -156,7 +299,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 10,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -174,7 +317,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 10,
+                    "tcId": 11,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -193,7 +336,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 11,
+                    "tcId": 12,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -211,7 +354,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 12,
+                    "tcId": 13,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -228,7 +371,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 13,
+                    "tcId": 14,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -249,7 +392,7 @@
         {
             "validTestCases": [
                 {
-                    "tcId": 14,
+                    "tcId": 15,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -266,7 +409,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 15,
+                    "tcId": 16,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -283,7 +426,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 16,
+                    "tcId": 17,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -300,7 +443,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 17,
+                    "tcId": 18,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -317,7 +460,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 18,
+                    "tcId": 19,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -334,7 +477,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 19,
+                    "tcId": 20,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -351,7 +494,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 20,
+                    "tcId": 21,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -369,7 +512,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 21,
+                    "tcId": 22,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -387,7 +530,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 22,
+                    "tcId": 23,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -405,7 +548,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 23,
+                    "tcId": 24,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -424,7 +567,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 24,
+                    "tcId": 25,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -442,7 +585,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 25,
+                    "tcId": 26,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -459,7 +602,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 26,
+                    "tcId": 27,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -480,7 +623,7 @@
         {
             "validTestCases": [
                 {
-                    "tcId": 27,
+                    "tcId": 28,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -497,7 +640,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 28,
+                    "tcId": 29,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -514,7 +657,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 29,
+                    "tcId": 30,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -531,7 +674,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 30,
+                    "tcId": 31,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -548,7 +691,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 31,
+                    "tcId": 32,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -565,7 +708,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 32,
+                    "tcId": 33,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -582,7 +725,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 33,
+                    "tcId": 34,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -600,7 +743,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 34,
+                    "tcId": 35,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -618,7 +761,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 35,
+                    "tcId": 36,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -636,7 +779,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 36,
+                    "tcId": 37,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -655,7 +798,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 37,
+                    "tcId": 38,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -673,7 +816,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 38,
+                    "tcId": 39,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -690,7 +833,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 39,
+                    "tcId": 40,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -711,7 +854,7 @@
         {
             "validTestCases": [
                 {
-                    "tcId": 40,
+                    "tcId": 41,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -729,7 +872,7 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 41,
+                    "tcId": 42,
                     "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
                     "params": {
                         "hostpubkeys": [
@@ -747,7 +890,7 @@
                     "comment": "length of host secret key is not 32 bytes"
                 },
                 {
-                    "tcId": 42,
+                    "tcId": 43,
                     "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
                     "params": {
                         "hostpubkeys": [
@@ -765,7 +908,7 @@
                     "comment": "host secret key is zero"
                 },
                 {
-                    "tcId": 43,
+                    "tcId": 44,
                     "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
                     "params": {
                         "hostpubkeys": [
@@ -783,7 +926,7 @@
                     "comment": "host secret key is out of range"
                 },
                 {
-                    "tcId": 44,
+                    "tcId": 45,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -801,7 +944,7 @@
                     "comment": "invalid threshold value"
                 },
                 {
-                    "tcId": 45,
+                    "tcId": 46,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -819,7 +962,7 @@
                     "comment": "threshold exceeds the number of participants"
                 },
                 {
-                    "tcId": 46,
+                    "tcId": 47,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -838,7 +981,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid prefix"
                 },
                 {
-                    "tcId": 47,
+                    "tcId": 48,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -857,7 +1000,7 @@
                     "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate"
                 },
                 {
-                    "tcId": 48,
+                    "tcId": 49,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -876,7 +1019,7 @@
                     "comment": "hostpubkeys list contains an infinity point"
                 },
                 {
-                    "tcId": 49,
+                    "tcId": 50,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -896,7 +1039,7 @@
                     "comment": "hostpubkeys list contains duplicate values"
                 },
                 {
-                    "tcId": 50,
+                    "tcId": 51,
                     "hostseckey": "759DE9306FB02B3D84C455112BF1F3360401DC383ECD1FCEDE59EC809D6F9FE7",
                     "params": {
                         "hostpubkeys": [
@@ -915,7 +1058,7 @@
                     "comment": "host secret key doesn't match any hostpubkey"
                 },
                 {
-                    "tcId": 51,
+                    "tcId": 52,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
@@ -933,7 +1076,7 @@
                     "comment": "length of randomness is not 32 bytes"
                 },
                 {
-                    "tcId": 52,
+                    "tcId": 53,
                     "hostseckey": "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
                     "params": {
                         "hostpubkeys": [
