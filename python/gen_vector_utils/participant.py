@@ -9,11 +9,11 @@ from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONF
 from .util import (
     assign_tc_ids,
     bytes_to_hex,
-    dkg_output_asdict,
     expect_exception,
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    threshold_info_asdict,
 )
 
 # Arbitrary EC point x-coordinate used as a hardcoded wrong value in test vectors.
@@ -672,7 +672,8 @@ def generate_participant_step2_vectors():
 PARTICIPANT_FINALIZE_DESCRIPTION = [
     "Test vectors for participant_finalize(pstate2, cmsg2).",
     "Finalizes the DKG protocol from a participant's perspective.",
-    "Verifies the coordinator's certificate (cmsg2) and outputs the DKG result and recovery data.",
+    "Verifies the coordinator's certificate (cmsg2) and outputs the secret share,",
+    "the threshold info, and the recovery data.",
     "",
     "Harness setup (re-derive state through two prior rounds):",
     "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
@@ -682,7 +683,7 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
     "",
     "For each valid test case:",
     "  Call participant_finalize(pstate2, cmsg2).",
-    "  Verify the result matches expectedOutput (dkgOutput and recoveryData).",
+    "  Verify the result matches expectedOutput (secshare, thresholdInfo, and recoveryData).",
     "",
     "For each error test case:",
     "  Call participant_finalize(pstate2, cmsg2).",
@@ -729,13 +730,14 @@ def generate_participant_finalize_group(t, n):
 
     # --- Valid test case ---
     cmsg2, _, _ = chilldkg.coordinator_finalize(cstate, pmsgs2)
-    pout, prec = chilldkg.participant_finalize(pstates2[0], cmsg2)
+    psecshare, pinfo, prec = chilldkg.participant_finalize(pstates2[0], cmsg2)
 
     valid_cases.append(
         {
             "cmsg2": bytes_to_hex(cmsg2),
             "expectedOutput": {
-                "dkgOutput": dkg_output_asdict(pout),
+                "secshare": bytes_to_hex(psecshare),
+                "thresholdInfo": threshold_info_asdict(pinfo),
                 "recoveryData": bytes_to_hex(prec),
             },
             "comment": "valid participant finalize",

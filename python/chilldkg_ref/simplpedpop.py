@@ -167,8 +167,8 @@ class CoordinatorInvestigationMsg(NamedTuple):
 ###
 
 
-class DKGOutput(NamedTuple):
-    secshare: bytes | None  # None for coordinator
+class ThresholdInfo(NamedTuple):
+    t: int
     thresh_pk: bytes
     pubshares: list[bytes]
 
@@ -262,7 +262,7 @@ def participant_step2(
     state: ParticipantState,
     cmsg: bytes,
     secshare: Scalar,
-) -> tuple[DKGOutput, bytes]:
+) -> tuple[bytes, ThresholdInfo, bytes]:
     t, n, participant_id, com_to_secret = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=t, n=n)
@@ -314,13 +314,13 @@ def participant_step2(
         else pubshare_tweaked  # We have computed our own pubshare already.
         for i in range(n)
     ]
-    dkg_output = DKGOutput(
-        secshare_tweaked.to_bytes(),
+    threshold_info = ThresholdInfo(
+        t,
         thresh_pk.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return dkg_output, eq_input
+    return secshare_tweaked.to_bytes(), threshold_info, eq_input
 
 
 def participant_investigate(
@@ -378,7 +378,7 @@ def participant_investigate(
 
 def coordinator_step(
     pmsgs: list[bytes], t: int, n: int
-) -> tuple[bytes, DKGOutput, bytes]:
+) -> tuple[bytes, ThresholdInfo, bytes]:
     if len(pmsgs) != n:
         raise ValueError
     pmsgs_parsed = []
@@ -408,13 +408,13 @@ def coordinator_step(
     thresh_pk = sum_coms_tweaked.commitment_to_secret()
     pubshares = [sum_coms_tweaked.pubshare(i) for i in range(n)]
 
-    dkg_output = DKGOutput(
-        None,
+    threshold_info = ThresholdInfo(
+        t,
         thresh_pk.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return cmsg, dkg_output, eq_input
+    return cmsg, threshold_info, eq_input
 
 
 def coordinator_investigate(pmsgs: list[bytes], t: int) -> list[bytes]:

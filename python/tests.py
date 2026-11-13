@@ -3,7 +3,6 @@
 """Tests for ChillDKG reference implementation"""
 
 import json
-from itertools import combinations
 from pathlib import Path
 from random import randint
 from secrets import token_bytes as random_bytes
@@ -19,17 +18,21 @@ from chilldkg_ref.vss import VSS, Polynomial, VSSCommitment
 from example import simulate_chilldkg_full as simulate_chilldkg_full_example
 from gen_vector_utils.util import (
     assert_raises,
-    dkg_output_asdict,
     params_asdict,
     params_from_dict,
+    threshold_info_asdict,
 )
 
-# Import from secp256k1lab after the chilldkg_ref imports because the latter
-# modifies sys.path to make sure the vendored copy of secp256k1lab is found.
+# Import secp256k1lab and modules that use it (bip445_threshold_info) after the
+# chilldkg_ref imports because the latter modifies sys.path to make sure the
+# vendored copy of secp256k1lab is found.
 #
 # isort: split
 from secp256k1lab.keys import pubkey_gen_plain
 from secp256k1lab.secp256k1 import GE, G, Scalar
+
+import bip445_threshold_info as bip445
+from bip445_threshold_info import MAX_PARTICIPANTS
 
 
 def test_chilldkg_params_validate():
@@ -102,7 +105,7 @@ def test_vss_correctness():
 
 def simulate_simplpedpop(
     seeds, t, investigation: bool
-) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
+) -> list[tuple[bytes | None, simplpedpop.ThresholdInfo, bytes]] | None:
     n = len(seeds)
     prets = []
     for i in range(n):
@@ -112,8 +115,9 @@ def simulate_simplpedpop(
     pstates = [pstate for (pstate, _, _) in prets]
     pmsgs = [pmsg for (_, pmsg, _) in prets]
 
-    cmsg, cout, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
-    pre_finalize_rets = [(cout, ceq)]
+    cmsg, cinfo, ceq = simplpedpop.coordinator_step(pmsgs, t, n)
+    pre_finalize_rets: list[tuple[bytes | None, simplpedpop.ThresholdInfo, bytes]]
+    pre_finalize_rets = [(None, cinfo, ceq)]
     for i in range(n):
         partial_secshares = [
             partial_secshares_for[i] for (_, _, partial_secshares_for) in prets
@@ -154,7 +158,7 @@ def encpedpop_keys(seed: bytes) -> tuple[bytes, bytes]:
 
 def simulate_encpedpop(
     seeds, t, investigation: bool
-) -> list[tuple[simplpedpop.DKGOutput, bytes]] | None:
+) -> list[tuple[bytes | None, simplpedpop.ThresholdInfo, bytes]] | None:
     n = len(seeds)
     enc_prets0 = []
     enc_prets1 = []
@@ -183,8 +187,9 @@ def simulate_encpedpop(
             faulty_pmsg.enc_shares[i] += Scalar(17)
             pmsgs[faulty_id[i]] = faulty_pmsg.to_bytes()
 
-    cmsg, cout, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
-    pre_finalize_rets = [(cout, ceq)]
+    cmsg, cinfo, ceq, enc_secshares = encpedpop.coordinator_step(pmsgs, t, enckeys)
+    pre_finalize_rets: list[tuple[bytes | None, simplpedpop.ThresholdInfo, bytes]]
+    pre_finalize_rets = [(None, cinfo, ceq)]
     for i in range(n):
         deckey = enc_prets0[i][0]
         try:
@@ -211,7 +216,7 @@ def simulate_encpedpop(
 
 def simulate_chilldkg(
     hostseckeys, t, investigation: bool
-) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData]] | None:
+) -> list[tuple[bytes | None, chilldkg.ThresholdInfo, chilldkg.RecoveryData]] | None:
     n = len(hostseckeys)
 
     hostpubkeys = []
@@ -264,10 +269,11 @@ def simulate_chilldkg(
                 assert i == faulty_id[i]
             return None
 
-    cmsg2, cout, crec = chilldkg.coordinator_finalize(
+    cmsg2, cinfo, crec = chilldkg.coordinator_finalize(
         cstate, [pret[1] for pret in prets2]
     )
-    outputs = [(cout, crec)]
+    outputs: list[tuple[bytes | None, chilldkg.ThresholdInfo, chilldkg.RecoveryData]]
+    outputs = [(None, cinfo, crec)]
     for i in range(n):
         out = chilldkg.participant_finalize(prets2[i][0], cmsg2)
         assert out is not None
@@ -280,7 +286,7 @@ def simulate_chilldkg_full(
     hostseckeys,
     t,
     investigation: bool,
-) -> list[tuple[chilldkg.DKGOutput, chilldkg.RecoveryData] | None]:
+) -> list[tuple[bytes | None, chilldkg.ThresholdInfo, chilldkg.RecoveryData] | None]:
     # Investigating is not supported by this wrapper
     assert not investigation
 
@@ -291,51 +297,111 @@ def simulate_chilldkg_full(
     return simulate_chilldkg_full_example(hostseckeys, params, faulty_id=None)
 
 
-def derive_interpolating_value(L, x_i):
-    assert x_i in L
-    assert all(L.count(x_j) <= 1 for x_j in L)
-    lam = Scalar(1)
-    for x_j in L:
-        x_j = Scalar(x_j)
-        x_i = Scalar(x_i)
-        if x_j == x_i:
-            continue
-        lam *= x_j / (x_j - x_i)
-    return lam
+def validate_threshold_info(info: chilldkg.ThresholdInfo) -> None:
+    # Convert to the types of the BIP 445 reference implementation
+    bip445.validate_threshold_info(
+        bip445.ThresholdInfo(
+            info.t,
+            bip445.PlainPk(info.thresh_pk),
+            [bip445.PlainPk(pubshare) for pubshare in info.pubshares],
+        )
+    )
 
 
-def recover_secret(participant_ids, shares) -> Scalar:
-    interpolated_shares = []
-    t = len(shares)
-    assert len(participant_ids) == t
-    for i in range(t):
-        lam = derive_interpolating_value(participant_ids, participant_ids[i])
-        interpolated_shares += [(lam * shares[i])]
-    recovered_secret = Scalar.sum(*interpolated_shares)
-    return recovered_secret
+def test_validate_threshold_info():
+    # Sanity check of the copied validation function.
+    t, n = 2, 3
+    f = Polynomial([randint(1, GE.ORDER - 1) for _ in range(t)])
+    thresh_pk = (f(0) * G).to_bytes_compressed()
+    pubshares = [(f(i + 1) * G).to_bytes_compressed() for i in range(n)]
+    # A point on the polynomial, but at a position that belongs to no participant
+    other_point = (f(n + 1) * G).to_bytes_compressed()
+    # Public shares of a polynomial with constant term 0, i.e., shares whose
+    # threshold public key would be the point at infinity
+    f_zero = Polynomial([0] + f.coeffs[1:])
+    zero_pubshares = [(f_zero(i + 1) * G).to_bytes_compressed() for i in range(n)]
+
+    info = chilldkg.ThresholdInfo(t, thresh_pk, pubshares)
+    validate_threshold_info(info)
+
+    invalid_infos = [
+        # Threshold out of range
+        (info._replace(t=0), "The threshold must be 1 <= t <= n."),
+        (info._replace(t=n + 1), "The threshold must be 1 <= t <= n."),
+        # Threshold public key is not a valid point
+        (info._replace(thresh_pk=b"\x00" * 33), "The thresh_pk is not a valid point."),
+        # Threshold public key does not match the public shares
+        (
+            info._replace(thresh_pk=other_point),
+            "The provided key material is incorrect: the public shares do not match the threshold public key.",
+        ),
+        # A public share is not a valid point
+        (
+            info._replace(pubshares=pubshares[:-1] + [b"\x00" * 33]),
+            f"The pubshare at index {n - 1} is not a valid point.",
+        ),
+        # A public share does not lie on the polynomial through the first t
+        (
+            info._replace(pubshares=pubshares[:-1] + [other_point]),
+            "The provided key material is incorrect: the public shares do not lie on a single polynomial.",
+        ),
+        # The public shares interpolate to the point at infinity
+        (
+            info._replace(pubshares=zero_pubshares),
+            "The threshold public key must not be the point at infinity.",
+        ),
+        # Too many participants for BIP 445
+        (
+            info._replace(pubshares=[pubshares[0]] * (MAX_PARTICIPANTS + 1)),
+            f"The number of participants must be n <= {MAX_PARTICIPANTS}.",
+        ),
+    ]
+    for invalid_info, expected_msg in invalid_infos:
+        try:
+            validate_threshold_info(invalid_info)
+        except ValueError as e:
+            assert e.args == (expected_msg,)
+        else:
+            assert False, "Expected exception"
+
+    # BIP 445 permits absent public shares (`None` entries), which
+    # chilldkg.ThresholdInfo cannot represent, so call the copied function
+    # directly.
+    bip445_thresh_pk = bip445.PlainPk(thresh_pk)
+    bip445_pubshares = [bip445.PlainPk(pubshare) for pubshare in pubshares]
+    # At least t public shares present
+    bip445.validate_threshold_info(
+        bip445.ThresholdInfo(
+            t, bip445_thresh_pk, [bip445_pubshares[0], None, bip445_pubshares[2]]
+        )
+    )
+    # Fewer than t public shares present
+    try:
+        bip445.validate_threshold_info(
+            bip445.ThresholdInfo(t, bip445_thresh_pk, [bip445_pubshares[0], None, None])
+        )
+    except ValueError as e:
+        assert e.args == ("At least t pubshares must be present.",)
+    else:
+        assert False, "Expected exception"
 
 
-def test_recover_secret():
-    f = Polynomial([23, 42])
-    shares = [f(i) for i in [1, 2, 3]]
-    assert recover_secret([1, 2], [shares[0], shares[1]]) == f.coeffs[0]
-    assert recover_secret([1, 3], [shares[0], shares[2]]) == f.coeffs[0]
-    assert recover_secret([2, 3], [shares[1], shares[2]]) == f.coeffs[0]
+def test_correctness_outputs(
+    t,
+    n,
+    secshares: list[bytes | None],
+    threshold_infos: list[chilldkg.ThresholdInfo],
+):
+    assert len(secshares) == len(threshold_infos) == n + 1
 
-
-def test_correctness_dkg_output(t, n, dkg_outputs: list[simplpedpop.DKGOutput]):
-    assert len(dkg_outputs) == n + 1
-    secshares = [out[0] for out in dkg_outputs]
-    thresh_pks = [out[1] for out in dkg_outputs]
-    pubshares = [out[2] for out in dkg_outputs]
-
-    # Check that the threshold pubkey and pubshares are the same for the
-    # coordinator (at [0]) and all participants (at [1:n + 1]).
+    # Check that the threshold info is the same for the coordinator (at [0]) and
+    # all participants (at [1:n + 1]), and that it matches the session.
     for i in range(n + 1):
-        assert thresh_pks[0] == thresh_pks[i]
-        assert len(pubshares[i]) == n
-        assert pubshares[0] == pubshares[i]
-    thresh_pk = thresh_pks[0]
+        assert threshold_infos[i] == threshold_infos[0]
+    threshold_info = threshold_infos[0]
+    assert threshold_info.t == t
+    assert len(threshold_info.pubshares) == n
+    pubshares = threshold_info.pubshares
 
     # Check that the coordinator has no secret share
     assert secshares[0] is None
@@ -348,12 +414,11 @@ def test_correctness_dkg_output(t, n, dkg_outputs: list[simplpedpop.DKGOutput]):
     for i in range(1, n + 1):
         s = secshares_scalar[i]
         assert s is not None
-        assert s * G == GE.from_bytes_compressed(pubshares[0][i - 1])
+        assert s * G == GE.from_bytes_compressed(pubshares[i - 1])
 
-    # Check that all combinations of t participants can recover the threshold pubkey
-    for tsubset in combinations(range(1, n + 1), t):
-        recovered = recover_secret(tsubset, [secshares_scalar[i] for i in tsubset])
-        assert recovered * G == GE.from_bytes_compressed(thresh_pk)
+    # Check that the threshold info passes the validation that BIP 445 requires
+    # before signing.
+    validate_threshold_info(threshold_info)
 
 
 def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
@@ -368,10 +433,11 @@ def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
     # rets[0] are the return values from the coordinator
     # rets[1 : n + 1] are from the participants
     assert len(rets) == n + 1
-    dkg_outputs = [ret[0] for ret in rets]
-    test_correctness_dkg_output(t, n, dkg_outputs)
+    secshares = [ret[0] for ret in rets]
+    threshold_infos = [ret[1] for ret in rets]
+    test_correctness_outputs(t, n, secshares, threshold_infos)
 
-    eqs_or_recs = [ret[1] for ret in rets]
+    eqs_or_recs = [ret[2] for ret in rets]
     for i in range(1, n + 1):
         assert eqs_or_recs[0] == eqs_or_recs[i]
 
@@ -381,14 +447,13 @@ def test_correctness(t, n, simulate_dkg, recovery=False, investigation=False):
         # chilldkg.coordinator_recover
         for i in range(n + 1):
             if seeds[i] is None:
-                (secshare, thresh_pk, pubshares), _ = chilldkg.coordinator_recover(rec)
+                threshold_info, _ = chilldkg.coordinator_recover(rec)
             else:
-                (secshare, thresh_pk, pubshares), _ = chilldkg.participant_recover(
+                secshare, threshold_info, _ = chilldkg.participant_recover(
                     seeds[i], rec
                 )
-            assert secshare == dkg_outputs[i][0]
-            assert thresh_pk == dkg_outputs[i][1]
-            assert pubshares == dkg_outputs[i][2]
+                assert secshare == secshares[i]
+            assert threshold_info == threshold_infos[i]
 
 
 VECTORS_DIR = Path(__file__).parent.parent / "vectors"
@@ -532,11 +597,11 @@ def test_participant_finalize_vectors():
 
         for test_case in group["validTestCases"]:
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
-            pout, prec = chilldkg.participant_finalize(state2, cmsg2)
-            expected_pout = test_case["expectedOutput"]["dkgOutput"]
-            expected_prec = bytes.fromhex(test_case["expectedOutput"]["recoveryData"])
-            assert expected_pout == dkg_output_asdict(pout)
-            assert expected_prec == prec
+            psecshare, pinfo, prec = chilldkg.participant_finalize(state2, cmsg2)
+            expected_out = test_case["expectedOutput"]
+            assert bytes.fromhex(expected_out["secshare"]) == psecshare
+            assert expected_out["thresholdInfo"] == threshold_info_asdict(pinfo)
+            assert bytes.fromhex(expected_out["recoveryData"]) == prec
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
@@ -639,13 +704,11 @@ def test_coordinator_finalize_vectors():
 
         for test_case in group["validTestCases"]:
             pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2Indices"]]
-            cmsg2, cout, crec = chilldkg.coordinator_finalize(state, pmsgs2)
-            expected_cmsg2 = test_case["expectedOutput"]["cmsg2"]
-            expected_cout = test_case["expectedOutput"]["dkgOutput"]
-            expected_crec = test_case["expectedOutput"]["recoveryData"]
-            assert bytes.fromhex(expected_cmsg2) == cmsg2
-            assert expected_cout == dkg_output_asdict(cout)
-            assert bytes.fromhex(expected_crec) == crec
+            cmsg2, cinfo, crec = chilldkg.coordinator_finalize(state, pmsgs2)
+            expected_out = test_case["expectedOutput"]
+            assert bytes.fromhex(expected_out["cmsg2"]) == cmsg2
+            assert expected_out["thresholdInfo"] == threshold_info_asdict(cinfo)
+            assert bytes.fromhex(expected_out["recoveryData"]) == crec
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
@@ -696,14 +759,17 @@ def test_recover_vectors():
             bytes.fromhex(test_case["hostseckey"]) if test_case["hostseckey"] else None
         )
         recovery_data = bytes.fromhex(test_case["recoveryData"])
+        expected_out = test_case["expectedOutput"]
         if hostseckey is None:
-            out, params = chilldkg.coordinator_recover(recovery_data)
+            threshold_info, params = chilldkg.coordinator_recover(recovery_data)
+            assert expected_out["secshare"] is None
         else:
-            out, params = chilldkg.participant_recover(hostseckey, recovery_data)
-        expected_out = test_case["expectedOutput"]["dkgOutput"]
-        expected_params = test_case["expectedOutput"]["params"]
-        assert expected_out == dkg_output_asdict(out)
-        assert expected_params == params_asdict(params)
+            secshare, threshold_info, params = chilldkg.participant_recover(
+                hostseckey, recovery_data
+            )
+            assert bytes.fromhex(expected_out["secshare"]) == secshare
+        assert expected_out["thresholdInfo"] == threshold_info_asdict(threshold_info)
+        assert expected_out["params"] == params_asdict(params)
 
     for test_case in error_test_cases:
         hostseckey = (
@@ -729,7 +795,7 @@ def test_recovery_acknowledgment():
     params = chilldkg.SessionParams(hostpubkeys, t)
 
     results = simulate_chilldkg(hostseckeys, t, investigation=False)
-    recovery_data = results[1][1]  # First participant's recovery data
+    recovery_data = results[1][2]  # First participant's recovery data
 
     ack_sigs = []
     for i in range(n):
@@ -892,7 +958,7 @@ def test_recovery_acknowledgment():
 
 test_chilldkg_params_validate()
 test_vss_correctness()
-test_recover_secret()
+test_validate_threshold_info()
 test_recovery_acknowledgment()
 for t, n in [(1, 1), (1, 2), (2, 2), (2, 3), (2, 5)]:
     test_correctness(t, n, simulate_simplpedpop)

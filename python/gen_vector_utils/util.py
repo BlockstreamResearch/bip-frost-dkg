@@ -81,12 +81,11 @@ def params_asdict(params: chilldkg.SessionParams) -> dict:
     return {"hostpubkeys": bytes_list_to_hex(params.hostpubkeys), "t": params.t}
 
 
-def dkg_output_asdict(dkg_output: chilldkg.DKGOutput) -> dict:
-    secshare = bytes_to_hex(dkg_output.secshare) if dkg_output.secshare else None
+def threshold_info_asdict(threshold_info: chilldkg.ThresholdInfo) -> dict:
     return {
-        "secshare": secshare,
-        "threshPk": bytes_to_hex(dkg_output.thresh_pk),
-        "pubshares": bytes_list_to_hex(dkg_output.pubshares),
+        "t": threshold_info.t,
+        "threshPk": bytes_to_hex(threshold_info.thresh_pk),
+        "pubshares": bytes_list_to_hex(threshold_info.pubshares),
     }
 
 

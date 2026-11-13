@@ -66,7 +66,7 @@ __all__ = [
     "InvalidRecoveryAckError",
     # Types
     "SessionParams",
-    "DKGOutput",
+    "ThresholdInfo",
     "ParticipantState1",
     "ParticipantState2",
     "CoordinatorState",
@@ -345,19 +345,23 @@ class ThresholdOrCountError(SessionParamsError):
 
 # This is really the same definition as in simplpedpop and encpedpop. We repeat
 # it here only to have its docstring in this module.
-class DKGOutput(NamedTuple):
-    """Holds the outputs of a DKG session.
+class ThresholdInfo(NamedTuple):
+    """Holds the public outputs of a DKG session.
+
+    The threshold info is common to all participants and the coordinator. It
+    is the public data structure that the signing protocol in BIP 445 expects
+    as input.
 
     Attributes:
-        secshare: Secret share of the participant (32 bytes, or `None` for
-            coordinator).
+        t: The threshold, i.e., the number of participants required to produce
+            a signature.
         thresh_pk: Generated threshold public key representing the group
             (33 bytes, in compressed serialization).
         pubshares: Public shares of the participants (33 bytes each, in
             compressed serialization).
     """
 
-    secshare: bytes | None
+    t: int
     thresh_pk: bytes
     pubshares: list[bytes]
 
@@ -558,7 +562,8 @@ class ParticipantState1(NamedTuple):
 class ParticipantState2(NamedTuple):
     params: SessionParams
     eq_input: bytes
-    dkg_output: DKGOutput
+    secshare: bytes
+    threshold_info: ThresholdInfo
 
 
 def participant_step1(
@@ -645,8 +650,8 @@ def participant_step2(
     sending funds to it). If the coordinator reply remains missing, that other
     participant can, at any point in the future, convince this participant of
     the success of the DKG session by presenting recovery data, from which this
-    participant can recover the DKG output using the `participant_recover`
-    function.
+    participant can recover the secret share and the threshold info using the
+    `participant_recover` function.
 
     Arguments:
         hostseckey: Participant's long-term host secret key (32 bytes).
@@ -697,7 +702,7 @@ def participant_step2(
         raise FaultyCoordinatorError(*e.args) from e
     enc_cmsg, enc_secshares = cmsg1_parsed
 
-    enc_dkg_output, eq_input = encpedpop.participant_step2(
+    secshare, enc_threshold_info, eq_input = encpedpop.participant_step2(
         state=enc_state,
         deckey=hostseckey,
         cmsg=enc_cmsg.to_bytes(),
@@ -707,8 +712,9 @@ def participant_step2(
     # Include the enc_shares in eq_input to ensure that participants agree on
     # all shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    dkg_output = DKGOutput._make(enc_dkg_output)
-    state2 = ParticipantState2(params, eq_input, dkg_output)
+    # Convert to chilldkg.ThresholdInfo type
+    threshold_info = ThresholdInfo._make(enc_threshold_info)
+    state2 = ParticipantState2(params, eq_input, secshare, threshold_info)
     sig = certeq_participant_step(hostseckey, participant_id, eq_input, aux_rand)
     pmsg2 = ParticipantMsg2(sig).to_bytes()
     return state2, pmsg2
@@ -716,7 +722,7 @@ def participant_step2(
 
 def participant_finalize(
     state2: ParticipantState2, cmsg2: bytes
-) -> tuple[DKGOutput, RecoveryData]:
+) -> tuple[bytes, ThresholdInfo, RecoveryData]:
     """Perform a participant's final step of a ChillDKG session.
 
     If this function returns properly (without an exception), then this
@@ -726,7 +732,8 @@ def participant_finalize(
     from the coordinator at all. These participants can, at any point in time in
     the future (e.g., when initiating a signing session), be convinced to deem
     the session successful by presenting the recovery data to them, from which
-    they can recover the DKG outputs using the `participant_recover` function.
+    they can recover the secret share and the threshold info using the
+    `participant_recover` function.
 
     Since returning successfully does not imply that other participants deem
     the DKG session successful, returning successfully also does not imply
@@ -765,14 +772,15 @@ def participant_finalize(
             (`64*n` bytes).
 
     Returns:
-        DKGOutput: The DKG output.
+        bytes: The participant's secret share (32 bytes).
+        ThresholdInfo: The threshold info.
         bytes: The serialized recovery data.
 
     Raises:
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
     """
-    params, eq_input, dkg_output = state2
+    params, eq_input, secshare, threshold_info = state2
     cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, n=len(params.hostpubkeys))
     try:
         certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
@@ -780,7 +788,7 @@ def participant_finalize(
         raise FaultyCoordinatorError(
             "Coordinator has provided a certificate with an invalid signature"
         ) from e
-    return dkg_output, RecoveryData(eq_input + cmsg2_parsed.cert)
+    return secshare, threshold_info, RecoveryData(eq_input + cmsg2_parsed.cert)
 
 
 def participant_investigate(
@@ -830,7 +838,7 @@ def participant_investigate(
 class CoordinatorState(NamedTuple):
     params: SessionParams
     eq_input: bytes
-    dkg_output: DKGOutput
+    threshold_info: ThresholdInfo
 
 
 def coordinator_step1(
@@ -873,7 +881,7 @@ def coordinator_step1(
             raise FaultyParticipantError(participant_id, *e.args) from e
         pmsgs1_parsed.append(parsed)
 
-    enc_cmsg, enc_dkg_output, eq_input, enc_secshares = encpedpop.coordinator_step(
+    enc_cmsg, enc_threshold_info, eq_input, enc_secshares = encpedpop.coordinator_step(
         pmsgs=[pmsg1.enc_pmsg.to_bytes() for pmsg1 in pmsgs1_parsed],
         t=t,
         enckeys=hostpubkeys,
@@ -882,15 +890,16 @@ def coordinator_step1(
         enc_cmsg, t=t, n=len(hostpubkeys)
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    dkg_output = DKGOutput._make(enc_dkg_output)  # Convert to chilldkg.DKGOutput type
-    state = CoordinatorState(params, eq_input, dkg_output)
+    # Convert to chilldkg.ThresholdInfo type
+    threshold_info = ThresholdInfo._make(enc_threshold_info)
+    state = CoordinatorState(params, eq_input, threshold_info)
     cmsg1 = CoordinatorMsg1(enc_cmsg_parsed, enc_secshares).to_bytes()
     return state, cmsg1
 
 
 def coordinator_finalize(
     state: CoordinatorState, pmsgs2: list[bytes]
-) -> tuple[bytes, DKGOutput, RecoveryData]:
+) -> tuple[bytes, ThresholdInfo, RecoveryData]:
     """Perform the coordinator's final step of a ChillDKG session.
 
     If this function returns properly (without an exception), then the
@@ -901,12 +910,12 @@ def coordinator_finalize(
     (e.g., because the message is transmitted incorrectly). These participants
     can, at any point in time in the future (e.g., when initiating a signing
     session), be convinced to deem the session successful by presenting the
-    recovery data to them, from which they can recover the DKG outputs using the
-    `participant_recover` function.
+    recovery data to them, from which they can recover the secret share and the
+    threshold info using the `participant_recover` function.
 
     If this function raises an exception, then the DKG session was not
     successful from the perspective of the coordinator. In this case, it is, in
-    principle, possible to recover the DKG outputs of the coordinator using the
+    principle, possible to recover the threshold info using the
     `coordinator_recover` function together with the recovery data from a
     successful participant, should one exist. Any such successful participant
     is either faulty, or has received messages from other participants via a
@@ -920,15 +929,14 @@ def coordinator_finalize(
 
     Returns:
         bytes: The second message to be sent to all participants (`64*n` bytes).
-        DKGOutput: The DKG output. Since the coordinator does not have a secret
-            share, the DKG output will have the `secshare` field set to `None`.
+        ThresholdInfo: The threshold info.
         bytes: The serialized recovery data.
 
     Raises:
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
     """
-    params, eq_input, dkg_output = state
+    params, eq_input, threshold_info = state
     if len(pmsgs2) != len(params.hostpubkeys):
         raise ValueError
 
@@ -942,7 +950,7 @@ def coordinator_finalize(
             "Participant has provided an invalid signature for the certificate",
         ) from e
     cmsg2 = CoordinatorMsg2(cert).to_bytes()
-    return cmsg2, dkg_output, RecoveryData(eq_input + cert)
+    return cmsg2, threshold_info, RecoveryData(eq_input + cert)
 
 
 def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[bytes]:
@@ -988,9 +996,9 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
 ###
 
 
-def recover(
-    hostseckey: bytes | None, recovery_data: RecoveryData
-) -> tuple[DKGOutput, SessionParams]:
+def recover_public(
+    recovery_data: RecoveryData,
+) -> tuple[ThresholdInfo, SessionParams, tuple[list[bytes], list[Scalar], Scalar]]:
     try:
         (t, sum_coms, hostpubkeys, pubnonces, enc_secshares, cert) = (
             deserialize_recovery_data(recovery_data)
@@ -1017,61 +1025,72 @@ def recover(
     thresh_pk = sum_coms.commitment_to_secret()
     pubshares = [sum_coms.pubshare(i) for i in range(n)]
 
-    if hostseckey is not None:
-        hostpubkey = hostpubkey_gen(hostseckey)  # ValueError or HostSeckeyError
-        try:
-            participant_id = hostpubkeys.index(hostpubkey)
-        except ValueError as e:
-            raise HostSeckeyError(
-                "Host secret key does not match any host public key in the recovery data"
-            ) from e
-
-        # Decrypt share
-        enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
-        secshare = encpedpop.decrypt_sum(
-            hostseckey,
-            hostpubkeys[participant_id],
-            pubnonces,
-            enc_context,
-            participant_id,
-            enc_secshares[participant_id],
-        )
-        secshare_tweaked = secshare + tweak
-
-        # This is just a sanity check. Our signature is valid, so we have done
-        # an equivalent check already during the actual session.
-        assert VSSCommitment.verify_secshare(
-            secshare_tweaked, pubshares[participant_id]
-        )
-    else:
-        secshare_tweaked = None
-
-    dkg_output = DKGOutput(
-        None if secshare_tweaked is None else secshare_tweaked.to_bytes(),
+    threshold_info = ThresholdInfo(
+        t,
         thresh_pk.to_bytes_compressed(),
         [pubshare.to_bytes_compressed() for pubshare in pubshares],
     )
-    return dkg_output, params
+    return threshold_info, params, (pubnonces, enc_secshares, tweak)
+
+
+def recover_secshare(
+    hostseckey: bytes,
+    threshold_info: ThresholdInfo,
+    params: SessionParams,
+    pubnonces: list[bytes],
+    enc_secshares: list[Scalar],
+    tweak: Scalar,
+) -> bytes:
+    (hostpubkeys, t) = params
+
+    hostpubkey = hostpubkey_gen(hostseckey)  # ValueError or HostSeckeyError
+    try:
+        participant_id = hostpubkeys.index(hostpubkey)
+    except ValueError as e:
+        raise HostSeckeyError(
+            "Host secret key does not match any host public key in the recovery data"
+        ) from e
+
+    # Decrypt share
+    enc_context = encpedpop.serialize_enc_context(t, hostpubkeys)
+    secshare = encpedpop.decrypt_sum(
+        hostseckey,
+        hostpubkeys[participant_id],
+        pubnonces,
+        enc_context,
+        participant_id,
+        enc_secshares[participant_id],
+    )
+    secshare_tweaked = secshare + tweak
+
+    # This is just a sanity check. Our signature is valid, so we have done
+    # an equivalent check already during the actual session.
+    assert VSSCommitment.verify_secshare(
+        secshare_tweaked,
+        GE.from_bytes_compressed(threshold_info.pubshares[participant_id]),
+    )
+    return secshare_tweaked.to_bytes()
 
 
 def participant_recover(
     hostseckey: bytes, recovery_data: RecoveryData
-) -> tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of a participant of a ChillDKG session.
+) -> tuple[bytes, ThresholdInfo, SessionParams]:
+    """Recover a participant's secret share and the session's threshold info.
 
     This function serves two different purposes:
     1. To recover from an exception in `participant_finalize`, after
        obtaining the recovery data from another participant or the
        coordinator. See `participant_finalize` for background.
-    2. To reproduce the DKG outputs on a new device, e.g., to recover from a
-       backup after data loss.
+    2. To reproduce the secret share and the threshold info on a new device,
+       e.g., to recover from a backup after data loss.
 
     Arguments:
         hostseckey: This participant's long-term host secret key (32 bytes).
         recovery_data: Recovery data from a successful session.
 
     Returns:
-        DKGOutput: The recovered DKG output.
+        bytes: The recovered secret share (32 bytes).
+        ThresholdInfo: The recovered threshold info.
         SessionParams: The common parameters of the recovered session.
 
     Raises:
@@ -1082,34 +1101,39 @@ def participant_recover(
     """
     if hostseckey is None:
         raise ValueError
-    return recover(hostseckey, recovery_data)
+    threshold_info, params, (pubnonces, enc_secshares, tweak) = recover_public(
+        recovery_data
+    )
+    secshare = recover_secshare(
+        hostseckey, threshold_info, params, pubnonces, enc_secshares, tweak
+    )
+    return secshare, threshold_info, params
 
 
 def coordinator_recover(
     recovery_data: RecoveryData,
-) -> tuple[DKGOutput, SessionParams]:
-    """Recover the DKG output of the coordinator of a ChillDKG session.
+) -> tuple[ThresholdInfo, SessionParams]:
+    """Recover the threshold info of a ChillDKG session for the coordinator.
 
     This function serves two different purposes:
     1. To recover from an exception in `coordinator_finalize`, after
        obtaining the recovery data from a participant. See
        `coordinator_finalize` for background.
-    2. To reproduce the DKG outputs on a new device, e.g., to recover from a
+    2. To reproduce the threshold info on a new device, e.g., to recover from a
        backup after data loss.
 
     Arguments:
         recovery_data: Recovery data from a successful session.
 
     Returns:
-        DKGOutput: The recovered DKG output. Since the coordinator does not
-            have a secret share, the DKG output will have the `secshare`
-            field set to `None`.
+        ThresholdInfo: The recovered threshold info.
         SessionParams: The common parameters of the recovered session.
 
     Raises:
         RecoveryDataError: If recovery failed due to invalid recovery data.
     """
-    return recover(None, recovery_data)
+    threshold_info, params, _ = recover_public(recovery_data)
+    return threshold_info, params
 
 
 class RecoveryDataError(ValueError):

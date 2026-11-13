@@ -120,10 +120,10 @@ The list of signatures, also called a *success certificate*, can convince any ot
 that the DKG session has indeed been successful.
 This is sufficient to exclude the catastrophic failure described in the previous section.
 
-As an additional feature of ChillDKG, the DKG outputs for any signing device can be fully recovered from
+As an additional feature of ChillDKG, any signing device can fully recover all its outputs of a DKG session, including its secret share, from
 a backup of a single *host secret key* specific to the device,
-(the essential parts of) the public transcripts of the DKG sessions,
-and the corresponding success certificates.
+(the essential parts of) the public transcript of the session,
+and the corresponding success certificate.
 To simplify the interface, we combine the transcript data and the session certificate into a single byte string called the *recovery data*,
 which is common to all participants and does not need to be kept confidential.
 Recovering a device that has participated in a DKG session then requires just the device's host secret key and the recovery data,
@@ -148,7 +148,7 @@ In summary, we aim for the following design goals:
  - **Conditional agreement**: If a ChillDKG session succeeds for one honest participant, this participant will be able to convince every other honest participant that the session has succeeded.
  - **No restriction on threshold**: Like the FROST signing protocol, ChillDKG supports any threshold `t <= n`, including `t > n/2` (also called "dishonest majority").
  - **Broad applicability**: ChillDKG supports a wide range of scenarios, from those where the signing devices are owned and connected by a single individual to those where multiple owners manage the devices from distinct locations.
- - **Simple backups**: ChillDKG allows recovering the DKG output using the host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
+ - **Simple backups**: ChillDKG allows a participant to recover all its outputs of a DKG session, including the secret share, using its host secret key and common recovery data shared among all participants and the coordinator. This eliminates the need for session-specific backups, simplifying user experience.
  - **Untrusted coordinator**: Like FROST, ChillDKG uses a coordinator that relays messages between the participants. This simplifies the network topology, and the coordinator additionally reduces communication overhead by aggregating some of the messages. A faulty coordinator can force the DKG to fail but cannot negatively affect the security of the DKG.
  - **Per-participant public shares**: ChillDKG supports partial signature verification in FROST signing sessions.
  - **Taproot-safe threshold public key**: ChillDKG prevents malicious participants from embedding a hidden Taproot commitment to a script path in the threshold public key.
@@ -294,8 +294,10 @@ Our variant of the SimplPedPop protocol then works as follows:
     ```
     Correspondingly, participant `i` computes `secshare_tweaked = secshare + tweak`.
 
-    Then, participant `i` sets the DKG output consisting of
-    this participant's secret share `secshare_tweaked`,
+    Then, participant `i` sets its outputs, namely
+    this participant's secret share `secshare_tweaked` and the *threshold info*,
+    i.e., the public data common to all participants that the FROST signing protocol takes as input,
+    which in turn consists of the threshold `t`,
     the threshold public key `thresh_pk = sum_coms_tweaked[0]`, and
     all participants' public shares `pubshares`.
 
@@ -305,7 +307,7 @@ Our variant of the SimplPedPop protocol then works as follows:
     The transcript of SimplPedPop, constructed in a variable `eq_input`,
     is simply the concatenation (of serializations) of `t` and the `sum_coms` vector.
     Upon the equality protocol returning successfully,
-    participant `i` returns successfully with the DKG outputs as computed above.
+    participant `i` returns successfully with the secret share and the threshold info as computed above.
     Details of the interface of the equality check protocol will be described further below in
     [Subsection "Background on Equality Checks"](#background-on-equality-checks).
 
@@ -444,7 +446,7 @@ unlike plain EncPedPop (where the coordinator sends each participant only their 
 the ChillDKG coordinator broadcasts the complete vector to every participant.
 This ensures that all participants agree on all encrypted shares,
 and as a consequence,
-the entire DKG output of a successful ChillDKG participant can be deterministically reproduced from a per-participant *host secret key* and the transcript.
+a successful ChillDKG participant can deterministically reproduce its secret share and the threshold info from a per-participant *host secret key* and the transcript.
 
 This property is leveraged to offer a backup and recovery functionality:
 ChillDKG outputs a string called *recovery data* which is the concatenation of the transcript `eq_input` and the success certificate `cert`.
@@ -519,11 +521,12 @@ Each participant has a point-to-point communication link to the coordinator
 Transmission errors may hamper functionality (i.e., a DKG session may fail),
 but even an attacker in full control of communication links will not be able to hamper security.
 
-### DKG Outputs
+### Outputs
 
 If a ChillDKG session returns an output to a participant or the coordinator,
 then we say that this party *deems the protocol session successful*.
-In that case, the DKG output is a triple consisting of a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator), the *threshold public key* representing the `t`-of-`n` policy of the group (common to all participants and the coordinator), and a list of `n` *public shares* for verification of individual contributions to a FROST signing session (common to all participants and the coordinator).[^id-position-mapping]
+In that case, the DKG session outputs a *secret share* for participating in FROST signing sessions (individual to each participant, not returned to the coordinator) and the *threshold info* (common to all participants and the coordinator).
+The threshold info is the public data structure that the signing protocol in [BIP 445](bip-0445.md) expects as input, and it consists of the threshold `t`, the *threshold public key* representing the `t`-of-`n` policy of the group, and a list of `n` *public shares* for verification of individual contributions to a FROST signing session.[^id-position-mapping]
 See [BIP 445](bip-0445.md) for details on signing.
 
 [^id-position-mapping]: The secret sharing is as expected by [BIP 445](bip-0445.md), i.e., there exists a scalar polynomial `f` of degree `t - 1` such that `f(0)` is the discrete logarithm of the threshold public key and every participant with identifier `i` has secret share `f(i + 1)`.
@@ -538,7 +541,7 @@ unlike deterministically derived secret keys [[BIP 32](bip-0032.mediawiki)] as t
 not be rederived solely from the participant's seed.
 
 To facilitate backups of a DKG session,
-ChillDKG offers the possibility to recover a participant's DKG output from the participant's host secret key and the recovery data of the specific session.
+ChillDKG offers the possibility to recover a participant's secret share and the threshold info from the participant's host secret key and the recovery data of the specific session.
 As a result, a full backup of a participant consists of the host secret key as well as the recovery data of all DKG sessions the participant has successfully participated in.
 
 Since the recovery data is the same for all participants,
@@ -547,7 +550,7 @@ they can request it from any other participant or the coordinator.
 Moreover, the recovery data contains secrets only in encrypted form and is self-authenticating
 so that it can, in principle, be stored with an untrusted third-party backup provider.
 
-Users **should** be aware that the session parameters (the threshold and the host public keys) and public parts of the DKG output (the threshold public key and the public shares) can be inferred from the recovery data, which may constitute a privacy issue.
+Users **should** be aware that the session parameters (the threshold and the host public keys) and the threshold info can be inferred from the recovery data, which may constitute a privacy issue.
 To eliminate this issue, a participant can encrypt the recovery data using an encryption key derived from their host secret key before giving it out to untrusted parties.
 Recovery from encrypted recovery data still requires only the participant's host secret key, with no additional secrets needed.
 This BIP does not specify the method of encryption.
@@ -641,10 +644,10 @@ in order to single out and blame another participant (see [Overview of a ChillDK
 ### Threat Model and Security Goals
 
 We expect ChillDKG to provide the following informal security goals when it is used to set up keys for the FROST threshold signature scheme.
-If a participant deems a protocol session successful (as defined in [DKG Outputs](#dkg-outputs)), then this participant is assured that:
+If a participant deems a protocol session successful (as defined in [Outputs](#outputs)), then this participant is assured that:
  - A coalition of at most `t - 1` faulty participants and a faulty coordinator cannot forge a signature under the returned threshold public key on any message `m` for which no signing session with at least one honest participant was initiated. (Unforgeability)[^unforgeability-formal]
  - All honest participants who deem the protocol session successful will have correct and consistent protocol outputs.
-   In particular, they agree on the threshold public key, the list of public shares, and the recovery data.
+   In particular, they agree on the threshold info and the recovery data.
    Moreover, any `t` of them have secret shares consistent with the threshold public key.[^correctness-formal]
    This means that any `t` participants have all the necessary inputs to run FROST signing sessions which produce signatures valid under the threshold public key.
  - The success certificate will, when presented to any other (honest) participant, convince that other participant to deem the protocol successful.
@@ -873,21 +876,25 @@ class ThresholdOrCountError(SessionParamsError)
 
 Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold.
 
-#### DKGOutput Tuples
+#### ThresholdInfo Tuples
 
 ```python
-class DKGOutput(NamedTuple):
-    secshare: bytes | None
+class ThresholdInfo(NamedTuple):
+    t: int
     thresh_pk: bytes
     pubshares: list[bytes]
 ```
 
-Holds the outputs of a DKG session.
+Holds the public outputs of a DKG session.
+
+The threshold info is common to all participants and the coordinator. It
+is the public data structure that the signing protocol in BIP 445 expects
+as input.
 
 *Attributes*:
 
-- `secshare` - Secret share of the participant (32 bytes, or `None` for
-  coordinator).
+- `t` - The threshold, i.e., the number of participants required to produce
+  a signature.
 - `thresh_pk` - Generated threshold public key representing the group
   (33 bytes, in compressed serialization).
 - `pubshares` - Public shares of the participants (33 bytes each, in
@@ -955,8 +962,8 @@ session successful and use the resulting threshold public key (e.g., by
 sending funds to it). If the coordinator reply remains missing, that other
 participant can, at any point in the future, convince this participant of
 the success of the DKG session by presenting recovery data, from which this
-participant can recover the DKG output using the `participant_recover`
-function.
+participant can recover the secret share and the threshold info using the
+`participant_recover` function.
 
 *Arguments*:
 
@@ -997,7 +1004,7 @@ function.
 #### participant\_finalize
 
 ```python
-def participant_finalize(state2: ParticipantState2, cmsg2: bytes) -> tuple[DKGOutput, RecoveryData]
+def participant_finalize(state2: ParticipantState2, cmsg2: bytes) -> tuple[bytes, ThresholdInfo, RecoveryData]
 ```
 
 Perform a participant's final step of a ChillDKG session.
@@ -1009,7 +1016,8 @@ them raise an exception instead, or that they have not received a `cmsg2`
 from the coordinator at all. These participants can, at any point in time in
 the future (e.g., when initiating a signing session), be convinced to deem
 the session successful by presenting the recovery data to them, from which
-they can recover the DKG outputs using the `participant_recover` function.
+they can recover the secret share and the threshold info using the
+`participant_recover` function.
 
 Since returning successfully does not imply that other participants deem
 the DKG session successful, returning successfully also does not imply
@@ -1051,7 +1059,8 @@ this participant.
 
 *Returns*:
 
-- `DKGOutput` - The DKG output.
+- `bytes` - The participant's secret share (32 bytes).
+- `ThresholdInfo` - The threshold info.
 - `bytes` - The serialized recovery data.
 
 
@@ -1130,7 +1139,7 @@ Perform the coordinator's first step of a ChillDKG session.
 #### coordinator\_finalize
 
 ```python
-def coordinator_finalize(state: CoordinatorState, pmsgs2: list[bytes]) -> tuple[bytes, DKGOutput, RecoveryData]
+def coordinator_finalize(state: CoordinatorState, pmsgs2: list[bytes]) -> tuple[bytes, ThresholdInfo, RecoveryData]
 ```
 
 Perform the coordinator's final step of a ChillDKG session.
@@ -1143,12 +1152,12 @@ some participants pass a wrong and invalid message to `participant_finalize`
 (e.g., because the message is transmitted incorrectly). These participants
 can, at any point in time in the future (e.g., when initiating a signing
 session), be convinced to deem the session successful by presenting the
-recovery data to them, from which they can recover the DKG outputs using the
-`participant_recover` function.
+recovery data to them, from which they can recover the secret share and the
+threshold info using the `participant_recover` function.
 
 If this function raises an exception, then the DKG session was not
 successful from the perspective of the coordinator. In this case, it is, in
-principle, possible to recover the DKG outputs of the coordinator using the
+principle, possible to recover the threshold info using the
 `coordinator_recover` function together with the recovery data from a
 successful participant, should one exist. Any such successful participant
 is either faulty, or has received messages from other participants via a
@@ -1165,8 +1174,7 @@ communication channel beside the coordinator.
 *Returns*:
 
 - `bytes` - The second message to be sent to all participants (`64*n` bytes).
-- `DKGOutput` - The DKG output. Since the coordinator does not have a secret
-  share, the DKG output will have the `secshare` field set to `None`.
+- `ThresholdInfo` - The threshold info.
 - `bytes` - The serialized recovery data.
 
 
@@ -1211,17 +1219,17 @@ information.
 #### participant\_recover
 
 ```python
-def participant_recover(hostseckey: bytes, recovery_data: RecoveryData) -> tuple[DKGOutput, SessionParams]
+def participant_recover(hostseckey: bytes, recovery_data: RecoveryData) -> tuple[bytes, ThresholdInfo, SessionParams]
 ```
 
-Recover the DKG output of a participant of a ChillDKG session.
+Recover a participant's secret share and the session's threshold info.
 
 This function serves two different purposes:
 1. To recover from an exception in `participant_finalize`, after
 obtaining the recovery data from another participant or the
 coordinator. See `participant_finalize` for background.
-2. To reproduce the DKG outputs on a new device, e.g., to recover from a
-backup after data loss.
+2. To reproduce the secret share and the threshold info on a new device,
+e.g., to recover from a backup after data loss.
 
 *Arguments*:
 
@@ -1231,7 +1239,8 @@ backup after data loss.
 
 *Returns*:
 
-- `DKGOutput` - The recovered DKG output.
+- `bytes` - The recovered secret share (32 bytes).
+- `ThresholdInfo` - The recovered threshold info.
 - `SessionParams` - The common parameters of the recovered session.
 
 
@@ -1245,16 +1254,16 @@ backup after data loss.
 #### coordinator\_recover
 
 ```python
-def coordinator_recover(recovery_data: RecoveryData) -> tuple[DKGOutput, SessionParams]
+def coordinator_recover(recovery_data: RecoveryData) -> tuple[ThresholdInfo, SessionParams]
 ```
 
-Recover the DKG output of the coordinator of a ChillDKG session.
+Recover the threshold info of a ChillDKG session for the coordinator.
 
 This function serves two different purposes:
 1. To recover from an exception in `coordinator_finalize`, after
 obtaining the recovery data from a participant. See
 `coordinator_finalize` for background.
-2. To reproduce the DKG outputs on a new device, e.g., to recover from a
+2. To reproduce the threshold info on a new device, e.g., to recover from a
 backup after data loss.
 
 *Arguments*:
@@ -1264,9 +1273,7 @@ backup after data loss.
 
 *Returns*:
 
-- `DKGOutput` - The recovered DKG output. Since the coordinator does not
-  have a secret share, the DKG output will have the `secshare`
-  field set to `None`.
+- `ThresholdInfo` - The recovered threshold info.
 - `SessionParams` - The common parameters of the recovered session.
 
 

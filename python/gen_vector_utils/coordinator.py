@@ -6,11 +6,11 @@ from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, RANDOMS_HEX, THRESHOLD_CONF
 from .util import (
     assign_tc_ids,
     bytes_to_hex,
-    dkg_output_asdict,
     expect_exception,
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    threshold_info_asdict,
 )
 
 COORDINATOR_STEP1_DESCRIPTION = [
@@ -268,7 +268,7 @@ COORDINATOR_FINALIZE_DESCRIPTION = [
     "",
     "For each valid test case:",
     "  Call coordinator_finalize(cstate, pmsgs2).",
-    "  Verify the result matches expectedOutput (cmsg2, dkgOutput, recoveryData).",
+    "  Verify the result matches expectedOutput (cmsg2, thresholdInfo, recoveryData).",
     "",
     "For each error test case:",
     "  Call coordinator_finalize(cstate, pmsgs2).",
@@ -298,7 +298,7 @@ def generate_coordinator_finalize_group(t, n):
             hostseckeys[i], pstates1[i], cmsg1, aux_rand
         )
         pmsgs2.append(msg)
-    cmsg2, cout, crec = chilldkg.coordinator_finalize(cstate, pmsgs2)
+    cmsg2, cinfo, crec = chilldkg.coordinator_finalize(cstate, pmsgs2)
     pmsg2_pool = [bytes_to_hex(m) for m in pmsgs2]
 
     valid_cases = []
@@ -310,7 +310,7 @@ def generate_coordinator_finalize_group(t, n):
             "pmsg2Indices": list(range(len(pmsgs2))),  # [0, 1, ..., n - 1]
             "expectedOutput": {
                 "cmsg2": bytes_to_hex(cmsg2),
-                "dkgOutput": dkg_output_asdict(cout),
+                "thresholdInfo": threshold_info_asdict(cinfo),
                 "recoveryData": bytes_to_hex(crec),
             },
             "comment": "valid coordinator finalize",
