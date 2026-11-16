@@ -110,15 +110,27 @@ def generate_params_hash_vectors():
     hostpubkeys = [chilldkg.hostpubkey_gen(sk) for sk in hostseckeys]
 
     # --- Valid test cases ---
+    max_hostpubkeys = [
+        chilldkg.hostpubkey_gen(bytes_from_int(i + 1))
+        for i in range(chilldkg.MAX_PARTICIPANTS)
+    ]
     cases = [
-        {"t": 2, "comment": "standard 2-of-3 threshold"},
-        {"t": 1, "comment": "min threshold value"},
-        {"t": len(hostpubkeys), "comment": "max threshold value"},
+        {"hostpubkeys": hostpubkeys, "t": 2, "comment": "standard 2-of-3 threshold"},
+        {"hostpubkeys": hostpubkeys, "t": 1, "comment": "min threshold value"},
+        {
+            "hostpubkeys": hostpubkeys,
+            "t": len(hostpubkeys),
+            "comment": "max threshold value",
+        },
+        {
+            "hostpubkeys": max_hostpubkeys,
+            "t": 2,
+            "comment": f"max number of participants ({chilldkg.MAX_PARTICIPANTS})",
+        },
     ]
 
     for case in cases:
-        t = case["t"]
-        params = chilldkg.SessionParams(hostpubkeys, t)
+        params = chilldkg.SessionParams(case["hostpubkeys"], case["t"])
         expected_params_hash = chilldkg.params_hash(params)
         test_case = {
             "params": params_asdict(params),
@@ -138,6 +150,23 @@ def generate_params_hash_vectors():
             "params": params_asdict(invalid_params),
             "expectedError": error,
             "comment": "invalid threshold value",
+        }
+    )
+    # --- Error test case: n > MAX_PARTICIPANTS ---
+    too_many_hostpubkeys = [
+        chilldkg.hostpubkey_gen(bytes_from_int(i + 1))
+        for i in range(chilldkg.MAX_PARTICIPANTS + 1)
+    ]
+    t = 2
+    invalid_params = chilldkg.SessionParams(too_many_hostpubkeys, t)
+    error = expect_exception(
+        lambda: chilldkg.params_hash(invalid_params), chilldkg.ThresholdOrCountError
+    )
+    error_cases.append(
+        {
+            "params": params_asdict(invalid_params),
+            "expectedError": error,
+            "comment": f"number of participants exceeds {chilldkg.MAX_PARTICIPANTS}",
         }
     )
     # --- Error test case: hostpubkeys list contains an invalid value ---

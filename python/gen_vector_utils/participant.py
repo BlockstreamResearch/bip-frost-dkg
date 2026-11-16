@@ -132,6 +132,27 @@ def generate_participant_step1_group(t, n):
             "comment": "threshold exceeds the number of participants",
         }
     )
+    # --- Error test case: n > MAX_PARTICIPANTS ---
+    # The bound does not depend on (t, n), so include this case only once.
+    if (t, n) == THRESHOLD_CONFIGS[0]:
+        num_extra = chilldkg.MAX_PARTICIPANTS + 1 - n
+        extra_hostpubkeys = [
+            chilldkg.hostpubkey_gen(bytes_from_int(i + 1)) for i in range(num_extra)
+        ]
+        invalid_params = chilldkg.SessionParams(hostpubkeys + extra_hostpubkeys, t)
+        error = expect_exception(
+            lambda: chilldkg.participant_step1(hostseckeys[0], invalid_params, random),
+            chilldkg.ThresholdOrCountError,
+        )
+        error_cases.append(
+            {
+                "hostseckey": bytes_to_hex(hostseckeys[0]),
+                "params": params_asdict(invalid_params),
+                "random": bytes_to_hex(random),
+                "expectedError": error,
+                "comment": f"number of participants exceeds {chilldkg.MAX_PARTICIPANTS}",
+            }
+        )
     # --- Error test case: hostpubkeys list contains a value with an invalid prefix ---
     invalid_hostpubkey = b"\xeb" * 33  # invalid prefix
     with_invalid = hostpubkeys[:-1] + [invalid_hostpubkey]

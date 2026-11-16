@@ -213,7 +213,7 @@ class SessionParams(NamedTuple):
         hostpubkeys: Ordered list of the host public keys of all participants.
         t: The participation threshold `t`.
             This is the number of participants that will be required to sign.
-            It must hold that `1 <= t <= len(hostpubkeys) <= 2**32 - 1`.
+            It must hold that `1 <= t <= len(hostpubkeys) <= 128`.
 
     Each participant **must** ensure to have authentic copies of all other
     participants' host public keys before the start of the session, e.g., by
@@ -235,16 +235,25 @@ class SessionParams(NamedTuple):
     participants in the application, the caller can sort the list of host public
     keys with the [KeySort algorithm specified in
     BIP 327](bip-0327.mediawiki#key-sorting) to abstract away from the order.
+
+    The upper bound on the number of participants `n = len(hostpubkeys)` is a
+    security requirement of the FROST signing protocol as specified in
+    [BIP 445](bip-0445.md).
     """
 
     hostpubkeys: list[bytes]
     t: int
 
 
+# Upper bound on the number of participants n, as required by the FROST signing
+# protocol in BIP 445.
+MAX_PARTICIPANTS = 128
+
+
 def params_validate(params: SessionParams) -> None:
     (hostpubkeys, t) = params
 
-    if not (1 <= t <= len(hostpubkeys) <= 2**32 - 1):
+    if not (1 <= t <= len(hostpubkeys) <= MAX_PARTICIPANTS):
         raise ThresholdOrCountError
 
     # Check that all hostpubkeys are valid
@@ -283,7 +292,7 @@ def params_hash(params: SessionParams) -> bytes:
     Raises:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
     """
     params_validate(params)
@@ -340,7 +349,7 @@ class InvalidHostPubkeyError(SessionParamsError):
 
 
 class ThresholdOrCountError(SessionParamsError):
-    """Raised if `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does not hold."""
+    """Raised if `1 <= t <= len(hostpubkeys) <= 128` does not hold."""
 
 
 # This is really the same definition as in simplpedpop and encpedpop. We repeat
@@ -589,7 +598,7 @@ def participant_step1(
             not match any entry of `hostpubkeys`.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
         RandomnessError: If `random` is all zeroes (i.e., `b"\\x00" * 32`). This
             check guards against the case of a malfunctioning random number
@@ -863,7 +872,7 @@ def coordinator_step1(
     Raises:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
@@ -1174,7 +1183,7 @@ def participant_recovery_ack_sign(
             match any host public key.
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
         RecoveryDataError: If the recovery data is invalid or does not match
             the provided parameters.
@@ -1226,7 +1235,7 @@ def participant_recovery_acks_verify(
     Raises:
         InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
-        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 2**32 - 1` does
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
         RecoveryDataError: If the recovery data is invalid or does not match
             the provided parameters.
