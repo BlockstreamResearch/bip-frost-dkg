@@ -124,18 +124,18 @@ async def participant(
         cinv = await chan.receive()
 
     try:
-        random = random_bytes(32)
-        state2, eq_round1 = participant_step2(hostseckey, state1, cmsg1, random)
+        aux_rand = random_bytes(32)
+        state2, pmsg2 = participant_step2(hostseckey, state1, cmsg1, aux_rand)
     except UnknownFaultyParticipantOrCoordinatorError as e:
         if investigation_procedure:
             participant_investigate(e, cinv)
         else:
             # If this participant does not implement the investigation
             # procedure, it cannot determine which party is faulty. Re-raise
-            # UnknownFaultyPartyError in this case.
+            # UnknownFaultyParticipantOrCoordinatorError in this case.
             raise
 
-    chan.send(eq_round1)
+    chan.send(pmsg2)
     cmsg2 = await chan.receive()
 
     return participant_finalize(state2, cmsg2)
@@ -156,14 +156,14 @@ async def coordinator(
     # If the coordinator implements the investigation procedure and it is
     # enabled, it sends an extra message to the participants.
     if investigation_procedure:
-        inv_msgs = coordinator_investigate(pmsgs1, params)
+        cinv_msgs = coordinator_investigate(pmsgs1, params)
         for i in range(n):
-            chans.send_to(i, inv_msgs[i])
+            chans.send_to(i, cinv_msgs[i])
 
-    sigs = []
+    pmsgs2 = []
     for i in range(n):
-        sigs += [await chans.receive_from(i)]
-    cmsg2, threshold_info, recovery_data = coordinator_finalize(state, sigs)
+        pmsgs2.append(await chans.receive_from(i))
+    cmsg2, threshold_info, recovery_data = coordinator_finalize(state, pmsgs2)
     chans.send_all(cmsg2)
 
     return threshold_info, recovery_data
@@ -201,8 +201,8 @@ def simulate_chilldkg_full(
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
 
-    # For demonstration purposes, we enable the investigation pro if a participant is
-    # faulty.
+    # For demonstration purposes, we enable the investigation procedure if a
+    # participant is faulty.
     investigation_procedure = faulty_id is not None
 
     async def session():
