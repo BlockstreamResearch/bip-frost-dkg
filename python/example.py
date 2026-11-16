@@ -12,6 +12,7 @@ from secrets import token_bytes as random_bytes
 from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
     FaultyParticipantOrCoordinatorError,
+    InvalidRecoveryAckError,
     RecoveryData,
     SessionParams,
     ThresholdInfo,
@@ -23,6 +24,8 @@ from chilldkg_ref.chilldkg import (
     params_hash,
     participant_finalize,
     participant_investigate,
+    participant_recovery_ack_sign,
+    participant_recovery_acks_verify,
     participant_step1,
     participant_step2,
 )
@@ -68,6 +71,13 @@ class ParticipantChannel:
     async def receive(self):
         item = await self.queue.get()
         return item
+
+
+def connect(n):
+    coord_chans = CoordinatorChannels(n)
+    participant_chans = [ParticipantChannel(coord_chans.queues[i]) for i in range(n)]
+    coord_chans.set_participant_queues([participant_chans[i].queue for i in range(n)])
+    return coord_chans, participant_chans
 
 
 #
@@ -206,13 +216,7 @@ def simulate_chilldkg_full(
     investigation_procedure = faulty_id is not None
 
     async def session():
-        coord_chans = CoordinatorChannels(n)
-        participant_chans = [
-            ParticipantChannel(coord_chans.queues[i]) for i in range(n)
-        ]
-        coord_chans.set_participant_queues(
-            [participant_chans[i].queue for i in range(n)]
-        )
+        coord_chans, participant_chans = connect(n)
         coroutines = [coordinator(coord_chans, params, investigation_procedure)] + [
             participant(
                 participant_chans[i], hostseckeys[i], params, investigation_procedure
@@ -226,6 +230,61 @@ def simulate_chilldkg_full(
     (cthreshold_info, crecovery_data), *poutputs = asyncio.run(session())
     # The coordinator has no secret share.
     return [(None, cthreshold_info, crecovery_data), *poutputs]
+
+
+#
+# Acknowledgment round (optional)
+#
+# A successful DKG session does not imply that the other participants deem the
+# session successful and hold a copy of the recovery data. Before the threshold
+# public key is used (e.g., before funds are sent to it), the party that is
+# going to use it should therefore obtain acknowledgments from all
+# participants. This is an application-level step after the DKG session, and
+# it can also happen later, e.g., when the first address is generated.
+
+
+async def participant_ack(
+    chan: ParticipantChannel,
+    hostseckey: bytes,
+    params: SessionParams,
+    recovery_data: RecoveryData,
+):
+    aux_rand = random_bytes(32)
+    ack = participant_recovery_ack_sign(hostseckey, recovery_data, params, aux_rand)
+    chan.send(ack)
+
+
+async def coordinator_collect_acks(
+    chans: CoordinatorChannels, params: SessionParams, recovery_data: RecoveryData
+):
+    # The acknowledgments should be verified by the party that is going to use
+    # the threshold public key. In this example, this is the coordinator, e.g.,
+    # because it derives addresses. If a participant uses the key, it should
+    # obtain the acknowledgments (e.g., relayed by the coordinator) and verify
+    # them itself rather than rely on the coordinator's verification, because
+    # the coordinator is untrusted.
+    n = len(params.hostpubkeys)
+    ack_sigs = []
+    for i in range(n):
+        ack_sigs.append(await chans.receive_from(i))
+    # Raises InvalidRecoveryAckError if an acknowledgment is invalid.
+    participant_recovery_acks_verify(recovery_data, params, ack_sigs)
+
+
+def simulate_acknowledgments(
+    hostseckeys: list[bytes], params: SessionParams, recovery_data: RecoveryData
+):
+    n = len(hostseckeys)
+
+    async def session():
+        coord_chans, participant_chans = connect(n)
+        coroutines = [coordinator_collect_acks(coord_chans, params, recovery_data)] + [
+            participant_ack(participant_chans[i], hostseckeys[i], params, recovery_data)
+            for i in range(n)
+        ]
+        await asyncio.gather(*coroutines)
+
+    asyncio.run(session())
 
 
 def main():
@@ -302,6 +361,22 @@ def main():
     recovery_data = rets[0][2]
     print(f"=== Common recovery data ({len(recovery_data)} bytes) ===")
     print(recovery_data.hex())
+    print()
+
+    print("=== Acknowledgments ===")
+    try:
+        simulate_acknowledgments(hostseckeys, params, recovery_data)
+    except InvalidRecoveryAckError as e:
+        # The DKG session itself was successful. We only cannot confirm that
+        # this participant holds a copy of the recovery data. Keep all outputs
+        # and host secret keys, but do not use the threshold public key yet.
+        print(
+            f"Participant {e.participant_id} has not acknowledged the recovery data. "
+            "Do not use the threshold public key yet."
+        )
+    else:
+        print("All participants have acknowledged the recovery data.")
+        print("The threshold public key can now be used.")
 
 
 if __name__ == "__main__":
