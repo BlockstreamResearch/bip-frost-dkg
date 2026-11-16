@@ -19,11 +19,13 @@ from chilldkg_ref.chilldkg import (
     UnknownFaultyParticipantOrCoordinatorError,
     coordinator_finalize,
     coordinator_investigate,
+    coordinator_recover,
     coordinator_step1,
     hostpubkey_gen,
     params_hash,
     participant_finalize,
     participant_investigate,
+    participant_recover,
     participant_recovery_ack_sign,
     participant_recovery_acks_verify,
     participant_step1,
@@ -387,6 +389,22 @@ def main():
     else:
         print("All participants have acknowledged the recovery data.")
         print("The threshold public key can now be used.")
+    print()
+
+    # Every party can recover its outputs from the common recovery data (and,
+    # for participants, its host secret key), e.g., on a new device after data
+    # loss. Check that recovery reproduces the outputs of the session.
+    threshold_info_rec, params_rec = coordinator_recover(recovery_data)
+    assert threshold_info_rec == rets[0][1]
+    assert params_rec == params
+    for i in range(n):
+        secshare_rec, threshold_info_rec, params_rec = participant_recover(
+            hostseckeys[i], recovery_data
+        )
+        assert (secshare_rec, threshold_info_rec) == rets[i + 1][:2]
+        assert params_rec == params
+    print("=== Recovery ===")
+    print("All parties recovered their outputs from the recovery data.")
 
 
 if __name__ == "__main__":
