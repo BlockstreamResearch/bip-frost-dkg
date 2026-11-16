@@ -81,6 +81,10 @@ def params_asdict(params: chilldkg.SessionParams) -> dict:
     return {"hostpubkeys": bytes_list_to_hex(params.hostpubkeys), "t": params.t}
 
 
+def tg_id(t: int, n: int) -> str:
+    return f"{t}of{n}"
+
+
 def threshold_info_asdict(threshold_info: chilldkg.ThresholdInfo) -> dict:
     return {
         "t": threshold_info.t,

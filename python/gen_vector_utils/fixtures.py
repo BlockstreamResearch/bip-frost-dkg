@@ -26,3 +26,8 @@ THRESHOLD_CONFIGS = [
     (3, 3),
     (2, 4),
 ]
+
+# Compressed encoding of x = 5, which is not the x-coordinate of any point on
+# secp256k1, since 5^3 + 7 = 132 is not a square mod p. Used wherever a test
+# needs a point encoding that fails to decode.
+OFF_CURVE_POINT = b"\x03" + 31 * b"\x00" + b"\x05"
