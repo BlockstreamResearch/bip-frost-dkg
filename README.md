@@ -660,7 +660,7 @@ If a participant deems a protocol session successful (as defined in [Outputs](#o
 
 ### Overview of a ChillDKG Session
 
-(See also [`python/example.py`](python/example.py).)
+(See also [`python/example.py`](python/example.py), which additionally demonstrates blaming faulty parties, acknowledgment signatures, and recovery.)
 
 The following figure shows an example ChillDKG involving the participants and the coordinator.
 For simplicity, only one participant is depicted.
