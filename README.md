@@ -703,7 +703,7 @@ Thus, applications may additionally choose to let the coordinator send all `n` i
 This subsection is an export of the API documentation generated from the docstrings in the reference implementation
 (see [`python/chilldkg_ref/chilldkg.py`](python/chilldkg_ref/chilldkg.py).)
 
-In addition to the exceptions documented for each function below, all public API functions may raise Python built-in exceptions such as `TypeError` or `ValueError` when called with arguments of unexpected structure (e.g., wrong type or wrong length). These structural errors are not documented per function.
+In addition to the exceptions documented for each function below, all public API functions may raise Python built-in exceptions such as `TypeError` or `ValueError` when called with arguments of unexpected structure (e.g., wrong type or wrong length of a fixed-size argument). These structural errors are not documented per function.
 
 <!--pydoc.md-->
 #### hostpubkey\_gen
@@ -906,6 +906,18 @@ as input.
 - `pubshares` - Public shares of the participants (33 bytes each, in
   compressed serialization).
 
+#### LengthDoesNotMatchParamsError Exception
+
+```python
+class LengthDoesNotMatchParamsError(ValueError)
+```
+
+Raised if the length of an argument does not match the session parameters.
+
+This exception is raised if the length of a serialized message, or the
+number of entries in a list of messages, does not match the length implied
+by the threshold `t` and the number of participants `n`.
+
 #### participant\_step1
 
 ```python
@@ -1006,6 +1018,8 @@ participant can recover the secret share and the threshold info using the
   investigation procedure of the protocol is necessary to determine a
   suspected participant. See the documentation of the exception for
   further details.
+- `LengthDoesNotMatchParamsError` - If the length of `cmsg1` does not match
+  the session parameters.
 
 #### participant\_finalize
 
@@ -1074,6 +1088,8 @@ this participant.
 
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
+- `LengthDoesNotMatchParamsError` - If the length of `cmsg2` does not match
+  the session parameters.
 
 #### participant\_investigate
 
@@ -1106,6 +1122,8 @@ exceptions.
   further details.
 - `FaultyCoordinatorError` - If the coordinator is faulty. See the
   documentation of the exception for further details.
+- `LengthDoesNotMatchParamsError` - If the length of `cinv` does not match
+  the session parameters.
 
 #### coordinator\_step1
 
@@ -1141,6 +1159,8 @@ Perform the coordinator's first step of a ChillDKG session.
   not hold.
 - `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
+- `LengthDoesNotMatchParamsError` - If the number of entries in `pmsgs1` or
+  the length of an entry does not match the session parameters.
 
 #### coordinator\_finalize
 
@@ -1188,6 +1208,8 @@ communication channel beside the coordinator.
 
 - `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
+- `LengthDoesNotMatchParamsError` - If the number of entries in `pmsgs2` does
+  not match the session parameters.
 
 #### coordinator\_investigate
 
@@ -1221,6 +1243,8 @@ information.
 
 - `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
+- `LengthDoesNotMatchParamsError` - If the length of an entry in `pmsgs`
+  does not match the session parameters.
 
 #### participant\_recover
 
@@ -1367,6 +1391,8 @@ received the recovery data before the threshold public key is used
   (reaching this point implies the DKG itself was successful).
   It only means it cannot be confirmed that all participants
   have a copy of the recovery data.
+- `LengthDoesNotMatchParamsError` - If the number of entries in `ack_sigs`
+  does not match the session parameters.
 
 #### InvalidRecoveryAckError Exception
 

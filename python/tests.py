@@ -477,7 +477,9 @@ def test_hostpubkey_gen_vectors():
         test_data = json.load(f)
 
     valid_test_cases = test_data["validTestCases"]
-    error_test_cases = test_data["errorTestCases"]
+    error_test_cases = (
+        test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
+    )
     assert test_data["totalTests"] == len(valid_test_cases) + len(error_test_cases)
 
     for test_case in valid_test_cases:
@@ -497,7 +499,9 @@ def test_params_hash_vectors():
         test_data = json.load(f)
 
     valid_test_cases = test_data["validTestCases"]
-    error_test_cases = test_data["errorTestCases"]
+    error_test_cases = (
+        test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
+    )
     assert test_data["totalTests"] == len(valid_test_cases) + len(error_test_cases)
 
     for test_case in valid_test_cases:
@@ -528,7 +532,9 @@ def test_participant_step1_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-        for test_case in group["errorTestCases"]:
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
             hostseckey = bytes.fromhex(test_case["hostseckey"])
             params = params_from_dict(test_case["params"])
             random = bytes.fromhex(test_case["random"])
@@ -582,7 +588,9 @@ def test_participant_step2_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-        for test_case in group["errorTestCases"]:
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
             case_hostseckey = bytes.fromhex(
                 test_case.get("hostseckey", group["hostseckey"])
             )
@@ -655,7 +663,9 @@ def test_participant_finalize_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-        for test_case in group["errorTestCases"]:
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
             expected_error = test_case["expectedError"]
             assert_raises(
@@ -685,7 +695,9 @@ def test_participant_investigate_vectors():
         state1, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
         assert bytes.fromhex(group["pmsg1"]) == pmsg1
 
-        for test_case in group["errorTestCases"]:
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
             cmsg1 = bytes.fromhex(cmsg1_pool[test_case["cmsg1Index"]])
             cinv_msg = bytes.fromhex(test_case["cinvMsg"])
             expected_error = test_case["expectedError"]
@@ -724,7 +736,9 @@ def test_coordinator_step1_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-        for test_case in group["errorTestCases"]:
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
             pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
             params = params_from_dict(test_case["params"])
             expected_error = test_case["expectedError"]
@@ -762,7 +776,9 @@ def test_coordinator_finalize_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-        for test_case in group["errorTestCases"]:
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
             pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2Indices"]]
             expected_error = test_case["expectedError"]
             assert_raises(
@@ -801,7 +817,9 @@ def test_recover_vectors():
         test_data = json.load(f)
 
     valid_test_cases = test_data["validTestCases"]
-    error_test_cases = test_data["errorTestCases"]
+    error_test_cases = (
+        test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
+    )
     assert test_data["totalTests"] == len(valid_test_cases) + len(error_test_cases)
 
     for test_case in valid_test_cases:
@@ -1000,7 +1018,7 @@ def test_recovery_acknowledgment():
         chilldkg.participant_recovery_acks_verify(
             recovery_data, params, wrong_count_sigs
         )
-    except ValueError:
+    except chilldkg.LengthDoesNotMatchParamsError:
         pass
     else:
         assert False, "Expected exception"
