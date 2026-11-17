@@ -13,12 +13,14 @@ from .fixtures import (
     THRESHOLD_CONFIGS,
 )
 from .util import (
+    INPUT_VALIDATION_DESCRIPTION,
     assign_tc_ids,
     bytes_to_hex,
     expect_exception,
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    split_input_validation_cases,
     tg_id,
     threshold_info_asdict,
 )
@@ -39,6 +41,7 @@ PARTICIPANT_STEP1_DESCRIPTION = [
     "For each error test case:",
     "  Call participant_step1(hostseckey, params, random).",
     "  Verify it raises an exception matching expectedError.",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -298,6 +301,7 @@ def generate_participant_step1_group(t, n):
 
 def generate_participant_step1_vectors():
     groups = [generate_participant_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_STEP1_DESCRIPTION,
@@ -329,6 +333,7 @@ PARTICIPANT_STEP2_DESCRIPTION = [
     "  Error objects contain 'type' (exception class name) and optionally:",
     "    - 'participantId': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
     "    - 'message': human-readable description (informational, not required to match exactly)",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -770,6 +775,7 @@ def generate_participant_step2_group(t, n):
 
 def generate_participant_step2_vectors():
     groups = [generate_participant_step2_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_STEP2_DESCRIPTION,
@@ -802,6 +808,7 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
     "For each error test case:",
     "  Call participant_finalize(pstate2, cmsg2).",
     "  Verify it raises an exception matching expectedError.",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -925,6 +932,7 @@ def generate_participant_finalize_group(t, n):
 
 def generate_participant_finalize_vectors():
     groups = [generate_participant_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_FINALIZE_DESCRIPTION,
@@ -948,6 +956,7 @@ PARTICIPANT_INVESTIGATE_DESCRIPTION = [
     "",
     "All test cases are error cases (this function never returns successfully).",
     "Error objects contain 'type' and optionally 'participantId' (identifier of the blamed party).",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -1137,6 +1146,7 @@ def generate_participant_investigate_vectors():
     groups = [
         generate_participant_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
     ]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_INVESTIGATE_DESCRIPTION,

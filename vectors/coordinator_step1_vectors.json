@@ -14,7 +14,13 @@
         "For each error test case:",
         "  Call coordinator_step1(pmsgs1, params).",
         "  Verify it raises an exception matching expectedError.",
-        "  Error objects may include 'participantId' (identifier of the blamed participant)."
+        "  Error objects may include 'participantId' (identifier of the blamed participant).",
+        "",
+        "For each input validation error test case:",
+        "  Proceed as for error test cases. These test cases pass arguments of unexpected",
+        "  structure (e.g., of wrong length), for which the reference implementation raises",
+        "  ValueError. Implementations whose types rule out such arguments (e.g., fixed-size",
+        "  byte arrays) may skip them."
     ],
     "totalTests": 55,
     "testGroups": [
@@ -178,6 +184,52 @@
                     "tcId": 8,
                     "pmsg1Indices": [
                         0,
+                        5,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid encrypted secret share",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an out-of-range enc_share"
+                },
+                {
+                    "tcId": 9,
+                    "pmsg1Indices": [
+                        0,
+                        6,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid VSS commitment",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 10,
+                    "pmsg1Indices": [
+                        0,
                         1
                     ],
                     "params": {
@@ -194,7 +246,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 11,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -215,7 +267,7 @@
                     "comment": "invalid pmsgs1: more entries than participants"
                 },
                 {
-                    "tcId": 10,
+                    "tcId": 12,
                     "pmsg1Indices": [
                         0,
                         4,
@@ -233,50 +285,6 @@
                         "type": "ValueError"
                     },
                     "comment": "participant (id 1) message has an enc_shares list of invalid length"
-                },
-                {
-                    "tcId": 11,
-                    "pmsg1Indices": [
-                        0,
-                        5,
-                        2
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
-                        ],
-                        "t": 2
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid encrypted secret share",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an out-of-range enc_share"
-                },
-                {
-                    "tcId": 12,
-                    "pmsg1Indices": [
-                        0,
-                        6,
-                        2
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
-                        ],
-                        "t": 2
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid VSS commitment",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
                 },
                 {
                     "tcId": 13,
@@ -461,6 +469,52 @@
                     "tcId": 21,
                     "pmsg1Indices": [
                         0,
+                        4,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 1
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid encrypted secret share",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an out-of-range enc_share"
+                },
+                {
+                    "tcId": 22,
+                    "pmsg1Indices": [
+                        0,
+                        5,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 1
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid VSS commitment",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 23,
+                    "pmsg1Indices": [
+                        0,
                         1
                     ],
                     "params": {
@@ -477,7 +531,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 22,
+                    "tcId": 24,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -498,7 +552,7 @@
                     "comment": "invalid pmsgs1: more entries than participants"
                 },
                 {
-                    "tcId": 23,
+                    "tcId": 25,
                     "pmsg1Indices": [
                         0,
                         3,
@@ -516,50 +570,6 @@
                         "type": "ValueError"
                     },
                     "comment": "participant (id 1) message has an enc_shares list of invalid length"
-                },
-                {
-                    "tcId": 24,
-                    "pmsg1Indices": [
-                        0,
-                        4,
-                        2
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
-                        ],
-                        "t": 1
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid encrypted secret share",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an out-of-range enc_share"
-                },
-                {
-                    "tcId": 25,
-                    "pmsg1Indices": [
-                        0,
-                        5,
-                        2
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
-                        ],
-                        "t": 1
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid VSS commitment",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
                 },
                 {
                     "tcId": 26,
@@ -763,6 +773,52 @@
                     "tcId": 35,
                     "pmsg1Indices": [
                         0,
+                        5,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid encrypted secret share",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an out-of-range enc_share"
+                },
+                {
+                    "tcId": 36,
+                    "pmsg1Indices": [
+                        0,
+                        6,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid VSS commitment",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 37,
+                    "pmsg1Indices": [
+                        0,
                         1
                     ],
                     "params": {
@@ -779,7 +835,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 36,
+                    "tcId": 38,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -800,7 +856,7 @@
                     "comment": "invalid pmsgs1: more entries than participants"
                 },
                 {
-                    "tcId": 37,
+                    "tcId": 39,
                     "pmsg1Indices": [
                         0,
                         4,
@@ -818,50 +874,6 @@
                         "type": "ValueError"
                     },
                     "comment": "participant (id 1) message has an enc_shares list of invalid length"
-                },
-                {
-                    "tcId": 38,
-                    "pmsg1Indices": [
-                        0,
-                        5,
-                        2
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
-                        ],
-                        "t": 3
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid encrypted secret share",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an out-of-range enc_share"
-                },
-                {
-                    "tcId": 39,
-                    "pmsg1Indices": [
-                        0,
-                        6,
-                        2
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
-                        ],
-                        "t": 3
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid VSS commitment",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
                 },
                 {
                     "tcId": 40,
@@ -1080,6 +1092,56 @@
                     "tcId": 49,
                     "pmsg1Indices": [
                         0,
+                        6,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid encrypted secret share",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an out-of-range enc_share"
+                },
+                {
+                    "tcId": 50,
+                    "pmsg1Indices": [
+                        0,
+                        7,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "FaultyParticipantError",
+                        "message": "invalid VSS commitment",
+                        "participantId": 1
+                    },
+                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 51,
+                    "pmsg1Indices": [
+                        0,
                         1,
                         2
                     ],
@@ -1098,7 +1160,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 50,
+                    "tcId": 52,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -1121,7 +1183,7 @@
                     "comment": "invalid pmsgs1: more entries than participants"
                 },
                 {
-                    "tcId": 51,
+                    "tcId": 53,
                     "pmsg1Indices": [
                         0,
                         5,
@@ -1141,54 +1203,6 @@
                         "type": "ValueError"
                     },
                     "comment": "participant (id 1) message has an enc_shares list of invalid length"
-                },
-                {
-                    "tcId": 52,
-                    "pmsg1Indices": [
-                        0,
-                        6,
-                        2,
-                        3
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
-                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
-                        ],
-                        "t": 2
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid encrypted secret share",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an out-of-range enc_share"
-                },
-                {
-                    "tcId": 53,
-                    "pmsg1Indices": [
-                        0,
-                        7,
-                        2,
-                        3
-                    ],
-                    "params": {
-                        "hostpubkeys": [
-                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
-                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
-                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
-                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
-                        ],
-                        "t": 2
-                    },
-                    "expectedError": {
-                        "type": "FaultyParticipantError",
-                        "message": "invalid VSS commitment",
-                        "participantId": 1
-                    },
-                    "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment"
                 },
                 {
                     "tcId": 54,

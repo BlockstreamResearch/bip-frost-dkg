@@ -14,12 +14,14 @@ from .fixtures import (
     THRESHOLD_CONFIGS,
 )
 from .util import (
+    INPUT_VALIDATION_DESCRIPTION,
     assign_tc_ids,
     bytes_to_hex,
     expect_exception,
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    split_input_validation_cases,
     tg_id,
     threshold_info_asdict,
 )
@@ -57,6 +59,7 @@ COORDINATOR_STEP1_DESCRIPTION = [
     "  Call coordinator_step1(pmsgs1, params).",
     "  Verify it raises an exception matching expectedError.",
     "  Error objects may include 'participantId' (identifier of the blamed participant).",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -350,6 +353,7 @@ def generate_coordinator_step1_group(t, n):
 
 def generate_coordinator_step1_vectors():
     groups = [generate_coordinator_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": COORDINATOR_STEP1_DESCRIPTION,
@@ -376,6 +380,7 @@ COORDINATOR_FINALIZE_DESCRIPTION = [
     "For each error test case:",
     "  Call coordinator_finalize(cstate, pmsgs2).",
     "  Verify it raises an exception matching expectedError.",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -503,6 +508,7 @@ def generate_coordinator_finalize_group(t, n):
 
 def generate_coordinator_finalize_vectors():
     groups = [generate_coordinator_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": COORDINATOR_FINALIZE_DESCRIPTION,
@@ -556,6 +562,7 @@ def generate_coordinator_investigate_vectors():
     groups = [
         generate_coordinator_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
     ]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": COORDINATOR_INVESTIGATE_DESCRIPTION,

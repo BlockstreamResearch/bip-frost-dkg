@@ -13,7 +13,13 @@
         "  4. Call participant_investigate(error, cinvMsg) and verify it raises expectedError.",
         "",
         "All test cases are error cases (this function never returns successfully).",
-        "Error objects contain 'type' and optionally 'participantId' (identifier of the blamed party)."
+        "Error objects contain 'type' and optionally 'participantId' (identifier of the blamed party).",
+        "",
+        "For each input validation error test case:",
+        "  Proceed as for error test cases. These test cases pass arguments of unexpected",
+        "  structure (e.g., of wrong length), for which the reference implementation raises",
+        "  ValueError. Implementations whose types rule out such arguments (e.g., fixed-size",
+        "  byte arrays) may skip them."
     ],
     "totalTests": 28,
     "testGroups": [
@@ -96,7 +102,9 @@
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
                     "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
-                },
+                }
+            ],
+            "inputValidationErrorTestCases": [
                 {
                     "tcId": 7,
                     "cmsg1Index": 1,
@@ -187,7 +195,9 @@
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
                     "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
-                },
+                }
+            ],
+            "inputValidationErrorTestCases": [
                 {
                     "tcId": 14,
                     "cmsg1Index": 1,
@@ -278,7 +288,9 @@
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
                     "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
-                },
+                }
+            ],
+            "inputValidationErrorTestCases": [
                 {
                     "tcId": 21,
                     "cmsg1Index": 1,
@@ -370,7 +382,9 @@
                         "message": "Sum of partial pubshares not equal to pubshare"
                     },
                     "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1"
-                },
+                }
+            ],
+            "inputValidationErrorTestCases": [
                 {
                     "tcId": 28,
                     "cmsg1Index": 1,

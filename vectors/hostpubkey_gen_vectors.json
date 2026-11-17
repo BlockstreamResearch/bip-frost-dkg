@@ -8,7 +8,13 @@
         "",
         "For each error test case:",
         "  Call hostpubkey_gen(hostseckey) and verify it raises an exception matching expectedError.",
-        "  The expectedError object contains 'type' (the exception class name)."
+        "  The expectedError object contains 'type' (the exception class name).",
+        "",
+        "For each input validation error test case:",
+        "  Proceed as for error test cases. These test cases pass arguments of unexpected",
+        "  structure (e.g., of wrong length), for which the reference implementation raises",
+        "  ValueError. Implementations whose types rule out such arguments (e.g., fixed-size",
+        "  byte arrays) may skip them."
     ],
     "totalTests": 4,
     "validTestCases": [
@@ -22,14 +28,6 @@
     "errorTestCases": [
         {
             "tcId": 2,
-            "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
-            "expectedError": {
-                "type": "ValueError"
-            },
-            "comment": "length of host secret key is not 32 bytes"
-        },
-        {
-            "tcId": 3,
             "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
             "expectedError": {
                 "type": "HostSeckeyError"
@@ -37,12 +35,22 @@
             "comment": "host secret key is out of range"
         },
         {
-            "tcId": 4,
+            "tcId": 3,
             "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
             "expectedError": {
                 "type": "HostSeckeyError"
             },
             "comment": "zeroed host secret key"
+        }
+    ],
+    "inputValidationErrorTestCases": [
+        {
+            "tcId": 4,
+            "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
+            "expectedError": {
+                "type": "ValueError"
+            },
+            "comment": "length of host secret key is not 32 bytes"
         }
     ]
 }
