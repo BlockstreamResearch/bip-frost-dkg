@@ -378,6 +378,11 @@ def main():
     print("=== Session parameters ===")
     pphex(params)
     print()
+    # Each participant must have authentic copies of the host public keys of
+    # all other participants. In practice, each participant ensures this before
+    # calling participant_step1 by comparing the parameters hash with every
+    # other participant out-of-band. In this example, all parties use the same
+    # params, so this comparison would trivially succeed.
     print(f"Session parameters hash: {params_hash(params).hex()}")
     print()
 
