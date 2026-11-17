@@ -36,7 +36,8 @@
                     "comment": "valid coordinator investigate"
                 }
             ],
-            "errorTestCases": []
+            "errorTestCases": [],
+            "inputValidationErrorTestCases": []
         },
         {
             "tgId": "1of3",
@@ -64,7 +65,8 @@
                     "comment": "valid coordinator investigate"
                 }
             ],
-            "errorTestCases": []
+            "errorTestCases": [],
+            "inputValidationErrorTestCases": []
         },
         {
             "tgId": "3of3",
@@ -92,7 +94,8 @@
                     "comment": "valid coordinator investigate"
                 }
             ],
-            "errorTestCases": []
+            "errorTestCases": [],
+            "inputValidationErrorTestCases": []
         },
         {
             "tgId": "2of4",
@@ -123,7 +126,8 @@
                     "comment": "valid coordinator investigate"
                 }
             ],
-            "errorTestCases": []
+            "errorTestCases": [],
+            "inputValidationErrorTestCases": []
         }
     ]
 }

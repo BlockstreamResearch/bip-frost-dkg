@@ -5,11 +5,13 @@ from chilldkg_ref import chilldkg
 
 from .fixtures import AUX_RAND_HEX, HOSTSECKEYS_HEX, OFF_CURVE_POINT, RANDOMS_HEX
 from .util import (
+    INPUT_VALIDATION_DESCRIPTION,
     assign_tc_ids,
     bytes_to_hex,
     expect_exception,
     hex_list_to_bytes,
     params_asdict,
+    split_input_validation_cases,
     threshold_info_asdict,
 )
 
@@ -25,6 +27,7 @@ def generate_hostpubkey_vectors():
         "For each error test case:",
         "  Call hostpubkey_gen(hostseckey) and verify it raises an exception matching expectedError.",
         "  The expectedError object contains 'type' (the exception class name).",
+        *INPUT_VALIDATION_DESCRIPTION,
     ]
     valid_cases = []
     error_cases = []
@@ -81,12 +84,12 @@ def generate_hostpubkey_vectors():
     )
 
     groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": description,
         "totalTests": total_tests,
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        **groups[0],
     }
 
 
@@ -201,12 +204,12 @@ def generate_params_hash_vectors():
     )
 
     groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": description,
         "totalTests": total_tests,
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        **groups[0],
     }
 
 
@@ -228,6 +231,7 @@ def generate_recover_vectors():
         "For each error test case:",
         "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
         "  (if hostseckey is null) and verify it raises an exception matching expectedError.",
+        *INPUT_VALIDATION_DESCRIPTION,
     ]
     valid_cases = []
     error_cases = []
@@ -490,10 +494,10 @@ def generate_recover_vectors():
     )
 
     groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": description,
         "totalTests": total_tests,
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        **groups[0],
     }

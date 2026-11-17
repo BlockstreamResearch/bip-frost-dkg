@@ -93,10 +93,42 @@ def threshold_info_asdict(threshold_info: chilldkg.ThresholdInfo) -> dict:
     }
 
 
+INPUT_VALIDATION_DESCRIPTION = [
+    "",
+    "For each input validation error test case:",
+    "  Proceed as for error test cases. These test cases pass arguments of unexpected",
+    "  structure (e.g., of wrong length), for which the reference implementation raises",
+    "  ValueError. Implementations whose types rule out such arguments (e.g., fixed-size",
+    "  byte arrays) may skip them.",
+]
+
+
+def split_input_validation_cases(groups):
+    # Move the error test cases that expect a plain ValueError, which is raised
+    # for arguments of unexpected structure, to a separate list, so that
+    # implementations can skip them as a whole.
+    for group in groups:
+        error_cases = group["errorTestCases"]
+        group["errorTestCases"] = [
+            case
+            for case in error_cases
+            if case["expectedError"]["type"] != "ValueError"
+        ]
+        group["inputValidationErrorTestCases"] = [
+            case
+            for case in error_cases
+            if case["expectedError"]["type"] == "ValueError"
+        ]
+
+
 def assign_tc_ids(groups):
     tc_id = 1
     for group in groups:
-        for key in ("validTestCases", "errorTestCases"):
+        for key in (
+            "validTestCases",
+            "errorTestCases",
+            "inputValidationErrorTestCases",
+        ):
             for i, case in enumerate(group.get(key, [])):
                 assert "tcId" not in case
                 group[key][i] = {"tcId": tc_id, **case}
