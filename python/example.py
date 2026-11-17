@@ -11,8 +11,11 @@ from secrets import token_bytes as random_bytes
 
 from chilldkg_ref import chilldkg
 from chilldkg_ref.chilldkg import (
+    FaultyCoordinatorError,
+    FaultyParticipantError,
     FaultyParticipantOrCoordinatorError,
     InvalidRecoveryAckError,
+    ProtocolError,
     RecoveryData,
     SessionParams,
     ThresholdInfo,
@@ -115,7 +118,9 @@ async def participant(
     params: SessionParams,
     investigation_procedure: bool,
 ) -> tuple[bytes, ThresholdInfo, RecoveryData]:
-    # TODO Top-level error handling
+    # If participant_step1 or participant_step2 raises an exception, this
+    # participant aborts the session. This is safe because no party can deem
+    # the session successful without pmsg2 from this participant.
     random = random_bytes(32)
     state1, pmsg1 = participant_step1(hostseckey, params, random)
 
@@ -149,7 +154,12 @@ async def participant(
 
     chan.send(pmsg2)
     cmsg2 = await chan.receive()
-
+    # Now that this participant has sent pmsg2, other parties may deem the
+    # session successful. So even if participant_finalize raises an exception
+    # (or cmsg2 never arrives), this participant must not conclude that the
+    # session has failed and must not erase its host secret key. It can still
+    # obtain its outputs later using participant_recover, once another party
+    # presents the recovery data.
     return participant_finalize(state2, cmsg2)
 
 
@@ -297,6 +307,32 @@ def simulate_acknowledgments(
     asyncio.run(session())
 
 
+def report_blame(e: ProtocolError) -> int | None:
+    """Print who is blamed for the failure of the session.
+
+    Returns the identifier of the blamed participant, or None if no
+    participant is blamed."""
+    if isinstance(e, FaultyParticipantError):
+        print(
+            f"The coordinator has aborted the session and blames participant {e.participant_id}."
+        )
+        return e.participant_id
+    if isinstance(e, FaultyParticipantOrCoordinatorError):
+        print(
+            f"A participant has aborted the session and blames either participant {e.participant_id} or the coordinator."
+        )
+        return e.participant_id
+    if isinstance(e, FaultyCoordinatorError):
+        print("A participant has aborted the session and blames the coordinator.")
+        return None
+    if isinstance(e, UnknownFaultyParticipantOrCoordinatorError):
+        print(
+            "A participant has aborted the session but cannot determine which party is faulty without the investigation procedure."
+        )
+        return None
+    raise e
+
+
 def main():
     parser = argparse.ArgumentParser(description="ChillDKG example")
     parser.add_argument(
@@ -313,7 +349,11 @@ def main():
     args = parser.parse_args()
     t = args.t
     n = args.n
+    if not 1 <= t <= n <= chilldkg.MAX_PARTICIPANTS:
+        parser.error(f"t and n must satisfy 1 <= t <= n <= {chilldkg.MAX_PARTICIPANTS}")
     if args.faulty_participant:
+        if n < 2:
+            parser.error("--faulty-participant requires n >= 2")
         faulty_id = randint(0, n - 1)
     else:
         faulty_id = None
@@ -343,16 +383,13 @@ def main():
 
     try:
         rets = simulate_chilldkg_full(hostseckeys, params, faulty_id)
-    except FaultyParticipantOrCoordinatorError as e:
-        print(
-            f"A participant has failed and is blaming either participant {e.participant_id} or the coordinator."
-        )
-        # If the blamed participant is the faulty participant, exit with code 0.
-        # Otherwise, re-raise the exception.
-        if faulty_id == e.participant_id:
-            return 0
-        else:
-            raise
+    except ProtocolError as e:
+        # In this simulation, the first party that aborts the session ends the
+        # entire simulation.
+        blamed_id = report_blame(e)
+        # Exit with code 0 if the simulated faulty participant is blamed, as
+        # expected, and with code 1 otherwise.
+        return 0 if faulty_id is not None and blamed_id == faulty_id else 1
 
     assert len(rets) == n + 1
     print("=== Coordinator's threshold info ===")
