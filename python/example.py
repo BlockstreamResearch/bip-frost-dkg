@@ -117,7 +117,7 @@ async def participant(
     hostseckey: bytes,
     params: SessionParams,
     investigation_procedure: bool,
-) -> tuple[bytes, ThresholdInfo, RecoveryData]:
+) -> tuple[bytes, ThresholdInfo, RecoveryData] | None:
     # If participant_step1 or participant_step2 raises an exception, this
     # participant aborts the session. This is safe because no party can deem
     # the session successful without pmsg2 from this participant.
@@ -160,11 +160,18 @@ async def participant(
     # session has failed and must not erase its host secret key. It can still
     # obtain its outputs later using participant_recover, once another party
     # presents the recovery data.
-    return participant_finalize(state2, cmsg2)
+    try:
+        return participant_finalize(state2, cmsg2)
+    except FaultyCoordinatorError:
+        print("A participant has received an invalid cmsg2 and blames the coordinator.")
+        return None
 
 
 async def coordinator(
-    chans: CoordinatorChannels, params: SessionParams, investigation_procedure: bool
+    chans: CoordinatorChannels,
+    params: SessionParams,
+    investigation_procedure: bool,
+    faulty: bool = False,
 ) -> tuple[ThresholdInfo, RecoveryData]:
     (hostpubkeys, _) = params
     n = len(hostpubkeys)
@@ -186,7 +193,15 @@ async def coordinator(
     for i in range(n):
         pmsgs2.append(await chans.receive_from(i))
     cmsg2, threshold_info, recovery_data = coordinator_finalize(state, pmsgs2)
-    chans.send_all(cmsg2)
+    if faulty:
+        # For demonstration purposes, a faulty coordinator invalidates the last
+        # signature in the certificate for a random victim participant.
+        victim = randint(0, n - 1)
+        invalid_cmsg2 = cmsg2[:-1] + bytes([cmsg2[-1] ^ 1])
+        for i in range(n):
+            chans.send_to(i, invalid_cmsg2 if i == victim else cmsg2)
+    else:
+        chans.send_all(cmsg2)
 
     return threshold_info, recovery_data
 
@@ -218,7 +233,10 @@ async def faulty_participant(
 
 
 def simulate_chilldkg_full(
-    hostseckeys: list[bytes], params: SessionParams, faulty_id: int | None
+    hostseckeys: list[bytes],
+    params: SessionParams,
+    faulty_id: int | None,
+    faulty_coordinator: bool = False,
 ) -> list[tuple[bytes | None, ThresholdInfo, RecoveryData] | None]:
     n = len(hostseckeys)
     assert n == len(params.hostpubkeys)
@@ -229,7 +247,11 @@ def simulate_chilldkg_full(
 
     async def session():
         coord_chans, participant_chans = connect(n)
-        coroutines = [coordinator(coord_chans, params, investigation_procedure)] + [
+        coroutines = [
+            coordinator(
+                coord_chans, params, investigation_procedure, faulty_coordinator
+            )
+        ] + [
             participant(
                 participant_chans[i], hostseckeys[i], params, investigation_procedure
             )
@@ -333,6 +355,11 @@ def main():
         help="When this flag is set, one random participant will send an invalid message, and the investigation procedure will be enabled for other participants and the coordinator.",
     )
     parser.add_argument(
+        "--faulty-coordinator",
+        action="store_true",
+        help="When this flag is set, the coordinator will send an invalid message to one random participant in the last step of the session, and this participant will recover its outputs from the recovery data.",
+    )
+    parser.add_argument(
         "t", nargs="?", type=int, default=2, help="Signing threshold [default = 2]"
     )
     parser.add_argument(
@@ -343,6 +370,8 @@ def main():
     n = args.n
     if not 1 <= t <= n <= chilldkg.MAX_PARTICIPANTS:
         parser.error(f"t and n must satisfy 1 <= t <= n <= {chilldkg.MAX_PARTICIPANTS}")
+    if args.faulty_participant and args.faulty_coordinator:
+        parser.error("--faulty-participant and --faulty-coordinator cannot be combined")
     if args.faulty_participant:
         if n < 2:
             parser.error("--faulty-participant requires n >= 2")
@@ -354,6 +383,8 @@ def main():
     print(f"Using n = {n} participants and a threshold of t = {t}.")
     if faulty_id is not None:
         print(f"Participant {faulty_id} is faulty.")
+    if args.faulty_coordinator:
+        print("The coordinator is faulty.")
     print()
 
     # Generate common inputs for all participants and coordinator
@@ -379,7 +410,9 @@ def main():
     print()
 
     try:
-        rets = simulate_chilldkg_full(hostseckeys, params, faulty_id)
+        rets = simulate_chilldkg_full(
+            hostseckeys, params, faulty_id, args.faulty_coordinator
+        )
     except ProtocolError as e:
         # In this simulation, the first party that aborts the session ends the
         # entire simulation.
@@ -389,6 +422,26 @@ def main():
         return 0 if faulty_id is not None and blamed_id == faulty_id else 1
 
     assert len(rets) == n + 1
+
+    # A participant whose participant_finalize has raised an exception has
+    # already sent pmsg2, so the other parties may deem the session successful.
+    # Once some party presents the recovery data, the participant can recover
+    # its outputs. The recovery data is self-authenticating, so it can be
+    # obtained from any party, even from the faulty coordinator. However, it
+    # only proves that some session with this participant was successful, so
+    # the participant checks that it matches the parameters of this session
+    # before accepting the outputs.
+    for i in range(n):
+        if rets[i + 1] is None:
+            recovery_data = rets[0][2]
+            secshare, threshold_info, params_rec = participant_recover(
+                hostseckeys[i], recovery_data
+            )
+            assert params_rec == params
+            rets[i + 1] = (secshare, threshold_info, recovery_data)
+            print(f"Participant {i} has recovered its outputs from the recovery data.")
+            print()
+
     print("=== Coordinator's threshold info ===")
     _, threshold_info, _ = rets[0]
     pphex({"threshold_info": threshold_info})
