@@ -1036,6 +1036,51 @@ def test_recovery_acknowledgment():
     else:
         assert False, "Expected exception"
 
+    # Recovery data with an invalid certificate
+    invalid_cert_recovery_data = chilldkg.RecoveryData(
+        recovery_data[:-1] + bytes([recovery_data[-1] ^ 1])
+    )
+    try:
+        chilldkg.participant_recovery_ack_sign(
+            hostseckeys[0], invalid_cert_recovery_data, params, random_bytes(32)
+        )
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        chilldkg.participant_recovery_acks_verify(
+            invalid_cert_recovery_data, params, ack_sigs
+        )
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # A participant can sign its slot in the certificate again, which yields
+    # different but valid recovery data for the same session. Acknowledgments
+    # of either recovery data must verify against both, so that no honest
+    # participant is blamed.
+    cert_len = chilldkg.certeq_cert_len(n)
+    eq_input = recovery_data[:-cert_len]
+    resig = chilldkg.certeq_participant_step(
+        hostseckeys[n - 1], n - 1, eq_input, random_bytes(32)
+    )
+    other_recovery_data = chilldkg.RecoveryData(recovery_data[:-64] + resig)
+    assert other_recovery_data != recovery_data
+    assert chilldkg.participant_recover(
+        hostseckeys[1], other_recovery_data
+    ) == chilldkg.participant_recover(hostseckeys[1], recovery_data)
+    mixed_ack_sigs = ack_sigs[:]
+    mixed_ack_sigs[1] = chilldkg.participant_recovery_ack_sign(
+        hostseckeys[1], other_recovery_data, params, random_bytes(32)
+    )
+    chilldkg.participant_recovery_acks_verify(recovery_data, params, mixed_ack_sigs)
+    chilldkg.participant_recovery_acks_verify(
+        other_recovery_data, params, mixed_ack_sigs
+    )
+
 
 test_chilldkg_params_validate()
 test_vss_correctness()
