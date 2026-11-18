@@ -574,7 +574,7 @@ The mere fact that a protocol party deems a ChillDKG session successful does not
 Indeed, due to failing communication links or invalid messages sent by faulty parties,
 it is possible that one party has deemed the DKG session successful, but others have not (yet) and thus are stuck in the DKG session.
 In that case, the successful parties can eventually convince the stuck parties to consider the DKG session successful by presenting the recovery data to them.
-The recovery data can, e.g., be attached to the first request to initiate a FROST signing session.
+The recovery data can, e.g., be attached to the request for acknowledgment signatures (if present, see below) or to the first request to initiate a FROST signing session.
 
 An important implication of the above is that anyone who uses the threshold public key,
 and thereby relies on the participants' ability to participate in signing sessions,
