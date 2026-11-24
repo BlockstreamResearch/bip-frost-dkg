@@ -10,7 +10,8 @@ their arguments and return values, and the exceptions they raise; see also the
 In addition to the exceptions documented for each function, all public API
 functions may raise Python built-in exceptions such as `TypeError` or
 `ValueError` when called with arguments of unexpected structure (e.g., wrong
-type or wrong length). These structural errors are not documented per function.
+type or wrong length of a fixed-size argument). These structural errors are not
+documented per function.
 """
 
 from __future__ import annotations
@@ -57,6 +58,7 @@ __all__ = [
     "DuplicateHostPubkeyError",
     "ThresholdOrCountError",
     "RandomnessError",
+    "LengthDoesNotMatchParamsError",
     "ProtocolError",
     "FaultyParticipantError",
     "FaultyParticipantOrCoordinatorError",
@@ -383,6 +385,15 @@ RecoveryData = NewType("RecoveryData", bytes)
 ###
 
 
+class LengthDoesNotMatchParamsError(ValueError):
+    """Raised if the length of an argument does not match the session parameters.
+
+    This exception is raised if the length of a serialized message, or the
+    number of entries in a list of messages, does not match the length implied
+    by the threshold `t` and the number of participants `n`.
+    """
+
+
 class ParticipantMsg1(NamedTuple):
     enc_pmsg: encpedpop.ParticipantMsg
 
@@ -393,7 +404,7 @@ class ParticipantMsg1(NamedTuple):
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> ParticipantMsg1:
         if len(b) != ParticipantMsg1.len_bytes(t=t, n=n):
-            raise ValueError
+            raise LengthDoesNotMatchParamsError
         enc_pmsg = encpedpop.ParticipantMsg.from_bytes(
             b, t=t, n=n
         )  # MsgParseError if invalid
@@ -431,7 +442,7 @@ class CoordinatorMsg1(NamedTuple):
     @staticmethod
     def from_bytes(b: bytes, *, t: int, n: int) -> CoordinatorMsg1:
         if len(b) != CoordinatorMsg1.len_bytes(t=t, n=n):
-            raise ValueError
+            raise LengthDoesNotMatchParamsError
 
         # Read enc_cmsg
         enc_cmsg_len = encpedpop.CoordinatorMsg.len_bytes(t=t, n=n)
@@ -467,7 +478,7 @@ class CoordinatorMsg2(NamedTuple):
     @staticmethod
     def from_bytes(b: bytes, *, n: int) -> CoordinatorMsg2:
         if len(b) != CoordinatorMsg2.len_bytes(n=n):
-            raise ValueError
+            raise LengthDoesNotMatchParamsError
         return CoordinatorMsg2(b)
 
     def to_bytes(self) -> bytes:
@@ -484,7 +495,7 @@ class CoordinatorInvestigationMsg(NamedTuple):
     @staticmethod
     def from_bytes(b: bytes, *, n: int) -> CoordinatorInvestigationMsg:
         if len(b) != CoordinatorInvestigationMsg.len_bytes(n=n):
-            raise ValueError
+            raise LengthDoesNotMatchParamsError
         enc_cinv = encpedpop.CoordinatorInvestigationMsg.from_bytes(
             b, n=n
         )  # MsgParseError if invalid
@@ -692,6 +703,8 @@ def participant_step2(
             investigation procedure of the protocol is necessary to determine a
             suspected participant. See the documentation of the exception for
             further details.
+        LengthDoesNotMatchParamsError: If the length of `cmsg1` does not match
+            the session parameters.
     """
     hostpubkey = hostpubkey_gen(
         hostseckey
@@ -788,6 +801,8 @@ def participant_finalize(
     Raises:
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
+        LengthDoesNotMatchParamsError: If the length of `cmsg2` does not match
+            the session parameters.
     """
     params, eq_input, secshare, threshold_info = state2
     cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, n=len(params.hostpubkeys))
@@ -826,6 +841,8 @@ def participant_investigate(
             further details.
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
+        LengthDoesNotMatchParamsError: If the length of `cinv` does not match
+            the session parameters.
     """
     assert isinstance(error.inv_data, encpedpop.ParticipantInvestigationData)
     n = error.inv_data.simpl_bstate.n
@@ -876,11 +893,13 @@ def coordinator_step1(
             not hold.
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
+        LengthDoesNotMatchParamsError: If the number of entries in `pmsgs1` or
+            the length of an entry does not match the session parameters.
     """
     params_validate(params)
     hostpubkeys, t = params
     if len(pmsgs1) != len(hostpubkeys):
-        raise ValueError
+        raise LengthDoesNotMatchParamsError
 
     pmsgs1_parsed = []
     for participant_id, pmsg1 in enumerate(pmsgs1):
@@ -944,10 +963,12 @@ def coordinator_finalize(
     Raises:
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
+        LengthDoesNotMatchParamsError: If the number of entries in `pmsgs2` does
+            not match the session parameters.
     """
     params, eq_input, threshold_info = state
     if len(pmsgs2) != len(params.hostpubkeys):
-        raise ValueError
+        raise LengthDoesNotMatchParamsError
 
     pmsgs2_parsed = [ParticipantMsg2.from_bytes(pmsg2) for pmsg2 in pmsgs2]
     cert = certeq_coordinator_step([pmsg2.sig for pmsg2 in pmsgs2_parsed])
@@ -974,7 +995,8 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
 
     Arguments:
         pmsgs: List of serialized first messages received from the participants
-               (`33*t + 32*n + 97` bytes each).
+               (`33*t + 32*n + 97` bytes each). The list's length must equal
+               the total number of participants.
         params: Common session parameters.
 
     Returns:
@@ -984,9 +1006,13 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
     Raises:
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
+        LengthDoesNotMatchParamsError: If the number of entries in `pmsgs` or
+            the length of an entry does not match the session parameters.
     """
-    n = len(pmsgs)
-    t = params.t
+    hostpubkeys, t = params
+    n = len(hostpubkeys)
+    if len(pmsgs) != n:
+        raise LengthDoesNotMatchParamsError
     pmsgs_parsed = []
     for participant_id, pmsg in enumerate(pmsgs):
         try:
@@ -1244,12 +1270,14 @@ def participant_recovery_acks_verify(
             (reaching this point implies the DKG itself was successful).
             It only means it cannot be confirmed that all participants
             have a copy of the recovery data.
+        LengthDoesNotMatchParamsError: If the number of entries in `ack_sigs`
+            does not match the session parameters.
     """
     params_validate(params)
     (hostpubkeys, t) = params
 
     if len(ack_sigs) != len(hostpubkeys):
-        raise ValueError
+        raise LengthDoesNotMatchParamsError
 
     try:
         (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)

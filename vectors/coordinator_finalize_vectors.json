@@ -16,7 +16,15 @@
         "",
         "For each error test case:",
         "  Call coordinator_finalize(cstate, pmsgs2).",
-        "  Verify it raises an exception matching expectedError."
+        "  Verify it raises an exception matching expectedError.",
+        "",
+        "For each input validation error test case:",
+        "  Proceed as for error test cases. These test cases pass a fixed-size argument of",
+        "  wrong length (e.g., a host secret key that is not 32 bytes or a signature in pmsgs2",
+        "  that is not 64 bytes), for which the reference implementation raises ValueError.",
+        "  Implementations whose types rule out such arguments (e.g., fixed-size byte arrays)",
+        "  may skip them. Wrong lengths that depend on t or n (e.g., of cmsg1 or pmsgs1) are",
+        "  covered by the error test cases (LengthDoesNotMatchParamsError)."
     ],
     "totalTests": 20,
     "testGroups": [
@@ -72,27 +80,15 @@
                     "tcId": 2,
                     "pmsg2Indices": [
                         0,
-                        3,
-                        2
-                    ],
-                    "expectedError": {
-                        "type": "ValueError"
-                    },
-                    "comment": "participant with id 1 sent a short signature"
-                },
-                {
-                    "tcId": 3,
-                    "pmsg2Indices": [
-                        0,
                         1
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 4,
+                    "tcId": 3,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -100,12 +96,12 @@
                         0
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 5,
+                    "tcId": 4,
                     "pmsg2Indices": [
                         0,
                         4,
@@ -117,6 +113,20 @@
                         "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 5,
+                    "pmsg2Indices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
                 }
             ]
         },
@@ -172,27 +182,15 @@
                     "tcId": 7,
                     "pmsg2Indices": [
                         0,
-                        3,
-                        2
-                    ],
-                    "expectedError": {
-                        "type": "ValueError"
-                    },
-                    "comment": "participant with id 1 sent a short signature"
-                },
-                {
-                    "tcId": 8,
-                    "pmsg2Indices": [
-                        0,
                         1
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 8,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -200,12 +198,12 @@
                         0
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 10,
+                    "tcId": 9,
                     "pmsg2Indices": [
                         0,
                         4,
@@ -217,6 +215,20 @@
                         "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 10,
+                    "pmsg2Indices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
                 }
             ]
         },
@@ -272,27 +284,15 @@
                     "tcId": 12,
                     "pmsg2Indices": [
                         0,
-                        3,
-                        2
-                    ],
-                    "expectedError": {
-                        "type": "ValueError"
-                    },
-                    "comment": "participant with id 1 sent a short signature"
-                },
-                {
-                    "tcId": 13,
-                    "pmsg2Indices": [
-                        0,
                         1
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 14,
+                    "tcId": 13,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -300,12 +300,12 @@
                         0
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 15,
+                    "tcId": 14,
                     "pmsg2Indices": [
                         0,
                         4,
@@ -317,6 +317,20 @@
                         "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 15,
+                    "pmsg2Indices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
                 }
             ]
         },
@@ -377,29 +391,16 @@
                     "tcId": 17,
                     "pmsg2Indices": [
                         0,
-                        4,
-                        2,
-                        3
-                    ],
-                    "expectedError": {
-                        "type": "ValueError"
-                    },
-                    "comment": "participant with id 1 sent a short signature"
-                },
-                {
-                    "tcId": 18,
-                    "pmsg2Indices": [
-                        0,
                         1,
                         2
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: fewer entries than participants"
                 },
                 {
-                    "tcId": 19,
+                    "tcId": 18,
                     "pmsg2Indices": [
                         0,
                         1,
@@ -408,12 +409,12 @@
                         0
                     ],
                     "expectedError": {
-                        "type": "ValueError"
+                        "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs2: more entries than participants"
                 },
                 {
-                    "tcId": 20,
+                    "tcId": 19,
                     "pmsg2Indices": [
                         0,
                         5,
@@ -426,6 +427,21 @@
                         "participantId": 1
                     },
                     "comment": "participant with id 1 sent an invalid signature"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 20,
+                    "pmsg2Indices": [
+                        0,
+                        4,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
                 }
             ]
         }

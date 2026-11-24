@@ -383,5 +383,6 @@
             },
             "comment": "hostpubkeys list contains duplicate values"
         }
-    ]
+    ],
+    "inputValidationErrorTestCases": []
 }

@@ -14,12 +14,14 @@ from .fixtures import (
     THRESHOLD_CONFIGS,
 )
 from .util import (
+    INPUT_VALIDATION_DESCRIPTION,
     assign_tc_ids,
     bytes_to_hex,
     expect_exception,
     expect_faulty_exception,
     hex_list_to_bytes,
     params_asdict,
+    split_input_validation_cases,
     tg_id,
     threshold_info_asdict,
 )
@@ -201,7 +203,7 @@ def generate_coordinator_step1_group(t, n):
     short_pmsgs1 = pmsgs1[: n - 1]
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(short_pmsgs1, params),
-        ValueError,
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     error_cases.append(
         {
@@ -216,7 +218,7 @@ def generate_coordinator_step1_group(t, n):
     long_pmsgs1 = pmsgs1 + [pmsgs1[0]]  # Add an extra entry
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(long_pmsgs1, params),
-        ValueError,
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     error_cases.append(
         {
@@ -237,7 +239,7 @@ def generate_coordinator_step1_group(t, n):
 
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
-        ValueError,
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n + 1
     error_cases.append(
@@ -306,7 +308,7 @@ def generate_coordinator_step1_group(t, n):
     invalid_pmsgs1 = [empty_pmsgs1] + pmsgs1[1:]
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
-        ValueError,
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     error_cases.append(
         {
@@ -327,7 +329,7 @@ def generate_coordinator_step1_group(t, n):
     invalid_pmsgs1[1] = truncated_pmsg1
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
-        ValueError,
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     error_cases.append(
         {
@@ -350,6 +352,7 @@ def generate_coordinator_step1_group(t, n):
 
 def generate_coordinator_step1_vectors():
     groups = [generate_coordinator_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": COORDINATOR_STEP1_DESCRIPTION,
@@ -376,6 +379,7 @@ COORDINATOR_FINALIZE_DESCRIPTION = [
     "For each error test case:",
     "  Call coordinator_finalize(cstate, pmsgs2).",
     "  Verify it raises an exception matching expectedError.",
+    *INPUT_VALIDATION_DESCRIPTION,
 ]
 
 
@@ -444,7 +448,8 @@ def generate_coordinator_finalize_group(t, n):
     invalid_pmsgs2_short = copy.deepcopy(pmsgs2)
     invalid_pmsgs2_short.pop()
     error_case = expect_exception(
-        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_short), ValueError
+        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_short),
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     error_cases.append(
         {
@@ -457,7 +462,8 @@ def generate_coordinator_finalize_group(t, n):
     # --- Error test case: invalid pmsgs2 (n+1 entries instead of n) ---
     invalid_pmsgs2_long = pmsgs2 + [pmsgs2[0]]
     error_case = expect_exception(
-        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_long), ValueError
+        lambda: chilldkg.coordinator_finalize(cstate, invalid_pmsgs2_long),
+        chilldkg.LengthDoesNotMatchParamsError,
     )
     error_cases.append(
         {
@@ -503,6 +509,7 @@ def generate_coordinator_finalize_group(t, n):
 
 def generate_coordinator_finalize_vectors():
     groups = [generate_coordinator_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": COORDINATOR_FINALIZE_DESCRIPTION,
@@ -519,6 +526,11 @@ COORDINATOR_INVESTIGATE_DESCRIPTION = [
     "For each valid test case:",
     "  Call coordinator_investigate(pmsgs1, params).",
     "  Verify the returned list of investigation messages equals expectedCinvMsgs.",
+    "",
+    "For each error test case:",
+    "  Assemble the list [pmsgs1[i] for i in pmsg1Indices] from the group's pmsgs1.",
+    "  Call coordinator_investigate with this list and the test case's params.",
+    "  Verify it raises an exception matching expectedError.",
 ]
 
 
@@ -542,13 +554,48 @@ def generate_coordinator_investigate_group(t, n):
             "comment": "valid coordinator investigate",
         }
     ]
+    error_cases = []
+
+    # --- Error test case: params with one participant more than pmsgs1 ---
+    # Unlike dropping an entry from pmsgs1, this keeps the length of each entry
+    # consistent with the number of entries, so only the check of the number of
+    # entries detects the mismatch.
+    extra_hostpubkey = chilldkg.hostpubkey_gen(bytes.fromhex(HOSTSECKEYS_HEX[n]))
+    params_extra = chilldkg.SessionParams(hostpubkeys + [extra_hostpubkey], t)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, params_extra),
+        chilldkg.LengthDoesNotMatchParamsError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(params_extra),
+            "expectedError": error,
+            "comment": "invalid pmsgs1: fewer entries than participants",
+        }
+    )
+
+    # --- Error test case: invalid pmsgs1 (n+1 entries instead of n) ---
+    long_pmsgs1 = pmsgs1 + [pmsgs1[0]]
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(long_pmsgs1, params),
+        chilldkg.LengthDoesNotMatchParamsError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)) + [0],
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "invalid pmsgs1: more entries than participants",
+        }
+    )
 
     return {
         "tgId": tg_id(t, n),
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
         "validTestCases": valid_cases,
-        "errorTestCases": [],
+        "errorTestCases": error_cases,
     }
 
 
@@ -556,6 +603,7 @@ def generate_coordinator_investigate_vectors():
     groups = [
         generate_coordinator_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
     ]
+    split_input_validation_cases(groups)
     total_tests = assign_tc_ids(groups)
     return {
         "description": COORDINATOR_INVESTIGATE_DESCRIPTION,
