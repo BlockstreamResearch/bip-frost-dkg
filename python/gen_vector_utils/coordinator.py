@@ -526,6 +526,11 @@ COORDINATOR_INVESTIGATE_DESCRIPTION = [
     "For each valid test case:",
     "  Call coordinator_investigate(pmsgs1, params).",
     "  Verify the returned list of investigation messages equals expectedCinvMsgs.",
+    "",
+    "For each error test case:",
+    "  Assemble the list [pmsgs1[i] for i in pmsg1Indices] from the group's pmsgs1.",
+    "  Call coordinator_investigate with this list and the test case's params.",
+    "  Verify it raises an exception matching expectedError.",
 ]
 
 
@@ -549,13 +554,48 @@ def generate_coordinator_investigate_group(t, n):
             "comment": "valid coordinator investigate",
         }
     ]
+    error_cases = []
+
+    # --- Error test case: params with one participant more than pmsgs1 ---
+    # Unlike dropping an entry from pmsgs1, this keeps the length of each entry
+    # consistent with the number of entries, so only the check of the number of
+    # entries detects the mismatch.
+    extra_hostpubkey = chilldkg.hostpubkey_gen(bytes.fromhex(HOSTSECKEYS_HEX[n]))
+    params_extra = chilldkg.SessionParams(hostpubkeys + [extra_hostpubkey], t)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, params_extra),
+        chilldkg.LengthDoesNotMatchParamsError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(params_extra),
+            "expectedError": error,
+            "comment": "invalid pmsgs1: fewer entries than participants",
+        }
+    )
+
+    # --- Error test case: invalid pmsgs1 (n+1 entries instead of n) ---
+    long_pmsgs1 = pmsgs1 + [pmsgs1[0]]
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(long_pmsgs1, params),
+        chilldkg.LengthDoesNotMatchParamsError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)) + [0],
+            "params": params_asdict(params),
+            "expectedError": error,
+            "comment": "invalid pmsgs1: more entries than participants",
+        }
+    )
 
     return {
         "tgId": tg_id(t, n),
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
         "validTestCases": valid_cases,
-        "errorTestCases": [],
+        "errorTestCases": error_cases,
     }
 
 

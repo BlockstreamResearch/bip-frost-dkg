@@ -995,7 +995,8 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
 
     Arguments:
         pmsgs: List of serialized first messages received from the participants
-               (`33*t + 32*n + 97` bytes each).
+               (`33*t + 32*n + 97` bytes each). The list's length must equal
+               the total number of participants.
         params: Common session parameters.
 
     Returns:
@@ -1005,11 +1006,13 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
     Raises:
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
-        LengthDoesNotMatchParamsError: If the length of an entry in `pmsgs`
-            does not match the session parameters.
+        LengthDoesNotMatchParamsError: If the number of entries in `pmsgs` or
+            the length of an entry does not match the session parameters.
     """
-    n = len(pmsgs)
-    t = params.t
+    hostpubkeys, t = params
+    n = len(hostpubkeys)
+    if len(pmsgs) != n:
+        raise LengthDoesNotMatchParamsError
     pmsgs_parsed = []
     for participant_id, pmsg in enumerate(pmsgs):
         try:

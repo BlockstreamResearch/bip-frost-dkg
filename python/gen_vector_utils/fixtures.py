@@ -1,10 +1,11 @@
-# Pool of host secret keys (32 bytes each), sized for up to n=4 participants.
+# Pool of host secret keys (32 bytes each), sized for up to n=5 participants.
 # Slice [:n] to get the keys for a given session size.
 HOSTSECKEYS_HEX = [
     "ADE179B2C56CB75868D44B333C16C89CB00DFDE378AD79C84D0CCE856E4F9207",
     "94BB10C1DE15783C3F3E49167A0951CACD2803F13AAC456C816E88AB4AC76330",
     "F129C2D30096C972F14BB6764CC003C97119C0E32831EA4858F0DD0DFB780FAA",
     "7F3A1D2E4C5B6A7890ABCDEF1234567890ABCDEF1234567890ABCDEF12345678",
+    "575060620C42194406E9AD541FB31AC8EB641AD94E752F7A32BC18700F0106EF",
 ]
 
 # Per-participant randomness for participant_step1, one entry per participant.

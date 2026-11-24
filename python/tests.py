@@ -808,6 +808,19 @@ def test_coordinator_investigate_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
+            case_pmsgs1 = [pmsgs1[i] for i in test_case["pmsg1Indices"]]
+            case_params = params_from_dict(test_case["params"])
+            expected_error = test_case["expectedError"]
+            assert_raises(
+                lambda: chilldkg.coordinator_investigate(case_pmsgs1, case_params),
+                expected_error,
+            )
+            total_cases += 1
+            assert test_case["tcId"] == total_cases
+
     assert test_data["totalTests"] == total_cases
 
 
