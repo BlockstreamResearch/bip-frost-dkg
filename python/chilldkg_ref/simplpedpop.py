@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import NamedTuple, NewType, NoReturn
+from typing import Any, NamedTuple, NewType, NoReturn
 
 from secp256k1lab.bip340 import schnorr_sign, schnorr_verify
 from secp256k1lab.secp256k1 import GE, Scalar
@@ -182,6 +182,41 @@ def assemble_sum_coms(
     )
 
 
+class InfinitePubshareError(ValueError):
+    def __init__(self, participant_id: int, *args: Any):
+        self.participant_id = participant_id
+        super().__init__(participant_id, *args)
+
+
+def threshold_info_from_sum_coms(
+    sum_coms: VSSCommitment, n: int
+) -> tuple[ThresholdInfo, Scalar]:
+    # A faulty participant or coordinator can make a pubshare infinity, which
+    # cannot be serialized. Before the equality check has succeeded, the other
+    # parties cannot attribute this: The pubshare may belong to an honest
+    # participant whose secshare is invalid due to some other faulty party.
+    # That participant will abort in participant_step2 and determine the
+    # faulty party via the investigation procedure. So the caller must call
+    # this function only after the equality check has succeeded, and must
+    # handle InfinitePubshareError.
+    #
+    # The caller must also ensure that sum_coms.commitment_to_secret() is not
+    # infinity, because the Taproot tweak is not defined for infinity.
+    sum_coms_tweaked, tweak, _ = sum_coms.invalid_taproot_commit()
+    thresh_pk = sum_coms_tweaked.commitment_to_secret()
+    pubshares = [sum_coms_tweaked.pubshare(i) for i in range(n)]
+    for i, pubshare in enumerate(pubshares):
+        if pubshare.infinity:
+            raise InfinitePubshareError(i)
+
+    threshold_info = ThresholdInfo(
+        sum_coms.t(),
+        thresh_pk.to_bytes_compressed(),
+        [pubshare.to_bytes_compressed() for pubshare in pubshares],
+    )
+    return threshold_info, tweak
+
+
 ###
 ### Participant
 ###
@@ -262,7 +297,7 @@ def participant_step2(
     state: ParticipantState,
     cmsg: bytes,
     secshare: Scalar,
-) -> tuple[bytes, ThresholdInfo, bytes]:
+) -> tuple[bytes, VSSCommitment, bytes]:
     t, n, participant_id, com_to_secret = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=t, n=n)
@@ -307,20 +342,17 @@ def participant_step2(
             "participant_investigate() to determine a faulty party",
         )
 
-    thresh_pk = sum_coms_tweaked.commitment_to_secret()
-    pubshares = [
-        sum_coms_tweaked.pubshare(i)
-        if i != participant_id
-        else pubshare_tweaked  # We have computed our own pubshare already.
-        for i in range(n)
-    ]
-    threshold_info = ThresholdInfo(
-        t,
-        thresh_pk.to_bytes_compressed(),
-        [pubshare.to_bytes_compressed() for pubshare in pubshares],
-    )
+    # Our secshare is valid, so our pubshare is infinity only if our tweaked
+    # secshare is 0. Since the other parties do not know our own contribution
+    # to our secshare, this happens only with negligible probability. This
+    # ensures that we never enter the equality check with an eq_input in which
+    # our own pubshare is infinity.
+    assert not pubshare_tweaked.infinity
+
+    # We don't compute the threshold info here because the pubshare of another
+    # participant may be infinity (see threshold_info_from_sum_coms).
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return secshare_tweaked.to_bytes(), threshold_info, eq_input
+    return secshare_tweaked.to_bytes(), sum_coms, eq_input
 
 
 def participant_investigate(
@@ -378,7 +410,7 @@ def participant_investigate(
 
 def coordinator_step(
     pmsgs: list[bytes], t: int, n: int
-) -> tuple[bytes, ThresholdInfo, bytes]:
+) -> tuple[bytes, VSSCommitment, bytes]:
     if len(pmsgs) != n:
         raise ValueError
     pmsgs_parsed = []
@@ -404,17 +436,13 @@ def coordinator_step(
     cmsg = CoordinatorMsg(coms_to_secrets, sum_coms_to_nonconst_terms, pops).to_bytes()
 
     sum_coms = assemble_sum_coms(coms_to_secrets, sum_coms_to_nonconst_terms)
-    sum_coms_tweaked, _, _ = sum_coms.invalid_taproot_commit()
-    thresh_pk = sum_coms_tweaked.commitment_to_secret()
-    pubshares = [sum_coms_tweaked.pubshare(i) for i in range(n)]
-
-    threshold_info = ThresholdInfo(
-        t,
-        thresh_pk.to_bytes_compressed(),
-        [pubshare.to_bytes_compressed() for pubshare in pubshares],
-    )
+    # We don't compute the threshold info here because the sum of the
+    # commitments to the secrets or a pubshare may be infinity (see
+    # threshold_info_from_sum_coms). Since nothing that the coordinator sends
+    # depends on the threshold info, the caller can compute it after the
+    # equality check has succeeded.
     eq_input = t.to_bytes(4, byteorder="big") + sum_coms.to_bytes()
-    return cmsg, threshold_info, eq_input
+    return cmsg, sum_coms, eq_input
 
 
 def coordinator_investigate(pmsgs: list[bytes], t: int) -> list[bytes]:

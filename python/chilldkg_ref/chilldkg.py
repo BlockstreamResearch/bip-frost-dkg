@@ -22,7 +22,7 @@ from secp256k1lab.keys import pubkey_gen_plain
 from secp256k1lab.secp256k1 import GE, Scalar
 from secp256k1lab.util import bytes_from_int
 
-from . import encpedpop
+from . import encpedpop, simplpedpop
 from .util import (
     BIP_TAG,
     FaultyCoordinatorError,
@@ -572,7 +572,7 @@ class ParticipantState2(NamedTuple):
     params: SessionParams
     eq_input: bytes
     secshare: bytes
-    threshold_info: ThresholdInfo
+    sum_coms: VSSCommitment
 
 
 def participant_step1(
@@ -711,7 +711,7 @@ def participant_step2(
         raise FaultyCoordinatorError(*e.args) from e
     enc_cmsg, enc_secshares = cmsg1_parsed
 
-    secshare, enc_threshold_info, eq_input = encpedpop.participant_step2(
+    secshare, sum_coms, eq_input = encpedpop.participant_step2(
         state=enc_state,
         deckey=hostseckey,
         cmsg=enc_cmsg.to_bytes(),
@@ -721,9 +721,7 @@ def participant_step2(
     # Include the enc_shares in eq_input to ensure that participants agree on
     # all shares, which in turn ensures that they have the right recovery data.
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    # Convert to chilldkg.ThresholdInfo type
-    threshold_info = ThresholdInfo._make(enc_threshold_info)
-    state2 = ParticipantState2(params, eq_input, secshare, threshold_info)
+    state2 = ParticipantState2(params, eq_input, secshare, sum_coms)
     sig = certeq_participant_step(hostseckey, participant_id, eq_input, aux_rand)
     pmsg2 = ParticipantMsg2(sig).to_bytes()
     return state2, pmsg2
@@ -789,7 +787,7 @@ def participant_finalize(
         FaultyCoordinatorError: If the coordinator is faulty. See the
             documentation of the exception for further details.
     """
-    params, eq_input, secshare, threshold_info = state2
+    params, eq_input, secshare, sum_coms = state2
     cmsg2_parsed = CoordinatorMsg2.from_bytes(cmsg2, n=len(params.hostpubkeys))
     try:
         certeq_verify(params.hostpubkeys, eq_input, cmsg2_parsed.cert)
@@ -797,6 +795,18 @@ def participant_finalize(
         raise FaultyCoordinatorError(
             "Coordinator has provided a certificate with an invalid signature"
         ) from e
+    try:
+        simpl_threshold_info, _ = simplpedpop.threshold_info_from_sum_coms(
+            sum_coms, len(params.hostpubkeys)
+        )
+    except simplpedpop.InfinitePubshareError as e:
+        # An honest coordinator would have rejected this certificate in
+        # coordinator_finalize.
+        raise FaultyCoordinatorError(
+            "Coordinator has provided a certificate with an infinite pubshare"
+        ) from e
+    # Convert to chilldkg.ThresholdInfo type
+    threshold_info = ThresholdInfo._make(simpl_threshold_info)
     return secshare, threshold_info, RecoveryData(eq_input + cmsg2_parsed.cert)
 
 
@@ -847,7 +857,7 @@ def participant_investigate(
 class CoordinatorState(NamedTuple):
     params: SessionParams
     eq_input: bytes
-    threshold_info: ThresholdInfo
+    sum_coms: VSSCommitment
 
 
 def coordinator_step1(
@@ -890,7 +900,7 @@ def coordinator_step1(
             raise FaultyParticipantError(participant_id, *e.args) from e
         pmsgs1_parsed.append(parsed)
 
-    enc_cmsg, enc_threshold_info, eq_input, enc_secshares = encpedpop.coordinator_step(
+    enc_cmsg, sum_coms, eq_input, enc_secshares = encpedpop.coordinator_step(
         pmsgs=[pmsg1.enc_pmsg.to_bytes() for pmsg1 in pmsgs1_parsed],
         t=t,
         enckeys=hostpubkeys,
@@ -899,9 +909,7 @@ def coordinator_step1(
         enc_cmsg, t=t, n=len(hostpubkeys)
     )
     eq_input += b"".join([bytes_from_int(int(share)) for share in enc_secshares])
-    # Convert to chilldkg.ThresholdInfo type
-    threshold_info = ThresholdInfo._make(enc_threshold_info)
-    state = CoordinatorState(params, eq_input, threshold_info)
+    state = CoordinatorState(params, eq_input, sum_coms)
     cmsg1 = CoordinatorMsg1(enc_cmsg_parsed, enc_secshares).to_bytes()
     return state, cmsg1
 
@@ -945,7 +953,7 @@ def coordinator_finalize(
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
     """
-    params, eq_input, threshold_info = state
+    params, eq_input, sum_coms = state
     if len(pmsgs2) != len(params.hostpubkeys):
         raise ValueError
 
@@ -958,6 +966,30 @@ def coordinator_finalize(
             e.participant_id,
             "Participant has provided an invalid signature for the certificate",
         ) from e
+    if sum_coms.commitment_to_secret().infinity:
+        # An honest participant checks the pops before computing the sum of the
+        # commitments to the secrets. So, except with negligible probability,
+        # it never signs an eq_input in which this sum is infinity. Since the
+        # certificate is valid, every participant has signed, and thus every
+        # participant is faulty. We blame the first one.
+        raise FaultyParticipantError(
+            0,
+            "Participant has signed despite an infinite sum of commitments to secrets",
+        )
+    try:
+        simpl_threshold_info, _ = simplpedpop.threshold_info_from_sum_coms(
+            sum_coms, len(params.hostpubkeys)
+        )
+    except simplpedpop.InfinitePubshareError as e:
+        # An honest participant never signs an eq_input in which its own
+        # pubshare is infinity (see simplpedpop.participant_step2). Since the
+        # certificate is valid, this participant has signed and is thus faulty.
+        raise FaultyParticipantError(
+            e.participant_id,
+            "Participant has signed the certificate despite an infinite pubshare",
+        ) from e
+    # Convert to chilldkg.ThresholdInfo type
+    threshold_info = ThresholdInfo._make(simpl_threshold_info)
     cmsg2 = CoordinatorMsg2(cert).to_bytes()
     return cmsg2, threshold_info, RecoveryData(eq_input + cert)
 
@@ -1029,16 +1061,23 @@ def recover_public(
     except InvalidSignatureInCertificateError as e:
         raise RecoveryDataError("Invalid certificate in recovery data") from e
 
-    # Compute threshold pubkey and individual pubshares
-    sum_coms, tweak, _ = sum_coms.invalid_taproot_commit()
-    thresh_pk = sum_coms.commitment_to_secret()
-    pubshares = [sum_coms.pubshare(i) for i in range(n)]
+    # A valid certificate doesn't rule out an infinite sum of the commitments to
+    # the secrets or an infinite pubshare, but it implies that some participant
+    # is faulty (see coordinator_finalize).
+    if sum_coms.commitment_to_secret().infinity:
+        raise RecoveryDataError(
+            "Infinite sum of commitments to secrets in recovery data"
+        )
 
-    threshold_info = ThresholdInfo(
-        t,
-        thresh_pk.to_bytes_compressed(),
-        [pubshare.to_bytes_compressed() for pubshare in pubshares],
-    )
+    # Compute threshold pubkey and individual pubshares
+    try:
+        simpl_threshold_info, tweak = simplpedpop.threshold_info_from_sum_coms(
+            sum_coms, n
+        )
+    except simplpedpop.InfinitePubshareError as e:
+        raise RecoveryDataError("Infinite pubshare in recovery data") from e
+    # Convert to chilldkg.ThresholdInfo type
+    threshold_info = ThresholdInfo._make(simpl_threshold_info)
     return threshold_info, params, (pubnonces, enc_secshares, tweak)
 
 

@@ -296,20 +296,27 @@ Our variant of the SimplPedPop protocol then works as follows:
     ```
     Correspondingly, participant `i` computes `secshare_tweaked = secshare + tweak`.
 
-    Then, participant `i` sets its outputs, namely
-    this participant's secret share `secshare_tweaked` and the *threshold info*,
-    i.e., the public data common to all participants that the FROST signing protocol takes as input,
-    which in turn consists of the threshold `t`,
-    the threshold public key `thresh_pk = sum_coms_tweaked[0]`, and
-    all participants' public shares `pubshares`.
-
     As a final step, participant `i` enters a session of an external equality check protocol
     to verify that all participants agree on the *transcript*, i.e., common data produced during the session,
     and that none of them has aborted the session due to an invalid VSS share or an invalid proof of possession.
     The transcript of SimplPedPop, constructed in a variable `eq_input`,
     is simply the concatenation (of serializations) of `t` and the `sum_coms` vector.
     Upon the equality protocol returning successfully,
-    participant `i` returns successfully with the secret share and the threshold info as computed above.
+    participant `i` checks that no public share in `pubshares` is the point at infinity,
+    which cannot be represented as a public share in [[BIP 445](bip-0445.md)].
+    If some `pubshares[j]` is the point at infinity, then participant `j` must be faulty, and participant `i` aborts.
+    An honest participant `j` with an invalid VSS share would have aborted before the equality check.
+    For an honest participant `j` with a valid VSS share, `pubshares[j]` is the point at infinity only when its `secshare_tweaked` is 0,
+    which happens only with negligible probability because the other participants do not know `j`'s own contribution `f_j(j+1)`.
+    (Before the equality check has succeeded, participant `i` cannot attribute an infinite public share:
+    it may belong to an honest participant `j` whose VSS share is invalid due to another faulty party,
+    in which case participant `j` aborts and can investigate the error as described above.)
+    Otherwise, participant `i` returns successfully with its outputs, namely
+    this participant's secret share `secshare_tweaked` and the *threshold info*,
+    i.e., the public data common to all participants that the FROST signing protocol takes as input,
+    which in turn consists of the threshold `t`,
+    the threshold public key `thresh_pk = sum_coms_tweaked[0]`, and
+    all participants' public shares `pubshares`.
     Details of the interface of the equality check protocol will be described further below in
     [Subsection "Background on Equality Checks"](#background-on-equality-checks).
 
