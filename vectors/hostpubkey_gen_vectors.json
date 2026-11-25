@@ -18,17 +18,17 @@
         "  may skip them. Wrong lengths that depend on t or n (e.g., of cmsg1 or pmsgs1) are",
         "  covered by the error test cases (LengthDoesNotMatchParamsError)."
     ],
-    "validTestCases": [
+    "valid_tests": [
         {
-            "tcId": 1,
+            "tc_id": 1,
             "hostseckey": "631C047D50A67E45E27ED1FF25FCE179CAF059A2120D346ACD9774C1F2BAB66F",
             "expected": "0290D2B2CE35F62C2D88003D1E3E2E43B4BBDE194E849C84E059B2455E9772BAC4",
             "comment": "valid host secret key"
         }
     ],
-    "errorTestCases": [
+    "error_tests": [
         {
-            "tcId": 2,
+            "tc_id": 2,
             "hostseckey": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
             "error": {
                 "type": "HostSeckeyError"
@@ -36,7 +36,7 @@
             "comment": "host secret key is out of range"
         },
         {
-            "tcId": 3,
+            "tc_id": 3,
             "hostseckey": "0000000000000000000000000000000000000000000000000000000000000000",
             "error": {
                 "type": "HostSeckeyError"
@@ -44,9 +44,9 @@
             "comment": "zeroed host secret key"
         }
     ],
-    "inputValidationErrorTestCases": [
+    "input_validation_error_tests": [
         {
-            "tcId": 4,
+            "tc_id": 4,
             "hostseckey": "631C047D50A67E45E27ED1FF25FCE179",
             "error": {
                 "type": "ValueError"

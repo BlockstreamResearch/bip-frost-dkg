@@ -476,9 +476,9 @@ def test_hostpubkey_gen_vectors():
     with open(input_file) as f:
         test_data = json.load(f)
 
-    valid_test_cases = test_data["validTestCases"]
+    valid_test_cases = test_data["valid_tests"]
     error_test_cases = (
-        test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
+        test_data["error_tests"] + test_data["input_validation_error_tests"]
     )
 
     for test_case in valid_test_cases:
@@ -497,9 +497,9 @@ def test_params_hash_vectors():
     with open(input_file) as f:
         test_data = json.load(f)
 
-    valid_test_cases = test_data["validTestCases"]
+    valid_test_cases = test_data["valid_tests"]
     error_test_cases = (
-        test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
+        test_data["error_tests"] + test_data["input_validation_error_tests"]
     )
 
     for test_case in valid_test_cases:
@@ -519,8 +519,8 @@ def test_participant_step1_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
-        for test_case in group["validTestCases"]:
+    for group in test_data["test_groups"]:
+        for test_case in group["valid_tests"]:
             hostseckey = bytes.fromhex(test_case["hostseckey"])
             params = params_from_dict(test_case["params"])
             random = bytes.fromhex(test_case["random"])
@@ -528,11 +528,9 @@ def test_participant_step1_vectors():
             _, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
             assert expected_pmsg1 == pmsg1
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
             hostseckey = bytes.fromhex(test_case["hostseckey"])
             params = params_from_dict(test_case["params"])
             random = bytes.fromhex(test_case["random"])
@@ -542,7 +540,7 @@ def test_participant_step1_vectors():
                 expected_error,
             )
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_participant_step2_vectors():
@@ -551,7 +549,7 @@ def test_participant_step2_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         # common fields for all test cases
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
@@ -560,12 +558,12 @@ def test_participant_step2_vectors():
         state1, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
         assert bytes.fromhex(group["pmsg1"]) == pmsg1  # checkpoint
 
-        for test_case in group["validTestCases"]:
+        for test_case in group["valid_tests"]:
             case_hostseckey = bytes.fromhex(
                 test_case.get("hostseckey", group["hostseckey"])
             )
             case_random = bytes.fromhex(test_case.get("random", group["random"]))
-            case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
+            case_aux_rand = bytes.fromhex(test_case.get("aux_rand", group["aux_rand"]))
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
             expected_pmsg2 = bytes.fromhex(test_case["expected"])
             if case_hostseckey != hostseckey or case_random != random:
@@ -582,15 +580,13 @@ def test_participant_step2_vectors():
             )
             assert expected_pmsg2 == pmsg2
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
             case_hostseckey = bytes.fromhex(
                 test_case.get("hostseckey", group["hostseckey"])
             )
-            case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
+            case_aux_rand = bytes.fromhex(test_case.get("aux_rand", group["aux_rand"]))
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
             expected_error = test_case["error"]
             assert_raises(
@@ -600,7 +596,7 @@ def test_participant_step2_vectors():
                 expected_error,
             )
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_participant_finalize_vectors():
@@ -609,12 +605,12 @@ def test_participant_finalize_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         # common fields for all test cases
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
         random = bytes.fromhex(group["random"])
-        aux_rand = bytes.fromhex(group["auxRand"])
+        aux_rand = bytes.fromhex(group["aux_rand"])
 
         # compute state1 and assert pmsg1
         state1, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
@@ -624,7 +620,7 @@ def test_participant_finalize_vectors():
         state2, pmsg2 = chilldkg.participant_step2(hostseckey, state1, cmsg1, aux_rand)
         assert bytes.fromhex(group["pmsg2"]) == pmsg2
 
-        for test_case in group["validTestCases"]:
+        for test_case in group["valid_tests"]:
             case_hostseckey = bytes.fromhex(
                 test_case.get("hostseckey", group["hostseckey"])
             )
@@ -652,21 +648,19 @@ def test_participant_finalize_vectors():
             psecshare, pinfo, prec = chilldkg.participant_finalize(case_state2, cmsg2)
             expected_out = test_case["expected"]
             assert bytes.fromhex(expected_out["secshare"]) == psecshare
-            assert expected_out["thresholdInfo"] == threshold_info_asdict(pinfo)
-            assert bytes.fromhex(expected_out["recoveryData"]) == prec
+            assert expected_out["threshold_info"] == threshold_info_asdict(pinfo)
+            assert bytes.fromhex(expected_out["recovery_data"]) == prec
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
             expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.participant_finalize(state2, cmsg2), expected_error
             )
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_participant_investigate_vectors():
@@ -675,23 +669,21 @@ def test_participant_investigate_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         # common fields for all test cases
         params = params_from_dict(group["params"])
         hostseckey = bytes.fromhex(group["hostseckey"])
         random = bytes.fromhex(group["random"])
-        aux_rand = bytes.fromhex(group["auxRand"])
-        cmsg1_pool = group["cmsg1Pool"]
+        aux_rand = bytes.fromhex(group["aux_rand"])
+        cmsg1_pool = group["cmsg1_pool"]
 
         # Re-derive state1
         state1, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
         assert bytes.fromhex(group["pmsg1"]) == pmsg1
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
-            cmsg1 = bytes.fromhex(cmsg1_pool[test_case["cmsg1Index"]])
-            cinv_msg = bytes.fromhex(test_case["cinvMsg"])
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
+            cmsg1 = bytes.fromhex(cmsg1_pool[test_case["cmsg1_index"]])
+            cinv_msg = bytes.fromhex(test_case["cinv_msg"])
             expected_error = test_case["error"]
             try:
                 chilldkg.participant_step2(hostseckey, state1, cmsg1, aux_rand)
@@ -705,7 +697,7 @@ def test_participant_investigate_vectors():
             else:
                 raise AssertionError("Expected exception")
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_coordinator_step1_vectors():
@@ -714,29 +706,27 @@ def test_coordinator_step1_vectors():
         test_data = json.load(f)
 
     total_cases = 0
-    for group in test_data["testGroups"]:
-        pmsg1_pool = group["pmsg1Pool"]
+    for group in test_data["test_groups"]:
+        pmsg1_pool = group["pmsg1_pool"]
 
-        for test_case in group["validTestCases"]:
-            pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
+        for test_case in group["valid_tests"]:
+            pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1_indices"]]
             params = params_from_dict(test_case["params"])
             expected_cmsg1 = test_case["expected"]
             _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
             assert bytes.fromhex(expected_cmsg1) == cmsg1
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
-            pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
+            pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1_indices"]]
             params = params_from_dict(test_case["params"])
             expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.coordinator_step1(pmsgs1, params), expected_error
             )
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_coordinator_finalize_vectors():
@@ -746,34 +736,32 @@ def test_coordinator_finalize_vectors():
 
     total_cases = 0
 
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         params = params_from_dict(group["params"])
         pmsgs1 = [bytes.fromhex(m) for m in group["pmsgs1"]]
-        pmsg2_pool = group["pmsg2Pool"]
+        pmsg2_pool = group["pmsg2_pool"]
 
         state, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
         assert bytes.fromhex(group["cmsg1"]) == cmsg1
 
-        for test_case in group["validTestCases"]:
-            pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2Indices"]]
+        for test_case in group["valid_tests"]:
+            pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2_indices"]]
             cmsg2, cinfo, crec = chilldkg.coordinator_finalize(state, pmsgs2)
             expected_out = test_case["expected"]
             assert bytes.fromhex(expected_out["cmsg2"]) == cmsg2
-            assert expected_out["thresholdInfo"] == threshold_info_asdict(cinfo)
-            assert bytes.fromhex(expected_out["recoveryData"]) == crec
+            assert expected_out["threshold_info"] == threshold_info_asdict(cinfo)
+            assert bytes.fromhex(expected_out["recovery_data"]) == crec
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
-            pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2Indices"]]
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
+            pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2_indices"]]
             expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.coordinator_finalize(state, pmsgs2), expected_error
             )
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_coordinator_investigate_vectors():
@@ -783,21 +771,19 @@ def test_coordinator_investigate_vectors():
 
     total_cases = 0
 
-    for group in test_data["testGroups"]:
+    for group in test_data["test_groups"]:
         params = params_from_dict(group["params"])
         pmsgs1 = [bytes.fromhex(m) for m in group["pmsgs1"]]
 
-        for test_case in group["validTestCases"]:
+        for test_case in group["valid_tests"]:
             cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
             expected_cinv_msgs = test_case["expected"]
             assert [bytes.fromhex(m) for m in expected_cinv_msgs] == cinv_msgs
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
-        for test_case in (
-            group["errorTestCases"] + group["inputValidationErrorTestCases"]
-        ):
-            case_pmsgs1 = [pmsgs1[i] for i in test_case["pmsg1Indices"]]
+        for test_case in group["error_tests"] + group["input_validation_error_tests"]:
+            case_pmsgs1 = [pmsgs1[i] for i in test_case["pmsg1_indices"]]
             case_params = params_from_dict(test_case["params"])
             expected_error = test_case["error"]
             assert_raises(
@@ -805,7 +791,7 @@ def test_coordinator_investigate_vectors():
                 expected_error,
             )
             total_cases += 1
-            assert test_case["tcId"] == total_cases
+            assert test_case["tc_id"] == total_cases
 
 
 def test_recover_vectors():
@@ -813,16 +799,16 @@ def test_recover_vectors():
     with open(input_file) as f:
         test_data = json.load(f)
 
-    valid_test_cases = test_data["validTestCases"]
+    valid_test_cases = test_data["valid_tests"]
     error_test_cases = (
-        test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
+        test_data["error_tests"] + test_data["input_validation_error_tests"]
     )
 
     for test_case in valid_test_cases:
         hostseckey = (
             bytes.fromhex(test_case["hostseckey"]) if test_case["hostseckey"] else None
         )
-        recovery_data = bytes.fromhex(test_case["recoveryData"])
+        recovery_data = bytes.fromhex(test_case["recovery_data"])
         expected_out = test_case["expected"]
         if hostseckey is None:
             threshold_info, params = chilldkg.coordinator_recover(recovery_data)
@@ -832,14 +818,14 @@ def test_recover_vectors():
                 hostseckey, recovery_data
             )
             assert bytes.fromhex(expected_out["secshare"]) == secshare
-        assert expected_out["thresholdInfo"] == threshold_info_asdict(threshold_info)
+        assert expected_out["threshold_info"] == threshold_info_asdict(threshold_info)
         assert expected_out["params"] == params_asdict(params)
 
     for test_case in error_test_cases:
         hostseckey = (
             bytes.fromhex(test_case["hostseckey"]) if test_case["hostseckey"] else None
         )
-        recovery_data = bytes.fromhex(test_case["recoveryData"])
+        recovery_data = bytes.fromhex(test_case["recovery_data"])
         expected_error = test_case["error"]
         if hostseckey is None:
             assert_raises(
