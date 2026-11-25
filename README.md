@@ -17,8 +17,6 @@ Version: 0.3.0-dev
 Requires: 445
 ```
 
-# ChillDKG: Distributed Key Generation for FROST
-
 ### Abstract
 
 This Bitcoin Improvement Proposal proposes ChillDKG, a distributed key generation protocol (DKG) for use with the FROST Schnorr threshold signature scheme.
@@ -188,9 +186,11 @@ This BIP includes a normative reference implementation in Python 3.12
 Due to the complexity of ChillDKG, we refrain from providing an additional pseudocode description.
 
 To ease understanding of the design and reference code,
-we provide a technical overview of the internals of ChillDKG in [Section "Internals of ChillDKG"](#internals-of-chilldkg).
+we provide a technical overview of the internals of ChillDKG in [Section "Internals of ChillDKG"](#internals-of-chilldkg),
+which, together with [Subsection "Design"](#design), serves as the *Rationale* of this BIP.
 For those who would like to use a ChillDKG implementation in their applications and systems,
-we explain the external interface and usage considerations of ChillDKG in [Section "Usage of ChillDKG"](#usage-of-chilldkg).
+we explain the external interface and usage considerations of ChillDKG in [Section "Usage of ChillDKG"](#usage-of-chilldkg),
+which, together with the reference implementation, forms the *Specification* of this BIP.
 
 ## Internals of ChillDKG
 
@@ -1481,6 +1481,12 @@ the coordinator (namely, sending invalid encrypted secret shares).
 
 - `inv_data` - Information required to perform the investigation.
 <!--end of pydoc.md-->
+
+## Backwards Compatibility
+
+ChillDKG does not require any changes to Bitcoin.
+Its outputs are intended as inputs to the FROST signing protocol in [BIP 445](bip-0445.md),
+and the threshold public key can be safely used in Taproot outputs [[BIP 341](bip-0341.mediawiki)].
 
 ## Changelog
 
