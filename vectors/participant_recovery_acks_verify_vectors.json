@@ -1,0 +1,986 @@
+{
+    "description": [
+        "Test vectors for participant_recovery_acks_verify(recovery_data, params, ack_sigs).",
+        "Verifies the acknowledgment signatures of all participants.",
+        "",
+        "Assemble the ack_sigs list from ackSigPool using ackSigIndices:",
+        "  ack_sigs = [ackSigPool[i] for i in ackSigIndices]",
+        "A test case may provide 'params' and/or 'recoveryData' fields to override the",
+        "group-level values.",
+        "",
+        "For each valid test case:",
+        "  Call participant_recovery_acks_verify(recoveryData, params, ack_sigs).",
+        "  Verify it returns without raising an exception.",
+        "",
+        "For each error test case:",
+        "  Call participant_recovery_acks_verify(recoveryData, params, ack_sigs).",
+        "  Verify it raises an exception matching expectedError.",
+        "  Error objects contain 'type' (exception class name) and optionally:",
+        "    - 'participantId': identifier of the blamed participant",
+        "    - 'message': human-readable description (informational, not required to match exactly)",
+        "",
+        "For each input validation error test case:",
+        "  Proceed as for error test cases. These test cases pass a fixed-size argument of",
+        "  wrong length (e.g., a host secret key that is not 32 bytes or a signature in pmsgs2",
+        "  that is not 64 bytes), for which the reference implementation raises ValueError.",
+        "  Implementations whose types rule out such arguments (e.g., fixed-size byte arrays)",
+        "  may skip them. Wrong lengths that depend on t or n (e.g., of cmsg1 or pmsgs1) are",
+        "  covered by the error test cases (LengthDoesNotMatchParamsError)."
+    ],
+    "totalTests": 61,
+    "testGroups": [
+        {
+            "tgId": "2of3",
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 2
+            },
+            "recoveryData": "0000000203B74C6FD38288DDF94300E887B12DD40F655791144A07C32487FBD81CC228C07903B9C3F15E5C0E086EDE931D69BABD36167BE6CCA8705378F8849A4F00EDA2941303AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A30260537C74BC2B79676CDE217FFA7D48236D4A309954153DEB39A31AADF6B369CC022E7B7DD7A0B4A72097703E60648B615A4DDDF2D715A5E0992379537A44C13AD103D1FD5A186167E5DE84B11C0F56E1FC6808D2DB35E6E3587243CF59DE605CB806E242A37A2E03838EDCB4B064425FBA5F5F8331EDDF79B46AACC70EEB714995A27B5A879577BDAF956EC9F1C234BD3942E2B2F0E372902637993C54815B69F7EAFF288C16C20D3F8D26B64E23599E6996A833E286FEAD5A7490151202E859E484A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B5479195E7CBE22A8B53C41012ABEA37F0B59579E43EDC6477E8CC5C7EB9F3C8BF7AEC850C63A659FADD91C9063908054FC4D193594E132ADFBE1F24BE74C8BEA7A",
+            "ackSigPool": [
+                "28BD89E5B9CDC1CE1357CCBEC665D59E4EB401259ADA702A17C7C4C2AD68138CA81035A5873B333957F9CE2F735D9BFBDFBE9368EE25CDB1A05B2E5B639494F9",
+                "DDCD929EC047E0256609050A14FA2F666E30F0DFB44D1E24E131CB84205BC1B41AD9FF323BB1C67A86CE282FA8E888B10AFDD8BF5A4573F221587D09BC59BCF9",
+                "F088C0F41DB9E48364062836CE07D2F0838B2A491BE0929C57EE3C84270C3369A28ECF74BAC9E2BE0B4AABCB1812EB18E5D5E65AF31D66F6387F491DA8022923",
+                "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                "3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B54",
+                "FF9E36DC6327DB6A4AFA36F8477F42B9FF940541C16D273424AC0D4B4BD04A0E49465320A59BCE13BC9472A4FD5CB479D29A922FFC71C8F22103267A920004ED",
+                "DDCD929EC047E0256609050A14FA2F666E30F0DFB44D1E24E131CB84205BC1B41AD9FF323BB1C67A86CE282FA8E888B10AFDD8BF5A4573F221587D09BC59BC"
+            ],
+            "validTestCases": [
+                {
+                    "tcId": 1,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "comment": "valid acknowledgments"
+                },
+                {
+                    "tcId": 2,
+                    "recoveryData": "0000000203B74C6FD38288DDF94300E887B12DD40F655791144A07C32487FBD81CC228C07903B9C3F15E5C0E086EDE931D69BABD36167BE6CCA8705378F8849A4F00EDA2941303AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A30260537C74BC2B79676CDE217FFA7D48236D4A309954153DEB39A31AADF6B369CC022E7B7DD7A0B4A72097703E60648B615A4DDDF2D715A5E0992379537A44C13AD103D1FD5A186167E5DE84B11C0F56E1FC6808D2DB35E6E3587243CF59DE605CB806E242A37A2E03838EDCB4B064425FBA5F5F8331EDDF79B46AACC70EEB714995A27B5A879577BDAF956EC9F1C234BD3942E2B2F0E372902637993C54815B69F7EAFF288C16C20D3F8D26B64E23599E6996A833E286FEAD5A7490151202E859E484A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B54DFF5D13E193DA2973CB08AC9AD9AC5967957E0117E51C0446A48C5B553602F06AB074EC98D9161A7EE546BB9099DBEAC7D935D80E14006B65054834D4C5258B3",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "comment": "recovery data with another valid certificate"
+                }
+            ],
+            "errorTestCases": [
+                {
+                    "tcId": 3,
+                    "ackSigIndices": [
+                        3,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "participant with id 0 sent an invalid signature"
+                },
+                {
+                    "tcId": 4,
+                    "ackSigIndices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent an invalid signature"
+                },
+                {
+                    "tcId": 5,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 2
+                    },
+                    "comment": "participant with id 2 sent an invalid signature"
+                },
+                {
+                    "tcId": 6,
+                    "ackSigIndices": [
+                        1,
+                        0,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "signatures of participants with ids 0 and 1 are swapped"
+                },
+                {
+                    "tcId": 7,
+                    "ackSigIndices": [
+                        0,
+                        4,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent its signature from the certificate"
+                },
+                {
+                    "tcId": 8,
+                    "ackSigIndices": [
+                        0,
+                        5,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 signed the full recovery data, including the certificate"
+                },
+                {
+                    "tcId": 9,
+                    "ackSigIndices": [
+                        0,
+                        1
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: fewer entries than participants"
+                },
+                {
+                    "tcId": 10,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: more entries than participants"
+                },
+                {
+                    "tcId": 11,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "threshold in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 12,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "order of hostpubkeys in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 13,
+                    "recoveryData": "00000203B74C6FD38288DDF94300E887B12DD40F655791144A07C32487FBD81CC228C07903B9C3F15E5C0E086EDE931D69BABD36167BE6CCA8705378F8849A4F00EDA2941303AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A30260537C74BC2B79676CDE217FFA7D48236D4A309954153DEB39A31AADF6B369CC022E7B7DD7A0B4A72097703E60648B615A4DDDF2D715A5E0992379537A44C13AD103D1FD5A186167E5DE84B11C0F56E1FC6808D2DB35E6E3587243CF59DE605CB806E242A37A2E03838EDCB4B064425FBA5F5F8331EDDF79B46AACC70EEB714995A27B5A879577BDAF956EC9F1C234BD3942E2B2F0E372902637993C54815B69F7EAFF288C16C20D3F8D26B64E23599E6996A833E286FEAD5A7490151202E859E484A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B5479195E7CBE22A8B53C41012ABEA37F0B59579E43EDC6477E8CC5C7EB9F3C8BF7AEC850C63A659FADD91C9063908054FC4D193594E132ADFBE1F24BE74C8BEA7A",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Failed to deserialize recovery data"
+                    },
+                    "comment": "recovery data of invalid length"
+                },
+                {
+                    "tcId": 14,
+                    "recoveryData": "0000000203B74C6FD38288DDF94300E887B12DD40F655791144A07C32487FBD81CC228C07903B9C3F15E5C0E086EDE931D69BABD36167BE6CCA8705378F8849A4F00EDA2941303AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A30260537C74BC2B79676CDE217FFA7D48236D4A309954153DEB39A31AADF6B369CC022E7B7DD7A0B4A72097703E60648B615A4DDDF2D715A5E0992379537A44C13AD103D1FD5A186167E5DE84B11C0F56E1FC6808D2DB35E6E3587243CF59DE605CB806E242A37A2E03838EDCB4B064425FBA5F5F8331EDDF79B46AACC70EEB714995A27B5A879577BDAF956EC9F1C234BD3942E2B2F0E372902637993C54815B69F7EAFF288C16C20D3F8D26B64E23599E6996A833E286FEAD5A7490151202E859E484A6C2DE535556E47C8F3427B9716CFC4A66ADD0F2788AB793E2FBFF7D81DA06315C3F62CAA2B85E369922E68A94113EB839B5E3E424A4F4BF2E8D2908F517E8BE3B1B96C40D7F9A378F2A61FACF8469447344B5280F5E7B3C66B560709A6FA4D7E083E650F3C109995ACB96EEA2EE4EF252257E1BF92FFF121CE916DE2D7C4B5409C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Invalid certificate in recovery data"
+                    },
+                    "comment": "last signature in the certificate is invalid"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 15,
+                    "ackSigIndices": [
+                        0,
+                        6,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
+                }
+            ]
+        },
+        {
+            "tgId": "1of3",
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 1
+            },
+            "recoveryData": "0000000103D944E06ECEC686276C06903F999B55124292AC186A8CFF91C4B5812869F43C0103AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302BC88DD206C8AD8C1B52F93AD147695802206D0CA6AB756BD51E5FF5BE858FD2103F216E714F96E6AAE00E3FAAF5188FF6F66C71B932E10B17AA8403B17DE9A8F52038AA8962D7EBBF847CE551B1EF8D0D5E8A051B7FD6A29127709F35A6C18CED3007B7219CB404BC96C6D7444B2B85EB2F707B2B345CEA20633657AF21250A668059F6916FE21FE3408D26DDCBFA270CDC67821D88F0B203C46481157B5559F71CD018DADE4C6444BC59855410794924D7793C2ACB37221A3017369F49A1A4FEDF782E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EEA9B4EADAC901B2D6A24ADFF77FBFA1A948F8846CA445E7A7E970D26EA440370F1AD8302DDB489191F5536CA4B102EF5535406BBB1D4003AAA6AEF8E83F7D2AD6",
+            "ackSigPool": [
+                "9E9CF0565A71070424B33118D0816862F144BF8446D548D2DFAA7754C84CAF308DBADA165C87E549995BB58DB6C7DFC07B796EF623E4846B105C2AD0D310B20B",
+                "186F7827314DAB6065B7F36EA18125E59339D7A35782D1F07C8C65EC0D12279EB3FE684AC305FE72BBF287B70A0CDFF9B43DAD061F2DF7A03EF3475103874FC5",
+                "3FDF8269F8A8C29C3F6F0713B1229B30B2C51D773830A3A344903843563724AEF87AF7F58E5C6F8DF168CA883E72FD255134AACDB841DC2D40220B65ABA3FD04",
+                "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                "B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EE",
+                "C76851F2D02088B565776BD049AD6EA7002F88C51276EA361A160CBA77FD0A2D647DF4D73C23D90EA1A89590549DBC3F0B64FE535F208CCAA1993210A289B16E",
+                "186F7827314DAB6065B7F36EA18125E59339D7A35782D1F07C8C65EC0D12279EB3FE684AC305FE72BBF287B70A0CDFF9B43DAD061F2DF7A03EF3475103874F"
+            ],
+            "validTestCases": [
+                {
+                    "tcId": 16,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "comment": "valid acknowledgments"
+                },
+                {
+                    "tcId": 17,
+                    "recoveryData": "0000000103D944E06ECEC686276C06903F999B55124292AC186A8CFF91C4B5812869F43C0103AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302BC88DD206C8AD8C1B52F93AD147695802206D0CA6AB756BD51E5FF5BE858FD2103F216E714F96E6AAE00E3FAAF5188FF6F66C71B932E10B17AA8403B17DE9A8F52038AA8962D7EBBF847CE551B1EF8D0D5E8A051B7FD6A29127709F35A6C18CED3007B7219CB404BC96C6D7444B2B85EB2F707B2B345CEA20633657AF21250A668059F6916FE21FE3408D26DDCBFA270CDC67821D88F0B203C46481157B5559F71CD018DADE4C6444BC59855410794924D7793C2ACB37221A3017369F49A1A4FEDF782E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EE6D091D4752F8FC99557BE11258E2179FB47755D5C4573A1F66AE73298C7D0DCB34E519DA8425132F76E7C11A072BDBA94974480E6889DE6A2C8402F5CE55F6CA",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "comment": "recovery data with another valid certificate"
+                }
+            ],
+            "errorTestCases": [
+                {
+                    "tcId": 18,
+                    "ackSigIndices": [
+                        3,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "participant with id 0 sent an invalid signature"
+                },
+                {
+                    "tcId": 19,
+                    "ackSigIndices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent an invalid signature"
+                },
+                {
+                    "tcId": 20,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 2
+                    },
+                    "comment": "participant with id 2 sent an invalid signature"
+                },
+                {
+                    "tcId": 21,
+                    "ackSigIndices": [
+                        1,
+                        0,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "signatures of participants with ids 0 and 1 are swapped"
+                },
+                {
+                    "tcId": 22,
+                    "ackSigIndices": [
+                        0,
+                        4,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent its signature from the certificate"
+                },
+                {
+                    "tcId": 23,
+                    "ackSigIndices": [
+                        0,
+                        5,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 signed the full recovery data, including the certificate"
+                },
+                {
+                    "tcId": 24,
+                    "ackSigIndices": [
+                        0,
+                        1
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: fewer entries than participants"
+                },
+                {
+                    "tcId": 25,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: more entries than participants"
+                },
+                {
+                    "tcId": 26,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "threshold in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 27,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 1
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "order of hostpubkeys in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 28,
+                    "recoveryData": "00000103D944E06ECEC686276C06903F999B55124292AC186A8CFF91C4B5812869F43C0103AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302BC88DD206C8AD8C1B52F93AD147695802206D0CA6AB756BD51E5FF5BE858FD2103F216E714F96E6AAE00E3FAAF5188FF6F66C71B932E10B17AA8403B17DE9A8F52038AA8962D7EBBF847CE551B1EF8D0D5E8A051B7FD6A29127709F35A6C18CED3007B7219CB404BC96C6D7444B2B85EB2F707B2B345CEA20633657AF21250A668059F6916FE21FE3408D26DDCBFA270CDC67821D88F0B203C46481157B5559F71CD018DADE4C6444BC59855410794924D7793C2ACB37221A3017369F49A1A4FEDF782E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EEA9B4EADAC901B2D6A24ADFF77FBFA1A948F8846CA445E7A7E970D26EA440370F1AD8302DDB489191F5536CA4B102EF5535406BBB1D4003AAA6AEF8E83F7D2AD6",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Failed to deserialize recovery data"
+                    },
+                    "comment": "recovery data of invalid length"
+                },
+                {
+                    "tcId": 29,
+                    "recoveryData": "0000000103D944E06ECEC686276C06903F999B55124292AC186A8CFF91C4B5812869F43C0103AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302BC88DD206C8AD8C1B52F93AD147695802206D0CA6AB756BD51E5FF5BE858FD2103F216E714F96E6AAE00E3FAAF5188FF6F66C71B932E10B17AA8403B17DE9A8F52038AA8962D7EBBF847CE551B1EF8D0D5E8A051B7FD6A29127709F35A6C18CED3007B7219CB404BC96C6D7444B2B85EB2F707B2B345CEA20633657AF21250A668059F6916FE21FE3408D26DDCBFA270CDC67821D88F0B203C46481157B5559F71CD018DADE4C6444BC59855410794924D7793C2ACB37221A3017369F49A1A4FEDF782E33ED511440D5609481CB77FDE1E385865F4F00C2E84ACF8DED01EC3532C714C28D13DD572C5808AF82272C1A782B3C0C720EC9527A7AFFE2535688D29AC06B2FDC730FF8396ED094040BA12EA54F3D0B53DBD4613DCDF4AE0C89A6C7A9AC6A973EB2157189E3CBFB144FAE1F421F42450F49A48FB9027C8FDA37BAFE334EE09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Invalid certificate in recovery data"
+                    },
+                    "comment": "last signature in the certificate is invalid"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 30,
+                    "ackSigIndices": [
+                        0,
+                        6,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
+                }
+            ]
+        },
+        {
+            "tgId": "3of3",
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                ],
+                "t": 3
+            },
+            "recoveryData": "000000030251F6B0ED5F9AF13FBB1A2EB117C1DC50EA0CEEA17A3C97C4B9BC88D14C8D59F903D2BAB55842CB855189CF690BA0E2C588AEFCD985F6E6B60C3CFCBDBF42FC68F702D17C1ACB4697C8032830CFA0099BE475C8DBDC63E2CE294795C8AAAF69EF908703AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3026C6EBBC55EDC86ABA62BA55A3375A940E731228F214937BF8A2FC58B29AE8F080334032916F989086FB5C62722C096F0EC6A85808DB2BFA270227A72245BD7AC1B02522C52C88A6B0B1E9CF8943960E87722C1D5307069723C25B151939A58B08C10161A5552E5C1C256BA8489D1D621337C132BBECEF9840E3606582F918031F3E662B050C8F49D54C73A0F4C4D0B06DA93B81DC5463511E05913D9F2E0B5DB67D39B53A4AA164B45269B41B8F06E4254C47A55B7132E0310C626CE46DB6ABCB797BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E7E27651C1E2907EDFA9CA3310332C9BE64A22B78FF873C307632E855E9E24E86C6F9E10F7D135A06F5B6839DFAA2F78973DAD89179131016D55D4E7B7FF2837F5",
+            "ackSigPool": [
+                "882F9D396B0AB98F658C6DFD48CC820C7832D728106F31A2AC4A812618015F67F6D76E81B76191037F7A178FA9CCAAAE9A7869B9E54F410F90ADF17086A76E10",
+                "A75060DFD1FB2A93170F9B0128DE74EA9F49E541347635EC21177BB2B809E0B64EF4627CC50F0E687B01170F2AC04AF1E8B06027EDB493AE6C51FF4705FA2B5D",
+                "D1A96575F5569FD16515BE0B8E1F28AD84F1394D17A7235665A53B653E96DAF77910B3BD664601C6BB2C9D7C4AAD9FED14DC2AE11BEFC411D48FFB1AB7445A79",
+                "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                "0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E7",
+                "135D04C9A665F0434FAAE43C1EB4D41D337C6AE301BF48AB0EC0683A2CE809EBE64F21774FB1F683884C7A7F8244B81DC44B29641957334ED326AA81EF66555B",
+                "A75060DFD1FB2A93170F9B0128DE74EA9F49E541347635EC21177BB2B809E0B64EF4627CC50F0E687B01170F2AC04AF1E8B06027EDB493AE6C51FF4705FA2B"
+            ],
+            "validTestCases": [
+                {
+                    "tcId": 31,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "comment": "valid acknowledgments"
+                },
+                {
+                    "tcId": 32,
+                    "recoveryData": "000000030251F6B0ED5F9AF13FBB1A2EB117C1DC50EA0CEEA17A3C97C4B9BC88D14C8D59F903D2BAB55842CB855189CF690BA0E2C588AEFCD985F6E6B60C3CFCBDBF42FC68F702D17C1ACB4697C8032830CFA0099BE475C8DBDC63E2CE294795C8AAAF69EF908703AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3026C6EBBC55EDC86ABA62BA55A3375A940E731228F214937BF8A2FC58B29AE8F080334032916F989086FB5C62722C096F0EC6A85808DB2BFA270227A72245BD7AC1B02522C52C88A6B0B1E9CF8943960E87722C1D5307069723C25B151939A58B08C10161A5552E5C1C256BA8489D1D621337C132BBECEF9840E3606582F918031F3E662B050C8F49D54C73A0F4C4D0B06DA93B81DC5463511E05913D9F2E0B5DB67D39B53A4AA164B45269B41B8F06E4254C47A55B7132E0310C626CE46DB6ABCB797BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E79132C5C0C63B55CF1ACF715698B8B56E378C2AA039C7A83594E147F773E8C5292BB7D6B3C6ABDD8B9D34EB5384C05A6B4B8761641967B0677FF0982CE37EFD6E",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "comment": "recovery data with another valid certificate"
+                }
+            ],
+            "errorTestCases": [
+                {
+                    "tcId": 33,
+                    "ackSigIndices": [
+                        3,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "participant with id 0 sent an invalid signature"
+                },
+                {
+                    "tcId": 34,
+                    "ackSigIndices": [
+                        0,
+                        3,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent an invalid signature"
+                },
+                {
+                    "tcId": 35,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 2
+                    },
+                    "comment": "participant with id 2 sent an invalid signature"
+                },
+                {
+                    "tcId": 36,
+                    "ackSigIndices": [
+                        1,
+                        0,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "signatures of participants with ids 0 and 1 are swapped"
+                },
+                {
+                    "tcId": 37,
+                    "ackSigIndices": [
+                        0,
+                        4,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent its signature from the certificate"
+                },
+                {
+                    "tcId": 38,
+                    "ackSigIndices": [
+                        0,
+                        5,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 signed the full recovery data, including the certificate"
+                },
+                {
+                    "tcId": 39,
+                    "ackSigIndices": [
+                        0,
+                        1
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: fewer entries than participants"
+                },
+                {
+                    "tcId": 40,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: more entries than participants"
+                },
+                {
+                    "tcId": 41,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 2
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "threshold in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 42,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 3
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "order of hostpubkeys in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 43,
+                    "recoveryData": "0000030251F6B0ED5F9AF13FBB1A2EB117C1DC50EA0CEEA17A3C97C4B9BC88D14C8D59F903D2BAB55842CB855189CF690BA0E2C588AEFCD985F6E6B60C3CFCBDBF42FC68F702D17C1ACB4697C8032830CFA0099BE475C8DBDC63E2CE294795C8AAAF69EF908703AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3026C6EBBC55EDC86ABA62BA55A3375A940E731228F214937BF8A2FC58B29AE8F080334032916F989086FB5C62722C096F0EC6A85808DB2BFA270227A72245BD7AC1B02522C52C88A6B0B1E9CF8943960E87722C1D5307069723C25B151939A58B08C10161A5552E5C1C256BA8489D1D621337C132BBECEF9840E3606582F918031F3E662B050C8F49D54C73A0F4C4D0B06DA93B81DC5463511E05913D9F2E0B5DB67D39B53A4AA164B45269B41B8F06E4254C47A55B7132E0310C626CE46DB6ABCB797BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E7E27651C1E2907EDFA9CA3310332C9BE64A22B78FF873C307632E855E9E24E86C6F9E10F7D135A06F5B6839DFAA2F78973DAD89179131016D55D4E7B7FF2837F5",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Failed to deserialize recovery data"
+                    },
+                    "comment": "recovery data of invalid length"
+                },
+                {
+                    "tcId": 44,
+                    "recoveryData": "000000030251F6B0ED5F9AF13FBB1A2EB117C1DC50EA0CEEA17A3C97C4B9BC88D14C8D59F903D2BAB55842CB855189CF690BA0E2C588AEFCD985F6E6B60C3CFCBDBF42FC68F702D17C1ACB4697C8032830CFA0099BE475C8DBDC63E2CE294795C8AAAF69EF908703AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3026C6EBBC55EDC86ABA62BA55A3375A940E731228F214937BF8A2FC58B29AE8F080334032916F989086FB5C62722C096F0EC6A85808DB2BFA270227A72245BD7AC1B02522C52C88A6B0B1E9CF8943960E87722C1D5307069723C25B151939A58B08C10161A5552E5C1C256BA8489D1D621337C132BBECEF9840E3606582F918031F3E662B050C8F49D54C73A0F4C4D0B06DA93B81DC5463511E05913D9F2E0B5DB67D39B53A4AA164B45269B41B8F06E4254C47A55B7132E0310C626CE46DB6ABCB797BFD15AA9C0A086B4BC83CC1FBE2864519E95360101E038B56CC6F58A13BDCBCDA5310629AD258C8FEC60DEB8ED49A2749E2EDD2204257F41713CF3181FB4F89B0017D390C1E89DA9D738F5933E1A35B70C10DED152768C9FAB8593190E7417754AB67C0D15E873A2594A7EA490CC0EF1643A153A5B7467232FAE413CC8A8D8E709C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Invalid certificate in recovery data"
+                    },
+                    "comment": "last signature in the certificate is invalid"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 45,
+                    "ackSigIndices": [
+                        0,
+                        6,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
+                }
+            ]
+        },
+        {
+            "tgId": "2of4",
+            "params": {
+                "hostpubkeys": [
+                    "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                    "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                    "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                    "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                ],
+                "t": 2
+            },
+            "recoveryData": "0000000202C0D0DC96E9C331610E67BD7C8C71A978477E34DAB3BE929694022C997D19338B037B0F4758018C2AC0DC96FF1A6F6DB042B302717D1911B65B4419CAE29D79EBD903AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A80266D2D26EAA94E40ECCF9C6BB24C1DDE27957FE8A82F2389EA6BBFD4B265ACAD5036DEF7297E97F0D229BBB7B004AABEC90F7E4A769934376ED220FD78D79C3095C0251B5F3A899402AAE586113B18A5B2D1F12A49330AEDD5AC2314FF07EB151A9B2024461A885A565BD85A57B3047CBEE3D70C7E9C400C5FB2C0146F02944AB36C42E1715B884DD47347692CE0EEB35DDFFAF50746670244989D422CC8B64D884E0FC7764E8F01F2EA21D679CADDC011227835F29BB3B5CC3DFBAAE992C8E1310E7AB8349E55B996BAC1B39496EF23E0ED7DC95F3FF8E50711DEA5CC6D9238D71AC9441E0CDE02F944CEA3B398EDB0CEAAA373E0B9F6994FF46A854C8C86243D2CE91C40687CB309D263B5D52C4D782F9A66411B57627FD56FD0ABE3C87CB051CE248E19A95E68212599B8DAD04ADF7CE37DC809BBC04F27B019D5543F35223FC53E6978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE485AD6B8D354A6D89F067A859AB1941E403E8C72413D61E11EC49588C977831CCB37224C44A482EC53A2373F5BD2B38041797C77C85CC14AB25E4F6226FFA6CAA5",
+            "ackSigPool": [
+                "F89B48A893C2CAEFBAF99F100966C9B880920F574E75BF02E79D58A771D696135ACE567FA8377278D4E458985579B95DF1111F229E5F81DEE717C2F8EE115470",
+                "E8FA39FF9F674442C521B8A5CA7761F7986A10C016E48DFF90BA2E0FD68CED293CC1EA92EB8392681BB4FE4A915314F3318B6313C20379D4AE2F7AF1E0A72ECB",
+                "569514F45CB524CD1D6D89B5E1292878FF2E8406FE2D8A5CF108F1F8A8DFCBE37D753961E1703BE02A6FF536269CF8852B09BCF183CDD3A767C99549949FECB6",
+                "5D7A006842FE62E5547895162186ED17775C68302F72541AB6436D22A39534984B84735143F64B2BF105C55E8C5429B0535A614251316A56C9BD80A857BA5C8D",
+                "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                "978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF",
+                "7E0DFB7295139CEFACC3674D4253AC9F0D34EC892B511E32EB3E38D3014C1A7C9A074A38A9C47E1B55DCE6797723A7F83FA99E4171BBD891091C750B0DA3C97E",
+                "E8FA39FF9F674442C521B8A5CA7761F7986A10C016E48DFF90BA2E0FD68CED293CC1EA92EB8392681BB4FE4A915314F3318B6313C20379D4AE2F7AF1E0A72E"
+            ],
+            "validTestCases": [
+                {
+                    "tcId": 46,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "comment": "valid acknowledgments"
+                },
+                {
+                    "tcId": 47,
+                    "recoveryData": "0000000202C0D0DC96E9C331610E67BD7C8C71A978477E34DAB3BE929694022C997D19338B037B0F4758018C2AC0DC96FF1A6F6DB042B302717D1911B65B4419CAE29D79EBD903AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A80266D2D26EAA94E40ECCF9C6BB24C1DDE27957FE8A82F2389EA6BBFD4B265ACAD5036DEF7297E97F0D229BBB7B004AABEC90F7E4A769934376ED220FD78D79C3095C0251B5F3A899402AAE586113B18A5B2D1F12A49330AEDD5AC2314FF07EB151A9B2024461A885A565BD85A57B3047CBEE3D70C7E9C400C5FB2C0146F02944AB36C42E1715B884DD47347692CE0EEB35DDFFAF50746670244989D422CC8B64D884E0FC7764E8F01F2EA21D679CADDC011227835F29BB3B5CC3DFBAAE992C8E1310E7AB8349E55B996BAC1B39496EF23E0ED7DC95F3FF8E50711DEA5CC6D9238D71AC9441E0CDE02F944CEA3B398EDB0CEAAA373E0B9F6994FF46A854C8C86243D2CE91C40687CB309D263B5D52C4D782F9A66411B57627FD56FD0ABE3C87CB051CE248E19A95E68212599B8DAD04ADF7CE37DC809BBC04F27B019D5543F35223FC53E6978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE48137D8356B079712274D1A5A7ED13D6E97A1C6945D1ACBCDC43A3729411039825344717A5F68F506D4F79D440A7F75F582F1FC29CDF5451CCB29DB4AA90BA8C9A",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "comment": "recovery data with another valid certificate"
+                }
+            ],
+            "errorTestCases": [
+                {
+                    "tcId": 48,
+                    "ackSigIndices": [
+                        4,
+                        1,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "participant with id 0 sent an invalid signature"
+                },
+                {
+                    "tcId": 49,
+                    "ackSigIndices": [
+                        0,
+                        4,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent an invalid signature"
+                },
+                {
+                    "tcId": 50,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        4,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 2
+                    },
+                    "comment": "participant with id 2 sent an invalid signature"
+                },
+                {
+                    "tcId": 51,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        4
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 3
+                    },
+                    "comment": "participant with id 3 sent an invalid signature"
+                },
+                {
+                    "tcId": 52,
+                    "ackSigIndices": [
+                        1,
+                        0,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 0
+                    },
+                    "comment": "signatures of participants with ids 0 and 1 are swapped"
+                },
+                {
+                    "tcId": 53,
+                    "ackSigIndices": [
+                        0,
+                        5,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 sent its signature from the certificate"
+                },
+                {
+                    "tcId": 54,
+                    "ackSigIndices": [
+                        0,
+                        6,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "InvalidRecoveryAckError",
+                        "participantId": 1
+                    },
+                    "comment": "participant with id 1 signed the full recovery data, including the certificate"
+                },
+                {
+                    "tcId": 55,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: fewer entries than participants"
+                },
+                {
+                    "tcId": 56,
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3,
+                        0
+                    ],
+                    "expectedError": {
+                        "type": "LengthDoesNotMatchParamsError"
+                    },
+                    "comment": "invalid ack_sigs: more entries than participants"
+                },
+                {
+                    "tcId": 57,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 3
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "threshold in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 58,
+                    "params": {
+                        "hostpubkeys": [
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 2
+                    },
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Recovery data does not match the provided session parameters"
+                    },
+                    "comment": "order of hostpubkeys in params doesn't match the recovery data"
+                },
+                {
+                    "tcId": 59,
+                    "recoveryData": "00000202C0D0DC96E9C331610E67BD7C8C71A978477E34DAB3BE929694022C997D19338B037B0F4758018C2AC0DC96FF1A6F6DB042B302717D1911B65B4419CAE29D79EBD903AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A80266D2D26EAA94E40ECCF9C6BB24C1DDE27957FE8A82F2389EA6BBFD4B265ACAD5036DEF7297E97F0D229BBB7B004AABEC90F7E4A769934376ED220FD78D79C3095C0251B5F3A899402AAE586113B18A5B2D1F12A49330AEDD5AC2314FF07EB151A9B2024461A885A565BD85A57B3047CBEE3D70C7E9C400C5FB2C0146F02944AB36C42E1715B884DD47347692CE0EEB35DDFFAF50746670244989D422CC8B64D884E0FC7764E8F01F2EA21D679CADDC011227835F29BB3B5CC3DFBAAE992C8E1310E7AB8349E55B996BAC1B39496EF23E0ED7DC95F3FF8E50711DEA5CC6D9238D71AC9441E0CDE02F944CEA3B398EDB0CEAAA373E0B9F6994FF46A854C8C86243D2CE91C40687CB309D263B5D52C4D782F9A66411B57627FD56FD0ABE3C87CB051CE248E19A95E68212599B8DAD04ADF7CE37DC809BBC04F27B019D5543F35223FC53E6978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE485AD6B8D354A6D89F067A859AB1941E403E8C72413D61E11EC49588C977831CCB37224C44A482EC53A2373F5BD2B38041797C77C85CC14AB25E4F6226FFA6CAA5",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Failed to deserialize recovery data"
+                    },
+                    "comment": "recovery data of invalid length"
+                },
+                {
+                    "tcId": 60,
+                    "recoveryData": "0000000202C0D0DC96E9C331610E67BD7C8C71A978477E34DAB3BE929694022C997D19338B037B0F4758018C2AC0DC96FF1A6F6DB042B302717D1911B65B4419CAE29D79EBD903AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F303AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A302A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A80266D2D26EAA94E40ECCF9C6BB24C1DDE27957FE8A82F2389EA6BBFD4B265ACAD5036DEF7297E97F0D229BBB7B004AABEC90F7E4A769934376ED220FD78D79C3095C0251B5F3A899402AAE586113B18A5B2D1F12A49330AEDD5AC2314FF07EB151A9B2024461A885A565BD85A57B3047CBEE3D70C7E9C400C5FB2C0146F02944AB36C42E1715B884DD47347692CE0EEB35DDFFAF50746670244989D422CC8B64D884E0FC7764E8F01F2EA21D679CADDC011227835F29BB3B5CC3DFBAAE992C8E1310E7AB8349E55B996BAC1B39496EF23E0ED7DC95F3FF8E50711DEA5CC6D9238D71AC9441E0CDE02F944CEA3B398EDB0CEAAA373E0B9F6994FF46A854C8C86243D2CE91C40687CB309D263B5D52C4D782F9A66411B57627FD56FD0ABE3C87CB051CE248E19A95E68212599B8DAD04ADF7CE37DC809BBC04F27B019D5543F35223FC53E6978415455495D12CF1AC203BC4E87CC6628B0C582EDAB40DD8C9137AC8DF637BD8D2F1FA2930AEFC25B33179986E54644F3E7C2401327E5EA10394B93B2933DF8F0607BCEB003FF44C179B0C731904607CDBB40E2CD31A3BAB2D7ABCE592DB9D61CABF2104E3E3B3E0EB66104DC56ADE39741C844E03966E0C9CCB629DA1EE4809C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9",
+                    "ackSigIndices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "RecoveryDataError",
+                        "message": "Invalid certificate in recovery data"
+                    },
+                    "comment": "last signature in the certificate is invalid"
+                }
+            ],
+            "inputValidationErrorTestCases": [
+                {
+                    "tcId": 61,
+                    "ackSigIndices": [
+                        0,
+                        7,
+                        2,
+                        3
+                    ],
+                    "expectedError": {
+                        "type": "ValueError"
+                    },
+                    "comment": "participant with id 1 sent a short signature"
+                }
+            ]
+        }
+    ]
+}
