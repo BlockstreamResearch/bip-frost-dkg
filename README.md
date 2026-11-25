@@ -1242,6 +1242,10 @@ information.
 
 *Raises*:
 
+- `InvalidHostPubkeyError` - If `hostpubkeys` contains an invalid public key.
+- `DuplicateHostPubkeyError` - If `hostpubkeys` contains duplicates.
+- `ThresholdOrCountError` - If `1 <= t <= len(hostpubkeys) <= 128` does
+  not hold.
 - `FaultyParticipantError` - If a participant is faulty. See the
   documentation of the exception for further details.
 - `LengthDoesNotMatchParamsError` - If the number of entries in `pmsgs` or
