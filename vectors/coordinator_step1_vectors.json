@@ -16,7 +16,6 @@
         "  Verify it raises an exception matching expectedError.",
         "  Error objects may include 'participantId' (identifier of the blamed participant)."
     ],
-    "totalTests": 55,
     "testGroups": [
         {
             "tgId": "2of3",

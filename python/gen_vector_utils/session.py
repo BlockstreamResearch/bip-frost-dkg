@@ -85,10 +85,9 @@ def generate_hostpubkey_vectors():
 
     groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": total_tests,
         **groups[0],
     }
 
@@ -205,10 +204,9 @@ def generate_params_hash_vectors():
 
     groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": total_tests,
         **groups[0],
     }
 
@@ -495,9 +493,8 @@ def generate_recover_vectors():
 
     groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": total_tests,
         **groups[0],
     }

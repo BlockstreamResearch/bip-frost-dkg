@@ -135,7 +135,6 @@ def assign_tc_ids(groups):
                 assert "tcId" not in case
                 group[key][i] = {"tcId": tc_id, **case}
                 tc_id += 1
-    return tc_id - 1
 
 
 # functions below are used to test JSON vectors with chilldkg_ref

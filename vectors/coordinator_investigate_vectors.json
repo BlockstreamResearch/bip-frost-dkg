@@ -13,7 +13,6 @@
         "  Call coordinator_investigate with this list and the test case's params.",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 32,
     "testGroups": [
         {
             "tgId": "2of3",

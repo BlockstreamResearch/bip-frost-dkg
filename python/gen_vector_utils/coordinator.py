@@ -353,10 +353,9 @@ def generate_coordinator_step1_group(t, n):
 def generate_coordinator_step1_vectors():
     groups = [generate_coordinator_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": COORDINATOR_STEP1_DESCRIPTION,
-        "totalTests": total_tests,
         "testGroups": groups,
     }
 
@@ -510,10 +509,9 @@ def generate_coordinator_finalize_group(t, n):
 def generate_coordinator_finalize_vectors():
     groups = [generate_coordinator_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": COORDINATOR_FINALIZE_DESCRIPTION,
-        "totalTests": total_tests,
         "testGroups": groups,
     }
 
@@ -682,9 +680,8 @@ def generate_coordinator_investigate_vectors():
         generate_coordinator_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
     ]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": COORDINATOR_INVESTIGATE_DESCRIPTION,
-        "totalTests": total_tests,
         "testGroups": groups,
     }

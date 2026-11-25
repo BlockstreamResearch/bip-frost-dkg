@@ -480,7 +480,6 @@ def test_hostpubkey_gen_vectors():
     error_test_cases = (
         test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
     )
-    assert test_data["totalTests"] == len(valid_test_cases) + len(error_test_cases)
 
     for test_case in valid_test_cases:
         hostseckey = bytes.fromhex(test_case["hostseckey"])
@@ -502,7 +501,6 @@ def test_params_hash_vectors():
     error_test_cases = (
         test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
     )
-    assert test_data["totalTests"] == len(valid_test_cases) + len(error_test_cases)
 
     for test_case in valid_test_cases:
         params = params_from_dict(test_case["params"])
@@ -545,8 +543,6 @@ def test_participant_step1_vectors():
             )
             total_cases += 1
             assert test_case["tcId"] == total_cases
-
-    assert test_data["totalTests"] == total_cases
 
 
 def test_participant_step2_vectors():
@@ -605,8 +601,6 @@ def test_participant_step2_vectors():
             )
             total_cases += 1
             assert test_case["tcId"] == total_cases
-
-    assert test_data["totalTests"] == total_cases
 
 
 def test_participant_finalize_vectors():
@@ -674,8 +668,6 @@ def test_participant_finalize_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-    assert test_data["totalTests"] == total_cases
-
 
 def test_participant_investigate_vectors():
     input_file = VECTORS_DIR / "participant_investigate_vectors.json"
@@ -715,8 +707,6 @@ def test_participant_investigate_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-    assert test_data["totalTests"] == total_cases
-
 
 def test_coordinator_step1_vectors():
     input_file = VECTORS_DIR / "coordinator_step1_vectors.json"
@@ -747,8 +737,6 @@ def test_coordinator_step1_vectors():
             )
             total_cases += 1
             assert test_case["tcId"] == total_cases
-
-    assert test_data["totalTests"] == total_cases
 
 
 def test_coordinator_finalize_vectors():
@@ -787,8 +775,6 @@ def test_coordinator_finalize_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-    assert test_data["totalTests"] == total_cases
-
 
 def test_coordinator_investigate_vectors():
     input_file = VECTORS_DIR / "coordinator_investigate_vectors.json"
@@ -821,8 +807,6 @@ def test_coordinator_investigate_vectors():
             total_cases += 1
             assert test_case["tcId"] == total_cases
 
-    assert test_data["totalTests"] == total_cases
-
 
 def test_recover_vectors():
     input_file = VECTORS_DIR / "recover_vectors.json"
@@ -833,7 +817,6 @@ def test_recover_vectors():
     error_test_cases = (
         test_data["errorTestCases"] + test_data["inputValidationErrorTestCases"]
     )
-    assert test_data["totalTests"] == len(valid_test_cases) + len(error_test_cases)
 
     for test_case in valid_test_cases:
         hostseckey = (

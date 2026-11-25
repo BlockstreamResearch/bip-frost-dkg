@@ -24,7 +24,6 @@
         "  Call participant_finalize(pstate2, cmsg2).",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 25,
     "testGroups": [
         {
             "tgId": "2of3",

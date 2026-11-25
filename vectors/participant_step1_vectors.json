@@ -21,7 +21,6 @@
         "  may skip them. Wrong lengths that depend on t or n (e.g., of cmsg1 or pmsgs1) are",
         "  covered by the error test cases (LengthDoesNotMatchParamsError)."
     ],
-    "totalTests": 66,
     "testGroups": [
         {
             "tgId": "2of3",
