@@ -15,6 +15,7 @@ from .util import (
     UnknownFaultyParticipantOrCoordinatorError,
     tagged_hash_bip_dkg,
 )
+from .vss import VSSCommitment
 
 ###
 ### Encryption
@@ -333,7 +334,7 @@ def participant_step2(
     deckey: bytes,
     cmsg: bytes,
     enc_secshare: Scalar,
-) -> tuple[bytes, simplpedpop.ThresholdInfo, bytes]:
+) -> tuple[bytes, VSSCommitment, bytes]:
     simpl_state, pubnonce, enckeys, participant_id = state
     try:
         cmsg_parsed = CoordinatorMsg.from_bytes(cmsg, t=simpl_state.t, n=len(enckeys))
@@ -352,7 +353,7 @@ def participant_step2(
     secshare = enc_secshare - Scalar.sum(*pads)
 
     try:
-        secshare_tweaked, threshold_info, eq_input = simplpedpop.participant_step2(
+        secshare_tweaked, sum_coms, eq_input = simplpedpop.participant_step2(
             simpl_state, simpl_cmsg.to_bytes(), secshare
         )
     except UnknownFaultyParticipantOrCoordinatorError as e:
@@ -363,7 +364,7 @@ def participant_step2(
         raise UnknownFaultyParticipantOrCoordinatorError(inv_data, *e.args) from e
 
     eq_input += b"".join(enckeys) + b"".join(pubnonces)
-    return secshare_tweaked, threshold_info, eq_input
+    return secshare_tweaked, sum_coms, eq_input
 
 
 def participant_investigate(
@@ -409,7 +410,7 @@ def coordinator_step(
     pmsgs: list[bytes],
     t: int,
     enckeys: list[bytes],
-) -> tuple[bytes, simplpedpop.ThresholdInfo, bytes, list[Scalar]]:
+) -> tuple[bytes, VSSCommitment, bytes, list[Scalar]]:
     n = len(enckeys)
     if n != len(pmsgs):
         raise ValueError
@@ -421,7 +422,7 @@ def coordinator_step(
         except MsgParseError as e:
             raise FaultyParticipantError(i, *e.args) from e
         pmsgs_parsed.append(parsed)
-    simpl_cmsg, threshold_info, eq_input = simplpedpop.coordinator_step(
+    simpl_cmsg, sum_coms, eq_input = simplpedpop.coordinator_step(
         pmsgs=[pmsg.simpl_pmsg.to_bytes() for pmsg in pmsgs_parsed], t=t, n=n
     )
     simpl_cmsg_parsed = simplpedpop.CoordinatorMsg.from_bytes(simpl_cmsg, t=t, n=n)
@@ -442,7 +443,7 @@ def coordinator_step(
     # participant i for participant_step2(); we leave this unspecified.
     return (
         CoordinatorMsg(simpl_cmsg_parsed, pubnonces).to_bytes(),
-        threshold_info,
+        sum_coms,
         eq_input,
         enc_secshares,
     )
