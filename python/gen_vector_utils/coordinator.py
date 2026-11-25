@@ -43,6 +43,15 @@ def participant_step1_with_zero_coeff(hostseckey, params, random, index):
         return chilldkg.participant_step1(hostseckey, params, random)
 
 
+def pmsg1_with_threshold(pmsg1, t, new_t):
+    # Return pmsg1 with its VSS commitment truncated or extended to new_t
+    # coefficients, so that the length of the message matches new_t and the
+    # message is still well-formed. Extending repeats the first coefficient.
+    com, rest = pmsg1[: 33 * t], pmsg1[33 * t :]
+    new_com = (com + com[:33] * new_t)[: 33 * new_t]
+    return new_com + rest
+
+
 COORDINATOR_STEP1_DESCRIPTION = [
     "Test vectors for coordinator_step1(pmsgs1, params).",
     "Aggregates participant round-1 messages and produces the coordinator's broadcast message (cmsg1).",
@@ -120,14 +129,19 @@ def generate_coordinator_step1_group(t, n):
         )
 
     # --- Error test case: Invalid threshold ---
+    # The pmsgs1 have the length matching the invalid threshold, so that the
+    # invalid threshold is the only error.
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
+    t0_pmsgs1 = [pmsg1_with_threshold(m, t, 0) for m in pmsgs1]
     error = expect_exception(
-        lambda: chilldkg.coordinator_step1(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_step1(t0_pmsgs1, invalid_params),
         chilldkg.ThresholdOrCountError,
     )
+    t0_indices = list(range(len(pmsg1_pool), len(pmsg1_pool) + n))
+    pmsg1_pool.extend(bytes_to_hex(m) for m in t0_pmsgs1)
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),  # same valid pmsgs1
+            "pmsg1Indices": t0_indices,
             "params": params_asdict(invalid_params),  # t=0
             "expectedError": error,
             "comment": "invalid threshold value",
@@ -136,13 +150,16 @@ def generate_coordinator_step1_group(t, n):
 
     # --- Error test case: t > n ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
+    big_t_pmsgs1 = [pmsg1_with_threshold(m, t, n + 1) for m in pmsgs1]
     error = expect_exception(
-        lambda: chilldkg.coordinator_step1(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_step1(big_t_pmsgs1, invalid_params),
         chilldkg.ThresholdOrCountError,
     )
+    big_t_indices = list(range(len(pmsg1_pool), len(pmsg1_pool) + n))
+    pmsg1_pool.extend(bytes_to_hex(m) for m in big_t_pmsgs1)
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),  # same valid pmsgs1
+            "pmsg1Indices": big_t_indices,
             "params": params_asdict(invalid_params),  # t = n + 1
             "expectedError": error,
             "comment": "invalid threshold value t > n",
@@ -241,12 +258,12 @@ def generate_coordinator_step1_group(t, n):
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
         chilldkg.LengthDoesNotMatchParamsError,
     )
-    pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n + 1
+    pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index 3n + 1
     error_cases.append(
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n + 1, 2,..., n - 1] — index 1 replaced
+            ],  # [0, 3n + 1, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "participant (id 1) message has an enc_shares list of invalid length",
@@ -268,12 +285,12 @@ def generate_coordinator_step1_group(t, n):
         chilldkg.FaultyParticipantError,
         1,
     )
-    pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index n + 2
+    pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index 3n + 2
     error_cases.append(
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n + 2, 2,..., n - 1] — index 1 replaced
+            ],  # [0, 3n + 2, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "participant (index 1) message has an out-of-range enc_share",
@@ -290,12 +307,12 @@ def generate_coordinator_step1_group(t, n):
         chilldkg.FaultyParticipantError,
         1,
     )
-    pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index n + 3
+    pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index 3n + 3
     error_cases.append(
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n + 3, 2,..., n - 1] — index 1 replaced
+            ],  # [0, 3n + 3, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment",
@@ -304,7 +321,7 @@ def generate_coordinator_step1_group(t, n):
 
     # --- Error test case: pmsg1 (index 0) is empty ---
     empty_pmsgs1 = b""
-    pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index n + 4
+    pmsg1_pool.append(bytes_to_hex(empty_pmsgs1))  # index 3n + 4
     invalid_pmsgs1 = [empty_pmsgs1] + pmsgs1[1:]
     error = expect_exception(
         lambda: chilldkg.coordinator_step1(invalid_pmsgs1, params),
@@ -314,7 +331,7 @@ def generate_coordinator_step1_group(t, n):
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 0 else i for i in range(n)
-            ],  # [n + 4, 1, 2,..., n - 1] — index 0 replaced
+            ],  # [3n + 4, 1, 2,..., n - 1] — index 0 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "missing simplpedpop participant message at index 0",
@@ -324,7 +341,7 @@ def generate_coordinator_step1_group(t, n):
     # --- Error test case: pmsg1 (index 1) truncated before pubnonce ---
     simpl_pmsg_len = 33 * params.t + 64
     truncated_pmsg1 = pmsgs1[1][:simpl_pmsg_len]
-    pmsg1_pool.append(bytes_to_hex(truncated_pmsg1))  # index n + 5
+    pmsg1_pool.append(bytes_to_hex(truncated_pmsg1))  # index 3n + 5
     invalid_pmsgs1 = list(pmsgs1)
     invalid_pmsgs1[1] = truncated_pmsg1
     error = expect_exception(
@@ -335,7 +352,7 @@ def generate_coordinator_step1_group(t, n):
         {
             "pmsg1Indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
-            ],  # [0, n + 5, 2,..., n - 1] — index 1 replaced
+            ],  # [0, 3n + 5, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
             "expectedError": error,
             "comment": "missing public nonce in pmsg1 (index 1)",
@@ -523,13 +540,17 @@ COORDINATOR_INVESTIGATE_DESCRIPTION = [
     "Generates investigation messages to help participants identify faulty parties.",
     "Called when a participant reports UnknownFaultyParticipantOrCoordinatorError.",
     "",
+    "Assemble the pmsgs1 list from pmsg1Pool using pmsg1Indices:",
+    "  pmsgs1 = [pmsg1Pool[i] for i in pmsg1Indices]",
+    "  Pool entries at indices 0..n-1 are the messages of the participants; higher",
+    "  indices hold messages whose length matches a different threshold.",
+    "",
     "For each valid test case:",
     "  Call coordinator_investigate(pmsgs1, params).",
     "  Verify the returned list of investigation messages equals expectedCinvMsgs.",
     "",
     "For each error test case:",
-    "  Assemble the list [pmsgs1[i] for i in pmsg1Indices] from the group's pmsgs1.",
-    "  Call coordinator_investigate with this list and the test case's params.",
+    "  Call coordinator_investigate(pmsgs1, params).",
     "  Verify it raises an exception matching expectedError.",
 ]
 
@@ -547,9 +568,14 @@ def generate_coordinator_investigate_group(t, n):
         pmsgs1.append(msg)
     cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
 
+    # valid pmsgs1 at indices [0, 1, ..., n - 1]
+    pmsg1_pool = [bytes_to_hex(m) for m in pmsgs1]
+
     # --- Valid test case ---
     valid_cases = [
         {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(params),
             "expectedCinvMsgs": [bytes_to_hex(m) for m in cinv_msgs],
             "comment": "valid coordinator investigate",
         }
@@ -557,14 +583,19 @@ def generate_coordinator_investigate_group(t, n):
     error_cases = []
 
     # --- Error test case: Invalid threshold ---
+    # The pmsgs1 have the length matching the invalid threshold, so that the
+    # invalid threshold is the only error.
     invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
+    t0_pmsgs1 = [pmsg1_with_threshold(m, t, 0) for m in pmsgs1]
     error = expect_exception(
-        lambda: chilldkg.coordinator_investigate(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_investigate(t0_pmsgs1, invalid_params),
         chilldkg.ThresholdOrCountError,
     )
+    t0_indices = list(range(len(pmsg1_pool), len(pmsg1_pool) + n))
+    pmsg1_pool.extend(bytes_to_hex(m) for m in t0_pmsgs1)
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1Indices": t0_indices,
             "params": params_asdict(invalid_params),
             "expectedError": error,
             "comment": "invalid threshold value",
@@ -573,13 +604,16 @@ def generate_coordinator_investigate_group(t, n):
 
     # --- Error test case: t > n ---
     invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
+    big_t_pmsgs1 = [pmsg1_with_threshold(m, t, n + 1) for m in pmsgs1]
     error = expect_exception(
-        lambda: chilldkg.coordinator_investigate(pmsgs1, invalid_params),
+        lambda: chilldkg.coordinator_investigate(big_t_pmsgs1, invalid_params),
         chilldkg.ThresholdOrCountError,
     )
+    big_t_indices = list(range(len(pmsg1_pool), len(pmsg1_pool) + n))
+    pmsg1_pool.extend(bytes_to_hex(m) for m in big_t_pmsgs1)
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1Indices": big_t_indices,
             "params": params_asdict(invalid_params),
             "expectedError": error,
             "comment": "invalid threshold value t > n",
@@ -670,8 +704,7 @@ def generate_coordinator_investigate_group(t, n):
 
     return {
         "tgId": tg_id(t, n),
-        "params": params_asdict(params),
-        "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
+        "pmsg1Pool": pmsg1_pool,
         "validTestCases": valid_cases,
         "errorTestCases": error_cases,
     }
