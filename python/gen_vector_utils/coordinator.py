@@ -556,6 +556,84 @@ def generate_coordinator_investigate_group(t, n):
     ]
     error_cases = []
 
+    # --- Error test case: Invalid threshold ---
+    invalid_params = chilldkg.SessionParams(hostpubkeys, 0)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, invalid_params),
+        chilldkg.ThresholdOrCountError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(invalid_params),
+            "expectedError": error,
+            "comment": "invalid threshold value",
+        }
+    )
+
+    # --- Error test case: t > n ---
+    invalid_params = chilldkg.SessionParams(hostpubkeys, n + 1)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, invalid_params),
+        chilldkg.ThresholdOrCountError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(invalid_params),
+            "expectedError": error,
+            "comment": "invalid threshold value t > n",
+        }
+    )
+
+    # --- Error test case: hostpubkeys list contains an invalid value ---
+    with_invalid = hostpubkeys[:-1] + [OFF_CURVE_POINT]
+    invalid_params = chilldkg.SessionParams(with_invalid, t)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, invalid_params),
+        chilldkg.InvalidHostPubkeyError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(invalid_params),
+            "expectedError": error,
+            "comment": "hostpubkeys list contains an invalid value",
+        }
+    )
+
+    # --- Error test case: hostpubkeys list contains duplicate values ---
+    with_duplicate = hostpubkeys[:-1] + [hostpubkeys[0]]
+    duplicate_params = chilldkg.SessionParams(with_duplicate, t)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, duplicate_params),
+        chilldkg.DuplicateHostPubkeyError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(duplicate_params),
+            "expectedError": error,
+            "comment": "hostpubkeys list contains duplicate values",
+        }
+    )
+
+    # --- Error test case: hostpubkeys list contains infinite value ---
+    with_infinity = hostpubkeys[:-1] + [b"\x00" * 33]
+    invalid_params = chilldkg.SessionParams(with_infinity, t)
+    error = expect_exception(
+        lambda: chilldkg.coordinator_investigate(pmsgs1, invalid_params),
+        chilldkg.InvalidHostPubkeyError,
+    )
+    error_cases.append(
+        {
+            "pmsg1Indices": list(range(n)),
+            "params": params_asdict(invalid_params),
+            "expectedError": error,
+            "comment": "hostpubkeys list contains an infinity point",
+        }
+    )
+
     # --- Error test case: params with one participant more than pmsgs1 ---
     # Unlike dropping an entry from pmsgs1, this keeps the length of each entry
     # consistent with the number of entries, so only the check of the number of

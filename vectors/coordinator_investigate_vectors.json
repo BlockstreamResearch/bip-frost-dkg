@@ -13,7 +13,7 @@
         "  Call coordinator_investigate with this list and the test case's params.",
         "  Verify it raises an exception matching expectedError."
     ],
-    "totalTests": 12,
+    "totalTests": 32,
     "testGroups": [
         {
             "tgId": "2of3",
@@ -53,6 +53,110 @@
                         "hostpubkeys": [
                             "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
                             "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 0
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value"
+                },
+                {
+                    "tcId": 3,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 4
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value t > n"
+                },
+                {
+                    "tcId": 4,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "030000000000000000000000000000000000000000000000000000000000000005"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 2
+                    },
+                    "comment": "hostpubkeys list contains an invalid value"
+                },
+                {
+                    "tcId": 5,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "DuplicateHostPubkeyError",
+                        "participantId1": 0,
+                        "participantId2": 2
+                    },
+                    "comment": "hostpubkeys list contains duplicate values"
+                },
+                {
+                    "tcId": 6,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "000000000000000000000000000000000000000000000000000000000000000000"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 2
+                    },
+                    "comment": "hostpubkeys list contains an infinity point"
+                },
+                {
+                    "tcId": 7,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
                             "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
                             "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
                         ],
@@ -64,7 +168,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 3,
+                    "tcId": 8,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -104,7 +208,7 @@
             ],
             "validTestCases": [
                 {
-                    "tcId": 4,
+                    "tcId": 9,
                     "expectedCinvMsgs": [
                         "9827C7BD6ECCE374663262B90B8D2944C94F9AB1E83F38DBD12823DD7D58B8B3F4CDA3696B4B7701D9CA898B23E0211D9A3BB64CD130C329BDFC826BCBFCA13DEE7CAEA466336EF62D77586E88F1689219851C1473C34AA555FB08E2A7BD90970216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C602DA601E3FC8D21A247C5677D9CACFFE0BB86860BC1C233BECA0D97776AAE309DA02FB246B4866569A7A495CFFB1133DAF9096FE4FA22EDA6AF9D7A8F236F9C222B6",
                         "CF1C0AB792C1AF61FA3866CCC4221CAC3CB9D35F7F5358990AB02D7E246BCEDD563259BE0136A48FE852FC559B1EA6DE9EB24A43FBE2B42E3F1AE85AB03BB99B7A1AB2888E05E016EFE2799D43300A3A576497D23F32CFBABE18A069512E2A960216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C602DA601E3FC8D21A247C5677D9CACFFE0BB86860BC1C233BECA0D97776AAE309DA02FB246B4866569A7A495CFFB1133DAF9096FE4FA22EDA6AF9D7A8F236F9C222B6",
@@ -115,7 +219,111 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 5,
+                    "tcId": 10,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 0
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value"
+                },
+                {
+                    "tcId": 11,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 4
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value t > n"
+                },
+                {
+                    "tcId": 12,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "030000000000000000000000000000000000000000000000000000000000000005"
+                        ],
+                        "t": 1
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 2
+                    },
+                    "comment": "hostpubkeys list contains an invalid value"
+                },
+                {
+                    "tcId": 13,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3"
+                        ],
+                        "t": 1
+                    },
+                    "expectedError": {
+                        "type": "DuplicateHostPubkeyError",
+                        "participantId1": 0,
+                        "participantId2": 2
+                    },
+                    "comment": "hostpubkeys list contains duplicate values"
+                },
+                {
+                    "tcId": 14,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "000000000000000000000000000000000000000000000000000000000000000000"
+                        ],
+                        "t": 1
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 2
+                    },
+                    "comment": "hostpubkeys list contains an infinity point"
+                },
+                {
+                    "tcId": 15,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -136,7 +344,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 6,
+                    "tcId": 16,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -176,7 +384,7 @@
             ],
             "validTestCases": [
                 {
-                    "tcId": 7,
+                    "tcId": 17,
                     "expectedCinvMsgs": [
                         "7C47A6836F30317C4B914E33F10B72CA6EDD116A3DF9E8BFE997045F9F957D31B9BC513A6059135E04745D8BA961BA2B73A8F109469632CACD2DEA19DD9F985DE0165D9516387D7C6A7EDE123BB40683A6037628D3853322CF37FE31A36960DA02EB2C6840DF67A868BD870B7FB28C6166EE7175F26E1709EE6055C30BEDBED4440211DAB363110221D0DDC7A94DC8C125FADE58F7183C5C24C606572914B327D6E503FE94E345B4190A99EB1B6EE05449AE2F638456DFB603C74083387CB8F3ADCB12",
                         "A43BB05F6162602B96E5D8C0AE3A07C8228E41DE772B0ACD96937B6CD0115ADE03F3FCD86C88731C94E5588CA37E072DBF0A968AF541994B5A5D3E6011C9D926BA80A39126B2817F0E441AFFB94ECB9C9133C9C377EDDC7BE2BB97A0A436751003A7ECF826CB9AABC89EC5613CB2619AA6F820483A3C5E78CC8CB5012DE5D00C37022195F03AD5C5EDA4F066F2AE3C478B4A154DD771DE009DFBCDF753507C7A925F03886A9FF796EEFD88B956B0D5BA0F7C50E3591219D4D38F7513D737A6E5E07B48",
@@ -187,7 +395,111 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 8,
+                    "tcId": 18,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 0
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value"
+                },
+                {
+                    "tcId": 19,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3"
+                        ],
+                        "t": 4
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value t > n"
+                },
+                {
+                    "tcId": 20,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "030000000000000000000000000000000000000000000000000000000000000005"
+                        ],
+                        "t": 3
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 2
+                    },
+                    "comment": "hostpubkeys list contains an invalid value"
+                },
+                {
+                    "tcId": 21,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3"
+                        ],
+                        "t": 3
+                    },
+                    "expectedError": {
+                        "type": "DuplicateHostPubkeyError",
+                        "participantId1": 0,
+                        "participantId2": 2
+                    },
+                    "comment": "hostpubkeys list contains duplicate values"
+                },
+                {
+                    "tcId": 22,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "000000000000000000000000000000000000000000000000000000000000000000"
+                        ],
+                        "t": 3
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 2
+                    },
+                    "comment": "hostpubkeys list contains an infinity point"
+                },
+                {
+                    "tcId": 23,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -208,7 +520,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 9,
+                    "tcId": 24,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -250,7 +562,7 @@
             ],
             "validTestCases": [
                 {
-                    "tcId": 10,
+                    "tcId": 25,
                     "expectedCinvMsgs": [
                         "C2BC4B8326FF7015CEC59F160D74C4911E39F1C703FE64ACC5D0258A814EEAE2BE24CC80C556589A0B8E155C7DA2429FD3BE69817C8E237B911EDB37605569C28BB736697045FBC5CC366FA156F25C21760942BE0ED2FE35C8AE3B24C70E83920A7D6A1780AB7000EC43EAD753D49C5A5DD08236F37B43ED82D40C97D03E8B4803AE9A37E7CABAFAFA2B0C0E1C758F754208966D0EE3AF2817E09A4BCD52E6D96302ECB1B982603A8BA43EA6D9C8E070EB917BBD40B932F28B6B8BF84B81CD2C2241039CF320073B4B23D5F155924FC598AC82C74527C8CFB64B7459A876C8F4643D100380A91AEAD1DF43C3BDE89CFEC504708560DC53DFE7BD736CBB3EA9D06654E7AB",
                         "35412ABEFA95191200CDA1F3D9F14976F2401C387A1B5FEDCEE9AE829D8DB00537D0D39F4904C0294A6F38AA1ED43C3769BD1DC4372201CEC2A36D328F613A85E71F4DD29880FB7C913D3BC68F1A488EE93FBF92D99639C927F56330C180DCEB23339CBF4313CD658B22977779325944D49B9E928138E470B4E90C34F4D7617703589D80C93930ED933D3C3F62676567D24EB423E6C15A8E9147570EB4DEEEA408022B77F452E0AA889BBD72755D850C2636D748F28A877F9C6467559D97FC75B28F02E563214350B4D8354426CF9D73BDA8BA94CD80A827DC84C5CFE5930CB10BEA1703D506F406064E59BD0232DAED1D0865E71F119EFFD212A820022F913279655DD1",
@@ -262,7 +574,121 @@
             ],
             "errorTestCases": [
                 {
-                    "tcId": 11,
+                    "tcId": 26,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 0
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value"
+                },
+                {
+                    "tcId": 27,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "02A480743556B0DC66F3F25262A0120AC231DEB6936D4BF8FA37ECA83C395DC8A8"
+                        ],
+                        "t": 5
+                    },
+                    "expectedError": {
+                        "type": "ThresholdOrCountError"
+                    },
+                    "comment": "invalid threshold value t > n"
+                },
+                {
+                    "tcId": 28,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "030000000000000000000000000000000000000000000000000000000000000005"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 3
+                    },
+                    "comment": "hostpubkeys list contains an invalid value"
+                },
+                {
+                    "tcId": 29,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "DuplicateHostPubkeyError",
+                        "participantId1": 0,
+                        "participantId2": 3
+                    },
+                    "comment": "hostpubkeys list contains duplicate values"
+                },
+                {
+                    "tcId": 30,
+                    "pmsg1Indices": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ],
+                    "params": {
+                        "hostpubkeys": [
+                            "03AED316469060698D774150EFD7F8F406A2BAB516DD7D22CB258323C59C6417F3",
+                            "03AEB5AE20783D4858F6767747963F144C7DB8ABA328625CC8A87F7676D8CDEEE7",
+                            "021A48BBCCAC751AE9EC1EA7A7F8D421D5FD60AAB44E6D2F37B31873098A77B7A3",
+                            "000000000000000000000000000000000000000000000000000000000000000000"
+                        ],
+                        "t": 2
+                    },
+                    "expectedError": {
+                        "type": "InvalidHostPubkeyError",
+                        "participantId": 3
+                    },
+                    "comment": "hostpubkeys list contains an infinity point"
+                },
+                {
+                    "tcId": 31,
                     "pmsg1Indices": [
                         0,
                         1,
@@ -285,7 +711,7 @@
                     "comment": "invalid pmsgs1: fewer entries than participants"
                 },
                 {
-                    "tcId": 12,
+                    "tcId": 32,
                     "pmsg1Indices": [
                         0,
                         1,

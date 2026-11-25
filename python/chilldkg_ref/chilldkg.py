@@ -1004,11 +1004,16 @@ def coordinator_investigate(pmsgs: list[bytes], params: SessionParams) -> list[b
             single participant (`65*n` bytes each).
 
     Raises:
+        InvalidHostPubkeyError: If `hostpubkeys` contains an invalid public key.
+        DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
+        ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
+            not hold.
         FaultyParticipantError: If a participant is faulty. See the
             documentation of the exception for further details.
         LengthDoesNotMatchParamsError: If the number of entries in `pmsgs` or
             the length of an entry does not match the session parameters.
     """
+    params_validate(params)
     hostpubkeys, t = params
     n = len(hostpubkeys)
     if len(pmsgs) != n:
