@@ -22,11 +22,11 @@ def generate_hostpubkey_vectors():
         "Generates a compressed public key (33 bytes) from a 32-byte host secret key.",
         "",
         "For each valid test case:",
-        "  Call hostpubkey_gen(hostseckey) and verify the result equals expectedHostpubkey.",
+        "  Call hostpubkey_gen(hostseckey) and verify the result equals 'expected'.",
         "",
         "For each error test case:",
-        "  Call hostpubkey_gen(hostseckey) and verify it raises an exception matching expectedError.",
-        "  The expectedError object contains 'type' (the exception class name).",
+        "  Call hostpubkey_gen(hostseckey) and verify it raises an exception matching 'error'.",
+        "  The 'error' object contains 'type' (the exception class name).",
         *INPUT_VALIDATION_DESCRIPTION,
     ]
     valid_cases = []
@@ -40,7 +40,7 @@ def generate_hostpubkey_vectors():
     valid_cases.append(
         {
             "hostseckey": bytes_to_hex(hostseckey),
-            "expectedHostpubkey": bytes_to_hex(expected_pubkey),
+            "expected": bytes_to_hex(expected_pubkey),
             "comment": "valid host secret key",
         }
     )
@@ -54,7 +54,7 @@ def generate_hostpubkey_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(short_hostseckey),
-            "expectedError": error,
+            "error": error,
             "comment": "length of host secret key is not 32 bytes",
         }
     )
@@ -66,7 +66,7 @@ def generate_hostpubkey_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(invalid_hostseckey),
-            "expectedError": error,
+            "error": error,
             "comment": "host secret key is out of range",
         }
     )
@@ -78,17 +78,16 @@ def generate_hostpubkey_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(zeroed_hostseckey),
-            "expectedError": error,
+            "error": error,
             "comment": "zeroed host secret key",
         }
     )
 
-    groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    groups = [{"valid_tests": valid_cases, "error_tests": error_cases}]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": total_tests,
         **groups[0],
     }
 
@@ -99,13 +98,13 @@ def generate_params_hash_vectors():
         "Computes a 32-byte hash of the session parameters (hostpubkeys, threshold).",
         "",
         "For each valid test case:",
-        "  Call params_hash(params) and verify the result equals expectedParamsHash.",
+        "  Call params_hash(params) and verify the result equals 'expected'.",
         "",
         "For each error test case:",
-        "  Call params_hash(params) and verify it raises an exception matching expectedError.",
-        "  The expectedError object contains 'type' (the exception class name).",
-        "  Some errors include 'participantId' (identifier of the blamed participant)",
-        "  or 'participantId1'/'participantId2' (identifiers of participants with duplicate keys).",
+        "  Call params_hash(params) and verify it raises an exception matching 'error'.",
+        "  The 'error' object contains 'type' (the exception class name).",
+        "  Some errors include 'participant_id' (identifier of the blamed participant)",
+        "  or 'participant_id1'/'participant_id2' (identifiers of participants with duplicate keys).",
     ]
     valid_cases = []
     error_cases = []
@@ -137,7 +136,7 @@ def generate_params_hash_vectors():
         expected_params_hash = chilldkg.params_hash(params)
         test_case = {
             "params": params_asdict(params),
-            "expectedParamsHash": bytes_to_hex(expected_params_hash),
+            "expected": bytes_to_hex(expected_params_hash),
             "comment": case["comment"],
         }
         valid_cases.append(test_case)
@@ -151,7 +150,7 @@ def generate_params_hash_vectors():
     error_cases.append(
         {
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid threshold value",
         }
     )
@@ -168,7 +167,7 @@ def generate_params_hash_vectors():
     error_cases.append(
         {
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": f"number of participants exceeds {chilldkg.MAX_PARTICIPANTS}",
         }
     )
@@ -183,7 +182,7 @@ def generate_params_hash_vectors():
     error_cases.append(
         {
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
@@ -198,17 +197,16 @@ def generate_params_hash_vectors():
     error_cases.append(
         {
             "params": params_asdict(duplicate_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
 
-    groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    groups = [{"valid_tests": valid_cases, "error_tests": error_cases}]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": total_tests,
         **groups[0],
     }
 
@@ -223,14 +221,14 @@ def generate_recover_vectors():
         "If hostseckey is a 32-byte hex string, recovery is performed as the corresponding participant.",
         "",
         "For each valid test case:",
-        "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
-        "  (if hostseckey is null) and verify the result matches expectedOutput.",
-        "  expectedOutput contains 'secshare' (null for the coordinator), 'thresholdInfo'",
-        "  (with t, threshPk, pubshares), and 'params' (with hostpubkeys, t).",
+        "  Call participant_recover(hostseckey, recovery_data) or coordinator_recover(recovery_data)",
+        "  (if hostseckey is null) and verify the result matches 'expected'.",
+        "  'expected' contains 'secshare' (null for the coordinator), 'threshold_info'",
+        "  (with t, thresh_pk, pubshares), and 'params' (with hostpubkeys, t).",
         "",
         "For each error test case:",
-        "  Call participant_recover(hostseckey, recoveryData) or coordinator_recover(recoveryData)",
-        "  (if hostseckey is null) and verify it raises an exception matching expectedError.",
+        "  Call participant_recover(hostseckey, recovery_data) or coordinator_recover(recovery_data)",
+        "  (if hostseckey is null) and verify it raises an exception matching 'error'.",
         *INPUT_VALIDATION_DESCRIPTION,
     ]
     valid_cases = []
@@ -273,10 +271,10 @@ def generate_recover_vectors():
         valid_cases.append(
             {
                 "hostseckey": bytes_to_hex(hostseckeys[i]),
-                "recoveryData": bytes_to_hex(prec),
-                "expectedOutput": {
+                "recovery_data": bytes_to_hex(prec),
+                "expected": {
                     "secshare": bytes_to_hex(psecshare_rec),
-                    "thresholdInfo": threshold_info_asdict(pinfo_rec),
+                    "threshold_info": threshold_info_asdict(pinfo_rec),
                     "params": params_asdict(params_rec),
                 },
                 "comment": f"participant recovery (idx = {i})",
@@ -289,10 +287,10 @@ def generate_recover_vectors():
     valid_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(crec),
-            "expectedOutput": {
+            "recovery_data": bytes_to_hex(crec),
+            "expected": {
                 "secshare": None,
-                "thresholdInfo": threshold_info_asdict(cinfo_rec),
+                "threshold_info": threshold_info_asdict(cinfo_rec),
                 "params": params_asdict(params_rec),
             },
             "comment": "coordinator recovery",
@@ -307,8 +305,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "recovery data of invalid length",
         }
     )
@@ -321,8 +319,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "first coefficient of sum_coms is invalid",
         }
     )
@@ -339,8 +337,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "last share in enc_secshare list is invalid",
         }
     )
@@ -353,8 +351,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "invalid threshold",
         }
     )
@@ -367,8 +365,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "first pubkey in the hostpubkey list is invalid",
         }
     )
@@ -387,8 +385,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "last pubnonce in the pubnonces list was tampered with (doesn't match signed certificate)",
         }
     )
@@ -403,8 +401,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(invalid_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(invalid_crec),
+            "error": error,
             "comment": "last signature in the certificate is invalid",
         }
     )
@@ -417,8 +415,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(short_hostseckey),
-            "recoveryData": bytes_to_hex(crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(crec),
+            "error": error,
             "comment": "invalid hostseckey",
         }
     )
@@ -433,8 +431,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(rand_hostseckey),
-            "recoveryData": bytes_to_hex(crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(crec),
+            "error": error,
             "comment": "host secret key doesn't match any hostpubkey",
         }
     )
@@ -447,8 +445,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(zero_hostseckey),
-            "recoveryData": bytes_to_hex(crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(crec),
+            "error": error,
             "comment": "host secret key is zero",
         }
     )
@@ -461,8 +459,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": bytes_to_hex(overflow_hostseckey),
-            "recoveryData": bytes_to_hex(crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(crec),
+            "error": error,
             "comment": "host secret key is out of range",
         }
     )
@@ -474,8 +472,8 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(short_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(short_crec),
+            "error": error,
             "comment": "recovery data is shorter than 4 bytes",
         }
     )
@@ -487,17 +485,16 @@ def generate_recover_vectors():
     error_cases.append(
         {
             "hostseckey": None,
-            "recoveryData": bytes_to_hex(padded_crec),
-            "expectedError": error,
+            "recovery_data": bytes_to_hex(padded_crec),
+            "error": error,
             "comment": "recovery data length is not a multiple of the per-participant size",
         }
     )
 
-    groups = [{"validTestCases": valid_cases, "errorTestCases": error_cases}]
+    groups = [{"valid_tests": valid_cases, "error_tests": error_cases}]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": description,
-        "totalTests": total_tests,
         **groups[0],
     }

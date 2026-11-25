@@ -45,15 +45,6 @@ def exception_asdict(e: Exception) -> dict:
     if len(e.args) > 0 and isinstance(e.args[-1], str):
         error_info.setdefault("message", e.args[-1])
 
-    # Update snake case keys into camel case keys to match the JSON vector format
-    for key in list(error_info.keys()):
-        if "_" in key:
-            camel_case_key = "".join(
-                word.capitalize() if i > 0 else word
-                for i, word in enumerate(key.split("_"))
-            )
-            error_info[camel_case_key] = error_info.pop(key)
-
     return error_info
 
 
@@ -70,7 +61,7 @@ def expect_exception(try_fn, expected_exception):
 
 def expect_faulty_exception(try_fn, expected_exception, expected_participant_id):
     error = expect_exception(try_fn, expected_exception)
-    actual = error.get("participantId")
+    actual = error.get("participant_id")
     assert actual == expected_participant_id, (
         f"expected faulty participant {expected_participant_id}, got {actual}"
     )
@@ -88,7 +79,7 @@ def tg_id(t: int, n: int) -> str:
 def threshold_info_asdict(threshold_info: chilldkg.ThresholdInfo) -> dict:
     return {
         "t": threshold_info.t,
-        "threshPk": bytes_to_hex(threshold_info.thresh_pk),
+        "thresh_pk": bytes_to_hex(threshold_info.thresh_pk),
         "pubshares": bytes_list_to_hex(threshold_info.pubshares),
     }
 
@@ -110,16 +101,12 @@ def split_input_validation_cases(groups):
     # for fixed-size arguments of wrong length, to a separate list, so that
     # implementations can skip them as a whole.
     for group in groups:
-        error_cases = group["errorTestCases"]
-        group["errorTestCases"] = [
-            case
-            for case in error_cases
-            if case["expectedError"]["type"] != "ValueError"
+        error_cases = group["error_tests"]
+        group["error_tests"] = [
+            case for case in error_cases if case["error"]["type"] != "ValueError"
         ]
-        group["inputValidationErrorTestCases"] = [
-            case
-            for case in error_cases
-            if case["expectedError"]["type"] == "ValueError"
+        group["input_validation_error_tests"] = [
+            case for case in error_cases if case["error"]["type"] == "ValueError"
         ]
 
 
@@ -127,15 +114,14 @@ def assign_tc_ids(groups):
     tc_id = 1
     for group in groups:
         for key in (
-            "validTestCases",
-            "errorTestCases",
-            "inputValidationErrorTestCases",
+            "valid_tests",
+            "error_tests",
+            "input_validation_error_tests",
         ):
             for i, case in enumerate(group.get(key, [])):
-                assert "tcId" not in case
-                group[key][i] = {"tcId": tc_id, **case}
+                assert "tc_id" not in case
+                group[key][i] = {"tc_id": tc_id, **case}
                 tc_id += 1
-    return tc_id - 1
 
 
 # functions below are used to test JSON vectors with chilldkg_ref

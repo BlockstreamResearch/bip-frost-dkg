@@ -47,18 +47,18 @@ COORDINATOR_STEP1_DESCRIPTION = [
     "Test vectors for coordinator_step1(pmsgs1, params).",
     "Aggregates participant round-1 messages and produces the coordinator's broadcast message (cmsg1).",
     "",
-    "Assemble the pmsgs1 list from pmsg1Pool using pmsg1Indices:",
-    "  pmsgs1 = [pmsg1Pool[i] for i in pmsg1Indices]",
+    "Assemble the pmsgs1 list from pmsg1_pool using pmsg1_indices:",
+    "  pmsgs1 = [pmsg1_pool[i] for i in pmsg1_indices]",
     "  Pool entries at indices 0..n-1 are well-formed messages; higher indices may be malformed.",
     "",
     "For each valid test case:",
     "  Call coordinator_step1(pmsgs1, params).",
-    "  Verify the returned cmsg1 equals expectedCmsg1.",
+    "  Verify the returned cmsg1 equals 'expected'.",
     "",
     "For each error test case:",
     "  Call coordinator_step1(pmsgs1, params).",
-    "  Verify it raises an exception matching expectedError.",
-    "  Error objects may include 'participantId' (identifier of the blamed participant).",
+    "  Verify it raises an exception matching 'error'.",
+    "  Error objects may include 'participant_id' (identifier of the blamed participant).",
 ]
 
 
@@ -87,9 +87,9 @@ def generate_coordinator_step1_group(t, n):
     # --- Valid test case ---
     valid_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),  # [0, 1, ..., n - 1]
+            "pmsg1_indices": list(range(len(pmsgs1))),  # [0, 1, ..., n - 1]
             "params": params_asdict(params),
-            "expectedCmsg1": bytes_to_hex(expected_cmsg1),
+            "expected": bytes_to_hex(expected_cmsg1),
             "comment": "valid coordinator step1",
         }
     )
@@ -110,11 +110,11 @@ def generate_coordinator_step1_group(t, n):
         pmsg1_pool.append(bytes_to_hex(pmsg1_inf))  # index n
         valid_cases.append(
             {
-                "pmsg1Indices": [
+                "pmsg1_indices": [
                     len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
                 ],  # [0, n, 2,..., n - 1] — index 1 replaced
                 "params": params_asdict(params),
-                "expectedCmsg1": bytes_to_hex(cmsg1_inf),
+                "expected": bytes_to_hex(cmsg1_inf),
                 "comment": "participant 1's VSS commitment contains the infinity point (a_1 = 0)",
             }
         )
@@ -127,9 +127,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),  # same valid pmsgs1
+            "pmsg1_indices": list(range(len(pmsgs1))),  # same valid pmsgs1
             "params": params_asdict(invalid_params),  # t=0
-            "expectedError": error,
+            "error": error,
             "comment": "invalid threshold value",
         }
     )
@@ -142,9 +142,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),  # same valid pmsgs1
+            "pmsg1_indices": list(range(len(pmsgs1))),  # same valid pmsgs1
             "params": params_asdict(invalid_params),  # t = n + 1
-            "expectedError": error,
+            "error": error,
             "comment": "invalid threshold value t > n",
         }
     )
@@ -159,9 +159,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),
+            "pmsg1_indices": list(range(len(pmsgs1))),
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
@@ -175,9 +175,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),
+            "pmsg1_indices": list(range(len(pmsgs1))),
             "params": params_asdict(duplicate_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
@@ -192,9 +192,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(len(pmsgs1))),
+            "pmsg1_indices": list(range(len(pmsgs1))),
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an infinity point",
         }
     )
@@ -207,9 +207,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n - 1)),
+            "pmsg1_indices": list(range(n - 1)),
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid pmsgs1: fewer entries than participants",
         }
     )
@@ -222,9 +222,9 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)) + [0],
+            "pmsg1_indices": list(range(n)) + [0],
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid pmsgs1: more entries than participants",
         }
     )
@@ -244,11 +244,11 @@ def generate_coordinator_step1_group(t, n):
     pmsg1_pool.append(bytes_to_hex(invalid_pmsgs1[1]))  # index n + 1
     error_cases.append(
         {
-            "pmsg1Indices": [
+            "pmsg1_indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n + 1, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "participant (id 1) message has an enc_shares list of invalid length",
         }
     )
@@ -271,11 +271,11 @@ def generate_coordinator_step1_group(t, n):
     pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index n + 2
     error_cases.append(
         {
-            "pmsg1Indices": [
+            "pmsg1_indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n + 2, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "participant (index 1) message has an out-of-range enc_share",
         }
     )
@@ -293,11 +293,11 @@ def generate_coordinator_step1_group(t, n):
     pmsg1_pool.append(bytes_to_hex(invalid_pmsg1))  # index n + 3
     error_cases.append(
         {
-            "pmsg1Indices": [
+            "pmsg1_indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n + 3, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "participant (index 1) message has an off-curve x-coordinate in the VSS commitment",
         }
     )
@@ -312,11 +312,11 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": [
+            "pmsg1_indices": [
                 len(pmsg1_pool) - 1 if i == 0 else i for i in range(n)
             ],  # [n + 4, 1, 2,..., n - 1] — index 0 replaced
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "missing simplpedpop participant message at index 0",
         }
     )
@@ -333,31 +333,30 @@ def generate_coordinator_step1_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": [
+            "pmsg1_indices": [
                 len(pmsg1_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n + 5, 2,..., n - 1] — index 1 replaced
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "missing public nonce in pmsg1 (index 1)",
         }
     )
 
     return {
-        "tgId": tg_id(t, n),
-        "pmsg1Pool": pmsg1_pool,
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        "tg_id": tg_id(t, n),
+        "pmsg1_pool": pmsg1_pool,
+        "valid_tests": valid_cases,
+        "error_tests": error_cases,
     }
 
 
 def generate_coordinator_step1_vectors():
     groups = [generate_coordinator_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": COORDINATOR_STEP1_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }
 
 
@@ -369,16 +368,16 @@ COORDINATOR_FINALIZE_DESCRIPTION = [
     "  1. Call coordinator_step1(pmsgs1, params) to obtain (cstate, cmsg1_out).",
     "     Assert cmsg1_out == cmsg1.",
     "",
-    "Assemble the pmsgs2 list from pmsg2Pool using pmsg2Indices:",
-    "  pmsgs2 = [pmsg2Pool[i] for i in pmsg2Indices]",
+    "Assemble the pmsgs2 list from pmsg2_pool using pmsg2_indices:",
+    "  pmsgs2 = [pmsg2_pool[i] for i in pmsg2_indices]",
     "",
     "For each valid test case:",
     "  Call coordinator_finalize(cstate, pmsgs2).",
-    "  Verify the result matches expectedOutput (cmsg2, thresholdInfo, recoveryData).",
+    "  Verify the result matches 'expected' (cmsg2, threshold_info, recovery_data).",
     "",
     "For each error test case:",
     "  Call coordinator_finalize(cstate, pmsgs2).",
-    "  Verify it raises an exception matching expectedError.",
+    "  Verify it raises an exception matching 'error'.",
     *INPUT_VALIDATION_DESCRIPTION,
 ]
 
@@ -414,11 +413,11 @@ def generate_coordinator_finalize_group(t, n):
     # --- Valid test case ---
     valid_cases.append(
         {
-            "pmsg2Indices": list(range(len(pmsgs2))),  # [0, 1, ..., n - 1]
-            "expectedOutput": {
+            "pmsg2_indices": list(range(len(pmsgs2))),  # [0, 1, ..., n - 1]
+            "expected": {
                 "cmsg2": bytes_to_hex(cmsg2),
-                "thresholdInfo": threshold_info_asdict(cinfo),
-                "recoveryData": bytes_to_hex(crec),
+                "threshold_info": threshold_info_asdict(cinfo),
+                "recovery_data": bytes_to_hex(crec),
             },
             "comment": "valid coordinator finalize",
         }
@@ -436,10 +435,10 @@ def generate_coordinator_finalize_group(t, n):
     pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_short_sig[1]))  # index n
     error_cases.append(
         {
-            "pmsg2Indices": [
+            "pmsg2_indices": [
                 len(pmsg2_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n, 2, ..., n-1] — index 1 replaced with bad pmsg
-            "expectedError": error_case,
+            "error": error_case,
             "comment": "participant with id 1 sent a short signature",
         }
     )
@@ -453,8 +452,8 @@ def generate_coordinator_finalize_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg2Indices": list(range(len(pmsgs2) - 1)),  # [0, ..., n - 2]
-            "expectedError": error_case,
+            "pmsg2_indices": list(range(len(pmsgs2) - 1)),  # [0, ..., n - 2]
+            "error": error_case,
             "comment": "invalid pmsgs2: fewer entries than participants",
         }
     )
@@ -467,8 +466,8 @@ def generate_coordinator_finalize_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg2Indices": list(range(len(pmsgs2))) + [0],  # [0, 1, ..., n-1, 0]
-            "expectedError": error_case,
+            "pmsg2_indices": list(range(len(pmsgs2))) + [0],  # [0, 1, ..., n-1, 0]
+            "error": error_case,
             "comment": "invalid pmsgs2: more entries than participants",
         }
     )
@@ -488,33 +487,32 @@ def generate_coordinator_finalize_group(t, n):
     pmsg2_pool.append(bytes_to_hex(invalid_pmsgs2_sig[1]))  # index n + 1
     error_cases.append(
         {
-            "pmsg2Indices": [
+            "pmsg2_indices": [
                 len(pmsg2_pool) - 1 if i == 1 else i for i in range(n)
             ],  # [0, n + 1, 2,..., n - 1]
-            "expectedError": error_case,
+            "error": error_case,
             "comment": "participant with id 1 sent an invalid signature",
         }
     )
 
     return {
-        "tgId": tg_id(t, n),
+        "tg_id": tg_id(t, n),
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
         "cmsg1": bytes_to_hex(cmsg1),
-        "pmsg2Pool": pmsg2_pool,
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        "pmsg2_pool": pmsg2_pool,
+        "valid_tests": valid_cases,
+        "error_tests": error_cases,
     }
 
 
 def generate_coordinator_finalize_vectors():
     groups = [generate_coordinator_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": COORDINATOR_FINALIZE_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }
 
 
@@ -525,12 +523,12 @@ COORDINATOR_INVESTIGATE_DESCRIPTION = [
     "",
     "For each valid test case:",
     "  Call coordinator_investigate(pmsgs1, params).",
-    "  Verify the returned list of investigation messages equals expectedCinvMsgs.",
+    "  Verify the returned list of investigation messages equals 'expected'.",
     "",
     "For each error test case:",
-    "  Assemble the list [pmsgs1[i] for i in pmsg1Indices] from the group's pmsgs1.",
+    "  Assemble the list [pmsgs1[i] for i in pmsg1_indices] from the group's pmsgs1.",
     "  Call coordinator_investigate with this list and the test case's params.",
-    "  Verify it raises an exception matching expectedError.",
+    "  Verify it raises an exception matching 'error'.",
 ]
 
 
@@ -550,7 +548,7 @@ def generate_coordinator_investigate_group(t, n):
     # --- Valid test case ---
     valid_cases = [
         {
-            "expectedCinvMsgs": [bytes_to_hex(m) for m in cinv_msgs],
+            "expected": [bytes_to_hex(m) for m in cinv_msgs],
             "comment": "valid coordinator investigate",
         }
     ]
@@ -564,9 +562,9 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1_indices": list(range(n)),
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid threshold value",
         }
     )
@@ -579,9 +577,9 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1_indices": list(range(n)),
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid threshold value t > n",
         }
     )
@@ -595,9 +593,9 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1_indices": list(range(n)),
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an invalid value",
         }
     )
@@ -611,9 +609,9 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1_indices": list(range(n)),
             "params": params_asdict(duplicate_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
@@ -627,9 +625,9 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1_indices": list(range(n)),
             "params": params_asdict(invalid_params),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an infinity point",
         }
     )
@@ -646,9 +644,9 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)),
+            "pmsg1_indices": list(range(n)),
             "params": params_asdict(params_extra),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid pmsgs1: fewer entries than participants",
         }
     )
@@ -661,19 +659,19 @@ def generate_coordinator_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "pmsg1Indices": list(range(n)) + [0],
+            "pmsg1_indices": list(range(n)) + [0],
             "params": params_asdict(params),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid pmsgs1: more entries than participants",
         }
     )
 
     return {
-        "tgId": tg_id(t, n),
+        "tg_id": tg_id(t, n),
         "params": params_asdict(params),
         "pmsgs1": [bytes_to_hex(m) for m in pmsgs1],
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        "valid_tests": valid_cases,
+        "error_tests": error_cases,
     }
 
 
@@ -682,9 +680,8 @@ def generate_coordinator_investigate_vectors():
         generate_coordinator_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
     ]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": COORDINATOR_INVESTIGATE_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }

@@ -36,11 +36,11 @@ PARTICIPANT_STEP1_DESCRIPTION = [
     "",
     "For each valid test case:",
     "  Call participant_step1(hostseckey, params, random).",
-    "  Verify the returned pmsg1 equals expectedPmsg1.",
+    "  Verify the returned pmsg1 equals 'expected'.",
     "",
     "For each error test case:",
     "  Call participant_step1(hostseckey, params, random).",
-    "  Verify it raises an exception matching expectedError.",
+    "  Verify it raises an exception matching 'error'.",
     *INPUT_VALIDATION_DESCRIPTION,
 ]
 
@@ -62,7 +62,7 @@ def generate_participant_step1_group(t, n):
                 "hostseckey": bytes_to_hex(hostseckeys[idx]),
                 "params": params_asdict(params),
                 "random": bytes_to_hex(random),
-                "expectedPmsg1": bytes_to_hex(expected_pmsg1),
+                "expected": bytes_to_hex(expected_pmsg1),
                 "comment": f"valid participant step1 (idx = {idx})",
             }
         )
@@ -74,7 +74,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(random_big),
-            "expectedPmsg1": bytes_to_hex(expected_pmsg1),
+            "expected": bytes_to_hex(expected_pmsg1),
             "comment": "valid participant step1 (random = all ones)",
         }
     )
@@ -91,7 +91,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(short_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "length of host secret key is not 32 bytes",
         }
     )
@@ -106,7 +106,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(zero_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "host secret key is zero",
         }
     )
@@ -121,7 +121,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(invalid_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "host secret key is out of range",
         }
     )
@@ -136,7 +136,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid threshold value",
         }
     )
@@ -151,7 +151,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "threshold exceeds the number of participants",
         }
     )
@@ -172,7 +172,7 @@ def generate_participant_step1_group(t, n):
                 "hostseckey": bytes_to_hex(hostseckeys[0]),
                 "params": params_asdict(invalid_params),
                 "random": bytes_to_hex(random),
-                "expectedError": error,
+                "error": error,
                 "comment": f"number of participants exceeds {chilldkg.MAX_PARTICIPANTS}",
             }
         )
@@ -189,7 +189,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an invalid value with invalid prefix",
         }
     )
@@ -206,7 +206,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an invalid value with invalid x-coordinate",
         }
     )
@@ -223,7 +223,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(invalid_params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains an infinity point",
         }
     )
@@ -239,7 +239,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(duplicate_params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "hostpubkeys list contains duplicate values",
         }
     )
@@ -256,7 +256,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(rand_hostseckey),
             "params": params_asdict(params),
             "random": bytes_to_hex(random),
-            "expectedError": error,
+            "error": error,
             "comment": "host secret key doesn't match any hostpubkey",
         }
     )
@@ -272,7 +272,7 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(short_random),
-            "expectedError": error,
+            "error": error,
             "comment": "length of randomness is not 32 bytes",
         }
     )
@@ -287,31 +287,30 @@ def generate_participant_step1_group(t, n):
             "hostseckey": bytes_to_hex(hostseckeys[0]),
             "params": params_asdict(params),
             "random": bytes_to_hex(zero_random),
-            "expectedError": error,
+            "error": error,
             "comment": "randomness is zero",
         }
     )
 
     return {
-        "tgId": tg_id(t, n),
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        "tg_id": tg_id(t, n),
+        "valid_tests": valid_cases,
+        "error_tests": error_cases,
     }
 
 
 def generate_participant_step1_vectors():
     groups = [generate_participant_step1_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_STEP1_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }
 
 
 PARTICIPANT_STEP2_DESCRIPTION = [
-    "Test vectors for participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "Test vectors for participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
     "Executes the second round of DKG from a participant's perspective.",
     "Processes the coordinator's aggregated message (cmsg1) and produces a partial signature (pmsg2).",
     "",
@@ -320,18 +319,18 @@ PARTICIPANT_STEP2_DESCRIPTION = [
     "  2. Assert pmsg1_out == pmsg1 (verifies your step1 implementation before testing step2).",
     "",
     "For each valid test case:",
-    "  A test case may provide 'hostseckey', 'random', and/or 'auxRand' fields to override",
+    "  A test case may provide 'hostseckey', 'random', and/or 'aux_rand' fields to override",
     "  the group-level values. If 'hostseckey' or 'random' differ from the group defaults,",
     "  re-derive pstate1 by calling participant_step1(hostseckey, params, random) again.",
     "  If the test case provides a 'pmsg1' field, assert the re-derived pmsg1 matches it.",
-    "  Then call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
-    "  Verify the returned pmsg2 equals expectedPmsg2.",
+    "  Then call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
+    "  Verify the returned pmsg2 equals 'expected'.",
     "",
     "For each error test case:",
-    "  Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
-    "  Verify it raises an exception matching expectedError.",
+    "  Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
+    "  Verify it raises an exception matching 'error'.",
     "  Error objects contain 'type' (exception class name) and optionally:",
-    "    - 'participantId': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
+    "    - 'participant_id': identifier of the blamed party (for FaultyParticipantOrCoordinatorError)",
     "    - 'message': human-readable description (informational, not required to match exactly)",
     *INPUT_VALIDATION_DESCRIPTION,
 ]
@@ -366,7 +365,7 @@ def generate_participant_step2_group(t, n):
                 "random": bytes_to_hex(randoms[idx]),
                 "pmsg1": bytes_to_hex(pmsgs1[idx]),
                 "cmsg1": bytes_to_hex(cmsg1),
-                "expectedPmsg2": bytes_to_hex(pmsg2),
+                "expected": bytes_to_hex(pmsg2),
                 "comment": f"valid participant step2 (idx = {idx})",
             }
         )
@@ -377,10 +376,10 @@ def generate_participant_step2_group(t, n):
     )
     valid_cases.append(
         {
-            "auxRand": bytes_to_hex(zero_aux_rand),
+            "aux_rand": bytes_to_hex(zero_aux_rand),
             "cmsg1": bytes_to_hex(cmsg1),
-            "expectedPmsg2": bytes_to_hex(pmsg2),
-            "comment": "valid participant step2 (auxRand = zero)",
+            "expected": bytes_to_hex(pmsg2),
+            "comment": "valid participant step2 (aux_rand = zero)",
         }
     )
 
@@ -397,9 +396,9 @@ def generate_participant_step2_group(t, n):
     )
     error_cases.append(
         {
-            "auxRand": bytes_to_hex(short_aux_rand),
+            "aux_rand": bytes_to_hex(short_aux_rand),
             "cmsg1": bytes_to_hex(cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "length of aux randomness is not 32 bytes",
         }
     )
@@ -415,7 +414,7 @@ def generate_participant_step2_group(t, n):
         {
             "hostseckey": bytes_to_hex(mismatched_hostseckey),
             "cmsg1": bytes_to_hex(cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "hostseckey does not match the one used in participant_step1",
         }
     )
@@ -432,7 +431,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has an invalid prefix at index 0 (own pubnonce)",
         }
     )
@@ -450,7 +449,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has an invalid prefix at index 1",
         }
     )
@@ -467,7 +466,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has an off-curve x-coordinate at index 0 (own pubnonce)",
         }
     )
@@ -485,7 +484,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has an off-curve x-coordinate at index 1",
         }
     )
@@ -504,7 +503,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 0 (own pubnonce)",
         }
     )
@@ -523,7 +522,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has an arbitrary value at index 1",
         }
     )
@@ -540,7 +539,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has the infinity point at index 0 (own pubnonce)",
         }
     )
@@ -558,7 +557,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has the infinity point at index 1",
         }
     )
@@ -577,7 +576,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pubnonces list has duplicate values",
         }
     )
@@ -592,7 +591,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: missing encrypted secret shares",
         }
     )
@@ -611,7 +610,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: coms_to_secrets list has an arbitrary value at index 0",
         }
     )
@@ -629,7 +628,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: coms_to_secrets list has infinity at index 1",
         }
     )
@@ -644,7 +643,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: coms_to_secrets list has an off-curve x-coordinate at index 1",
         }
     )
@@ -664,7 +663,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: pop list has an invalid value at index 1",
         }
     )
@@ -684,7 +683,7 @@ def generate_participant_step2_group(t, n):
         error_cases.append(
             {
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
-                "expectedError": error,
+                "error": error,
                 "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an arbitrary value at index 0",
             }
         )
@@ -703,7 +702,7 @@ def generate_participant_step2_group(t, n):
         error_cases.append(
             {
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
-                "expectedError": error,
+                "error": error,
                 "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has the infinity point at index 0",
             }
         )
@@ -719,7 +718,7 @@ def generate_participant_step2_group(t, n):
         error_cases.append(
             {
                 "cmsg1": bytes_to_hex(invalid_cmsg1),
-                "expectedError": error,
+                "error": error,
                 "comment": "invalid cmsg1: sum_coms_to_nonconst_terms has an off-curve x-coordinate at index 0",
             }
         )
@@ -740,7 +739,7 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: participant 1 sent an invalid secshare for participant 0",
         }
     )
@@ -756,31 +755,30 @@ def generate_participant_step2_group(t, n):
     error_cases.append(
         {
             "cmsg1": bytes_to_hex(invalid_cmsg1),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg1: cmsg1 contains an out-of-range enc_secshare",
         }
     )
 
     return {
-        "tgId": tg_id(t, n),
+        "tg_id": tg_id(t, n),
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
-        "auxRand": bytes_to_hex(aux_rand),
+        "aux_rand": bytes_to_hex(aux_rand),
         "pmsg1": bytes_to_hex(pmsgs1[0]),
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        "valid_tests": valid_cases,
+        "error_tests": error_cases,
     }
 
 
 def generate_participant_step2_vectors():
     groups = [generate_participant_step2_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_STEP2_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }
 
 
@@ -793,7 +791,7 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
     "Harness setup (re-derive state through two prior rounds):",
     "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
     "     Assert pmsg1_out == pmsg1.",
-    "  2. Call participant_step2(hostseckey, pstate1, cmsg1, auxRand) to obtain (pstate2, pmsg2_out).",
+    "  2. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand) to obtain (pstate2, pmsg2_out).",
     "     Assert pmsg2_out == pmsg2.",
     "",
     "For each valid test case:",
@@ -803,11 +801,11 @@ PARTICIPANT_FINALIZE_DESCRIPTION = [
     "  If the test case provides 'pmsg1' and/or 'pmsg2' fields, assert the re-derived",
     "  pmsg1 and pmsg2 match them.",
     "  Call participant_finalize(pstate2, cmsg2).",
-    "  Verify the result matches expectedOutput (secshare, thresholdInfo, and recoveryData).",
+    "  Verify the result matches 'expected' (secshare, threshold_info, and recovery_data).",
     "",
     "For each error test case:",
     "  Call participant_finalize(pstate2, cmsg2).",
-    "  Verify it raises an exception matching expectedError.",
+    "  Verify it raises an exception matching 'error'.",
 ]
 
 
@@ -842,7 +840,7 @@ def generate_participant_finalize_group(t, n):
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
-        "auxRand": bytes_to_hex(aux_rand),
+        "aux_rand": bytes_to_hex(aux_rand),
         "pmsg1": bytes_to_hex(pmsgs1[0]),
         "cmsg1": bytes_to_hex(cmsg1),
         "pmsg2": bytes_to_hex(pmsgs2[0]),
@@ -859,10 +857,10 @@ def generate_participant_finalize_group(t, n):
                 "pmsg1": bytes_to_hex(pmsgs1[idx]),
                 "pmsg2": bytes_to_hex(pmsgs2[idx]),
                 "cmsg2": bytes_to_hex(cmsg2),
-                "expectedOutput": {
+                "expected": {
                     "secshare": bytes_to_hex(psecshare),
-                    "thresholdInfo": threshold_info_asdict(pinfo),
-                    "recoveryData": bytes_to_hex(prec),
+                    "threshold_info": threshold_info_asdict(pinfo),
+                    "recovery_data": bytes_to_hex(prec),
                 },
                 "comment": f"valid participant finalize (idx = {idx})",
             }
@@ -879,7 +877,7 @@ def generate_participant_finalize_group(t, n):
     error_cases.append(
         {
             "cmsg2": bytes_to_hex(invalid_cmsg2),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg2: length is invalid (missing last signature)",
         }
     )
@@ -892,7 +890,7 @@ def generate_participant_finalize_group(t, n):
     error_cases.append(
         {
             "cmsg2": bytes_to_hex(invalid_cmsg2),
-            "expectedError": error,
+            "error": error,
             "comment": "invalid cmsg2: length is invalid (extra data appended)",
         }
     )
@@ -910,33 +908,32 @@ def generate_participant_finalize_group(t, n):
     error_cases.append(
         {
             "cmsg2": bytes_to_hex(invalid_cmsg2_2),
-            "expectedError": error2,
+            "error": error2,
             "comment": "invalid cmsg2: last signature is invalid",
         }
     )
 
     return {
-        "tgId": tg_id(t, n),
+        "tg_id": tg_id(t, n),
         "params": vectors["params"],
         "hostseckey": vectors["hostseckey"],
         "random": vectors["random"],
-        "auxRand": vectors["auxRand"],
+        "aux_rand": vectors["aux_rand"],
         "pmsg1": vectors["pmsg1"],
         "cmsg1": vectors["cmsg1"],
         "pmsg2": vectors["pmsg2"],
-        "validTestCases": valid_cases,
-        "errorTestCases": error_cases,
+        "valid_tests": valid_cases,
+        "error_tests": error_cases,
     }
 
 
 def generate_participant_finalize_vectors():
     groups = [generate_participant_finalize_group(t, n) for t, n in THRESHOLD_CONFIGS]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_FINALIZE_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }
 
 
@@ -948,13 +945,14 @@ PARTICIPANT_INVESTIGATE_DESCRIPTION = [
     "Harness setup:",
     "  1. Call participant_step1(hostseckey, params, random) to obtain (pstate1, pmsg1_out).",
     "     Assert pmsg1_out == pmsg1.",
-    "  2. Per test case: look up cmsg1 from cmsg1Pool using cmsg1Index.",
-    "  3. Call participant_step2(hostseckey, pstate1, cmsg1, auxRand).",
+    "  2. Per test case: look up cmsg1 from cmsg1_pool using cmsg1_index.",
+    "  3. Call participant_step2(hostseckey, pstate1, cmsg1, aux_rand).",
     "     It must raise UnknownFaultyParticipantOrCoordinatorError. Capture that error object.",
-    "  4. Call participant_investigate(error, cinvMsg) and verify it raises expectedError.",
+    "  4. Call participant_investigate with the captured exception and cinv_msg, and verify",
+    "     it raises an exception matching 'error'.",
     "",
     "All test cases are error cases (this function never returns successfully).",
-    "Error objects contain 'type' and optionally 'participantId' (identifier of the blamed party).",
+    "Error objects contain 'type' and optionally 'participant_id' (identifier of the blamed party).",
 ]
 
 
@@ -999,9 +997,9 @@ def generate_participant_investigate_group(t, n):
     cmsg1_pool.append(bytes_to_hex(invalid_cmsg1))  # index 0
     error_cases.append(
         {
-            "cmsg1Index": 0,
-            "cinvMsg": bytes_to_hex(cinv_msgs[0]),
-            "expectedError": error,
+            "cmsg1_index": 0,
+            "cinv_msg": bytes_to_hex(cinv_msgs[0]),
+            "error": error,
             "comment": "participant 1 sent an invalid secshare for participant 0",
         }
     )
@@ -1035,9 +1033,9 @@ def generate_participant_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(cinv_msg0),
-            "expectedError": error,
+            "cmsg1_index": 1,
+            "cinv_msg": bytes_to_hex(cinv_msg0),
+            "error": error,
             "comment": "coordinator tampered with participant 0's encrypted secshare",
         }
     )
@@ -1052,9 +1050,9 @@ def generate_participant_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
-            "expectedError": error,
+            "cmsg1_index": 1,
+            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
+            "error": error,
             "comment": "coordinator tampered with self-encrypted partial secshare (participant 0)",
         }
     )
@@ -1068,9 +1066,9 @@ def generate_participant_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
-            "expectedError": error,
+            "cmsg1_index": 1,
+            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
+            "error": error,
             "comment": "invalid cinv_msg: partial pubshares list has an off-curve x-coordinate at index 1",
         }
     )
@@ -1085,9 +1083,9 @@ def generate_participant_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
-            "expectedError": error,
+            "cmsg1_index": 1,
+            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
+            "error": error,
             "comment": "invalid cinv_msg: enc_partial_secshares list has an out-of-range value at index 1",
         }
     )
@@ -1104,9 +1102,9 @@ def generate_participant_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
-            "expectedError": error,
+            "cmsg1_index": 1,
+            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
+            "error": error,
             "comment": "partial pubshares list in cinv_msg has an arbitrary value at index 1",
         }
     )
@@ -1119,9 +1117,9 @@ def generate_participant_investigate_group(t, n):
     )
     error_cases.append(
         {
-            "cmsg1Index": 1,
-            "cinvMsg": bytes_to_hex(invalid_cinv_msg0),
-            "expectedError": error,
+            "cmsg1_index": 1,
+            "cinv_msg": bytes_to_hex(invalid_cinv_msg0),
+            "error": error,
             "comment": "invalid cinv_msg: length is invalid (truncated)",
         }
     )
@@ -1129,14 +1127,14 @@ def generate_participant_investigate_group(t, n):
     # TODO: add runtime_error test case
 
     return {
-        "tgId": tg_id(t, n),
+        "tg_id": tg_id(t, n),
         "params": params_asdict(params),
         "hostseckey": bytes_to_hex(hostseckeys[0]),
         "random": bytes_to_hex(randoms[0]),
-        "auxRand": bytes_to_hex(aux_rand),
+        "aux_rand": bytes_to_hex(aux_rand),
         "pmsg1": bytes_to_hex(pmsgs1[0]),
-        "cmsg1Pool": cmsg1_pool,
-        "errorTestCases": error_cases,
+        "cmsg1_pool": cmsg1_pool,
+        "error_tests": error_cases,
     }
 
 
@@ -1145,9 +1143,8 @@ def generate_participant_investigate_vectors():
         generate_participant_investigate_group(t, n) for t, n in THRESHOLD_CONFIGS
     ]
     split_input_validation_cases(groups)
-    total_tests = assign_tc_ids(groups)
+    assign_tc_ids(groups)
     return {
         "description": PARTICIPANT_INVESTIGATE_DESCRIPTION,
-        "totalTests": total_tests,
-        "testGroups": groups,
+        "test_groups": groups,
     }
