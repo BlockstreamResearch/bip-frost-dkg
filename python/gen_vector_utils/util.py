@@ -112,14 +112,10 @@ def split_input_validation_cases(groups):
     for group in groups:
         error_cases = group["errorTestCases"]
         group["errorTestCases"] = [
-            case
-            for case in error_cases
-            if case["expectedError"]["type"] != "ValueError"
+            case for case in error_cases if case["error"]["type"] != "ValueError"
         ]
         group["inputValidationErrorTestCases"] = [
-            case
-            for case in error_cases
-            if case["expectedError"]["type"] == "ValueError"
+            case for case in error_cases if case["error"]["type"] == "ValueError"
         ]
 
 

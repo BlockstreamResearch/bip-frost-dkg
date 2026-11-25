@@ -6,12 +6,12 @@
         "",
         "For each valid test case:",
         "  Call coordinator_investigate(pmsgs1, params).",
-        "  Verify the returned list of investigation messages equals expectedCinvMsgs.",
+        "  Verify the returned list of investigation messages equals 'expected'.",
         "",
         "For each error test case:",
         "  Assemble the list [pmsgs1[i] for i in pmsg1Indices] from the group's pmsgs1.",
         "  Call coordinator_investigate with this list and the test case's params.",
-        "  Verify it raises an exception matching expectedError."
+        "  Verify it raises an exception matching 'error'."
     ],
     "testGroups": [
         {
@@ -32,7 +32,7 @@
             "validTestCases": [
                 {
                     "tcId": 1,
-                    "expectedCinvMsgs": [
+                    "expected": [
                         "C6C144287B356EF70378A7F1054FF00354A01352587DC076554A82CD324B66A17A5C832E385A79C54BB5E400CF3FA2DF8A747E7F362AA3345CB0097DAF2C715FA124DC237A739AD28D8624726DD0277B3B1D7D030019F0FBBA9EE12D6007FEE3036D44D81C8FC25D67A6E1E125246D1FF9BE76A1658F97C07CE39940D0B43E52E303BF0AF5C64B79B08F41BCFABC9FCECC5ADDA3F12CFA6AA1154E02DA1647FE8B0702092454A24C75464D046869DCD67E790172FB1F12A149E50DAC5E6C4D8BFAAE2F",
                         "7006774A86C116C19F2C021793EAB87DF19EE3A978C60F757BA192DA23BAE5F5AA97DCA9CF742C4A54D5805B0705378C68129809D8D22A753A3F8F92FE61D7D160BC33A121886C897AC86F4F99CD493743B05216D0408C88A32D90A109837B6502EA90FA9C43676FF0CDA703288937981FB16BF7110FF7D933D8B3D5E0786634E102142133ED95D812D7EB519931786DEBBDB80AE1BD30E2249C479EFCDDB31F716802648B7305132F7274A68D258C1EDF07E5EA8FF6EB0EB06498FA7EC760B810789B",
                         "6A3612D0720F35828FCFBA9DFEA790883B185A8B75A27449AF23169C919B47C74D27B6E1FE9BCEE26C96CD0B2CB18AE6A5D80C5792EA1FA2F09011B3F2596EE747CAC26451623B282A4FC67A2E454E27C7437BA3F620C687F061E9B264652DD602C9E43C8D052AFB93A707067131A402553779F074A972E4AEE18E75AC1974BFB9021D05E0EB5FEC76D50949DC78D002E6F3C785BABE7D0942D058D0F83D6C3646F203E3E0604C66D5348257F16C8B1892F4A105218F452C25BE0DF746D069F2B9F28C"
@@ -56,7 +56,7 @@
                         ],
                         "t": 0
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value"
@@ -76,7 +76,7 @@
                         ],
                         "t": 4
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value t > n"
@@ -96,7 +96,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 2
                     },
@@ -117,7 +117,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "DuplicateHostPubkeyError",
                         "participantId1": 0,
                         "participantId2": 2
@@ -139,7 +139,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 2
                     },
@@ -161,7 +161,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: fewer entries than participants"
@@ -182,7 +182,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: more entries than participants"
@@ -208,7 +208,7 @@
             "validTestCases": [
                 {
                     "tcId": 9,
-                    "expectedCinvMsgs": [
+                    "expected": [
                         "9827C7BD6ECCE374663262B90B8D2944C94F9AB1E83F38DBD12823DD7D58B8B3F4CDA3696B4B7701D9CA898B23E0211D9A3BB64CD130C329BDFC826BCBFCA13DEE7CAEA466336EF62D77586E88F1689219851C1473C34AA555FB08E2A7BD90970216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C602DA601E3FC8D21A247C5677D9CACFFE0BB86860BC1C233BECA0D97776AAE309DA02FB246B4866569A7A495CFFB1133DAF9096FE4FA22EDA6AF9D7A8F236F9C222B6",
                         "CF1C0AB792C1AF61FA3866CCC4221CAC3CB9D35F7F5358990AB02D7E246BCEDD563259BE0136A48FE852FC559B1EA6DE9EB24A43FBE2B42E3F1AE85AB03BB99B7A1AB2888E05E016EFE2799D43300A3A576497D23F32CFBABE18A069512E2A960216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C602DA601E3FC8D21A247C5677D9CACFFE0BB86860BC1C233BECA0D97776AAE309DA02FB246B4866569A7A495CFFB1133DAF9096FE4FA22EDA6AF9D7A8F236F9C222B6",
                         "2AA0622F84004D5AED9B4FC855F20AE22CE260B6E79F56DE5BC2F5B73D137DE354825042D24EFCD6B3C4E2F29DFA11B55973C08DEADB120BA5B90EF12D74353B826AFB726FF50193F6F50E4CA0A630DEC81B68554EEFDA5331C04E7E7FFE7C1A0216C95A7FA9079C73184E8646721F59BB0361A839FD6DB9B8CF53CA1EA5B9E1C602DA601E3FC8D21A247C5677D9CACFFE0BB86860BC1C233BECA0D97776AAE309DA02FB246B4866569A7A495CFFB1133DAF9096FE4FA22EDA6AF9D7A8F236F9C222B6"
@@ -232,7 +232,7 @@
                         ],
                         "t": 0
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value"
@@ -252,7 +252,7 @@
                         ],
                         "t": 4
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value t > n"
@@ -272,7 +272,7 @@
                         ],
                         "t": 1
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 2
                     },
@@ -293,7 +293,7 @@
                         ],
                         "t": 1
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "DuplicateHostPubkeyError",
                         "participantId1": 0,
                         "participantId2": 2
@@ -315,7 +315,7 @@
                         ],
                         "t": 1
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 2
                     },
@@ -337,7 +337,7 @@
                         ],
                         "t": 1
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: fewer entries than participants"
@@ -358,7 +358,7 @@
                         ],
                         "t": 1
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: more entries than participants"
@@ -384,7 +384,7 @@
             "validTestCases": [
                 {
                     "tcId": 17,
-                    "expectedCinvMsgs": [
+                    "expected": [
                         "7C47A6836F30317C4B914E33F10B72CA6EDD116A3DF9E8BFE997045F9F957D31B9BC513A6059135E04745D8BA961BA2B73A8F109469632CACD2DEA19DD9F985DE0165D9516387D7C6A7EDE123BB40683A6037628D3853322CF37FE31A36960DA02EB2C6840DF67A868BD870B7FB28C6166EE7175F26E1709EE6055C30BEDBED4440211DAB363110221D0DDC7A94DC8C125FADE58F7183C5C24C606572914B327D6E503FE94E345B4190A99EB1B6EE05449AE2F638456DFB603C74083387CB8F3ADCB12",
                         "A43BB05F6162602B96E5D8C0AE3A07C8228E41DE772B0ACD96937B6CD0115ADE03F3FCD86C88731C94E5588CA37E072DBF0A968AF541994B5A5D3E6011C9D926BA80A39126B2817F0E441AFFB94ECB9C9133C9C377EDDC7BE2BB97A0A436751003A7ECF826CB9AABC89EC5613CB2619AA6F820483A3C5E78CC8CB5012DE5D00C37022195F03AD5C5EDA4F066F2AE3C478B4A154DD771DE009DFBCDF753507C7A925F03886A9FF796EEFD88B956B0D5BA0F7C50E3591219D4D38F7513D737A6E5E07B48",
                         "0ACB3150F08EA8668C262DC091C6ACA77674E8C749023FA6FB5D6938BEC73CD860F6A85166FBC97DE076DD7F81CB81CF07262D7296453D47065FD31A952CA8C92F91CB07BEC0D3422EA4ADB05AB0264DFCBAA0D94EBB93D825110A8816C8D1F602B6AAA356721893AD6D81FE281705E1642A1CD24AE790A58EB6B5CFDBC8AB2B6502740EDFAFC9F5A891E9B7333404B41C6DC047D43EB648DA5F89DBB3E7E9EE6B7F03E4D4EF71978155829EBB6594F073020C4D88CA2F556930054415C47D254952C7"
@@ -408,7 +408,7 @@
                         ],
                         "t": 0
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value"
@@ -428,7 +428,7 @@
                         ],
                         "t": 4
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value t > n"
@@ -448,7 +448,7 @@
                         ],
                         "t": 3
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 2
                     },
@@ -469,7 +469,7 @@
                         ],
                         "t": 3
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "DuplicateHostPubkeyError",
                         "participantId1": 0,
                         "participantId2": 2
@@ -491,7 +491,7 @@
                         ],
                         "t": 3
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 2
                     },
@@ -513,7 +513,7 @@
                         ],
                         "t": 3
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: fewer entries than participants"
@@ -534,7 +534,7 @@
                         ],
                         "t": 3
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: more entries than participants"
@@ -562,7 +562,7 @@
             "validTestCases": [
                 {
                     "tcId": 25,
-                    "expectedCinvMsgs": [
+                    "expected": [
                         "C2BC4B8326FF7015CEC59F160D74C4911E39F1C703FE64ACC5D0258A814EEAE2BE24CC80C556589A0B8E155C7DA2429FD3BE69817C8E237B911EDB37605569C28BB736697045FBC5CC366FA156F25C21760942BE0ED2FE35C8AE3B24C70E83920A7D6A1780AB7000EC43EAD753D49C5A5DD08236F37B43ED82D40C97D03E8B4803AE9A37E7CABAFAFA2B0C0E1C758F754208966D0EE3AF2817E09A4BCD52E6D96302ECB1B982603A8BA43EA6D9C8E070EB917BBD40B932F28B6B8BF84B81CD2C2241039CF320073B4B23D5F155924FC598AC82C74527C8CFB64B7459A876C8F4643D100380A91AEAD1DF43C3BDE89CFEC504708560DC53DFE7BD736CBB3EA9D06654E7AB",
                         "35412ABEFA95191200CDA1F3D9F14976F2401C387A1B5FEDCEE9AE829D8DB00537D0D39F4904C0294A6F38AA1ED43C3769BD1DC4372201CEC2A36D328F613A85E71F4DD29880FB7C913D3BC68F1A488EE93FBF92D99639C927F56330C180DCEB23339CBF4313CD658B22977779325944D49B9E928138E470B4E90C34F4D7617703589D80C93930ED933D3C3F62676567D24EB423E6C15A8E9147570EB4DEEEA408022B77F452E0AA889BBD72755D850C2636D748F28A877F9C6467559D97FC75B28F02E563214350B4D8354426CF9D73BDA8BA94CD80A827DC84C5CFE5930CB10BEA1703D506F406064E59BD0232DAED1D0865E71F119EFFD212A820022F913279655DD1",
                         "B6584DD5D478D2B1CEE49B2B8FB20EFCDC2BB9DD7B7F75B13ACBF819369AC43DCDE8E4E2F05D5A97365681A84FC3074416AFF8C91FDEF197C73047E0D3B43C76705221AADCA90841FF0FD21EAE2C72D95DBB6867CF7AD1441BEF0F7264E25CC68EB690F7F7EC769034FE7FFFB06D4EBFBABA9E4D442925D4BE8046D0BEACD19D0271D93FFD68D893C051F332D74E8C0DDF2F61A3CC75051D57B55DAB056E329DFD03BA71BA7CBBC1C29077049846C470CC3C9DD47CECA8CFFD2CB621EC87BB51AD98034123402967C7F8511987D603A1FE319A723DED8D6766F957CB1843BBDFE3726002E413326B9B5985F71D856949A2C478FFCD27B0E2FEFA4F1BDC9B442067858132",
@@ -589,7 +589,7 @@
                         ],
                         "t": 0
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value"
@@ -611,7 +611,7 @@
                         ],
                         "t": 5
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "ThresholdOrCountError"
                     },
                     "comment": "invalid threshold value t > n"
@@ -633,7 +633,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 3
                     },
@@ -656,7 +656,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "DuplicateHostPubkeyError",
                         "participantId1": 0,
                         "participantId2": 3
@@ -680,7 +680,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "InvalidHostPubkeyError",
                         "participantId": 3
                     },
@@ -704,7 +704,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: fewer entries than participants"
@@ -727,7 +727,7 @@
                         ],
                         "t": 2
                     },
-                    "expectedError": {
+                    "error": {
                         "type": "LengthDoesNotMatchParamsError"
                     },
                     "comment": "invalid pmsgs1: more entries than participants"

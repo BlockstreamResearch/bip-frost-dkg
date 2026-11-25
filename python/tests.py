@@ -483,12 +483,12 @@ def test_hostpubkey_gen_vectors():
 
     for test_case in valid_test_cases:
         hostseckey = bytes.fromhex(test_case["hostseckey"])
-        expected_hostpubkey = bytes.fromhex(test_case["expectedHostpubkey"])
+        expected_hostpubkey = bytes.fromhex(test_case["expected"])
         assert expected_hostpubkey == chilldkg.hostpubkey_gen(hostseckey)
 
     for test_case in error_test_cases:
         hostseckey = bytes.fromhex(test_case["hostseckey"])
-        expected_error = test_case["expectedError"]
+        expected_error = test_case["error"]
         assert_raises(lambda: chilldkg.hostpubkey_gen(hostseckey), expected_error)
 
 
@@ -504,12 +504,12 @@ def test_params_hash_vectors():
 
     for test_case in valid_test_cases:
         params = params_from_dict(test_case["params"])
-        expected_hash = bytes.fromhex(test_case["expectedParamsHash"])
+        expected_hash = bytes.fromhex(test_case["expected"])
         assert expected_hash == chilldkg.params_hash(params)
 
     for test_case in error_test_cases:
         params = params_from_dict(test_case["params"])
-        expected_error = test_case["expectedError"]
+        expected_error = test_case["error"]
         assert_raises(lambda: chilldkg.params_hash(params), expected_error)
 
 
@@ -524,7 +524,7 @@ def test_participant_step1_vectors():
             hostseckey = bytes.fromhex(test_case["hostseckey"])
             params = params_from_dict(test_case["params"])
             random = bytes.fromhex(test_case["random"])
-            expected_pmsg1 = bytes.fromhex(test_case["expectedPmsg1"])
+            expected_pmsg1 = bytes.fromhex(test_case["expected"])
             _, pmsg1 = chilldkg.participant_step1(hostseckey, params, random)
             assert expected_pmsg1 == pmsg1
             total_cases += 1
@@ -536,7 +536,7 @@ def test_participant_step1_vectors():
             hostseckey = bytes.fromhex(test_case["hostseckey"])
             params = params_from_dict(test_case["params"])
             random = bytes.fromhex(test_case["random"])
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.participant_step1(hostseckey, params, random),
                 expected_error,
@@ -567,7 +567,7 @@ def test_participant_step2_vectors():
             case_random = bytes.fromhex(test_case.get("random", group["random"]))
             case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
-            expected_pmsg2 = bytes.fromhex(test_case["expectedPmsg2"])
+            expected_pmsg2 = bytes.fromhex(test_case["expected"])
             if case_hostseckey != hostseckey or case_random != random:
                 case_state1, case_pmsg1 = chilldkg.participant_step1(
                     case_hostseckey, params, case_random
@@ -592,7 +592,7 @@ def test_participant_step2_vectors():
             )
             case_aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
             cmsg1 = bytes.fromhex(test_case["cmsg1"])
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.participant_step2(
                     case_hostseckey, state1, cmsg1, case_aux_rand
@@ -650,7 +650,7 @@ def test_participant_finalize_vectors():
                 assert case_pmsg2 == bytes.fromhex(test_case["pmsg2"])
 
             psecshare, pinfo, prec = chilldkg.participant_finalize(case_state2, cmsg2)
-            expected_out = test_case["expectedOutput"]
+            expected_out = test_case["expected"]
             assert bytes.fromhex(expected_out["secshare"]) == psecshare
             assert expected_out["thresholdInfo"] == threshold_info_asdict(pinfo)
             assert bytes.fromhex(expected_out["recoveryData"]) == prec
@@ -661,7 +661,7 @@ def test_participant_finalize_vectors():
             group["errorTestCases"] + group["inputValidationErrorTestCases"]
         ):
             cmsg2 = bytes.fromhex(test_case["cmsg2"])
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.participant_finalize(state2, cmsg2), expected_error
             )
@@ -692,7 +692,7 @@ def test_participant_investigate_vectors():
         ):
             cmsg1 = bytes.fromhex(cmsg1_pool[test_case["cmsg1Index"]])
             cinv_msg = bytes.fromhex(test_case["cinvMsg"])
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             try:
                 chilldkg.participant_step2(hostseckey, state1, cmsg1, aux_rand)
             except UnknownFaultyParticipantOrCoordinatorError as e:
@@ -720,7 +720,7 @@ def test_coordinator_step1_vectors():
         for test_case in group["validTestCases"]:
             pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
             params = params_from_dict(test_case["params"])
-            expected_cmsg1 = test_case["expectedCmsg1"]
+            expected_cmsg1 = test_case["expected"]
             _, cmsg1 = chilldkg.coordinator_step1(pmsgs1, params)
             assert bytes.fromhex(expected_cmsg1) == cmsg1
             total_cases += 1
@@ -731,7 +731,7 @@ def test_coordinator_step1_vectors():
         ):
             pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
             params = params_from_dict(test_case["params"])
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.coordinator_step1(pmsgs1, params), expected_error
             )
@@ -757,7 +757,7 @@ def test_coordinator_finalize_vectors():
         for test_case in group["validTestCases"]:
             pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2Indices"]]
             cmsg2, cinfo, crec = chilldkg.coordinator_finalize(state, pmsgs2)
-            expected_out = test_case["expectedOutput"]
+            expected_out = test_case["expected"]
             assert bytes.fromhex(expected_out["cmsg2"]) == cmsg2
             assert expected_out["thresholdInfo"] == threshold_info_asdict(cinfo)
             assert bytes.fromhex(expected_out["recoveryData"]) == crec
@@ -768,7 +768,7 @@ def test_coordinator_finalize_vectors():
             group["errorTestCases"] + group["inputValidationErrorTestCases"]
         ):
             pmsgs2 = [bytes.fromhex(pmsg2_pool[i]) for i in test_case["pmsg2Indices"]]
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.coordinator_finalize(state, pmsgs2), expected_error
             )
@@ -789,7 +789,7 @@ def test_coordinator_investigate_vectors():
 
         for test_case in group["validTestCases"]:
             cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
-            expected_cinv_msgs = test_case["expectedCinvMsgs"]
+            expected_cinv_msgs = test_case["expected"]
             assert [bytes.fromhex(m) for m in expected_cinv_msgs] == cinv_msgs
             total_cases += 1
             assert test_case["tcId"] == total_cases
@@ -799,7 +799,7 @@ def test_coordinator_investigate_vectors():
         ):
             case_pmsgs1 = [pmsgs1[i] for i in test_case["pmsg1Indices"]]
             case_params = params_from_dict(test_case["params"])
-            expected_error = test_case["expectedError"]
+            expected_error = test_case["error"]
             assert_raises(
                 lambda: chilldkg.coordinator_investigate(case_pmsgs1, case_params),
                 expected_error,
@@ -823,7 +823,7 @@ def test_recover_vectors():
             bytes.fromhex(test_case["hostseckey"]) if test_case["hostseckey"] else None
         )
         recovery_data = bytes.fromhex(test_case["recoveryData"])
-        expected_out = test_case["expectedOutput"]
+        expected_out = test_case["expected"]
         if hostseckey is None:
             threshold_info, params = chilldkg.coordinator_recover(recovery_data)
             assert expected_out["secshare"] is None
@@ -840,7 +840,7 @@ def test_recover_vectors():
             bytes.fromhex(test_case["hostseckey"]) if test_case["hostseckey"] else None
         )
         recovery_data = bytes.fromhex(test_case["recoveryData"])
-        expected_error = test_case["expectedError"]
+        expected_error = test_case["error"]
         if hostseckey is None:
             assert_raises(
                 lambda: chilldkg.coordinator_recover(recovery_data), expected_error
