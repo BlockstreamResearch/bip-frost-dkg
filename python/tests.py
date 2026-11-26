@@ -807,10 +807,11 @@ def test_coordinator_investigate_vectors():
     total_cases = 0
 
     for group in test_data["testGroups"]:
-        params = params_from_dict(group["params"])
-        pmsgs1 = [bytes.fromhex(m) for m in group["pmsgs1"]]
+        pmsg1_pool = group["pmsg1Pool"]
 
         for test_case in group["validTestCases"]:
+            pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
+            params = params_from_dict(test_case["params"])
             cinv_msgs = chilldkg.coordinator_investigate(pmsgs1, params)
             expected_cinv_msgs = test_case["expectedCinvMsgs"]
             assert [bytes.fromhex(m) for m in expected_cinv_msgs] == cinv_msgs
@@ -820,11 +821,11 @@ def test_coordinator_investigate_vectors():
         for test_case in (
             group["errorTestCases"] + group["inputValidationErrorTestCases"]
         ):
-            case_pmsgs1 = [pmsgs1[i] for i in test_case["pmsg1Indices"]]
-            case_params = params_from_dict(test_case["params"])
+            pmsgs1 = [bytes.fromhex(pmsg1_pool[i]) for i in test_case["pmsg1Indices"]]
+            params = params_from_dict(test_case["params"])
             expected_error = test_case["expectedError"]
             assert_raises(
-                lambda: chilldkg.coordinator_investigate(case_pmsgs1, case_params),
+                lambda: chilldkg.coordinator_investigate(pmsgs1, params),
                 expected_error,
             )
             total_cases += 1
