@@ -32,3 +32,8 @@ THRESHOLD_CONFIGS = [
 # secp256k1, since 5^3 + 7 = 132 is not a square mod p. Used wherever a test
 # needs a point encoding that fails to decode.
 OFF_CURVE_POINT = b"\x03" + 31 * b"\x00" + b"\x05"
+
+# A random signature that is not valid for any message used in the tests.
+RAND_SIG = bytes.fromhex(
+    "09C289578B96E6283AB13E4741FB489FC147FB1A5F446A314BA73C052131EFB04B83247A0BCEDF5205202AD64188B24B0BC5B51A17AEB218BD98DBE000C843B9"
+)

@@ -19,6 +19,10 @@ from gen_vector_utils.participant import (
     generate_participant_step1_vectors,
     generate_participant_step2_vectors,
 )
+from gen_vector_utils.recovery_ack import (
+    generate_recovery_ack_sign_vectors,
+    generate_recovery_acks_verify_vectors,
+)
 from gen_vector_utils.session import (
     generate_hostpubkey_vectors,
     generate_params_hash_vectors,
@@ -60,5 +64,13 @@ util.write_json(
 util.write_json(
     output_dir / "coordinator_investigate_vectors.json",
     generate_coordinator_investigate_vectors(),
+)
+util.write_json(
+    output_dir / "participant_recovery_ack_sign_vectors.json",
+    generate_recovery_ack_sign_vectors(),
+)
+util.write_json(
+    output_dir / "participant_recovery_acks_verify_vectors.json",
+    generate_recovery_acks_verify_vectors(),
 )
 print("Generated test vectors successfully")

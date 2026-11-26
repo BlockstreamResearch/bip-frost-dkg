@@ -135,7 +135,9 @@ class InvalidSignatureInCertificateError(ValueError):
 
 
 def recovery_ack_message(x: bytes, participant_id: int) -> bytes:
-    # Domain separation as described in BIP 340
+    # Domain separation as described in BIP 340. This ensures that an
+    # acknowledgment is not a valid CertEq signature (see certeq_message) and
+    # vice versa, even though both sign eq_input.
     prefix = (BIP_TAG + "recovery acknowledgment").encode()
     prefix = prefix + b"\x00" * (33 - len(prefix))
     assert len(prefix) == 33
@@ -1224,6 +1226,20 @@ class RecoveryDataError(ValueError):
 ###
 
 
+def recovery_data_eq_input(recovery_data: RecoveryData, params: SessionParams) -> bytes:
+    # This deserializes the recovery data and verifies the certificate.
+    _, params_rec, _ = recover_public(recovery_data)
+    if params_rec != params:
+        raise RecoveryDataError(
+            "Recovery data does not match the provided session parameters"
+        )
+
+    # Acknowledgments sign only eq_input, not the certificate. The certificate
+    # is not unique: a participant can create another valid signature for its
+    # slot, so the same session can have several valid certificates.
+    return recovery_data[: -certeq_cert_len(len(params.hostpubkeys))]
+
+
 def participant_recovery_ack_sign(
     hostseckey: bytes,
     recovery_data: RecoveryData,
@@ -1236,6 +1252,13 @@ def participant_recovery_ack_sign(
     signature on the recovery data. This can be used for an optional
     acknowledgment round where participants acknowledge that they have
     successfully received the complete recovery data.
+
+    The acknowledgment signature covers the session transcript contained in
+    the recovery data but not the success certificate. A session can have
+    several valid certificates (e.g., if a participant signs the transcript
+    again), so the recovery data held by different participants may differ in
+    the certificate. Nevertheless, an acknowledgment verifies against any
+    valid recovery data of the same session.
 
     Arguments:
         hostseckey: Participant's long-term host secret key (32 bytes).
@@ -1255,13 +1278,13 @@ def participant_recovery_ack_sign(
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
-        RecoveryDataError: If the recovery data is invalid or does not match
-            the provided parameters.
+        RecoveryDataError: If the recovery data is invalid (e.g., contains an
+            invalid certificate) or does not match the provided parameters.
     """
     hostpubkey = hostpubkey_gen(hostseckey)  # ValueError if len(hostseckey) != 32
 
     params_validate(params)
-    (hostpubkeys, t) = params
+    hostpubkeys = params.hostpubkeys
 
     try:
         participant_id = hostpubkeys.index(hostpubkey)
@@ -1272,17 +1295,9 @@ def participant_recovery_ack_sign(
     if len(aux_rand) != 32:
         raise ValueError
 
-    try:
-        (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
-    except Exception as e:
-        raise RecoveryDataError("Failed to deserialize recovery data") from e
+    eq_input = recovery_data_eq_input(recovery_data, params)
 
-    if t_rec != t or hostpubkeys_rec != hostpubkeys:
-        raise RecoveryDataError(
-            "Recovery data does not match the provided session parameters"
-        )
-
-    sig = recovery_ack_sign(hostseckey, participant_id, recovery_data, aux_rand)
+    sig = recovery_ack_sign(hostseckey, participant_id, eq_input, aux_rand)
     rmsg = RecoveryAckMsg(sig).to_bytes()
     return rmsg
 
@@ -1307,8 +1322,8 @@ def participant_recovery_acks_verify(
         DuplicateHostPubkeyError: If `hostpubkeys` contains duplicates.
         ThresholdOrCountError: If `1 <= t <= len(hostpubkeys) <= 128` does
             not hold.
-        RecoveryDataError: If the recovery data is invalid or does not match
-            the provided parameters.
+        RecoveryDataError: If the recovery data is invalid (e.g., contains an
+            invalid certificate) or does not match the provided parameters.
         InvalidRecoveryAckError: If any recovery acknowledgment signature is
             invalid. Note that this does NOT mean the DKG failed
             (reaching this point implies the DKG itself was successful).
@@ -1318,24 +1333,16 @@ def participant_recovery_acks_verify(
             does not match the session parameters.
     """
     params_validate(params)
-    (hostpubkeys, t) = params
+    hostpubkeys = params.hostpubkeys
 
     if len(ack_sigs) != len(hostpubkeys):
         raise LengthDoesNotMatchParamsError
 
-    try:
-        (t_rec, _, hostpubkeys_rec, _, _, _) = deserialize_recovery_data(recovery_data)
-    except Exception as e:
-        raise RecoveryDataError("Failed to deserialize recovery data") from e
-
-    if t_rec != t or hostpubkeys_rec != hostpubkeys:
-        raise RecoveryDataError(
-            "Recovery data does not match the provided session parameters"
-        )
+    eq_input = recovery_data_eq_input(recovery_data, params)
 
     for i, sig in enumerate(ack_sigs):
         rmsg = RecoveryAckMsg.from_bytes(sig)
-        msg = recovery_ack_message(recovery_data, i)
+        msg = recovery_ack_message(eq_input, i)
         valid = schnorr_verify(
             msg,
             # Dropping the sign byte from hostpubkeys[i] is okay because msg

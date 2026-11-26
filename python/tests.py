@@ -879,6 +879,95 @@ def test_recover_vectors():
             )
 
 
+def test_participant_recovery_ack_sign_vectors():
+    input_file = VECTORS_DIR / "participant_recovery_ack_sign_vectors.json"
+    with open(input_file) as f:
+        test_data = json.load(f)
+
+    total_cases = 0
+    for group in test_data["testGroups"]:
+        for test_case in group["validTestCases"]:
+            # A test case may override the group-level values.
+            hostseckey = bytes.fromhex(test_case["hostseckey"])
+            recovery_data = bytes.fromhex(
+                test_case.get("recoveryData", group["recoveryData"])
+            )
+            params = params_from_dict(test_case.get("params", group["params"]))
+            aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
+            ack_sig = chilldkg.participant_recovery_ack_sign(
+                hostseckey, recovery_data, params, aux_rand
+            )
+            assert bytes.fromhex(test_case["expectedAckSig"]) == ack_sig
+            total_cases += 1
+            assert test_case["tcId"] == total_cases
+
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
+            hostseckey = bytes.fromhex(test_case["hostseckey"])
+            recovery_data = bytes.fromhex(
+                test_case.get("recoveryData", group["recoveryData"])
+            )
+            params = params_from_dict(test_case.get("params", group["params"]))
+            aux_rand = bytes.fromhex(test_case.get("auxRand", group["auxRand"]))
+            expected_error = test_case["expectedError"]
+            assert_raises(
+                lambda: chilldkg.participant_recovery_ack_sign(
+                    hostseckey, recovery_data, params, aux_rand
+                ),
+                expected_error,
+            )
+            total_cases += 1
+            assert test_case["tcId"] == total_cases
+
+    assert test_data["totalTests"] == total_cases
+
+
+def test_participant_recovery_acks_verify_vectors():
+    input_file = VECTORS_DIR / "participant_recovery_acks_verify_vectors.json"
+    with open(input_file) as f:
+        test_data = json.load(f)
+
+    total_cases = 0
+    for group in test_data["testGroups"]:
+        ack_sig_pool = group["ackSigPool"]
+
+        for test_case in group["validTestCases"]:
+            # A test case may override the group-level values.
+            recovery_data = bytes.fromhex(
+                test_case.get("recoveryData", group["recoveryData"])
+            )
+            params = params_from_dict(test_case.get("params", group["params"]))
+            ack_sigs = [
+                bytes.fromhex(ack_sig_pool[i]) for i in test_case["ackSigIndices"]
+            ]
+            chilldkg.participant_recovery_acks_verify(recovery_data, params, ack_sigs)
+            total_cases += 1
+            assert test_case["tcId"] == total_cases
+
+        for test_case in (
+            group["errorTestCases"] + group["inputValidationErrorTestCases"]
+        ):
+            recovery_data = bytes.fromhex(
+                test_case.get("recoveryData", group["recoveryData"])
+            )
+            params = params_from_dict(test_case.get("params", group["params"]))
+            ack_sigs = [
+                bytes.fromhex(ack_sig_pool[i]) for i in test_case["ackSigIndices"]
+            ]
+            expected_error = test_case["expectedError"]
+            assert_raises(
+                lambda: chilldkg.participant_recovery_acks_verify(
+                    recovery_data, params, ack_sigs
+                ),
+                expected_error,
+            )
+            total_cases += 1
+            assert test_case["tcId"] == total_cases
+
+    assert test_data["totalTests"] == total_cases
+
+
 def test_recovery_acknowledgment():
     t, n = 2, 3
     hostseckeys = [random_bytes(32) for _ in range(n)]
@@ -1045,6 +1134,51 @@ def test_recovery_acknowledgment():
         pass
     else:
         assert False, "Expected exception"
+
+    # Recovery data with an invalid certificate
+    invalid_cert_recovery_data = chilldkg.RecoveryData(
+        recovery_data[:-1] + bytes([recovery_data[-1] ^ 1])
+    )
+    try:
+        chilldkg.participant_recovery_ack_sign(
+            hostseckeys[0], invalid_cert_recovery_data, params, random_bytes(32)
+        )
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    try:
+        chilldkg.participant_recovery_acks_verify(
+            invalid_cert_recovery_data, params, ack_sigs
+        )
+    except chilldkg.RecoveryDataError:
+        pass
+    else:
+        assert False, "Expected exception"
+
+    # A participant can sign its slot in the certificate again, which yields
+    # different but valid recovery data for the same session. Acknowledgments
+    # of either recovery data must verify against both, so that no honest
+    # participant is blamed.
+    cert_len = chilldkg.certeq_cert_len(n)
+    eq_input = recovery_data[:-cert_len]
+    resig = chilldkg.certeq_participant_step(
+        hostseckeys[n - 1], n - 1, eq_input, random_bytes(32)
+    )
+    other_recovery_data = chilldkg.RecoveryData(recovery_data[:-64] + resig)
+    assert other_recovery_data != recovery_data
+    assert chilldkg.participant_recover(
+        hostseckeys[1], other_recovery_data
+    ) == chilldkg.participant_recover(hostseckeys[1], recovery_data)
+    mixed_ack_sigs = ack_sigs[:]
+    mixed_ack_sigs[1] = chilldkg.participant_recovery_ack_sign(
+        hostseckeys[1], other_recovery_data, params, random_bytes(32)
+    )
+    chilldkg.participant_recovery_acks_verify(recovery_data, params, mixed_ack_sigs)
+    chilldkg.participant_recovery_acks_verify(
+        other_recovery_data, params, mixed_ack_sigs
+    )
 
 
 def test_infinite_pubshare():
@@ -1246,4 +1380,6 @@ test_participant_investigate_vectors()
 test_coordinator_step1_vectors()
 test_coordinator_finalize_vectors()
 test_coordinator_investigate_vectors()
+test_participant_recovery_ack_sign_vectors()
+test_participant_recovery_acks_verify_vectors()
 test_recover_vectors()
